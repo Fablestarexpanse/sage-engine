@@ -242,6 +242,27 @@ class LLMSettingsBody(BaseModel):
     cache_ttl: int | None = None
 
 
+class ComfyUISettingsBody(BaseModel):
+    enabled: bool | None = None
+    base_url: str | None = None
+    workflow_path: str | None = None
+    positive_prompt_node_id: str | None = None
+    output_node_id: str | None = None
+    area_workflow_path: str | None = None
+    area_positive_prompt_node_id: str | None = None
+    area_output_node_id: str | None = None
+    checkpoint_name: str | None = None
+    timeout_seconds: float | None = None
+    poll_interval_seconds: float | None = None
+    economy_enabled: bool | None = None
+    starting_echo_credits: int | None = None
+    portrait_generation_cost: int | None = None
+    area_generation_cost: int | None = None
+    character_create_portrait_cost: int | None = None
+    currency_display_name: str | None = None
+    pixels_per_usd: int | None = None
+
+
 class StaffLoginBody(BaseModel):
     username: str
     password: str = Field(..., min_length=8)
@@ -1035,6 +1056,39 @@ class NexusApp:
                 "model": eff,
                 "chat_model_config": self.server.config.llm.chat_model,
             }
+
+        # ── ComfyUI settings ───────────────────────────────────────────────
+
+        @self.app.get("/comfyui/status")
+        async def comfyui_status(
+            _ctx: Annotated[AdminContext, Depends(require_tool("server"))],
+        ):
+            """Full ComfyUI config + live reachability check."""
+            return await self.server.play_comfyui_status()
+
+        @self.app.patch("/comfyui/settings")
+        async def comfyui_settings_patch(
+            body: ComfyUISettingsBody,
+            _ctx: Annotated[AdminContext, Depends(require_tool("server"))],
+            persist: bool = Query(default=True),
+        ):
+            """Update ComfyUI config fields live; persist=true writes config/comfyui.toml."""
+            patch = body.model_dump(exclude_none=True)
+            try:
+                self.server.update_comfyui_settings(patch, persist=persist)
+            except (ValueError, TypeError) as e:
+                raise HTTPException(status_code=400, detail=str(e)) from e
+            return await self.server.play_comfyui_status()
+
+        @self.app.post("/comfyui/test-connection")
+        async def comfyui_test_connection(
+            _ctx: Annotated[AdminContext, Depends(require_tool("server"))],
+        ):
+            """Ping the configured ComfyUI base_url and return reachability."""
+            from fablestar.server import _ping_comfyui_http  # noqa: PLC0415
+            c = self.server.config.comfyui
+            ok, err = await _ping_comfyui_http(c.base_url)
+            return {"reachable": ok, "base_url": c.base_url, "error": err or None}
 
         @self.app.post("/forge/generate")
         async def forge_generate(

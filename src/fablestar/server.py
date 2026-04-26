@@ -15,10 +15,11 @@ from sqlalchemy import select
 
 from fablestar import app
 from fablestar.admin import player_accounts, staff_service
+from fablestar.admin.comfyui_persist import save_comfyui_toml
 from fablestar.admin.llm_persist import save_llm_toml
 from fablestar.admin.nexus import NexusApp
 from fablestar.commands.registry import registry
-from fablestar.core.config import Config, LLMConfig, load_config, resolve_config_asset_path
+from fablestar.core.config import ComfyUIConfig, Config, LLMConfig, load_config, resolve_config_asset_path
 from fablestar.core.events import EventBus
 from fablestar.core.tick import TickManager
 from fablestar.integration.comfyui_client import generate_portrait_png
@@ -352,6 +353,35 @@ class FablestarServer:
         self.llm_client.reconfigure(self.config.llm)
         if persist:
             save_llm_toml(self.config.llm)
+
+    _COMFYUI_PATCH_KEYS = frozenset({
+        "enabled", "base_url",
+        "workflow_path", "positive_prompt_node_id", "output_node_id",
+        "area_workflow_path", "area_positive_prompt_node_id", "area_output_node_id",
+        "checkpoint_name", "timeout_seconds", "poll_interval_seconds",
+        "economy_enabled", "starting_echo_credits",
+        "portrait_generation_cost", "area_generation_cost", "character_create_portrait_cost",
+        "currency_display_name", "pixels_per_usd",
+    })
+
+    def update_comfyui_settings(self, patch: dict[str, Any], *, persist: bool = True) -> None:
+        """Merge ComfyUI config fields, optionally write config/comfyui.toml."""
+        data = {k: v for k, v in patch.items() if k in self._COMFYUI_PATCH_KEYS and v is not None}
+        for int_key in ("starting_echo_credits", "portrait_generation_cost", "area_generation_cost",
+                        "character_create_portrait_cost", "pixels_per_usd"):
+            if int_key in data:
+                data[int_key] = int(data[int_key])
+        for float_key in ("timeout_seconds", "poll_interval_seconds"):
+            if float_key in data:
+                data[float_key] = float(data[float_key])
+        for bool_key in ("enabled", "economy_enabled"):
+            if bool_key in data:
+                data[bool_key] = bool(data[bool_key])
+        merged = {**self.config.comfyui.model_dump(), **data}
+        new_cfg = ComfyUIConfig.model_validate(merged)
+        self.config = self.config.model_copy(update={"comfyui": new_cfg})
+        if persist:
+            save_comfyui_toml(self.config.comfyui)
 
     async def startup(self):
         """Initialize and start all sub-systems."""
