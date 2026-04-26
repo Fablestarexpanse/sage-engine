@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 VALID_ROLES = frozenset({"head_admin", "admin", "gm"})
 
 DEV_DEFAULT_STAFF_USERNAME = "staff"
-DEV_DEFAULT_STAFF_PASSWORD = "test"
+DEV_DEFAULT_STAFF_PASSWORD = "testpass"
 
 
 def _hash_password(pw: str) -> str:

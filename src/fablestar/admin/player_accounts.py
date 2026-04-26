@@ -13,8 +13,8 @@ from fablestar.state.models import Account, AdminStaff, Character
 logger = logging.getLogger(__name__)
 
 DEV_DEFAULT_PLAY_LOGINS: tuple[tuple[str, str, bool], ...] = (
-    ("staff", "test", True),
-    ("player", "test", False),
+    ("staff", "testpass", True),
+    ("player", "testpass", False),
 )
 
 
