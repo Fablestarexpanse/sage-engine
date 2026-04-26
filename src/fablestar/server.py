@@ -1319,9 +1319,10 @@ async def run_server():
     server = FablestarServer()
     await server.startup()
 
-    # Await the tick loop task (is_running is set inside run(), so polling it races and exits immediately).
+    # Await both long-running tasks (nexus HTTP + tick loop).
     try:
-        if server._main_task:
-            await server._main_task
+        tasks = [t for t in (server._nexus_task, server._tick_task) if t]
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
     finally:
         await server.shutdown()
