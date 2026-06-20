@@ -178,7 +178,9 @@ async def bonus_cmd(session: Session, args: list[str]):
         f"Level: {lv}  Peak: {peak}  State: {st}",
         f"Stat weights: {wstr}",
         f"Your conduit: FRT {frt}  RFX {rfx}  ACU {acu}  RSV {rsv}  PRS {prs}",
-        f"Stat factor (weighted product): {stat_product:.3f}" if lv > 0 else "Stat factor: n/a (level 0)",
+        f"Stat factor (weighted product): {stat_product:.3f}"
+        if lv > 0
+        else "Stat factor: n/a (level 0)",
         f"Level factor (√level): {lf:.3f}" if lv > 0 else "Level factor: 0",
         f"Computed bonus: {b}",
     ]

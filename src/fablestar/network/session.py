@@ -8,23 +8,26 @@ from fablestar.network.protocol import Protocol
 
 logger = logging.getLogger(__name__)
 
+
 class SessionState(Enum):
     CONNECTED = auto()
     AUTHENTICATING = auto()
     PLAYING = auto()
     DISCONNECTING = auto()
 
+
 class Session:
     """
     Represents an active connection to the server.
     Bridges the network layer to the player state.
     """
+
     def __init__(self, session_id: str, protocol: Protocol):
         self.id = session_id
         self.protocol = protocol
         self.state = SessionState.CONNECTED
         self.player_id: str | None = None
-        self.last_activity = 0.0 # Will be updated with monotonic time
+        self.last_activity = 0.0  # Will be updated with monotonic time
 
     async def send(self, message: str):
         """Send raw text to the client, adding a newline."""
@@ -35,7 +38,7 @@ class Session:
     async def send_prompt(self):
         """Send the command prompt to the client (no newline)."""
         if self.protocol.is_connected:
-            prompt = "\r\n> " # Default prompt
+            prompt = "\r\n> "  # Default prompt
             await self.protocol.send(prompt)
 
     async def close(self):
@@ -43,8 +46,10 @@ class Session:
         self.state = SessionState.DISCONNECTING
         await self.protocol.close()
 
+
 class SessionManager:
     """Manages all active player sessions."""
+
     def __init__(self):
         self.sessions: dict[str, Session] = {}
         self.player_to_session: dict[str, str] = {}
@@ -63,7 +68,7 @@ class SessionManager:
             session = self.sessions[session_id]
             if session.player_id and session.player_id in self.player_to_session:
                 del self.player_to_session[session.player_id]
-            
+
             await session.close()
             del self.sessions[session_id]
             logger.info(f"Session destroyed: {session_id}")

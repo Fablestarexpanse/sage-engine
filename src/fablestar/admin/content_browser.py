@@ -61,10 +61,7 @@ def zone_summary(zone_id: str) -> dict[str, Any] | None:
             status = meta.get("status", status)
         except Exception as e:
             logger.debug("zone meta %s: %s", meta_path, e)
-    entities = sum(
-        _room_entity_count(rooms_dir / rf.name)
-        for rf in room_files
-    )
+    entities = sum(_room_entity_count(rooms_dir / rf.name) for rf in room_files)
     return {
         "id": zone_id,
         "name": name,
@@ -913,7 +910,9 @@ def ship_graph(ship_id: str) -> dict[str, Any]:
                         else r.get("description")
                     ),
                     "entityCount": 0,
-                    "exitCount": len(r.get("exits") or {}) if isinstance(r.get("exits"), dict) else 0,
+                    "exitCount": len(r.get("exits") or {})
+                    if isinstance(r.get("exits"), dict)
+                    else 0,
                     "tags": [],
                     "raw": r,
                     "shipId": ship_id,
@@ -971,7 +970,13 @@ def ship_graph(ship_id: str) -> dict[str, Any]:
                     }
                 )
 
-    return {"nodes": nodes, "edges": edges, "warnings": [], "external_exits": external, "ship": ship}
+    return {
+        "nodes": nodes,
+        "edges": edges,
+        "warnings": [],
+        "external_exits": external,
+        "ship": ship,
+    }
 
 
 def save_ship_room(ship_id: str, room_local_id: str, patch: dict[str, Any]) -> Path:
@@ -1037,4 +1042,8 @@ def write_proficiency_catalog_document(raw: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("; ".join(errs))
     payload = doc.model_dump(mode="json")
     _atomic_write_json(PROFICIENCIES_CATALOG_JSON, payload)
-    return {"ok": True, "leaf_count": len(doc.leaves), "path": str(PROFICIENCIES_CATALOG_JSON.resolve())}
+    return {
+        "ok": True,
+        "leaf_count": len(doc.leaves),
+        "path": str(PROFICIENCIES_CATALOG_JSON.resolve()),
+    }

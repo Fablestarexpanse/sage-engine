@@ -26,7 +26,9 @@ def validate_leaf_definitions(
         seen.add(leaf.id)
         first = leaf.id.split(".")[0] if leaf.id else ""
         if leaf.domain and first != leaf.domain:
-            errors.append(f"domain mismatch for {leaf.id} (domain field={leaf.domain}, id root={first})")
+            errors.append(
+                f"domain mismatch for {leaf.id} (domain field={leaf.domain}, id root={first})"
+            )
         parts = leaf.id.split(".")
         if len(parts) < 2:
             errors.append(f"leaf id must have at least domain.branch: {leaf.id}")

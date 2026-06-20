@@ -15,15 +15,17 @@ logger = logging.getLogger(__name__)
 
 T = TypeVar("T", bound=BaseModel)
 
+
 class ContentLoader:
     """
     Loads and caches YAML content with validation.
     Supports invalidating cache for hot-reloads.
     """
+
     def __init__(self, content_dir: str = "content"):
         self.content_dir = Path(content_dir)
         self._cache: dict[str, Any] = {}
-        
+
     def _get_cache_key(self, content_type: str, content_id: str) -> str:
         return f"{content_type}:{content_id}"
 
@@ -38,17 +40,19 @@ class ContentLoader:
         cache_key = self._get_cache_key("room", room_id)
         if cache_key in self._cache:
             return self._cache[cache_key]
-        
+
         # Room IDs are formatted as "zone_id:room_id"
         # File path: content/world/zones/{zone_id}/rooms/{room_id}.yaml
         try:
             zone_id, room_filename = room_id.split(":")
-            room_path = self.content_dir / "world" / "zones" / zone_id / "rooms" / f"{room_filename}.yaml"
-            
+            room_path = (
+                self.content_dir / "world" / "zones" / zone_id / "rooms" / f"{room_filename}.yaml"
+            )
+
             if not room_path.exists():
                 logger.error(f"Room file not found: {room_path}")
                 return None
-            
+
             room = self.load_yaml(room_path, RoomModel)
             self._cache[cache_key] = room
             return room
@@ -132,7 +136,7 @@ class ContentLoader:
         # Simple implementation: clear all or try to match path
         # In a more advanced version, we would maps paths to cache keys
         logger.info(f"Invalidating cache for {file_path}")
-        
+
         # For now, we'll just clear the specific type if we can determine it
         if "proficiencies" in file_path.parts:
             k = self._get_cache_key("proficiency_registry", content_id="all")

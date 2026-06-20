@@ -6,27 +6,24 @@ import json
 import unittest
 from pathlib import Path
 
-from fablestar.proficiencies.catalog_loader import (
-    leaf_definitions_from_builtin_rows,
-    load_proficiency_catalog_from_disk,
-)
-from fablestar.proficiencies.data import EXPECTED_LEAF_COUNT, all_builtin_leaf_rows
 from fablestar.proficiencies.bonus import (
     CONDUIT_CHARGEN_POINTS_TOTAL,
     calculate_proficiency_bonus,
     validate_chargen_conduit_allocation,
 )
+from fablestar.proficiencies.catalog_loader import (
+    leaf_definitions_from_builtin_rows,
+    load_proficiency_catalog_from_disk,
+)
+from fablestar.proficiencies.data import EXPECTED_LEAF_COUNT, all_builtin_leaf_rows
 from fablestar.proficiencies.engine import ProficiencyEngine
-from fablestar.proficiencies.models import ProficiencyCatalogDocument
 from fablestar.proficiencies.registry import ProficiencyRegistry
 from fablestar.proficiencies.state_helpers import (
     combat_attack_defense_from_stats,
     ensure_proficiency_block,
     migrate_legacy_stats,
-    total_proficiency_levels,
 )
 from fablestar.proficiencies.validation import validate_leaf_definitions
-
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -87,11 +84,15 @@ class TestEngine(unittest.TestCase):
         prof["combat"] = {"level": 10, "state": "raise", "peak": 10}
         prof["combat.melee"] = {"level": 14, "state": "raise", "peak": 14}
         prof["combat.melee.blades"] = {"level": 0, "state": "raise", "peak": 0}
-        r = self.engine.try_field_gain(stats, "combat.melee.blades", context={"field_success": True})
+        r = self.engine.try_field_gain(
+            stats, "combat.melee.blades", context={"field_success": True}
+        )
         self.assertFalse(r.ok)
         self.assertEqual(r.message, "depth_gate")
         prof["combat.melee"]["level"] = 15
-        r2 = self.engine.try_field_gain(stats, "combat.melee.blades", context={"field_success": True})
+        r2 = self.engine.try_field_gain(
+            stats, "combat.melee.blades", context={"field_success": True}
+        )
         self.assertTrue(r2.ok)
 
     def test_decay_floor(self) -> None:
@@ -141,7 +142,11 @@ class TestCharacterHelpers(unittest.TestCase):
 
     def test_combat_hybrid_ratings(self) -> None:
         stats = ensure_proficiency_block({"strength": 30, "dexterity": 9})
-        stats["conduit"]["proficiencies"]["combat.melee.blades"] = {"level": 60, "state": "raise", "peak": 60}
+        stats["conduit"]["proficiencies"]["combat.melee.blades"] = {
+            "level": 60,
+            "state": "raise",
+            "peak": 60,
+        }
         atk, defe = combat_attack_defense_from_stats(stats, hybrid_legacy=True)
         self.assertGreater(atk, 0)
         self.assertGreater(defe, 0)

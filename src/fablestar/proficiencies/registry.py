@@ -42,7 +42,9 @@ class ProficiencyRegistry:
                 desc = ""
                 weights = {}
                 tags = []
-            children = [c for c in all_ids if c.startswith(nid + ".") and c.count(".") == nid.count(".") + 1]
+            children = [
+                c for c in all_ids if c.startswith(nid + ".") and c.count(".") == nid.count(".") + 1
+            ]
             self.nodes[nid] = ProficiencyNode(
                 id=nid,
                 is_leaf=is_leaf,

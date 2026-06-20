@@ -25,8 +25,7 @@ async def look(session: Session, args: list[str]):
 
         # 2. Render Prompt
         prompt = app_instance.prompt_manager.render(
-            "room_description",
-            observation_block=observation_block
+            "room_description", observation_block=observation_block
         )
 
         # 3. Call LLM
@@ -62,11 +61,12 @@ async def look(session: Session, args: list[str]):
     else:
         await session.send("You are in the void.")
 
+
 @command("help", aliases=["h", "?"])
 async def help_cmd(session: Session, args: list[str]):
     """Display available commands."""
     from fablestar.commands.registry import registry
-    
+
     await session.send("--- Available Commands ---")
     cmds = sorted(registry._commands.keys())
     for cmd_name in cmds:

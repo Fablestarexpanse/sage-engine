@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field, SecretStr, field_validator
 
 class ServerConfig(BaseModel):
     """Players connect via WebSocket on `websocket_port` (Nexus /play). Telnet is not used."""
+
     websocket_port: int = 4001
     max_connections: int = 100
     tick_rate: float = 0.25  # 4 ticks per second
@@ -26,8 +27,14 @@ class ServerConfig(BaseModel):
     admin_jwt_secret: str | None = None
     # Allowed CORS origins for the admin and player UIs. Defaults to localhost dev ports.
     cors_origins: list[str] = Field(
-        default_factory=lambda: ["http://localhost:5173", "http://localhost:5174"]
+        default_factory=lambda: [
+            "http://localhost:5173",
+            "http://localhost:5174",
+            "http://localhost:1420",
+            "http://127.0.0.1:1420",
+        ]
     )
+
 
 class DatabaseConfig(BaseModel):
     host: str = "localhost"
@@ -37,11 +44,13 @@ class DatabaseConfig(BaseModel):
     password: str | None = None
     pool_size: int = 10
 
+
 class RedisConfig(BaseModel):
     host: str = "localhost"
     port: int = 6379
     db: int = 0
     password: str | None = None
+
 
 class ComfyUIConfig(BaseModel):
     """Optional ComfyUI HTTP API for character portraits and room area art."""
@@ -90,12 +99,14 @@ class LLMConfig(BaseModel):
 
         return normalize_openai_compatible_base(v)
 
+
 class Config(BaseModel):
     server: ServerConfig = Field(default_factory=ServerConfig)
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     redis: RedisConfig = Field(default_factory=RedisConfig)
     llm: LLMConfig = Field(default_factory=LLMConfig)
     comfyui: ComfyUIConfig = Field(default_factory=ComfyUIConfig)
+
 
 def load_config(config_dir: str = "config") -> Config:
     """Load configuration from TOML files in the specified directory."""

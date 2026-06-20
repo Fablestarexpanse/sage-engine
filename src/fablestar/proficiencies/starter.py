@@ -69,7 +69,9 @@ def _ensure_parent_branch_levels_for_gates(
                 prof[parent_id] = row
 
 
-def apply_starter_to_stats(stats: dict[str, Any], allocation: dict[str, int], registry: ProficiencyRegistry) -> None:
+def apply_starter_to_stats(
+    stats: dict[str, Any], allocation: dict[str, int], registry: ProficiencyRegistry
+) -> None:
     """Merge allocation into stats[conduit][proficiencies] (mutates stats)."""
     ensure_proficiency_block(stats)
     prof = stats[CONDUIT_KEY]["proficiencies"]
@@ -93,7 +95,9 @@ def _leaf_detail_blurb(leaf: ProficiencyLeafDefinition, leaf_id: str) -> str:
         ranked = sorted(leaf.stat_weights.items(), key=lambda kv: (-kv[1], kv[0]))
         mix = ", ".join(f"{k} {v * 100:.0f}%" for k, v in ranked)
         parts.append(f"Conduit weight mix (FRT / RFX / ACU / RSV / PRS): {mix}.")
-    parts.append("Levels represent trained aptitude; the MUD uses this (and related skills) for checks and progression.")
+    parts.append(
+        "Levels represent trained aptitude; the MUD uses this (and related skills) for checks and progression."
+    )
     return " ".join(parts)
 
 

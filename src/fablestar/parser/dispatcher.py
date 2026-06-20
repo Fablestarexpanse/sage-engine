@@ -8,10 +8,12 @@ from fablestar.parser.tokenizer import tokenize
 
 logger = logging.getLogger(__name__)
 
+
 class CommandDispatcher:
     """
     Routes user input to the appropriate command handler.
     """
+
     async def dispatch(self, session: Session, raw_input: str):
         """Parse and execute a command for a given session."""
         if not raw_input.strip():
@@ -25,7 +27,7 @@ class CommandDispatcher:
         args = tokens[1:]
 
         command = registry.get(verb)
-        
+
         if command:
             try:
                 # We'll pass session and args to the handler

@@ -110,11 +110,13 @@ def require_any_tool(*tool_ids: str):
 
     return _dep
 
+
 class ServerStatus(BaseModel):
     is_running: bool
     tick_count: int
     active_sessions: int
     uptime_seconds: float
+
 
 class PlayAuthBody(BaseModel):
     username: str
@@ -195,9 +197,11 @@ class ForgeRequest(BaseModel):
     room_type: str = "chamber"
     depth: int = 1
 
+
 class ForgeInjection(BaseModel):
     id: str
     yaml_content: str
+
 
 class ForgeGenericRequest(BaseModel):
     category: str
@@ -218,13 +222,16 @@ class ForgeRoomAreaImageRequest(BaseModel):
     zone_id: str = ""
     room_slug: str = ""
 
+
 class ContentInjectBody(BaseModel):
     """Write arbitrary YAML content to a file under content/world/."""
-    path: str       # e.g. "entities/stalker" or "items/sword"
+
+    path: str  # e.g. "entities/stalker" or "items/sword"
     yaml_content: str
 
+
 class SpawnRequest(BaseModel):
-    template: str   # entity template ID to spawn
+    template: str  # entity template ID to spawn
 
 
 class AdminBroadcastBody(BaseModel):
@@ -373,6 +380,7 @@ class NexusApp:
     FastAPI-based administration server (The Nexus).
     Provides the backend for the World Administration Console.
     """
+
     def __init__(self, server: FablestarServer):
         self.server = server
         self.app = FastAPI(title="Fablestar Nexus API")
@@ -410,6 +418,7 @@ class NexusApp:
             return None
         try:
             import json as _json
+
             msg = _json.loads(raw)
             token = (msg.get("token") or "").strip() if isinstance(msg, dict) else ""
         except Exception:
@@ -588,7 +597,8 @@ class NexusApp:
                 is_running=self.server.tick_manager.is_running,
                 tick_count=self.server.tick_manager.tick_count,
                 active_sessions=len(self.server.session_manager.sessions),
-                uptime_seconds=self.server.tick_manager.tick_count * self.server.config.server.tick_rate
+                uptime_seconds=self.server.tick_manager.tick_count
+                * self.server.config.server.tick_rate,
             )
 
         @self.app.get("/play/health")
@@ -601,7 +611,11 @@ class NexusApp:
             """Scene art variant: zones/{zone}/rooms/art/{room}/{filename}.png"""
             seg_re = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}$")
             fn_re = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_.-]{1,120}\.png$")
-            if not seg_re.match(zone_id) or not seg_re.match(room_slug) or not fn_re.match(filename):
+            if (
+                not seg_re.match(zone_id)
+                or not seg_re.match(room_slug)
+                or not fn_re.match(filename)
+            ):
                 raise HTTPException(status_code=404, detail="not_found")
             path = (
                 Path("content/world/zones") / zone_id / "rooms" / "art" / room_slug / filename
@@ -621,7 +635,9 @@ class NexusApp:
             seg_re = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}$")
             if not seg_re.match(zone_id) or not seg_re.match(slug):
                 raise HTTPException(status_code=404, detail="not_found")
-            path = (Path("content/world/zones") / zone_id / "rooms" / "art" / f"{slug}.png").resolve()
+            path = (
+                Path("content/world/zones") / zone_id / "rooms" / "art" / f"{slug}.png"
+            ).resolve()
             zones_root = Path("content/world/zones").resolve()
             try:
                 path.relative_to(zones_root)
@@ -783,13 +799,15 @@ class NexusApp:
                         logger.debug(
                             "get_player_location failed for %s", session.player_id, exc_info=True
                         )
-                players.append({
-                    "session_id": sid,
-                    "player_id": session.player_id,
-                    "state": session.state.name,
-                    "peer": session.protocol.peer_info,
-                    "room_id": room_id,
-                })
+                players.append(
+                    {
+                        "session_id": sid,
+                        "player_id": session.player_id,
+                        "state": session.state.name,
+                        "peer": session.protocol.peer_info,
+                        "room_id": room_id,
+                    }
+                )
             names = [p["player_id"] for p in players if p.get("player_id")]
             by_name = await player_accounts.lookup_characters_by_names(self.server, names)
             for p in players:
@@ -849,7 +867,9 @@ class NexusApp:
 
         @self.app.get("/content/overview")
         async def content_overview(
-            _ctx: Annotated[AdminContext, Depends(require_any_tool("world", "content", "dashboard"))],
+            _ctx: Annotated[
+                AdminContext, Depends(require_any_tool("world", "content", "dashboard"))
+            ],
         ):
             return content_browser.content_overview()
 
@@ -889,7 +909,9 @@ class NexusApp:
 
         @self.app.get("/content/entities/spawns")
         async def content_entity_spawns(
-            _ctx: Annotated[AdminContext, Depends(require_any_tool("builder", "entities", "world"))],
+            _ctx: Annotated[
+                AdminContext, Depends(require_any_tool("builder", "entities", "world"))
+            ],
         ):
             return content_browser.aggregate_entity_spawns()
 
@@ -923,7 +945,9 @@ class NexusApp:
                 out = content_browser.write_proficiency_catalog_document(body)
             except ValueError as e:
                 raise HTTPException(status_code=400, detail=str(e)) from e
-            self.server.content_loader.invalidate(Path("content/proficiencies/catalog.json").resolve())
+            self.server.content_loader.invalidate(
+                Path("content/proficiencies/catalog.json").resolve()
+            )
             self.server.last_content_reload_at = datetime.now(UTC).isoformat()
             return out
 
@@ -1085,7 +1109,8 @@ class NexusApp:
             _ctx: Annotated[AdminContext, Depends(require_tool("server"))],
         ):
             """Ping the configured ComfyUI base_url and return reachability."""
-            from fablestar.server import _ping_comfyui_http  # noqa: PLC0415
+            from fablestar.server import _ping_comfyui_http
+
             c = self.server.config.comfyui
             ok, err = await _ping_comfyui_http(c.base_url)
             return {"reachable": ok, "base_url": c.base_url, "error": err or None}
@@ -1097,16 +1122,13 @@ class NexusApp:
         ):
             # 1. Render Prompt
             prompt = self.server.prompt_manager.render(
-                "forge_room",
-                user_seed=req.seed,
-                room_type=req.room_type,
-                room_depth=req.depth
+                "forge_room", user_seed=req.seed, room_type=req.room_type, room_depth=req.depth
             )
-            
+
             # 2. Call LLM
             logger.info(f"Forge: Generating room from seed '{req.seed}'")
             raw_yaml = await self.server.llm_client.generate(prompt, max_tokens=2048)
-            
+
             # 3. Clean and Validate
             try:
                 # Ensure it's valid YAML
@@ -1114,7 +1136,9 @@ class NexusApp:
                 return {"id": parsed.get("id"), "yaml": raw_yaml, "data": parsed}
             except Exception as e:
                 logger.error(f"Forge: Failed to parse generated YAML: {e}")
-                raise HTTPException(status_code=500, detail="LLM generated invalid YAML. Please retry.")
+                raise HTTPException(
+                    status_code=500, detail="LLM generated invalid YAML. Please retry."
+                )
 
         @self.app.post("/forge/generate-area-prompt")
         async def forge_generate_area_prompt(
@@ -1180,14 +1204,12 @@ class NexusApp:
                     raise HTTPException(status_code=403, detail="zone_denied")
                 zone_dir = Path("content/world/zones") / zone_id / "rooms"
                 zone_dir.mkdir(parents=True, exist_ok=True)
-                
+
                 file_path = zone_dir / f"{room_filename}.yaml"
-                
+
                 # 2. Write to disk
-                await asyncio.to_thread(
-                    file_path.write_text, injection.yaml_content, "utf-8"
-                )
-                
+                await asyncio.to_thread(file_path.write_text, injection.yaml_content, "utf-8")
+
                 logger.info(f"Forge: Injected room {injection.id} to {file_path}")
                 return {"status": "success", "path": str(file_path)}
             except Exception as e:
@@ -1303,9 +1325,10 @@ class NexusApp:
         ):
             """Write/overwrite a room YAML file and invalidate cache."""
             from re import match
+
             if not ctx.may_write_zone(zone_id):
                 raise HTTPException(status_code=403, detail="zone_denied")
-            if not match(r'^[a-zA-Z0-9_-]+$', zone_id) or not match(r'^[a-zA-Z0-9_-]+$', room_slug):
+            if not match(r"^[a-zA-Z0-9_-]+$", zone_id) or not match(r"^[a-zA-Z0-9_-]+$", room_slug):
                 raise HTTPException(status_code=400, detail="Invalid zone or room slug")
             path = Path("content/world/zones") / zone_id / "rooms" / f"{room_slug}.yaml"
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -1318,7 +1341,9 @@ class NexusApp:
         @self.app.get("/content/zones/{zone_id}/graph")
         async def content_zone_graph(
             zone_id: str,
-            ctx: Annotated[AdminContext, Depends(require_any_tool("builder", "locations", "world"))],
+            ctx: Annotated[
+                AdminContext, Depends(require_any_tool("builder", "locations", "world"))
+            ],
         ):
             if not ctx.may_read_zone(zone_id):
                 raise HTTPException(status_code=403, detail="zone_denied")
@@ -1415,7 +1440,9 @@ class NexusApp:
 
         @self.app.get("/content/builder/search")
         async def content_builder_search(
-            _ctx: Annotated[AdminContext, Depends(require_any_tool("builder", "world", "locations"))],
+            _ctx: Annotated[
+                AdminContext, Depends(require_any_tool("builder", "world", "locations"))
+            ],
             q: str = "",
             limit: int = 30,
         ):
@@ -1488,7 +1515,9 @@ class NexusApp:
 
         @self.app.get("/content/ships")
         async def content_ships_list(
-            _ctx: Annotated[AdminContext, Depends(require_any_tool("builder", "world", "entities"))],
+            _ctx: Annotated[
+                AdminContext, Depends(require_any_tool("builder", "world", "entities"))
+            ],
         ):
             return {"ships": content_browser.list_ship_templates()}
 
@@ -1564,7 +1593,9 @@ class NexusApp:
             room_id = f"{zone_id}:{room_slug}"
             entity_id = await self.server.spawner.spawn_entity(room_id, body.template)
             if not entity_id:
-                raise HTTPException(status_code=404, detail=f"Entity template '{body.template}' not found")
+                raise HTTPException(
+                    status_code=404, detail=f"Entity template '{body.template}' not found"
+                )
             state = await self.server.redis.get_entity_state(entity_id)
             return {"status": "spawned", "entity_id": entity_id, "state": state}
 
@@ -1691,10 +1722,10 @@ class NexusApp:
     async def start(self):
         """Run the uvicorn server in the same event loop."""
         config = uvicorn.Config(
-            self.app, 
-            host="0.0.0.0", 
+            self.app,
+            host="0.0.0.0",
             port=self.server.config.server.websocket_port,
-            log_level="info"
+            log_level="info",
         )
         server = uvicorn.Server(config)
         # Handle the server gracefully

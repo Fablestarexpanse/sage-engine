@@ -322,3 +322,12 @@ Tests cover config loading, command dispatch, proficiency math, admin auth, and 
 - **LLM failures are non-fatal** — wrap every LLM call in `try/except` and provide a plain-text fallback.
 - **Redis for speed, Postgres for durability** — update Redis immediately; PersistenceManager handles the Postgres write asynchronously.
 - **Room ID format** — always `zone_id:room_slug`. The slug is the YAML file stem.
+
+---
+
+## rexyMCP architect/executor workflow
+
+This project uses the rexyMCP architect/executor workflow; the contract lives in
+REXYMCP.md, imported below.
+
+@REXYMCP.md

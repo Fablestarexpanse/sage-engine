@@ -10,12 +10,13 @@ from fablestar.core.config import RedisConfig
 
 logger = logging.getLogger(__name__)
 
+
 class RedisState:
     """
     Wrapper for Redis operations, providing a typed interface
     to the ephemeral game state.
     """
-    
+
     KEY_PREFIXES = {
         "player_location": "player:{id}:location",
         "player_session": "player:{id}:session",
@@ -41,7 +42,7 @@ class RedisState:
                 port=self.config.port,
                 db=self.config.db,
                 password=self.config.password,
-                decode_responses=True
+                decode_responses=True,
             )
             await self.client.ping()
             logger.info(f"Connected to Redis at {self.config.host}:{self.config.port}")
@@ -67,10 +68,10 @@ class RedisState:
     async def set_player_location(self, player_id: str, room_id: str):
         # We need to manage both the player's location key and the room's player set
         old_room = await self.get_player_location(player_id)
-        
+
         if old_room:
             await self.remove_player_from_room(player_id, old_room)
-            
+
         key = self._get_key("player_location", id=player_id)
         await self.client.set(key, room_id)
         await self.add_player_to_room(player_id, room_id)

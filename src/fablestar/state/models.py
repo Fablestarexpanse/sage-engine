@@ -33,6 +33,7 @@ def default_character_stats() -> dict:
 
 class Account(Base):
     """Player account credentials and metadata."""
+
     __tablename__ = "accounts"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -47,7 +48,9 @@ class Account(Base):
     is_gm: Mapped[bool] = mapped_column(Boolean, default=False)
 
     # Relationships
-    characters: Mapped[list["Character"]] = relationship(back_populates="account", cascade="all, delete-orphan")
+    characters: Mapped[list["Character"]] = relationship(
+        back_populates="account", cascade="all, delete-orphan"
+    )
     scene_images: Mapped[list["AccountSceneImage"]] = relationship(
         back_populates="account", cascade="all, delete-orphan"
     )
@@ -59,7 +62,9 @@ class AccountSceneImage(Base):
     __tablename__ = "account_scene_images"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id", ondelete="CASCADE"), index=True)
+    account_id: Mapped[int] = mapped_column(
+        ForeignKey("accounts.id", ondelete="CASCADE"), index=True
+    )
     image_url: Mapped[str] = mapped_column(String(2048))
     character_id: Mapped[int | None] = mapped_column(
         ForeignKey("characters.id", ondelete="SET NULL"), nullable=True
@@ -72,6 +77,7 @@ class AccountSceneImage(Base):
 
 class Character(Base):
     """Persistent game character data linked to an account."""
+
     __tablename__ = "characters"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -92,15 +98,17 @@ class Character(Base):
     pvp_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     # Moral standing for UI (-100 evil .. 0 neutral .. +100 good); gameplay can widen range later.
     reputation: Mapped[int] = mapped_column(Integer, default=0)
-    
+
     # Generic stats/data stored as JSON for "Vibe Coding" flexibility
     # This allows us to add stats without frequent schema migrations
     stats: Mapped[dict] = mapped_column(JSON, default=default_character_stats)
-    
+
     inventory: Mapped[list] = mapped_column(JSON, default=list)
-    
+
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
 
     # Relationships
     account: Mapped["Account"] = relationship(back_populates="characters")

@@ -109,7 +109,12 @@ class LLMClient:
         self.timeout = config.timeout_seconds
         self._status_cache = None
         self._status_cache_at = 0.0
-        logger.info("LLM client reconfigured: backend=%s base=%s model=%s", config.primary_backend, self._openai_base_url(), config.chat_model)
+        logger.info(
+            "LLM client reconfigured: backend=%s base=%s model=%s",
+            config.primary_backend,
+            self._openai_base_url(),
+            config.chat_model,
+        )
 
     async def effective_chat_model(self) -> str:
         """Model id sent to the OpenAI-compatible API (resolves auto / legacy local-model)."""
@@ -128,7 +133,9 @@ class LLMClient:
         d, _ = infer_detected_chat_model(models, "auto", backend, bool(st.get("connected")))
         return d or "local-model"
 
-    async def probe_connection(self, list_timeout: float = 3.0) -> tuple[bool, float | None, str | None, list[dict[str, Any]], str | None]:
+    async def probe_connection(
+        self, list_timeout: float = 3.0
+    ) -> tuple[bool, float | None, str | None, list[dict[str, Any]], str | None]:
         """
         Ping the OpenAI-compatible server (models list).
         Uses an explicit GET {base}/models via httpx so the URL is always /v1/models
@@ -168,7 +175,13 @@ class LLMClient:
                     models.append({"id": mid})
             return True, latency_ms, None, models, None
         except httpx.TimeoutException:
-            return False, None, f"Timed out after {list_timeout}s (is the server running?)", [], None
+            return (
+                False,
+                None,
+                f"Timed out after {list_timeout}s (is the server running?)",
+                [],
+                None,
+            )
         except httpx.RequestError as e:
             logger.warning("LLM probe failed: %s", e)
             return False, None, str(e), [], None
@@ -215,7 +228,9 @@ class LLMClient:
             "cached": False,
         }
 
-    async def status_dict(self, list_timeout: float = 3.0, *, bypass_cache: bool = False) -> dict[str, Any]:
+    async def status_dict(
+        self, list_timeout: float = 3.0, *, bypass_cache: bool = False
+    ) -> dict[str, Any]:
         """
         Return reachability + model list. Probes GET /v1/models unless a fresh cache exists
         (default TTL 60s) to avoid hammering LM Studio when many admin endpoints poll.

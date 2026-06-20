@@ -42,7 +42,10 @@ async def attack(session: Session, args: list[str]):
     for eid in entity_ids:
         state = await app_instance.redis.get_entity_state(eid)
         if state and state.get("alive", True):
-            if target_name in state.get("name", "").lower() or target_name in state.get("template", "").lower():
+            if (
+                target_name in state.get("name", "").lower()
+                or target_name in state.get("template", "").lower()
+            ):
                 target_state = state
                 target_id = eid
                 break

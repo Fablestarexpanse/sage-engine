@@ -10,29 +10,29 @@ def generate_room_observation(room: RoomModel, context: dict[str, Any] | None = 
     Converts a RoomModel into a structured fact-block for LLM grounding.
     """
     context = context or {}
-    
+
     facts = []
     facts.append(f"Location Type: {room.type}")
     facts.append(f"Depth Level: {room.depth}")
-    
+
     # Base description from engine
     facts.append(f"Engine Base Description: {room.description.get('base', '')}")
-    
+
     # Exits
     if room.exits:
         exit_list = ", ".join(room.exits.keys())
         facts.append(f"Visible Exits: {exit_list}")
-    
+
     # Features
     if room.features:
         feature_list = ", ".join([f.name for f in room.features])
         facts.append(f"Key Features: {feature_list}")
-        
+
     # Tags (Atmosphere)
     if room.tags:
         tag_list = ", ".join(room.tags)
         facts.append(f"Ambient Atmosphere Tags: {tag_list}")
-        
+
     # Temporal context (if provided)
     if "time_of_day" in context:
         facts.append(f"Current Time: {context['time_of_day']}")

@@ -8,9 +8,10 @@ from fablestar.network.session import Session
 
 def move_to(direction: str):
     """Helper to create a movement command for a specific direction."""
+
     async def mover(session: Session, args: list[str]):
         from fablestar.__main__ import app_instance
-        
+
         # 1. Get current room
         player_id = session.player_id or "test_player"
         room_id = await app_instance.redis.get_player_location(player_id)
@@ -30,7 +31,7 @@ def move_to(direction: str):
 
         exit_meta = room.exits[direction]
         target_room_id = exit_meta.destination
-        
+
         # 3. Update location
         await app_instance.redis.set_player_location(player_id, target_room_id)
 
@@ -56,10 +57,12 @@ def move_to(direction: str):
         await session.send(f"You move {direction}.")
         # Re-dispatch look to describe the new room
         from fablestar.parser.dispatcher import CommandDispatcher
+
         dispatcher = CommandDispatcher()
         await dispatcher.dispatch(session, "look")
 
     return mover
+
 
 # Register cardinal / vertical (single-letter aliases)
 for direction, aliases in [

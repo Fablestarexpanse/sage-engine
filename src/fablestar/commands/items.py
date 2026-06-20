@@ -66,13 +66,15 @@ async def take(session: Session, args: list[str]):
     await app_instance.redis.delete_item_state(found_id)
 
     inv = await app_instance.redis.get_player_inventory(player_id)
-    inv.append({
-        "id": found_id,
-        "template": found_state.get("template"),
-        "name": found_state.get("name"),
-        "description": found_state.get("description", ""),
-        "value": found_state.get("value", 0),
-    })
+    inv.append(
+        {
+            "id": found_id,
+            "template": found_state.get("template"),
+            "name": found_state.get("name"),
+            "description": found_state.get("description", ""),
+            "value": found_state.get("value", 0),
+        }
+    )
     await app_instance.redis.set_player_inventory(player_id, inv)
     await session.send(f"You pick up the {found_state['name']}.")
 
@@ -152,7 +154,9 @@ async def examine(session: Session, args: list[str]):
     # 1. Check room features
     if room:
         for feature in room.features:
-            if target_name in feature.name.lower() or any(target_name in kw.lower() for kw in feature.keywords):
+            if target_name in feature.name.lower() or any(
+                target_name in kw.lower() for kw in feature.keywords
+            ):
                 await session.send(f"\r\n{feature.description}")
                 return
 
@@ -163,7 +167,11 @@ async def examine(session: Session, args: list[str]):
         if state and state.get("alive", True):
             if target_name in state.get("name", "").lower():
                 tmpl = app_instance.content_loader.get_entity_template(state["template"])
-                desc = tmpl.description.get("long", tmpl.description.get("short", "")) if tmpl else state["name"]
+                desc = (
+                    tmpl.description.get("long", tmpl.description.get("short", ""))
+                    if tmpl
+                    else state["name"]
+                )
                 hp = state.get("hp", "?")
                 max_hp = state.get("max_hp", "?")
                 await session.send(f"\r\n{desc}")

@@ -8,18 +8,24 @@ from typing import Any, TypeVar
 
 T = TypeVar("T", bound="Event")
 
+
 @dataclass
 class Event:
     """Base class for all engine events."""
+
     timestamp: datetime = field(default_factory=datetime.now)
+
 
 class EventBus:
     """
     A lightweight, asynchronous Pub/Sub event bus.
     Allows decoupling of engine components.
     """
+
     def __init__(self) -> None:
-        self._subscribers: dict[type[Event], list[Callable[[Any], asyncio.Future[None] | None]]] = {}
+        self._subscribers: dict[
+            type[Event], list[Callable[[Any], asyncio.Future[None] | None]]
+        ] = {}
         self._global_subscribers: list[Callable[[Event], asyncio.Future[None] | None]] = []
 
     def subscribe(self, event_type: type[T], handler: Callable[[T], Any]) -> None:

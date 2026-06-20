@@ -13,24 +13,26 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+
 class PersistenceManager:
     """
     Handles syncing high-frequency Redis state to persistent PostgreSQL storage.
     """
+
     def __init__(self, server: "FablestarServer"):
         self.server = server
-        self.flush_interval_ticks = 240 # Every 60 seconds at 4Hz
+        self.flush_interval_ticks = 240  # Every 60 seconds at 4Hz
 
     async def flush_all(self):
         """Perform a full synchronization of active world state/players."""
         logger.info("Persistence: Starting background flush to PostgreSQL...")
-        
+
         # 1. Sync Active Players
         active_players = await self.server.redis.client.keys("player:*:location")
         for key in active_players:
             player_id = key.split(":")[1]
             await self.sync_character(player_id)
-            
+
         logger.info("Persistence: Flush complete.")
 
     async def sync_character(self, player_id: str):
@@ -41,9 +43,7 @@ class PersistenceManager:
 
         async with self.server.db.session_factory() as session:
             async with session.begin():
-                result = await session.execute(
-                    select(Character).where(Character.name == player_id)
-                )
+                result = await session.execute(select(Character).where(Character.name == player_id))
                 character = result.scalar_one_or_none()
 
                 if character:

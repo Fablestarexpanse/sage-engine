@@ -124,8 +124,19 @@ def _default_console_permissions(role: str) -> dict[str, Any]:
     if role == "admin":
         return {
             "tools": [
-                "dashboard", "forge", "operations", "players", "world", "entities",
-                "items", "glyphs", "locations", "builder", "server", "content", "settings",
+                "dashboard",
+                "forge",
+                "operations",
+                "players",
+                "world",
+                "entities",
+                "items",
+                "glyphs",
+                "locations",
+                "builder",
+                "server",
+                "content",
+                "settings",
             ],
             "zones": ["*"],
         }

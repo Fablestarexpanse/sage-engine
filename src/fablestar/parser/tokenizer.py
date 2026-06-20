@@ -10,7 +10,7 @@ def tokenize(input_string: str) -> list[str]:
     """
     if not input_string:
         return []
-    
+
     try:
         # shlex handles quotes properly
         return shlex.split(input_string.lower())

@@ -19,7 +19,13 @@ from fablestar.admin.comfyui_persist import save_comfyui_toml
 from fablestar.admin.llm_persist import save_llm_toml
 from fablestar.admin.nexus import NexusApp
 from fablestar.commands.registry import registry
-from fablestar.core.config import ComfyUIConfig, Config, LLMConfig, load_config, resolve_config_asset_path
+from fablestar.core.config import (
+    ComfyUIConfig,
+    Config,
+    LLMConfig,
+    load_config,
+    resolve_config_asset_path,
+)
 from fablestar.core.events import EventBus
 from fablestar.core.tick import TickManager
 from fablestar.integration.comfyui_client import generate_portrait_png
@@ -44,6 +50,7 @@ def _default_character_portrait_prompt(character_name: str) -> str:
         f"square portrait, full character centered, transparent background, science fiction RPG character {n}, "
         "detailed face and eyes, cinematic soft light, high detail"
     )
+
 
 MAX_CHARACTERS_PER_ACCOUNT = 8
 
@@ -132,12 +139,16 @@ def _character_play_dict(character: Character) -> dict[str, Any]:
 
 def _snapshot_from_orm(character: Any) -> Any:
     """Plain snapshot usable after the SQLAlchemy session closes."""
-    return type("_CharSnapshot", (), {
-        "name": character.name,
-        "room_id": character.room_id,
-        "stats": dict(character.stats or {}),
-        "inventory": list(character.inventory or []),
-    })()
+    return type(
+        "_CharSnapshot",
+        (),
+        {
+            "name": character.name,
+            "room_id": character.room_id,
+            "stats": dict(character.stats or {}),
+            "inventory": list(character.inventory or []),
+        },
+    )()
 
 
 class FablestarServer:
@@ -145,6 +156,7 @@ class FablestarServer:
     Main orchestration class for the Fablestar MUD Platform.
     Ties together core systems and manages the server lifecycle.
     """
+
     def __init__(self, config: Config | None = None):
         self.config = config or load_config()
         self.event_bus = EventBus()
@@ -158,14 +170,14 @@ class FablestarServer:
         self.hot_reloader = HotReloader(self._on_file_changed)
         self.dispatcher = CommandDispatcher()
         self.nexus = NexusApp(self)
-        
+
         # LLM Subsystems
         self.llm_client = LLMClient(self.config.llm)
         self.prompt_manager = PromptManager()
-        
+
         # Set global instance (must happen before commands import app_instance)
         app.app_instance = self
-        
+
         # Internal state
         self._nexus_task: asyncio.Task | None = None
         self._tick_task: asyncio.Task | None = None
@@ -183,11 +195,15 @@ class FablestarServer:
 
     async def _echo_read_balance(self, account_id: int) -> int:
         async with self.db.session_factory() as db_session:
-            result = await db_session.execute(select(Account.echo_credits).where(Account.id == account_id))
+            result = await db_session.execute(
+                select(Account.echo_credits).where(Account.id == account_id)
+            )
             v = result.scalar_one_or_none()
             return int(v) if v is not None else 0
 
-    async def _echo_debit_for_generation(self, account_id: int, cost: int) -> tuple[bool, dict[str, Any], int, int]:
+    async def _echo_debit_for_generation(
+        self, account_id: int, cost: int
+    ) -> tuple[bool, dict[str, Any], int, int]:
         """
         Debit echo_credits before ComfyUI. Returns:
         (success, error_response_dict_if_failed, balance_after, amount_charged).
@@ -243,7 +259,9 @@ class FablestarServer:
             return "GM"
         return "Staff"
 
-    async def _notify_play_sessions_json_line(self, account_id: int, payload: dict[str, Any]) -> None:
+    async def _notify_play_sessions_json_line(
+        self, account_id: int, payload: dict[str, Any]
+    ) -> None:
         line = json.dumps(payload, separators=(",", ":"))
         from fablestar.network.session import SessionState
 
@@ -320,16 +338,18 @@ class FablestarServer:
             payload["play_account_is_gm"] = bool(play_account_is_gm)
         await self._notify_play_sessions_json_line(account_id, payload)
 
-    _LLM_PATCH_KEYS = frozenset({
-        "primary_backend",
-        "lm_studio_url",
-        "lm_studio_key",
-        "ollama_url",
-        "timeout_seconds",
-        "chat_model",
-        "temperature",
-        "cache_ttl",
-    })
+    _LLM_PATCH_KEYS = frozenset(
+        {
+            "primary_backend",
+            "lm_studio_url",
+            "lm_studio_key",
+            "ollama_url",
+            "timeout_seconds",
+            "chat_model",
+            "temperature",
+            "cache_ttl",
+        }
+    )
 
     def update_llm_settings(self, patch: dict[str, Any], *, persist: bool = True) -> None:
         """Merge LLM fields, rebuild client, optionally write config/llm.toml."""
@@ -354,21 +374,39 @@ class FablestarServer:
         if persist:
             save_llm_toml(self.config.llm)
 
-    _COMFYUI_PATCH_KEYS = frozenset({
-        "enabled", "base_url",
-        "workflow_path", "positive_prompt_node_id", "output_node_id",
-        "area_workflow_path", "area_positive_prompt_node_id", "area_output_node_id",
-        "checkpoint_name", "timeout_seconds", "poll_interval_seconds",
-        "economy_enabled", "starting_echo_credits",
-        "portrait_generation_cost", "area_generation_cost", "character_create_portrait_cost",
-        "currency_display_name", "pixels_per_usd",
-    })
+    _COMFYUI_PATCH_KEYS = frozenset(
+        {
+            "enabled",
+            "base_url",
+            "workflow_path",
+            "positive_prompt_node_id",
+            "output_node_id",
+            "area_workflow_path",
+            "area_positive_prompt_node_id",
+            "area_output_node_id",
+            "checkpoint_name",
+            "timeout_seconds",
+            "poll_interval_seconds",
+            "economy_enabled",
+            "starting_echo_credits",
+            "portrait_generation_cost",
+            "area_generation_cost",
+            "character_create_portrait_cost",
+            "currency_display_name",
+            "pixels_per_usd",
+        }
+    )
 
     def update_comfyui_settings(self, patch: dict[str, Any], *, persist: bool = True) -> None:
         """Merge ComfyUI config fields, optionally write config/comfyui.toml."""
         data = {k: v for k, v in patch.items() if k in self._COMFYUI_PATCH_KEYS and v is not None}
-        for int_key in ("starting_echo_credits", "portrait_generation_cost", "area_generation_cost",
-                        "character_create_portrait_cost", "pixels_per_usd"):
+        for int_key in (
+            "starting_echo_credits",
+            "portrait_generation_cost",
+            "area_generation_cost",
+            "character_create_portrait_cost",
+            "pixels_per_usd",
+        ):
             if int_key in data:
                 data[int_key] = int(data[int_key])
         for float_key in ("timeout_seconds", "poll_interval_seconds"):
@@ -386,7 +424,7 @@ class FablestarServer:
     async def startup(self):
         """Initialize and start all sub-systems."""
         logger.info("Fablestar MUD Platform starting up...")
-        
+
         # 0. Connect to state stores
         await self.redis.connect()
 
@@ -407,29 +445,29 @@ class FablestarServer:
         registry.reload_module("fablestar.commands.items")
         registry.reload_module("fablestar.commands.proficiency")
         registry.reload_module("fablestar.commands.admin")
-        
+
         # 2. Register base tick handlers
         self.tick_manager.register(self.spawner.on_tick)
         self.tick_manager.register(self.persistence.on_tick)
         from fablestar.proficiencies.tick import proficiency_system_tick
 
         self.tick_manager.register(proficiency_system_tick)
-        
+
         # 2. Start subsystems
         await self.hot_reloader.start(["content", "src/fablestar/commands", "config", "prompts"])
-        
+
         # 3. Start the Nexus (FastAPI) in the background
         self._nexus_task = asyncio.create_task(self.nexus.start())
 
         # 4. Start the tick loop
         self._tick_task = asyncio.create_task(self.tick_manager.run())
-        
+
         logger.info("Startup complete. Server is running.")
 
     async def shutdown(self):
         """Gracefully stop all sub-systems."""
         logger.info("Fablestar MUD Platform shutting down...")
-        
+
         self.hot_reloader.stop()
         self.tick_manager.stop()
         await self.redis.disconnect()
@@ -442,7 +480,7 @@ class FablestarServer:
                     await task
                 except asyncio.CancelledError:
                     pass
-            
+
         logger.info("Shutdown complete.")
 
     async def _authenticate_websocket(self, session: Session) -> Any | None:
@@ -461,7 +499,7 @@ class FablestarServer:
             await session.send(json.dumps({"ok": False, "error": "invalid_handshake"}) + "\r\n")
             return None
         username = (data.get("username") or "").strip()
-        password = (data.get("password") or "")
+        password = data.get("password") or ""
         char_id_raw = data.get("character_id")
         char_id: int | None = None
         if char_id_raw is not None:
@@ -474,18 +512,16 @@ class FablestarServer:
             return None
 
         async with self.db.session_factory() as db_session:
-            result = await db_session.execute(
-                select(Account).where(Account.username == username)
-            )
+            result = await db_session.execute(select(Account).where(Account.username == username))
             account = result.scalar_one_or_none()
             if not account or not bcrypt.checkpw(password.encode(), account.password_hash.encode()):
-                await session.send(json.dumps({"ok": False, "error": "invalid_credentials"}) + "\r\n")
+                await session.send(
+                    json.dumps({"ok": False, "error": "invalid_credentials"}) + "\r\n"
+                )
                 return None
 
             result = await db_session.execute(
-                select(Character)
-                .where(Character.account_id == account.id)
-                .order_by(Character.id)
+                select(Character).where(Character.account_id == account.id).order_by(Character.id)
             )
             characters = list(result.scalars().all())
             character: Character | None = None
@@ -495,12 +531,16 @@ class FablestarServer:
             if char_id is not None:
                 character = next((c for c in characters if c.id == char_id), None)
                 if character is None:
-                    await session.send(json.dumps({"ok": False, "error": "character_not_found"}) + "\r\n")
+                    await session.send(
+                        json.dumps({"ok": False, "error": "character_not_found"}) + "\r\n"
+                    )
                     return None
             elif len(characters) == 1:
                 character = characters[0]
             else:
-                await session.send(json.dumps({"ok": False, "error": "character_required"}) + "\r\n")
+                await session.send(
+                    json.dumps({"ok": False, "error": "character_required"}) + "\r\n"
+                )
                 return None
 
             account.last_login = datetime.utcnow()
@@ -515,16 +555,12 @@ class FablestarServer:
         if not username:
             return {"ok": False, "error": "username_required"}
         async with self.db.session_factory() as db_session:
-            result = await db_session.execute(
-                select(Account).where(Account.username == username)
-            )
+            result = await db_session.execute(select(Account).where(Account.username == username))
             account = result.scalar_one_or_none()
             if not account or not bcrypt.checkpw(password.encode(), account.password_hash.encode()):
                 return {"ok": False, "error": "invalid_credentials"}
             result = await db_session.execute(
-                select(Character)
-                .where(Character.account_id == account.id)
-                .order_by(Character.id)
+                select(Character).where(Character.account_id == account.id).order_by(Character.id)
             )
             characters = list(result.scalars().all())
             account.last_login = datetime.utcnow()
@@ -553,9 +589,7 @@ class FablestarServer:
         if len(password) < 4:
             return {"ok": False, "error": "password_too_short"}
         async with self.db.session_factory() as db_session:
-            result = await db_session.execute(
-                select(Account).where(Account.username == username)
-            )
+            result = await db_session.execute(select(Account).where(Account.username == username))
             if result.scalar_one_or_none():
                 return {"ok": False, "error": "username_taken"}
             pw_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
@@ -665,9 +699,7 @@ class FablestarServer:
         if not username:
             return {"ok": False, "error": "username_required"}
         async with self.db.session_factory() as db_session:
-            result = await db_session.execute(
-                select(Account).where(Account.username == username)
-            )
+            result = await db_session.execute(select(Account).where(Account.username == username))
             account = result.scalar_one_or_none()
             if not account or not bcrypt.checkpw(password.encode(), account.password_hash.encode()):
                 return {"ok": False, "error": "invalid_credentials"}
@@ -709,9 +741,7 @@ class FablestarServer:
         if not username:
             return {"ok": False, "error": "username_required"}
         async with self.db.session_factory() as db_session:
-            result = await db_session.execute(
-                select(Account).where(Account.username == username)
-            )
+            result = await db_session.execute(select(Account).where(Account.username == username))
             account = result.scalar_one_or_none()
             if not account or not bcrypt.checkpw(password.encode(), account.password_hash.encode()):
                 return {"ok": False, "error": "invalid_credentials"}
@@ -755,9 +785,7 @@ class FablestarServer:
         if not username:
             return {"ok": False, "error": "username_required"}
         async with self.db.session_factory() as db_session:
-            result = await db_session.execute(
-                select(Account).where(Account.username == username)
-            )
+            result = await db_session.execute(select(Account).where(Account.username == username))
             account = result.scalar_one_or_none()
             if not account or not bcrypt.checkpw(password.encode(), account.password_hash.encode()):
                 return {"ok": False, "error": "invalid_credentials"}
@@ -777,7 +805,9 @@ class FablestarServer:
                 "echo_credits": await self._echo_read_balance(account_id),
             }
         cost = int(cfg.area_generation_cost)
-        ok_debit, err_debit, bal_after, charged = await self._echo_debit_for_generation(account_id, cost)
+        ok_debit, err_debit, bal_after, charged = await self._echo_debit_for_generation(
+            account_id, cost
+        )
         if not ok_debit:
             return err_debit
         res = await self.forge_generate_room_area_image(ip)
@@ -797,7 +827,9 @@ class FablestarServer:
                     AccountSceneImage(
                         account_id=account_id,
                         image_url=scene_url_str,
-                        character_id=character_id if character_id is not None and character_id >= 1 else None,
+                        character_id=character_id
+                        if character_id is not None and character_id >= 1
+                        else None,
                         prompt_preview=ip[:512] if ip else None,
                     )
                 )
@@ -939,14 +971,14 @@ class FablestarServer:
         dest.write_bytes(png)
         return {"ok": True, "area_image_url": f"/media/rooms/{fname}", "bundled": False}
 
-    async def play_generate_portrait(self, username: str, password: str, appearance_prompt: str) -> dict[str, Any]:
+    async def play_generate_portrait(
+        self, username: str, password: str, appearance_prompt: str
+    ) -> dict[str, Any]:
         username = (username or "").strip()
         if not username:
             return {"ok": False, "error": "username_required"}
         async with self.db.session_factory() as db_session:
-            result = await db_session.execute(
-                select(Account).where(Account.username == username)
-            )
+            result = await db_session.execute(select(Account).where(Account.username == username))
             account = result.scalar_one_or_none()
             if not account or not bcrypt.checkpw(password.encode(), account.password_hash.encode()):
                 return {"ok": False, "error": "invalid_credentials"}
@@ -964,7 +996,9 @@ class FablestarServer:
             }
 
         cost = int(cfg.portrait_generation_cost)
-        ok_debit, err_debit, bal_after, charged = await self._echo_debit_for_generation(account_id, cost)
+        ok_debit, err_debit, bal_after, charged = await self._echo_debit_for_generation(
+            account_id, cost
+        )
         if not ok_debit:
             return err_debit
 
@@ -1014,7 +1048,11 @@ class FablestarServer:
 
         p_url_in = (portrait_url or "").strip() or None
         if p_url_in:
-            if not p_url_in.startswith("/media/portraits/") or ".." in p_url_in or len(p_url_in) > 2048:
+            if (
+                not p_url_in.startswith("/media/portraits/")
+                or ".." in p_url_in
+                or len(p_url_in) > 2048
+            ):
                 return {"ok": False, "error": "invalid_portrait_url"}
 
         pp_in = (portrait_prompt or "").strip() or None
@@ -1045,9 +1083,7 @@ class FablestarServer:
 
         account_id: int | None = None
         async with self.db.session_factory() as db_session:
-            result = await db_session.execute(
-                select(Account).where(Account.username == username)
-            )
+            result = await db_session.execute(select(Account).where(Account.username == username))
             account = result.scalar_one_or_none()
             if not account or not bcrypt.checkpw(password.encode(), account.password_hash.encode()):
                 return {"ok": False, "error": "invalid_credentials"}
@@ -1074,7 +1110,9 @@ class FablestarServer:
             if cfg.enabled and resolve_config_asset_path(cfg.workflow_path).is_file():
                 prompt_use = pp if pp else _default_character_portrait_prompt(name)
                 cost_c = int(cfg.character_create_portrait_cost)
-                ok_d, err_d, _bal_d, charged_c = await self._echo_debit_for_generation(account_id, cost_c)
+                ok_d, err_d, _bal_d, charged_c = await self._echo_debit_for_generation(
+                    account_id, cost_c
+                )
                 if not ok_d:
                     return err_d
                 create_portrait_charged = charged_c
@@ -1092,7 +1130,9 @@ class FablestarServer:
                     if create_portrait_charged:
                         await self._echo_refund(account_id, create_portrait_charged)
                     portrait_gen_failed = str(e)
-                    logger.warning("ComfyUI portrait on character create failed: %s", e, exc_info=True)
+                    logger.warning(
+                        "ComfyUI portrait on character create failed: %s", e, exc_info=True
+                    )
 
         async with self.db.session_factory() as db_session:
             start_digi = int(self.config.server.starting_digi_balance)
@@ -1128,9 +1168,7 @@ class FablestarServer:
             await db_session.refresh(character)
             payload = _character_play_dict(character)
             result = await db_session.execute(
-                select(Character)
-                .where(Character.account_id == account_id)
-                .order_by(Character.id)
+                select(Character).where(Character.account_id == account_id).order_by(Character.id)
             )
             all_chars = [_character_play_dict(c) for c in result.scalars().all()]
 
@@ -1165,26 +1203,18 @@ class FablestarServer:
         if character_id is None or character_id < 1:
             return {"ok": False, "error": "character_id_invalid"}
         async with self.db.session_factory() as db_session:
-            result = await db_session.execute(
-                select(Account).where(Account.username == username)
-            )
+            result = await db_session.execute(select(Account).where(Account.username == username))
             account = result.scalar_one_or_none()
-            if not account or not bcrypt.checkpw(
-                password.encode(), account.password_hash.encode()
-            ):
+            if not account or not bcrypt.checkpw(password.encode(), account.password_hash.encode()):
                 return {"ok": False, "error": "invalid_credentials"}
-            result = await db_session.execute(
-                select(Character).where(Character.id == character_id)
-            )
+            result = await db_session.execute(select(Character).where(Character.id == character_id))
             char = result.scalar_one_or_none()
             if char is None or char.account_id != account.id:
                 return {"ok": False, "error": "character_not_found"}
             await db_session.delete(char)
             await db_session.commit()
             result = await db_session.execute(
-                select(Character)
-                .where(Character.account_id == account.id)
-                .order_by(Character.id)
+                select(Character).where(Character.account_id == account.id).order_by(Character.id)
             )
             chars_payload = [_character_play_dict(c) for c in result.scalars().all()]
             aid = account.id
@@ -1208,16 +1238,12 @@ class FablestarServer:
         if not username:
             return {"ok": False, "error": "username_required"}
         async with self.db.session_factory() as db_session:
-            result = await db_session.execute(
-                select(Account).where(Account.username == username)
-            )
+            result = await db_session.execute(select(Account).where(Account.username == username))
             account = result.scalar_one_or_none()
             if not account or not bcrypt.checkpw(password.encode(), account.password_hash.encode()):
                 return {"ok": False, "error": "invalid_credentials"}
             result = await db_session.execute(
-                select(Character)
-                .where(Character.account_id == account.id)
-                .order_by(Character.id)
+                select(Character).where(Character.account_id == account.id).order_by(Character.id)
             )
             characters = list(result.scalars().all())
             chars_payload = [_character_play_dict(c) for c in characters]
@@ -1303,13 +1329,13 @@ class FablestarServer:
     async def _on_file_changed(self, path: Path):
         """Handle hot-reload requests from the watcher."""
         logger.info(f"Hot-reload triggered for: {path}")
-        
+
         if "content" in path.parts:
             self.content_loader.invalidate(path)
-        
+
         if "prompts" in path.parts:
             self.prompt_manager.reload()
-            
+
         if "commands" in path.parts:
             # path is something like f:/.../fablestar/commands/info.py
             # we need "fablestar.commands.info"
@@ -1322,30 +1348,33 @@ class FablestarServer:
             except ValueError:
                 logger.error(f"Could not determine module path for {path}")
 
+
 async def run_server():
     """Entry point for running the server in an event loop."""
     import os
     from logging.handlers import RotatingFileHandler
-    
+
     # Ensure logs directory
     os.makedirs("logs", exist_ok=True)
-    
+
     # Setup dual logging (Console + File)
-    log_formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s", datefmt="%H:%M:%S")
-    
+    log_formatter = logging.Formatter(
+        "%(asctime)s [%(levelname)s] %(name)s: %(message)s", datefmt="%H:%M:%S"
+    )
+
     # Console Handler
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(log_formatter)
-    
+
     # File Handler (Persistent logging for the AI Architect)
-    file_handler = RotatingFileHandler("logs/engine.log", maxBytes=5*1024*1024, backupCount=3)
+    file_handler = RotatingFileHandler("logs/engine.log", maxBytes=5 * 1024 * 1024, backupCount=3)
     file_handler.setFormatter(log_formatter)
-    
+
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.INFO)
     root_logger.addHandler(console_handler)
     root_logger.addHandler(file_handler)
-    
+
     server = FablestarServer()
     await server.startup()
 

@@ -17,23 +17,25 @@ if TYPE_CHECKING:
     from fablestar.state.models import AdminStaff
 
 # Sidebar / API permission keys (admin UI should match).
-NAV_TOOL_IDS = frozenset({
-    "dashboard",
-    "forge",
-    "operations",
-    "players",
-    "world",
-    "entities",
-    "items",
-    "glyphs",
-    "locations",
-    "server",
-    "content",
-    "settings",
-    "team",
-    "builder",
-    "skills",
-})
+NAV_TOOL_IDS = frozenset(
+    {
+        "dashboard",
+        "forge",
+        "operations",
+        "players",
+        "world",
+        "entities",
+        "items",
+        "glyphs",
+        "locations",
+        "server",
+        "content",
+        "settings",
+        "team",
+        "builder",
+        "skills",
+    }
+)
 
 
 @dataclass
@@ -147,7 +149,7 @@ def jwt_secret_for_server(server: Any) -> str:
         raise RuntimeError(
             "admin_auth_required is true but no JWT secret is configured. "
             "Set FABLESTAR_ADMIN_JWT_SECRET env var or admin_jwt_secret in server.toml. "
-            "Generate one with: python -c \"import secrets; print(secrets.token_hex(32))\""
+            'Generate one with: python -c "import secrets; print(secrets.token_hex(32))"'
         )
     # dev_mode only — auth is disabled, secret value is never used to validate real tokens
     return "dev-only-no-auth"

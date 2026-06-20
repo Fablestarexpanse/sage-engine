@@ -10,6 +10,7 @@ class ExitModel(BaseModel):
     description: str
     one_way: bool = False
 
+
 class FeatureModel(BaseModel):
     id: str
     name: str
@@ -17,16 +18,19 @@ class FeatureModel(BaseModel):
     description: str
     interaction: str | None = "examine"
 
+
 class EntitySpawnModel(BaseModel):
     template: str
     chance: float = 1.0
     max_count: int = 1
+
 
 class HazardModel(BaseModel):
     id: str
     type: str
     severity: int
     description: str
+
 
 class RoomModel(BaseModel):
     id: str
@@ -41,20 +45,27 @@ class RoomModel(BaseModel):
     hazards: list[HazardModel] = Field(default_factory=list)
     tags: set[str] = Field(default_factory=set)
 
+
 class ZoneModel(BaseModel):
     id: str
     name: str
     description: str
     depth_range: list[int] = Field(default_factory=lambda: [1, 3])
 
+
 class EntityTemplate(BaseModel):
     id: str
     name: str
     type: str = "creature"
-    description: dict[str, str] = Field(default_factory=lambda: {"short": "A creature.", "long": "A creature lurks here."})
-    stats: dict[str, int] = Field(default_factory=lambda: {"hp": 10, "max_hp": 10, "attack": 3, "defense": 1})
+    description: dict[str, str] = Field(
+        default_factory=lambda: {"short": "A creature.", "long": "A creature lurks here."}
+    )
+    stats: dict[str, int] = Field(
+        default_factory=lambda: {"hp": 10, "max_hp": 10, "attack": 3, "defense": 1}
+    )
     tags: set[str] = Field(default_factory=set)
     loot: list[str] = Field(default_factory=list)  # item template IDs it may drop
+
 
 class ItemTemplate(BaseModel):
     id: str
