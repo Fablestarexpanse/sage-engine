@@ -1,7 +1,7 @@
 # Phase 01: Parser + Registry Tests
 
 **Milestone:** M1 — Code Quality Foundation
-**Status:** todo
+**Status:** done
 **Depends on:** none
 **Estimated diff:** ~130 lines
 **Tags:** language=python, kind=test, size=s
@@ -236,12 +236,12 @@ Cases:
 
 ## Acceptance criteria
 
-- [ ] `python -m pytest tests/test_parser.py -v` passes with ≥ 13 new tests.
-- [ ] `python -m pytest` passes (all 13 original + new tests).
-- [ ] `python -m ruff check src tests` exits 0.
-- [ ] `python -m ruff format --check src tests` exits 0.
-- [ ] `python -m compileall -q src tests` exits 0.
-- [ ] No new imports outside the standard library and the project's own
+- [x] `python -m pytest tests/test_parser.py -v` passes with ≥ 13 new tests.
+- [x] `python -m pytest` passes (all 13 original + new tests).
+- [x] `python -m ruff check src tests` exits 0.
+- [x] `python -m ruff format --check src tests` exits 0.
+- [x] `python -m compileall -q src tests` exits 0.
+- [x] No new imports outside the standard library and the project's own
       `fablestar` package (no new dependencies).
 
 ## Test plan
@@ -291,3 +291,118 @@ None.
 ## Update Log
 
 <!-- entries appended below this line -->
+
+### Update — 2026-06-20 17:08 (escalation — dispatch 1)
+
+**Chosen lever:** refined re-dispatch (environment fix, not spec change)
+**Rationale:** First dispatch hard_failed on `IdenticalToolCallRepetition`
+(`find_files` ×6), but the root cause was environmental, not a spec gap: every
+`bash` call returned `failed to spawn shell: program not found`. The rexyMCP
+executor's bash tool and gate-command runner both `Command::new("sh")`
+(`executor/src/tools/bash.rs:108`, `executor/src/agent/command.rs:33`), and the
+server process's PATH lacked `C:\Program Files\Git\bin` where `sh.exe` lives
+(`where.exe sh` → not found; only `…\Git\cmd` was on PATH). No spec refinement
+could fix this. Fix applied to the rexyMCP plugin config
+(`C:\Users\Brian\rexyMCP\plugin\.mcp.json`): added an `env.PATH` that prepends
+`C:\Program Files\Git\bin`. Verified in simulation: with that PATH, `sh`
+resolves to `…\Git\bin\sh.exe` and `sh -c "python -m ruff --version"` succeeds.
+Requires the rexymcp MCP server to be reconnected so the new env takes effect
+before re-dispatch. Phase spec unchanged; status stays `todo` (first dispatch
+produced no work).
+
+### Update — 2026-06-20 17:15 (escalation — dispatch 2 → takeover)
+
+**Chosen lever:** session takeover
+**Rationale:** Second dispatch (after PATH fix attempt) hard_failed on
+`EmptyCompletionStall` (3 consecutive empty completions). Bash was still
+unavailable to the executor — the `.mcp.json` `${PATH}` interpolation did not
+take effect (server was not reconnected, or `${PATH}` is not expanded on
+Windows). The executor did successfully write `tests/test_parser.py` (161 lines,
+17 tests) via `write_file` before stalling. This is a second occurrence of the
+same infra failure class; per the escalate skill's table, session takeover is
+the correct lever after one refined re-dispatch has already failed.
+Architect ran all four gates directly.
+
+### Update — 2026-06-20 17:15 (complete)
+
+**Summary:** `tests/test_parser.py` created by the executor (dispatch 2) and
+gates run by architect takeover. File required one `ruff format` pass (executor
+wrote it without a working shell to format on the fly). All 17 new tests pass;
+full suite is 30/30.
+
+**Acceptance criteria:** all ticked above.
+
+**Commands:**
+
+```
+python -m ruff format src tests
+1 file reformatted, 65 files left unchanged
+
+python -m compileall -q src tests
+(no output — exit 0)
+
+python -m ruff check src tests
+All checks passed!
+
+python -m pytest tests/test_parser.py -v | tail -25
+tests/test_parser.py::TestTokenize::test_empty_string_returns_empty_list PASSED
+tests/test_parser.py::TestTokenize::test_lowercases_tokens PASSED
+tests/test_parser.py::TestTokenize::test_malformed_quote_falls_back_to_split PASSED
+tests/test_parser.py::TestTokenize::test_quoted_string_is_single_token PASSED
+tests/test_parser.py::TestTokenize::test_splits_on_spaces PASSED
+tests/test_parser.py::TestTokenize::test_unquoted_multi_word_is_three_tokens PASSED
+tests/test_parser.py::TestTokenize::test_whitespace_only_returns_empty_list PASSED
+tests/test_parser.py::TestCommandRegistry::test_all_aliases_resolve PASSED
+tests/test_parser.py::TestCommandRegistry::test_get_by_alias PASSED
+tests/test_parser.py::TestCommandRegistry::test_get_missing_returns_none PASSED
+tests/test_parser.py::TestCommandRegistry::test_no_aliases_defaults_to_empty_list PASSED
+tests/test_parser.py::TestCommandRegistry::test_non_alias_returns_none PASSED
+tests/test_parser.py::TestCommandRegistry::test_register_and_get_by_name PASSED
+tests/test_parser.py::TestCommandDispatcher::test_empty_input_sends_nothing PASSED
+tests/test_parser.py::TestCommandDispatcher::test_known_command_calls_handler_with_args PASSED
+tests/test_parser.py::TestCommandDispatcher::test_unknown_command_sends_error PASSED
+tests/test_parser.py::TestCommandDispatcher::test_whitespace_input_sends_nothing PASSED
+17 passed in 0.02s
+
+python -m pytest | tail -5
+30 passed in 0.43s
+```
+
+**End-to-end verification:**
+
+`python -m pytest tests/test_parser.py -v` → 17 passed in 0.02s  
+`python -m pytest` → 30 passed in 0.43s (13 original + 17 new)
+
+**Files changed:**
+- `tests/test_parser.py` — new file; 17 tests across TestTokenize, TestCommandRegistry, TestCommandDispatcher
+
+**New tests:**
+- `TestTokenize::test_empty_string_returns_empty_list`
+- `TestTokenize::test_whitespace_only_returns_empty_list`
+- `TestTokenize::test_splits_on_spaces`
+- `TestTokenize::test_lowercases_tokens`
+- `TestTokenize::test_quoted_string_is_single_token`
+- `TestTokenize::test_unquoted_multi_word_is_three_tokens`
+- `TestTokenize::test_malformed_quote_falls_back_to_split`
+- `TestCommandRegistry::test_get_missing_returns_none`
+- `TestCommandRegistry::test_register_and_get_by_name`
+- `TestCommandRegistry::test_get_by_alias`
+- `TestCommandRegistry::test_all_aliases_resolve`
+- `TestCommandRegistry::test_non_alias_returns_none`
+- `TestCommandRegistry::test_no_aliases_defaults_to_empty_list`
+- `TestCommandDispatcher::test_empty_input_sends_nothing`
+- `TestCommandDispatcher::test_whitespace_input_sends_nothing`
+- `TestCommandDispatcher::test_unknown_command_sends_error`
+- `TestCommandDispatcher::test_known_command_calls_handler_with_args`
+
+**Notes for review:** Executor wrote the file correctly but couldn't run gates
+(bash unavailable on Windows host). Architect ran format + gates. One ruff
+format pass was needed; no other changes to the executor's output.
+
+### Review verdict — 2026-06-20
+
+- **Verdict:** escalated
+- **Bounces:** 2 (dispatch 1: IdenticalToolCallRepetition/bash-unavailable; dispatch 2: EmptyCompletionStall/bash-still-unavailable — both infra, no code defects)
+- **Executor:** Claude Code (direct takeover after 2 hard_fails)
+- **Scope deviations:** none
+- **Calibration:** Windows executor bash failure (sh not on PATH) — see escalation notes. `${PATH}` interpolation in `.mcp.json` env did not expand on Windows; fix needs full literal PATH or a different approach.

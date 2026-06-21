@@ -30,7 +30,7 @@ config loading, session state machine).
 
 | #  | Phase                                                                                 | Status |
 |----|---------------------------------------------------------------------------------------|--------|
-| 01 | Parser + registry tests ([phase-01-parser-registry-tests.md](phase-01-parser-registry-tests.md)) | todo |
+| 01 | Parser + registry tests ([phase-01-parser-registry-tests.md](phase-01-parser-registry-tests.md)) | done |
 | 02 | Config loading tests ([phase-02-config-tests.md](phase-02-config-tests.md))           | todo   |
 | 03 | Session state machine tests ([phase-03-session-tests.md](phase-03-session-tests.md)) | todo   |
 
