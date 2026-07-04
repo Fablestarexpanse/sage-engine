@@ -14,7 +14,7 @@ from sqlalchemy import select
 
 from fablestar.comfyui_client import generate_portrait_png
 from fablestar.core.config import resolve_config_asset_path
-from fablestar.services._shared import authenticate_account, save_portrait_png
+from fablestar.services._shared import resolve_play_account, save_portrait_png
 from fablestar.state.models import AccountSceneImage, Character
 
 if TYPE_CHECKING:
@@ -164,13 +164,16 @@ class SceneService:
         password: str,
         character_name: str,
         appearance_notes: str = "",
+        token: str = "",
     ) -> dict[str, Any]:
         """LLM: single-line ComfyUI-style portrait prompt from name and optional notes."""
         username = (username or "").strip()
-        if not username:
+        if not username and not token:
             return {"ok": False, "error": "username_required"}
         async with self.server.db.session_factory() as db_session:
-            account = await authenticate_account(db_session, username, password)
+            account = await resolve_play_account(
+                db_session, self.server, token=token, username=username, password=password
+            )
             if account is None:
                 return {"ok": False, "error": "invalid_credentials"}
 
@@ -205,13 +208,16 @@ class SceneService:
         password: str,
         narrative_context: str = "",
         room_hint: str = "",
+        token: str = "",
     ) -> dict[str, Any]:
         """LLM: ComfyUI-style environment prompt from recent narrative text."""
         username = (username or "").strip()
-        if not username:
+        if not username and not token:
             return {"ok": False, "error": "username_required"}
         async with self.server.db.session_factory() as db_session:
-            account = await authenticate_account(db_session, username, password)
+            account = await resolve_play_account(
+                db_session, self.server, token=token, username=username, password=password
+            )
             if account is None:
                 return {"ok": False, "error": "invalid_credentials"}
 
@@ -252,13 +258,16 @@ class SceneService:
         password: str,
         scene_prompt: str,
         character_id: int | None = None,
+        token: str = "",
     ) -> dict[str, Any]:
         """ComfyUI area workflow: save PNG under /media/rooms/ (or room-art); optional character_id persists URL for reload."""
         username = (username or "").strip()
-        if not username:
+        if not username and not token:
             return {"ok": False, "error": "username_required"}
         async with self.server.db.session_factory() as db_session:
-            account = await authenticate_account(db_session, username, password)
+            account = await resolve_play_account(
+                db_session, self.server, token=token, username=username, password=password
+            )
             if account is None:
                 return {"ok": False, "error": "invalid_credentials"}
             account_id = account.id
@@ -319,13 +328,17 @@ class SceneService:
             "cost_charged": charged,
         }
 
-    async def list_scene_gallery(self, username: str, password: str) -> dict[str, Any]:
+    async def list_scene_gallery(
+        self, username: str, password: str, *, token: str = ""
+    ) -> dict[str, Any]:
         """List ComfyUI scene images recorded for this account (newest first)."""
         username = (username or "").strip()
-        if not username:
+        if not username and not token:
             return {"ok": False, "error": "username_required"}
         async with self.server.db.session_factory() as db_session:
-            account = await authenticate_account(db_session, username, password)
+            account = await resolve_play_account(
+                db_session, self.server, token=token, username=username, password=password
+            )
             if account is None:
                 return {"ok": False, "error": "invalid_credentials"}
             aid = account.id
@@ -358,15 +371,18 @@ class SceneService:
         password: str,
         gallery_id: int,
         character_id: int,
+        token: str = "",
     ) -> dict[str, Any]:
         """Set the active scene image for a character from a row in this account's gallery."""
         username = (username or "").strip()
-        if not username:
+        if not username and not token:
             return {"ok": False, "error": "username_required"}
         if gallery_id < 1 or character_id < 1:
             return {"ok": False, "error": "invalid_ids"}
         async with self.server.db.session_factory() as db_session:
-            account = await authenticate_account(db_session, username, password)
+            account = await resolve_play_account(
+                db_session, self.server, token=token, username=username, password=password
+            )
             if account is None:
                 return {"ok": False, "error": "invalid_credentials"}
             aid = account.id
@@ -442,13 +458,15 @@ class SceneService:
         return {"ok": True, "area_image_url": f"/media/rooms/{fname}", "bundled": False}
 
     async def generate_portrait(
-        self, username: str, password: str, appearance_prompt: str
+        self, username: str, password: str, appearance_prompt: str, *, token: str = ""
     ) -> dict[str, Any]:
         username = (username or "").strip()
-        if not username:
+        if not username and not token:
             return {"ok": False, "error": "username_required"}
         async with self.server.db.session_factory() as db_session:
-            account = await authenticate_account(db_session, username, password)
+            account = await resolve_play_account(
+                db_session, self.server, token=token, username=username, password=password
+            )
             if account is None:
                 return {"ok": False, "error": "invalid_credentials"}
             account_id = account.id

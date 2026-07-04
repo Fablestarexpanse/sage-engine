@@ -18,8 +18,13 @@ from typing import Any, Literal, TypedDict
 
 
 class PlayHandshake(TypedDict, total=False):
-    """First WebSocket message from the client."""
+    """First WebSocket message from the client.
 
+    Auth is either ``token`` (play session token from /play/auth/login, preferred)
+    or ``username`` + ``password``.
+    """
+
+    token: str
     username: str
     password: str
     character_id: int  # optional: required only when the account has several characters
@@ -76,6 +81,9 @@ class PlayAccountResponse(TypedDict, total=False):
     characters: list[CharacterPayload]
     echo_credits: int
     is_gm: bool
+    # Present on login/register responses: play session token for later /play/* calls
+    # and the WebSocket handshake (send as "token"; supersedes password re-transmission).
+    play_token: str
     # Economy fields (EconomyService.public_fields)
     currency_display_name: str
     game_currency_display_name: str

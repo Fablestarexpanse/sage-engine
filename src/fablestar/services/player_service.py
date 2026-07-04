@@ -12,7 +12,12 @@ from sqlalchemy import select
 
 from fablestar.comfyui_client import generate_portrait_png
 from fablestar.core.config import resolve_config_asset_path
-from fablestar.services._shared import authenticate_account, save_portrait_png
+from fablestar.services._shared import (
+    authenticate_account,
+    resolve_play_account,
+    save_portrait_png,
+)
+from fablestar.services.play_tokens import issue_play_token
 from fablestar.state.models import Account, Character
 
 if TYPE_CHECKING:
@@ -91,7 +96,7 @@ class PlayerService:
     # ------------------------------------------------------------------
 
     async def login(self, username: str, password: str) -> dict[str, Any]:
-        """REST: validate credentials and list characters for the web UI."""
+        """REST: validate credentials, list characters, and issue a play session token."""
         username = (username or "").strip()
         if not username:
             return {"ok": False, "error": "username_required"}
@@ -101,6 +106,7 @@ class PlayerService:
                 return {"ok": False, "error": "invalid_credentials"}
             account.last_login = datetime.utcnow()
             response = await self.account_characters_response(db_session, account)
+            response["play_token"] = issue_play_token(self.server, account.id)
             await db_session.commit()
         return response
 
@@ -136,16 +142,21 @@ class PlayerService:
             "characters": [],
             "echo_credits": ec,
             "is_gm": is_gm,
+            "play_token": issue_play_token(self.server, aid),
             **self.server.economy.public_fields(),
         }
 
-    async def refresh_characters(self, username: str, password: str) -> dict[str, Any]:
+    async def refresh_characters(
+        self, username: str, password: str, *, token: str = ""
+    ) -> dict[str, Any]:
         """Re-list characters after create (same shape as login)."""
         username = (username or "").strip()
-        if not username:
+        if not username and not token:
             return {"ok": False, "error": "username_required"}
         async with self.server.db.session_factory() as db_session:
-            account = await authenticate_account(db_session, username, password)
+            account = await resolve_play_account(
+                db_session, self.server, token=token, username=username, password=password
+            )
             if account is None:
                 return {"ok": False, "error": "invalid_credentials"}
             return await self.account_characters_response(db_session, account)
@@ -232,10 +243,11 @@ class PlayerService:
         portrait_prompt: str = "",
         portrait_url: str = "",
         starter_proficiencies: dict[str, int] | None = None,
+        token: str = "",
     ) -> dict[str, Any]:
         username = (username or "").strip()
         name = (name or "").strip()
-        if not username:
+        if not username and not token:
             return {"ok": False, "error": "username_required"}
         err, p_url, pp = self._validate_create_character_inputs(name, portrait_url, portrait_prompt)
         if err:
@@ -245,7 +257,9 @@ class PlayerService:
             return err
 
         async with self.server.db.session_factory() as db_session:
-            account = await authenticate_account(db_session, username, password)
+            account = await resolve_play_account(
+                db_session, self.server, token=token, username=username, password=password
+            )
             if account is None:
                 return {"ok": False, "error": "invalid_credentials"}
             account_id = account.id
@@ -329,16 +343,18 @@ class PlayerService:
         return out
 
     async def delete_character(
-        self, username: str, password: str, character_id: int
+        self, username: str, password: str, character_id: int, *, token: str = ""
     ) -> dict[str, Any]:
         """Remove one character if it belongs to the authenticated account."""
         username = (username or "").strip()
-        if not username:
+        if not username and not token:
             return {"ok": False, "error": "username_required"}
         if character_id is None or character_id < 1:
             return {"ok": False, "error": "character_id_invalid"}
         async with self.server.db.session_factory() as db_session:
-            account = await authenticate_account(db_session, username, password)
+            account = await resolve_play_account(
+                db_session, self.server, token=token, username=username, password=password
+            )
             if account is None:
                 return {"ok": False, "error": "invalid_credentials"}
             result = await db_session.execute(select(Character).where(Character.id == character_id))

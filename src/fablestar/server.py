@@ -27,7 +27,7 @@ from fablestar.llm.client import LLMClient
 from fablestar.llm.prompts import PromptManager
 from fablestar.network.session import Session, SessionManager
 from fablestar.parser.dispatcher import CommandDispatcher
-from fablestar.services._shared import authenticate_account
+from fablestar.services._shared import resolve_play_account
 from fablestar.services.economy import EconomyService
 from fablestar.services.player_service import PlayerService
 from fablestar.services.scene_service import SceneService
@@ -339,7 +339,8 @@ class FablestarServer:
     async def _authenticate_websocket(self, session: Session) -> _CharSnapshot | None:
         """
         WebSocket player: first message must be JSON:
-        {"username","password","character_id": optional int}
+        {"token"} (play session token from login) or {"username","password"},
+        plus optional "character_id" when the account has several characters.
         Register accounts via POST /play/auth/register; pick a character in the UI when several exist.
         On failure, sends a JSON error line and returns None.
         """
@@ -353,6 +354,7 @@ class FablestarServer:
             return None
         username = (data.get("username") or "").strip()
         password = data.get("password") or ""
+        token = (data.get("token") or "").strip()
         char_id_raw = data.get("character_id")
         char_id: int | None = None
         if char_id_raw is not None:
@@ -360,12 +362,14 @@ class FablestarServer:
                 char_id = int(char_id_raw)
             except (TypeError, ValueError):
                 char_id = None
-        if not username:
+        if not username and not token:
             await session.send(json.dumps({"ok": False, "error": "username_required"}) + "\r\n")
             return None
 
         async with self.db.session_factory() as db_session:
-            account = await authenticate_account(db_session, username, password)
+            account = await resolve_play_account(
+                db_session, self, token=token, username=username, password=password
+            )
             if account is None:
                 await session.send(
                     json.dumps({"ok": False, "error": "invalid_credentials"}) + "\r\n"

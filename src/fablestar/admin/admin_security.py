@@ -168,6 +168,10 @@ def decode_staff_token(server: Any, token: str) -> int:
         data = jwt.decode(token, secret, algorithms=["HS256"])
     except jwt.PyJWTError as e:
         raise ValueError("invalid_token") from e
+    # Play tokens share the signing secret but carry kind="play"; staff ids and
+    # play account ids overlap numerically, so cross-use must be rejected.
+    if data.get("kind") is not None:
+        raise ValueError("invalid_token")
     sub = data.get("sub")
     if sub is None:
         raise ValueError("invalid_token")

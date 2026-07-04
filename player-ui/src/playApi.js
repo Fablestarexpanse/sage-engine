@@ -15,6 +15,34 @@ export function playApiBaseUrl() {
   return b || "(this origin — dev proxy to Nexus)";
 }
 
+/**
+ * Play session token (JWT) issued by /play/auth/login and /play/auth/register.
+ * Held in memory only; sent on subsequent /play/* calls so the password is not
+ * re-transmitted on every action. Server falls back to username/password when absent.
+ */
+let playToken = "";
+
+export function getPlayToken() {
+  return playToken;
+}
+
+export function clearPlayToken() {
+  playToken = "";
+}
+
+function captureToken(data) {
+  if (data && typeof data.play_token === "string" && data.play_token) {
+    playToken = data.play_token;
+  }
+  return data;
+}
+
+/** Auth fields for authenticated /play/* payloads: token when we have one, else credentials. */
+function authFields(username, password) {
+  if (playToken) return { token: playToken };
+  return { username, password };
+}
+
 async function handlePlayResponse(r) {
   if (r.status === 502 || r.status === 503) {
     throw new Error(
@@ -54,7 +82,7 @@ export async function playLogin(username, password) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username, password }),
   });
-  return handlePlayResponse(r);
+  return captureToken(await handlePlayResponse(r));
 }
 
 export async function playRegister(username, password) {
@@ -63,7 +91,7 @@ export async function playRegister(username, password) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username, password }),
   });
-  return handlePlayResponse(r);
+  return captureToken(await handlePlayResponse(r));
 }
 
 export function playWebSocketUrl() {
@@ -117,7 +145,7 @@ export async function playGeneratePortrait(username, password, appearance_prompt
   const r = await fetch(`${base()}/play/characters/portrait`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password, appearance_prompt }),
+    body: JSON.stringify({ ...authFields(username, password), appearance_prompt }),
   });
   return handlePlayResponse(r);
 }
@@ -128,8 +156,7 @@ export async function playSuggestPortraitPrompt(username, password, character_na
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      username,
-      password,
+      ...authFields(username, password),
       character_name: character_name || "",
       appearance_notes: draftPortraitPrompt || "",
     }),
@@ -139,8 +166,7 @@ export async function playSuggestPortraitPrompt(username, password, character_na
 
 export async function playCreateCharacter(username, password, name, portrait_prompt, portrait_url, starter_proficiencies) {
   const payload = {
-    username,
-    password,
+    ...authFields(username, password),
     name,
     portrait_prompt: portrait_prompt || "",
     portrait_url: portrait_url || "",
@@ -166,7 +192,7 @@ export async function playRefreshSession(username, password) {
   const r = await fetch(`${base()}/play/auth/characters`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password }),
+    body: JSON.stringify(authFields(username, password)),
   });
   return handlePlayResponse(r);
 }
@@ -202,8 +228,7 @@ export async function playSuggestScenePrompt(username, password, narrative_conte
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      username,
-      password,
+      ...authFields(username, password),
       narrative_context: narrative_context || "",
       room_hint: room_hint || "",
     }),
@@ -220,8 +245,7 @@ export async function playGenerateSceneImage(username, password, scene_prompt, c
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      username,
-      password,
+      ...authFields(username, password),
       scene_prompt: scene_prompt || "",
       ...(character_id != null && character_id >= 1 ? { character_id } : {}),
     }),
@@ -237,7 +261,7 @@ export async function playListSceneGallery(username, password) {
   const r = await fetch(`${base()}/play/scene/gallery`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password }),
+    body: JSON.stringify(authFields(username, password)),
   });
   return handlePlayResponse(r);
 }
@@ -247,8 +271,7 @@ export async function playApplySceneFromGallery(username, password, gallery_id, 
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      username,
-      password,
+      ...authFields(username, password),
       gallery_id,
       character_id,
     }),
@@ -260,7 +283,7 @@ export async function playDeleteCharacter(username, password, character_id) {
   const r = await fetch(`${base()}/play/characters/delete`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password, character_id }),
+    body: JSON.stringify({ ...authFields(username, password), character_id }),
   });
   return handlePlayResponse(r);
 }

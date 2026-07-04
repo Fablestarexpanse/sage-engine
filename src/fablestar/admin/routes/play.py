@@ -26,13 +26,15 @@ class PlayAuthBody(BaseModel):
 
 
 class PlayAuthCharactersBody(BaseModel):
-    username: str
-    password: str = Field(..., min_length=8)
+    username: str = ""
+    password: str = ""
+    token: str = ""  # play session token from /play/auth/login (preferred over password)
 
 
 class PlayCreateCharacterBody(BaseModel):
-    username: str
-    password: str = Field(..., min_length=8)
+    username: str = ""
+    password: str = ""
+    token: str = ""  # play session token from /play/auth/login (preferred over password)
     name: str
     portrait_prompt: str = ""
     portrait_url: str = ""
@@ -41,46 +43,53 @@ class PlayCreateCharacterBody(BaseModel):
 
 
 class PlayDeleteCharacterBody(BaseModel):
-    username: str
-    password: str = Field(..., min_length=8)
+    username: str = ""
+    password: str = ""
+    token: str = ""  # play session token from /play/auth/login (preferred over password)
     character_id: int = Field(..., ge=1)
 
 
 class PlayPortraitBody(BaseModel):
-    username: str
-    password: str = Field(..., min_length=8)
+    username: str = ""
+    password: str = ""
+    token: str = ""  # play session token from /play/auth/login (preferred over password)
     appearance_prompt: str = ""
 
 
 class PlaySuggestPortraitPromptBody(BaseModel):
-    username: str
-    password: str = Field(..., min_length=8)
+    username: str = ""
+    password: str = ""
+    token: str = ""  # play session token from /play/auth/login (preferred over password)
     character_name: str = ""
     appearance_notes: str = ""
 
 
 class PlaySceneSuggestBody(BaseModel):
-    username: str
-    password: str = Field(..., min_length=8)
+    username: str = ""
+    password: str = ""
+    token: str = ""  # play session token from /play/auth/login (preferred over password)
     narrative_context: str = ""
     room_hint: str = ""
 
 
 class PlaySceneGenerateBody(BaseModel):
-    username: str
-    password: str = Field(..., min_length=8)
+    username: str = ""
+    password: str = ""
+    token: str = ""  # play session token from /play/auth/login (preferred over password)
     scene_prompt: str = ""
     character_id: int | None = None
 
 
 class PlaySceneGalleryListBody(BaseModel):
-    username: str
-    password: str = Field(..., min_length=8)
+    username: str = ""
+    password: str = ""
+    token: str = ""  # play session token from /play/auth/login (preferred over password)
 
 
 class PlaySceneApplyGalleryBody(BaseModel):
-    username: str
-    password: str = Field(..., min_length=8)
+    username: str = ""
+    password: str = ""
+    token: str = ""  # play session token from /play/auth/login (preferred over password)
     gallery_id: int = Field(..., ge=1)
     character_id: int = Field(..., ge=1)
 
@@ -143,7 +152,9 @@ def build_play_router(server: FablestarServer) -> APIRouter:
     @router.post("/play/auth/characters")
     async def play_auth_characters(body: PlayAuthCharactersBody):
         """Re-fetch character list and account fields for the authenticated player."""
-        return await server.player.refresh_characters(body.username, body.password)
+        return await server.player.refresh_characters(
+            body.username, body.password, token=body.token
+        )
 
     @router.get("/play/comfyui/status")
     async def play_comfyui_status():
@@ -154,7 +165,7 @@ def build_play_router(server: FablestarServer) -> APIRouter:
     async def play_character_portrait(body: PlayPortraitBody):
         """Generate a portrait via ComfyUI (optional); returns /media/portraits/... URL."""
         return await server.scenes.generate_portrait(
-            body.username, body.password, body.appearance_prompt
+            body.username, body.password, body.appearance_prompt, token=body.token
         )
 
     @router.post("/play/characters/suggest-portrait-prompt")
@@ -165,6 +176,7 @@ def build_play_router(server: FablestarServer) -> APIRouter:
             body.password,
             body.character_name,
             appearance_notes=body.appearance_notes,
+            token=body.token,
         )
 
     @router.post("/play/characters/create")
@@ -182,6 +194,7 @@ def build_play_router(server: FablestarServer) -> APIRouter:
             portrait_prompt=body.portrait_prompt,
             portrait_url=body.portrait_url,
             starter_proficiencies=coerced if coerced else None,
+            token=body.token,
         )
 
     @router.get("/play/proficiencies/catalog")
@@ -206,7 +219,9 @@ def build_play_router(server: FablestarServer) -> APIRouter:
     @router.post("/play/characters/delete")
     async def play_character_delete(body: PlayDeleteCharacterBody):
         """Remove a character owned by the account."""
-        return await server.player.delete_character(body.username, body.password, body.character_id)
+        return await server.player.delete_character(
+            body.username, body.password, body.character_id, token=body.token
+        )
 
     @router.post("/play/scene/suggest-prompt")
     async def play_scene_suggest_prompt(body: PlaySceneSuggestBody):
@@ -216,6 +231,7 @@ def build_play_router(server: FablestarServer) -> APIRouter:
             body.password,
             narrative_context=body.narrative_context,
             room_hint=body.room_hint,
+            token=body.token,
         )
 
     @router.post("/play/scene/generate")
@@ -226,12 +242,15 @@ def build_play_router(server: FablestarServer) -> APIRouter:
             body.password,
             body.scene_prompt,
             character_id=body.character_id,
+            token=body.token,
         )
 
     @router.post("/play/scene/gallery")
     async def play_scene_gallery(body: PlaySceneGalleryListBody):
         """List scene images saved for this account (ComfyUI history)."""
-        return await server.scenes.list_scene_gallery(body.username, body.password)
+        return await server.scenes.list_scene_gallery(
+            body.username, body.password, token=body.token
+        )
 
     @router.post("/play/scene/apply-gallery")
     async def play_scene_apply_gallery(body: PlaySceneApplyGalleryBody):
@@ -241,6 +260,7 @@ def build_play_router(server: FablestarServer) -> APIRouter:
             body.password,
             body.gallery_id,
             body.character_id,
+            token=body.token,
         )
 
     @router.websocket("/ws/play")
