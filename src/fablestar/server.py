@@ -194,6 +194,31 @@ class FablestarServer:
             "pixels_per_usd": int(c.pixels_per_usd),
         }
 
+    @staticmethod
+    async def _authenticate_account(db_session, username: str, password: str) -> Account | None:
+        """Fetch the account by username and verify the password. None on failure."""
+        result = await db_session.execute(select(Account).where(Account.username == username))
+        account = result.scalar_one_or_none()
+        if not account or not bcrypt.checkpw(password.encode(), account.password_hash.encode()):
+            return None
+        return account
+
+    async def _account_characters_response(self, db_session, account: Account) -> dict[str, Any]:
+        """Standard /play auth response: account fields + full character list + economy fields."""
+        result = await db_session.execute(
+            select(Character).where(Character.account_id == account.id).order_by(Character.id)
+        )
+        chars_payload = [_character_play_dict(c) for c in result.scalars().all()]
+        return {
+            "ok": True,
+            "username": account.username,
+            "account_id": account.id,
+            "characters": chars_payload,
+            "echo_credits": int(account.echo_credits),
+            "is_gm": bool(account.is_gm),
+            **self._economy_public_fields(),
+        }
+
     async def _echo_read_balance(self, account_id: int) -> int:
         async with self.db.session_factory() as db_session:
             result = await db_session.execute(
@@ -482,7 +507,7 @@ class FablestarServer:
 
         logger.info("Shutdown complete.")
 
-    async def _authenticate_websocket(self, session: Session) -> Any | None:
+    async def _authenticate_websocket(self, session: Session) -> _CharSnapshot | None:
         """
         WebSocket player: first message must be JSON:
         {"username","password","character_id": optional int}
@@ -511,9 +536,8 @@ class FablestarServer:
             return None
 
         async with self.db.session_factory() as db_session:
-            result = await db_session.execute(select(Account).where(Account.username == username))
-            account = result.scalar_one_or_none()
-            if not account or not bcrypt.checkpw(password.encode(), account.password_hash.encode()):
+            account = await self._authenticate_account(db_session, username, password)
+            if account is None:
                 await session.send(
                     json.dumps({"ok": False, "error": "invalid_credentials"}) + "\r\n"
                 )
@@ -554,31 +578,13 @@ class FablestarServer:
         if not username:
             return {"ok": False, "error": "username_required"}
         async with self.db.session_factory() as db_session:
-            result = await db_session.execute(select(Account).where(Account.username == username))
-            account = result.scalar_one_or_none()
-            if not account or not bcrypt.checkpw(password.encode(), account.password_hash.encode()):
+            account = await self._authenticate_account(db_session, username, password)
+            if account is None:
                 return {"ok": False, "error": "invalid_credentials"}
-            result = await db_session.execute(
-                select(Character).where(Character.account_id == account.id).order_by(Character.id)
-            )
-            characters = list(result.scalars().all())
             account.last_login = datetime.utcnow()
-            chars_payload = [_character_play_dict(c) for c in characters]
-            aid = account.id
-            uname = account.username
+            response = await self._account_characters_response(db_session, account)
             await db_session.commit()
-            ec = int(account.echo_credits)
-            is_gm = bool(account.is_gm)
-        eco = self._economy_public_fields()
-        return {
-            "ok": True,
-            "username": uname,
-            "account_id": aid,
-            "characters": chars_payload,
-            "echo_credits": ec,
-            "is_gm": is_gm,
-            **eco,
-        }
+        return response
 
     async def play_register(self, username: str, password: str) -> dict[str, Any]:
         """REST: create account (characters are added via character creation UI)."""
@@ -702,9 +708,8 @@ class FablestarServer:
         if not username:
             return {"ok": False, "error": "username_required"}
         async with self.db.session_factory() as db_session:
-            result = await db_session.execute(select(Account).where(Account.username == username))
-            account = result.scalar_one_or_none()
-            if not account or not bcrypt.checkpw(password.encode(), account.password_hash.encode()):
+            account = await self._authenticate_account(db_session, username, password)
+            if account is None:
                 return {"ok": False, "error": "invalid_credentials"}
 
         cn = (character_name or "").strip() or "?"
@@ -744,9 +749,8 @@ class FablestarServer:
         if not username:
             return {"ok": False, "error": "username_required"}
         async with self.db.session_factory() as db_session:
-            result = await db_session.execute(select(Account).where(Account.username == username))
-            account = result.scalar_one_or_none()
-            if not account or not bcrypt.checkpw(password.encode(), account.password_hash.encode()):
+            account = await self._authenticate_account(db_session, username, password)
+            if account is None:
                 return {"ok": False, "error": "invalid_credentials"}
 
         ctx = (narrative_context or "").strip()
@@ -788,9 +792,8 @@ class FablestarServer:
         if not username:
             return {"ok": False, "error": "username_required"}
         async with self.db.session_factory() as db_session:
-            result = await db_session.execute(select(Account).where(Account.username == username))
-            account = result.scalar_one_or_none()
-            if not account or not bcrypt.checkpw(password.encode(), account.password_hash.encode()):
+            account = await self._authenticate_account(db_session, username, password)
+            if account is None:
                 return {"ok": False, "error": "invalid_credentials"}
             account_id = account.id
         ip = (scene_prompt or "").strip()
@@ -856,9 +859,8 @@ class FablestarServer:
         if not username:
             return {"ok": False, "error": "username_required"}
         async with self.db.session_factory() as db_session:
-            result = await db_session.execute(select(Account).where(Account.username == username))
-            account = result.scalar_one_or_none()
-            if not account or not bcrypt.checkpw(password.encode(), account.password_hash.encode()):
+            account = await self._authenticate_account(db_session, username, password)
+            if account is None:
                 return {"ok": False, "error": "invalid_credentials"}
             aid = account.id
             q = (
@@ -898,9 +900,8 @@ class FablestarServer:
         if gallery_id < 1 or character_id < 1:
             return {"ok": False, "error": "invalid_ids"}
         async with self.db.session_factory() as db_session:
-            result = await db_session.execute(select(Account).where(Account.username == username))
-            account = result.scalar_one_or_none()
-            if not account or not bcrypt.checkpw(password.encode(), account.password_hash.encode()):
+            account = await self._authenticate_account(db_session, username, password)
+            if account is None:
                 return {"ok": False, "error": "invalid_credentials"}
             aid = account.id
             row = await db_session.get(AccountSceneImage, gallery_id)
@@ -981,9 +982,8 @@ class FablestarServer:
         if not username:
             return {"ok": False, "error": "username_required"}
         async with self.db.session_factory() as db_session:
-            result = await db_session.execute(select(Account).where(Account.username == username))
-            account = result.scalar_one_or_none()
-            if not account or not bcrypt.checkpw(password.encode(), account.password_hash.encode()):
+            account = await self._authenticate_account(db_session, username, password)
+            if account is None:
                 return {"ok": False, "error": "invalid_credentials"}
             account_id = account.id
 
@@ -1019,19 +1019,90 @@ class FablestarServer:
                 "echo_credits": await self._echo_read_balance(account_id),
             }
 
-        out_dir = Path("data/portraits")
-        out_dir.mkdir(parents=True, exist_ok=True)
-        fname = f"{uuid.uuid4().hex}.png"
-        dest = out_dir / fname
-        dest.write_bytes(png)
-        url = f"/media/portraits/{fname}"
         return {
             "ok": True,
-            "portrait_url": url,
+            "portrait_url": self._save_portrait_png(png),
             **eco,
             "echo_credits": bal_after,
             "cost_charged": charged,
         }
+
+    @staticmethod
+    def _validate_create_character_inputs(
+        name: str, portrait_url: str, portrait_prompt: str
+    ) -> tuple[dict[str, Any] | None, str | None, str | None]:
+        """Pure validation. Returns (error_response, portrait_url, portrait_prompt)."""
+        if not CHAR_NAME_RE.match(name):
+            return {"ok": False, "error": "invalid_character_name"}, None, None
+        p_url = (portrait_url or "").strip() or None
+        if p_url and (
+            not p_url.startswith("/media/portraits/") or ".." in p_url or len(p_url) > 2048
+        ):
+            return {"ok": False, "error": "invalid_portrait_url"}, None, None
+        pp = (portrait_prompt or "").strip() or None
+        if pp and len(pp) > 4000:
+            return {"ok": False, "error": "portrait_prompt_too_long"}, None, None
+        return None, p_url, pp
+
+    def _clean_starter_proficiencies(
+        self, starter_proficiencies: dict[str, int] | None
+    ) -> tuple[dict[str, Any] | None, dict[str, int]]:
+        """Coerce and validate the chargen skill allocation. Returns (error_response, cleaned)."""
+        starter_clean: dict[str, int] = {}
+        if starter_proficiencies:
+            for k, v in starter_proficiencies.items():
+                if not isinstance(k, str):
+                    continue
+                kid = k.strip()
+                if not kid:
+                    continue
+                try:
+                    n = int(v)
+                except (TypeError, ValueError):
+                    return {"ok": False, "error": "invalid_starter_proficiencies"}, {}
+                if n != 0:
+                    starter_clean[kid] = n
+        if starter_clean:
+            from fablestar.proficiencies.starter import validate_starter_allocation
+
+            reg0 = self.content_loader.get_proficiency_registry()
+            ok_st, err_st = validate_starter_allocation(starter_clean, reg0)
+            if not ok_st:
+                return {"ok": False, "error": err_st}, {}
+        return None, starter_clean
+
+    @staticmethod
+    def _save_portrait_png(png: bytes) -> str:
+        """Write a generated portrait PNG under data/portraits and return its /media URL."""
+        out_dir = Path("data/portraits")
+        out_dir.mkdir(parents=True, exist_ok=True)
+        fname = f"{uuid.uuid4().hex}.png"
+        (out_dir / fname).write_bytes(png)
+        return f"/media/portraits/{fname}"
+
+    async def _generate_create_portrait(
+        self, account_id: int, name: str, pp: str | None
+    ) -> tuple[dict[str, Any] | None, str | None, str | None, str | None, int]:
+        """ComfyUI portrait for character create (debit → generate → write → refund on failure).
+
+        Returns (error_response, portrait_url, portrait_prompt, gen_failed_detail, charged).
+        """
+        cfg = self.config.comfyui
+        if not (cfg.enabled and resolve_config_asset_path(cfg.workflow_path).is_file()):
+            return None, None, pp, None, 0
+        prompt_use = pp if pp else _default_character_portrait_prompt(name)
+        cost_c = int(cfg.character_create_portrait_cost)
+        ok_d, err_d, _bal_d, charged = await self._echo_debit_for_generation(account_id, cost_c)
+        if not ok_d:
+            return err_d, None, pp, None, 0
+        try:
+            png, _ = await generate_portrait_png(cfg, prompt_use)
+            return None, self._save_portrait_png(png), pp or prompt_use, None, charged
+        except Exception as e:
+            if charged:
+                await self._echo_refund(account_id, charged)
+            logger.warning("ComfyUI portrait on character create failed: %s", e, exc_info=True)
+            return None, None, pp, str(e), charged
 
     async def play_create_character(
         self,
@@ -1046,103 +1117,45 @@ class FablestarServer:
         name = (name or "").strip()
         if not username:
             return {"ok": False, "error": "username_required"}
-        if not CHAR_NAME_RE.match(name):
-            return {"ok": False, "error": "invalid_character_name"}
+        err, p_url, pp = self._validate_create_character_inputs(name, portrait_url, portrait_prompt)
+        if err:
+            return err
+        err, starter_clean = self._clean_starter_proficiencies(starter_proficiencies)
+        if err:
+            return err
 
-        p_url_in = (portrait_url or "").strip() or None
-        if p_url_in:
-            if (
-                not p_url_in.startswith("/media/portraits/")
-                or ".." in p_url_in
-                or len(p_url_in) > 2048
-            ):
-                return {"ok": False, "error": "invalid_portrait_url"}
-
-        pp_in = (portrait_prompt or "").strip() or None
-        if pp_in and len(pp_in) > 4000:
-            return {"ok": False, "error": "portrait_prompt_too_long"}
-
-        starter_clean: dict[str, int] = {}
-        if starter_proficiencies:
-            for k, v in starter_proficiencies.items():
-                if not isinstance(k, str):
-                    continue
-                kid = k.strip()
-                if not kid:
-                    continue
-                try:
-                    n = int(v)
-                except (TypeError, ValueError):
-                    return {"ok": False, "error": "invalid_starter_proficiencies"}
-                if n != 0:
-                    starter_clean[kid] = n
-        if starter_clean:
-            from fablestar.proficiencies.starter import validate_starter_allocation
-
-            reg0 = self.content_loader.get_proficiency_registry()
-            ok_st, err_st = validate_starter_allocation(starter_clean, reg0)
-            if not ok_st:
-                return {"ok": False, "error": err_st}
-
-        account_id: int | None = None
         async with self.db.session_factory() as db_session:
-            result = await db_session.execute(select(Account).where(Account.username == username))
-            account = result.scalar_one_or_none()
-            if not account or not bcrypt.checkpw(password.encode(), account.password_hash.encode()):
+            account = await self._authenticate_account(db_session, username, password)
+            if account is None:
                 return {"ok": False, "error": "invalid_credentials"}
             account_id = account.id
+            is_gm = bool(account.is_gm)
 
             result = await db_session.execute(
                 select(Character).where(Character.account_id == account.id)
             )
-            existing = list(result.scalars().all())
-            if len(existing) >= MAX_CHARACTERS_PER_ACCOUNT:
+            if len(list(result.scalars().all())) >= MAX_CHARACTERS_PER_ACCOUNT:
                 return {"ok": False, "error": "character_limit"}
 
             taken = await db_session.execute(select(Character).where(Character.name == name))
             if taken.scalar_one_or_none():
                 return {"ok": False, "error": "character_name_taken"}
 
-        p_url = p_url_in
-        pp = pp_in
         portrait_gen_failed: str | None = None
         create_portrait_charged = 0
-
         if not p_url:
-            cfg = self.config.comfyui
-            if cfg.enabled and resolve_config_asset_path(cfg.workflow_path).is_file():
-                prompt_use = pp if pp else _default_character_portrait_prompt(name)
-                cost_c = int(cfg.character_create_portrait_cost)
-                ok_d, err_d, _bal_d, charged_c = await self._echo_debit_for_generation(
-                    account_id, cost_c
-                )
-                if not ok_d:
-                    return err_d
-                create_portrait_charged = charged_c
-                try:
-                    png, _ = await generate_portrait_png(cfg, prompt_use)
-                    out_dir = Path("data/portraits")
-                    out_dir.mkdir(parents=True, exist_ok=True)
-                    fname = f"{uuid.uuid4().hex}.png"
-                    dest = out_dir / fname
-                    dest.write_bytes(png)
-                    p_url = f"/media/portraits/{fname}"
-                    if not pp:
-                        pp = prompt_use
-                except Exception as e:
-                    if create_portrait_charged:
-                        await self._echo_refund(account_id, create_portrait_charged)
-                    portrait_gen_failed = str(e)
-                    logger.warning(
-                        "ComfyUI portrait on character create failed: %s", e, exc_info=True
-                    )
+            err, p_url, pp, portrait_gen_failed, create_portrait_charged = (
+                await self._generate_create_portrait(account_id, name, pp)
+            )
+            if err:
+                return err
 
         async with self.db.session_factory() as db_session:
             start_digi = int(self.config.server.starting_digi_balance)
             character = Character(
                 account_id=account_id,
                 name=name,
-                room_id="test_zone:entrance",
+                room_id="starter_zone:entrance",
                 portrait_url=p_url,
                 portrait_prompt=pp,
                 digi_balance=start_digi,
@@ -1176,11 +1189,6 @@ class FablestarServer:
             all_chars = [_character_play_dict(c) for c in result.scalars().all()]
 
         final_bal = await self._echo_read_balance(account_id)
-        is_gm = False
-        async with self.db.session_factory() as db_session:
-            acc_row = await db_session.get(Account, account_id)
-            if acc_row is not None:
-                is_gm = bool(acc_row.is_gm)
         out: dict[str, Any] = {
             "ok": True,
             "character": payload,
@@ -1206,9 +1214,8 @@ class FablestarServer:
         if character_id is None or character_id < 1:
             return {"ok": False, "error": "character_id_invalid"}
         async with self.db.session_factory() as db_session:
-            result = await db_session.execute(select(Account).where(Account.username == username))
-            account = result.scalar_one_or_none()
-            if not account or not bcrypt.checkpw(password.encode(), account.password_hash.encode()):
+            account = await self._authenticate_account(db_session, username, password)
+            if account is None:
                 return {"ok": False, "error": "invalid_credentials"}
             result = await db_session.execute(select(Character).where(Character.id == character_id))
             char = result.scalar_one_or_none()
@@ -1216,24 +1223,7 @@ class FablestarServer:
                 return {"ok": False, "error": "character_not_found"}
             await db_session.delete(char)
             await db_session.commit()
-            result = await db_session.execute(
-                select(Character).where(Character.account_id == account.id).order_by(Character.id)
-            )
-            chars_payload = [_character_play_dict(c) for c in result.scalars().all()]
-            aid = account.id
-            uname = account.username
-            ec = int(account.echo_credits)
-            is_gm = bool(account.is_gm)
-        eco = self._economy_public_fields()
-        return {
-            "ok": True,
-            "username": uname,
-            "account_id": aid,
-            "characters": chars_payload,
-            "echo_credits": ec,
-            "is_gm": is_gm,
-            **eco,
-        }
+            return await self._account_characters_response(db_session, account)
 
     async def play_refresh_characters(self, username: str, password: str) -> dict[str, Any]:
         """Re-list characters after create (same shape as login)."""
@@ -1241,75 +1231,59 @@ class FablestarServer:
         if not username:
             return {"ok": False, "error": "username_required"}
         async with self.db.session_factory() as db_session:
-            result = await db_session.execute(select(Account).where(Account.username == username))
-            account = result.scalar_one_or_none()
-            if not account or not bcrypt.checkpw(password.encode(), account.password_hash.encode()):
+            account = await self._authenticate_account(db_session, username, password)
+            if account is None:
                 return {"ok": False, "error": "invalid_credentials"}
-            result = await db_session.execute(
-                select(Character).where(Character.account_id == account.id).order_by(Character.id)
+            return await self._account_characters_response(db_session, account)
+
+    async def _bootstrap_session(self, session: Session, character: _CharSnapshot):
+        """Link the session, seed Redis from the character record, and send the opening view."""
+        self.session_manager.link_player(session.id, character.name)
+
+        from fablestar.proficiencies.state_helpers import (
+            ensure_proficiency_block,
+            migrate_legacy_stats,
+            total_proficiency_levels,
+        )
+
+        norm_stats = migrate_legacy_stats(dict(character.stats))
+        ensure_proficiency_block(norm_stats)
+        character.stats = norm_stats
+
+        # Seed Redis with the character's current state
+        await self.redis.set_player_location(character.name, character.room_id)
+        await self.redis.set_player_stats(character.name, norm_stats)
+        await self.redis.set_player_inventory(character.name, character.inventory)
+
+        try:
+            reg = self.content_loader.get_proficiency_registry()
+            total_lv = total_proficiency_levels(norm_stats, registry=reg)
+        except Exception:
+            total_lv = total_proficiency_levels(norm_stats)
+        await session.send(
+            json.dumps(
+                {
+                    "client_notice": "character_snapshot",
+                    "character_name": character.name,
+                    "stats": norm_stats,
+                    "resonance_levels_total": total_lv,
+                }
             )
-            characters = list(result.scalars().all())
-            chars_payload = [_character_play_dict(c) for c in characters]
-            aid = account.id
-            uname = account.username
-            ec = int(account.echo_credits)
-            is_gm = bool(account.is_gm)
-        eco = self._economy_public_fields()
-        return {
-            "ok": True,
-            "username": uname,
-            "account_id": aid,
-            "characters": chars_payload,
-            "echo_credits": ec,
-            "is_gm": is_gm,
-            **eco,
-        }
+            + "\r\n"
+        )
+
+        # Initial look
+        await self.dispatcher.dispatch(session, "look")
+        await session.send_prompt()
 
     async def _session_loop(self, session: Session):
-        """Main input/output loop for a single session."""
+        """Main input/output loop for a single session: authenticate → bootstrap → command loop."""
         try:
             character = await self._authenticate_websocket(session)
             if character is None:
                 return
 
-            # Link session to the authenticated character
-            self.session_manager.link_player(session.id, character.name)
-
-            from fablestar.proficiencies.state_helpers import (
-                ensure_proficiency_block,
-                migrate_legacy_stats,
-                total_proficiency_levels,
-            )
-
-            norm_stats = migrate_legacy_stats(dict(character.stats))
-            ensure_proficiency_block(norm_stats)
-            character.stats = norm_stats
-
-            # Seed Redis with the character's current state
-            await self.redis.set_player_location(character.name, character.room_id)
-            await self.redis.set_player_stats(character.name, norm_stats)
-            await self.redis.set_player_inventory(character.name, character.inventory)
-
-            try:
-                reg = self.content_loader.get_proficiency_registry()
-                total_lv = total_proficiency_levels(norm_stats, registry=reg)
-            except Exception:
-                total_lv = total_proficiency_levels(norm_stats)
-            await session.send(
-                json.dumps(
-                    {
-                        "client_notice": "character_snapshot",
-                        "character_name": character.name,
-                        "stats": norm_stats,
-                        "resonance_levels_total": total_lv,
-                    }
-                )
-                + "\r\n"
-            )
-
-            # Initial look
-            await self.dispatcher.dispatch(session, "look")
-            await session.send_prompt()
+            await self._bootstrap_session(session, character)
 
             while session.protocol.is_connected:
                 line = await session.protocol.receive()

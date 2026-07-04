@@ -1,12 +1,7 @@
 """Movement commands — cardinal and vertical directions, all delegating to move_to()."""
 
-import logging
-import random
-
 from fablestar.commands.registry import command
 from fablestar.network.session import Session
-
-logger = logging.getLogger(__name__)
 
 
 def move_to(direction: str):
@@ -41,23 +36,12 @@ def move_to(direction: str):
         # 3. Update location
         await app_instance.redis.set_player_location(player_id, target_room_id)
 
-        # Optional field gain: traversal (low chance per move to avoid spam).
-        if random.random() < 0.12:
-            try:
-                from fablestar.proficiencies.engine import ProficiencyEngine
-                from fablestar.proficiencies.state_helpers import ensure_proficiency_block
+        # Passive traversal gain (low chance per move to avoid spam).
+        from fablestar.proficiencies.field_gain import try_field_gain_for_player
 
-                stats = await app_instance.redis.get_player_stats(player_id)
-                ensure_proficiency_block(stats)
-                eng = ProficiencyEngine(app_instance.content_loader.get_proficiency_registry())
-                eng.try_field_gain(
-                    stats,
-                    "traversal.navigation.pathfinding",
-                    vr=False,
-                )
-                await app_instance.redis.set_player_stats(player_id, stats)
-            except Exception:
-                logger.warning("Traversal proficiency gain failed", exc_info=True)
+        await try_field_gain_for_player(
+            player_id, "traversal.navigation.pathfinding", chance=0.12
+        )
 
         # 4. Describe new room
         await session.send(f"You move {direction}.")
