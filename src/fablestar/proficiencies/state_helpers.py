@@ -50,11 +50,6 @@ def migrate_legacy_stats(stats: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
-def get_conduit_block(stats: dict[str, Any]) -> dict[str, Any]:
-    ensure_proficiency_block(stats)
-    return stats[CONDUIT_KEY]
-
-
 def total_proficiency_levels(
     stats: dict[str, Any],
     leaf_ids: list[str] | None = None,

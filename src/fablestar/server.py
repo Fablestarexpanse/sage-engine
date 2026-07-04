@@ -449,9 +449,6 @@ class FablestarServer:
         # 2. Register base tick handlers
         self.tick_manager.register(self.spawner.on_tick)
         self.tick_manager.register(self.persistence.on_tick)
-        from fablestar.proficiencies.tick import proficiency_system_tick
-
-        self.tick_manager.register(proficiency_system_tick)
 
         # 2. Start subsystems
         await self.hot_reloader.start(["content", "src/fablestar/commands", "config", "prompts"])

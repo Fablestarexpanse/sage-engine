@@ -11,10 +11,13 @@ async def look(session: Session, args: list[str]):
     """Look at the current room or an object."""
     from fablestar.app import app_instance
 
-    player_id = session.player_id or "test_player"
-    room_id = await app_instance.redis.get_player_location(player_id)
+    if not session.player_id:
+        await session.send("Not authenticated.")
+        return
+    room_id = await app_instance.redis.get_player_location(session.player_id)
     if not room_id:
-        room_id = "test_zone:entrance"
+        await session.send("You are lost in the void.")
+        return
 
     room = app_instance.content_loader.get_room(room_id)
     if room:
@@ -23,17 +26,16 @@ async def look(session: Session, args: list[str]):
         # 1. Generate Observations (Facts)
         observation_block = generate_room_observation(room, {"time_of_day": "Eternal Night"})
 
-        # 2. Render Prompt
-        prompt = app_instance.prompt_manager.render(
-            "room_description", observation_block=observation_block
-        )
-
-        # 3. Call LLM
-        narration = await app_instance.llm_client.generate(prompt)
-
-        # 4. Validate & Sanitize
-        clean_narration = validator.sanitize(narration)
-        await session.send(clean_narration)
+        # 2. Render Prompt + Call LLM (non-fatal; falls back to base description)
+        try:
+            prompt = app_instance.prompt_manager.render(
+                "room_description", observation_block=observation_block
+            )
+            narration = await app_instance.llm_client.generate(prompt)
+            clean_narration = validator.sanitize(narration)
+            await session.send(clean_narration)
+        except Exception:
+            await session.send(room.description.get("base", ""))
 
         if room.exits:
             exits_str = ", ".join(room.exits.keys())

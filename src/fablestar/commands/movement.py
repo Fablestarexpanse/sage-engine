@@ -10,10 +10,13 @@ def move_to(direction: str):
     """Helper to create a movement command for a specific direction."""
 
     async def mover(session: Session, args: list[str]):
-        from fablestar.__main__ import app_instance
+        from fablestar.app import app_instance
 
         # 1. Get current room
-        player_id = session.player_id or "test_player"
+        if not session.player_id:
+            await session.send("Not authenticated.")
+            return
+        player_id = session.player_id
         room_id = await app_instance.redis.get_player_location(player_id)
         if not room_id:
             await session.send("You are lost in the void.")
@@ -55,11 +58,7 @@ def move_to(direction: str):
 
         # 4. Describe new room
         await session.send(f"You move {direction}.")
-        # Re-dispatch look to describe the new room
-        from fablestar.parser.dispatcher import CommandDispatcher
-
-        dispatcher = CommandDispatcher()
-        await dispatcher.dispatch(session, "look")
+        await app_instance.dispatcher.dispatch(session, "look")
 
     return mover
 

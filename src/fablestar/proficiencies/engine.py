@@ -204,7 +204,3 @@ class ProficiencyEngine:
             spent = stats[CONDUIT_KEY]["archive_domain_spent"]
             spent[dom] = int(spent.get(dom, 0)) + 1
         return r
-
-    def try_self_calibration(self, stats: dict[str, Any], leaf_id: str) -> GainResult:
-        """Expensive fallback: always +1 if under caps (currency check left to caller)."""
-        return self.try_field_gain(stats, leaf_id, context={"field_success": True})

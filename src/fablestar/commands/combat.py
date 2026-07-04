@@ -157,7 +157,6 @@ async def attack(session: Session, args: list[str]):
 async def flee(session: Session, args: list[str]):
     """Attempt to flee combat. Usage: flee"""
     from fablestar.app import app_instance
-    from fablestar.parser.dispatcher import CommandDispatcher
 
     player_id = session.player_id
     if not player_id:
@@ -178,7 +177,6 @@ async def flee(session: Session, args: list[str]):
         target_room_id = room.exits[direction].destination
         await app_instance.redis.set_player_location(player_id, target_room_id)
         await session.send(f"You flee {direction}!")
-        dispatcher = CommandDispatcher()
-        await dispatcher.dispatch(session, "look")
+        await app_instance.dispatcher.dispatch(session, "look")
     else:
         await session.send("You fail to escape!")

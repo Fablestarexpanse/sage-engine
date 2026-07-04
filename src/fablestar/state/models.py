@@ -91,7 +91,7 @@ class Character(Base):
     last_scene_image_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
 
     # World state
-    room_id: Mapped[str] = mapped_column(String(255), default="test_zone:entrance")
+    room_id: Mapped[str] = mapped_column(String(255), default="starter_zone:entrance")
     # In-world wallet (display name from server.game_currency_display_name, e.g. Digi).
     digi_balance: Mapped[int] = mapped_column(Integer, default=0)
     # Opt-in player vs player; default off until toggled in-game or by admin.
