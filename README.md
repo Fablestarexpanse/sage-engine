@@ -2,171 +2,115 @@
 
 [![Repository](https://img.shields.io/badge/GitHub-FablestarExpanseMUD-181717?logo=github)](https://github.com/Fablestarexpanse/FablestarExpanseMUD)
 
-A next-generation MUD engine built with Python, focused on rapid iteration (“vibe coding”) and optional LLM-backed narration.
+A sci-fi MUD engine built for rapid iteration: deterministic Python game logic, optional local-LLM narration, AI-generated character portraits and scene art, and a desktop map editor for building the world visually.
 
-**Repository:** [https://github.com/Fablestarexpanse/FablestarExpanseMUD](https://github.com/Fablestarexpanse/FablestarExpanseMUD)
+**Golden rule:** LLMs describe what happened. Deterministic code decides what happens.
 
-## Key features
+## Screenshots
 
-- **Deterministic engine** — Game logic in Python; narration can be augmented by an LLM.
-- **Sub-second hot reload** — Edit YAML under `content/` or Python commands with minimal downtime.
-- **Admin console** — React admin app with **AI Forge** and world tooling; optional **multi-staff** logins, live **team presence**, and **head-admin** control over tools and world zones.
-- **Player client** — React player UI over WebSocket (`/play` on Nexus).
-- **Local LLMs** — LM Studio or Ollama (optional `config/llm.toml` or admin UI settings).
+### Player client
 
-## Stack
+![Fablestar player client — MUD terminal with character sheet, portrait, and AI scene art](docs/screenshots/player-client.png)
 
-| Layer | Technology |
-|--------|------------|
-| Server | Python 3.11+, FastAPI, uvicorn, Redis, PostgreSQL |
-| Admin UI | React, Vite (`admin-ui/`) |
-| Player UI | React, Vite (`player-ui/`) |
+### WorldForge map tool
 
-## Prerequisites
+![WorldForge — visual zone editor with room graph, exits, and stamp tools](docs/screenshots/worldforge-map-tool.png)
 
-- **Python 3.11+**
-- **Node.js** (LTS recommended) for the UIs
-- **Redis** and **PostgreSQL** (or run them with Docker — see below)
+## What's new
 
-## Installation
+### 2026-07 — Code health overhaul (`desloppify/code-health`)
 
-From the repository root:
+- **Play session tokens** — login now issues a JWT; the client stops re-sending the password on every action and on the game WebSocket.
+- **Service architecture** — the server core was split into focused services (economy, player accounts, scene/image generation) and the admin API into six domain routers; the two largest files shrank from ~1,400 and ~1,700 lines to ~500 and ~230.
+- **Test suite 30 → 104** — hermetic tests (no live Redis/Postgres needed) covering the tick loop, sessions, permissions/JWT, LLM output validation, spawning, and full command dispatch flows.
+- **Typed state** — TypedDict schemas for all JSON-shaped state, a documented play-protocol module, and a fully clean `mypy` run across the server.
+- **Hardening** — path-traversal checks on WorldForge room injection, tool-permission validation at registration time, auth guards replacing test fallbacks in command handlers.
+
+### 2026-04 — 0.2.x feature wave
+
+- **Conduit proficiency system** — dot-path skill trees (`combat.melee.blades`), five gating stats, field/mentored/archive advancement, chargen skill picker, and admin tooling.
+- **Security hardening** — staff JWT auth on all admin routes, rate limiting, CORS allowlist, credential rotation, first-message WebSocket auth envelope.
+- **WorldForge** — Tauri desktop map editor with room graph, stamps (reusable room groups), and write-through saving to the server via the forge API.
+- **ComfyUI integration + economy** — AI character portraits and room scene art with a spendable credit balance, gallery, and admin-configurable costs.
+- **World Builder** — admin UI for zones, rooms, star systems, and ships backed by a content API.
+
+## Features
+
+- **Deterministic engine** — 4 Hz tick loop, Redis for hot state, PostgreSQL for persistence.
+- **Sub-second hot reload** — edit room YAML under `content/` or command handlers in Python without restarting the server.
+- **Optional LLM narration** — LM Studio or Ollama colour the output text; every LLM call has a deterministic fallback, so the game runs fine with no model at all.
+- **AI art pipeline** — ComfyUI workflows for portraits and scene art, gated by an in-game credit economy.
+- **Three frontends** — React player client, React admin console (AI Forge, world tooling, staff roles, live presence), and the WorldForge desktop map editor.
+
+## Quick start
+
+Prerequisites: **Python 3.11+**, **Node.js LTS**, **Docker** (for Redis + PostgreSQL).
 
 ```bash
+# 1. Install the server and UI dependencies
 pip install -e .
-```
+(cd admin-ui && npm install)
+(cd player-ui && npm install)
 
-On Windows, if the `fablestar` script is not on your `PATH`, use:
+# 2. Create live config from the examples (gitignored)
+cp config/server.example.toml config/server.toml
+cp config/database.example.toml config/database.toml
 
-```bash
+# 3. Start backing services and run migrations
+docker compose up -d redis postgres
+python -m alembic upgrade head
+
+# 4. Start the game server (Nexus, port 8001)
 python -m fablestar
 ```
 
-Install UI dependencies once per app:
+Then start the UIs in separate terminals:
 
 ```bash
-cd admin-ui && npm install && cd ..
-cd player-ui && npm install && cd ..
+# Player client → http://localhost:5173
+cd player-ui && VITE_NEXUS_PORT=8001 npm run dev -- --port 5173 --host
+
+# Admin console → http://localhost:5174
+cd admin-ui && VITE_API_BASE=http://localhost:8001 VITE_WS_BASE=ws://localhost:8001 npm run dev -- --port 5174 --host
 ```
+
+On PowerShell, set the env vars first (`$env:VITE_NEXUS_PORT="8001"`) and then run `npm run dev`.
+
+| Service | URL |
+|---|---|
+| Nexus (API + WebSockets) | `http://localhost:8001` |
+| Player UI | `http://localhost:5173` |
+| Admin UI | `http://localhost:5174` |
+
+**WorldForge** (map editor): `cd worldforge && npm install && npm run tauri dev` — requires the [Tauri prerequisites](https://tauri.app/start/prerequisites/) (Rust toolchain).
 
 ## Configuration
 
-TOML files in `config/` are merged at startup (see `src/fablestar/core/config.py`). Live config files are **gitignored** — copy the example files to get started:
+TOML files in `config/` are merged at startup; live files are gitignored — copy from the `*.example.toml` files. Environment variables override with the `FABLESTAR_` prefix and double-underscore nesting (e.g. `FABLESTAR_SERVER__WEBSOCKET_PORT=8001`).
 
-```bash
-cp config/server.example.toml config/server.toml
-cp config/database.example.toml config/database.toml
+Key `server.toml` settings:
+
+- `admin_auth_required = true` (default) — all admin routes require a staff Bearer token. Never disable on a networked host.
+- `admin_jwt_secret` — required when auth is on; generate with `python -c "import secrets; print(secrets.token_hex(32))"`.
+- Optional extras: `llm.toml` (LM Studio / Ollama), `comfyui.toml` (art generation), `redis.toml`.
+
+To create the first head admin: `python scripts/bootstrap_admin.py --username youradmin --password 'a-strong-password'`. Head admins manage additional staff, tool access, and zone permissions from **Team & access** in the admin UI.
+
+Do not expose Nexus directly to the public internet — put it behind a reverse proxy with TLS.
+
+## Project layout
+
+```
+src/fablestar/     Python server — services, admin routers, commands, world loader
+content/world/     Game content (YAML) — zones, rooms, entities, items; hot-reloaded
+admin-ui/          React admin console
+player-ui/         React player client
+worldforge/        Tauri desktop map editor
+prompts/           Jinja2 templates for LLM narration and forge generation
+tests/             Hermetic pytest suite (no live services required)
 ```
 
-- `config/server.toml` — Nexus port, tick rate, dev flags, `admin_auth_required`, JWT secret, and CORS origins.
-- `config/database.toml` — PostgreSQL connection (must match `docker-compose.yml` / your DB credentials).
-
-You can add more files in `config/` (for example `redis.toml`, `llm.toml`) to override Redis and LLM defaults from code.
-
-Environment overrides use the prefix `FABLESTAR_`, e.g. `FABLESTAR_SERVER__WEBSOCKET_PORT=8001`.
-
-Set a strong JWT secret when using staff auth: `FABLESTAR_ADMIN_JWT_SECRET` (or `admin_jwt_secret` in `server.toml`).
-
-### Admin staff (optional)
-
-When `admin_auth_required = true` in `config/server.toml`, all admin routes require a valid staff Bearer token. Player routes are unaffected.
-
-1. Run migrations: `python -m alembic upgrade head`
-2. Create the first **head admin**:  
-   `python scripts/bootstrap_admin.py --username youradmin --password 'a-strong-password'`
-3. Set `admin_auth_required = true` in `config/server.toml` and restart Nexus.
-4. Sign in via the admin UI. **Head admins** use **Team & access** to add **admin** or **GM** accounts, assign allowed **tools** (sidebar areas), and **zones** (`*` for all, or comma-separated zone IDs).
-
-Live **team presence** is handled automatically by the admin UI over WebSocket.
-
-With `admin_auth_required = false` (opt-in, for trusted-LAN dev only), authentication is skipped entirely — never enable this on a network-accessible host.
-
-## Running locally
-
-### 1. Start Redis and PostgreSQL (Docker)
-
-From the repo root:
-
-```bash
-docker compose up -d redis postgres
-```
-
-The bundled `docker-compose.yml` matches the DB user/database in `config/database.toml` (copy from `config/database.example.toml`). Optional: `ollama` service for local models.
-
-### 2. Start the game server (Nexus)
-
-From the repo root (so `config/` resolves correctly):
-
-```bash
-python -m fablestar
-```
-
-Default Nexus port is set in `config/server.toml` (currently **8001**). Nexus serves the REST admin API, WebSocket admin updates, and the `/play` WebSocket for clients.
-
-### 3. Start the admin UI (development)
-
-The admin app defaults to API port **4001** in code; if your `server.toml` uses **8001**, point Vite at Nexus:
-
-**PowerShell**
-
-```powershell
-cd admin-ui
-$env:VITE_API_BASE="http://localhost:8001"
-$env:VITE_WS_BASE="ws://localhost:8001"
-npm run dev -- --port 5174 --host
-```
-
-**bash**
-
-```bash
-cd admin-ui
-VITE_API_BASE=http://localhost:8001 VITE_WS_BASE=ws://localhost:8001 npm run dev -- --port 5174 --host
-```
-
-Open [http://localhost:5174](http://localhost:5174).
-
-### 4. Start the player UI (development)
-
-**PowerShell**
-
-```powershell
-cd player-ui
-$env:VITE_NEXUS_PORT="8001"
-npm run dev -- --port 5173 --host
-```
-
-**bash**
-
-```bash
-cd player-ui
-VITE_NEXUS_PORT=8001 npm run dev -- --port 5173 --host
-```
-
-Open [http://localhost:5173](http://localhost:5173).
-
-### Ports (typical dev setup)
-
-| Service | Default URL |
-|--------|----------------|
-| Nexus (API + WebSocket) | `http://localhost:8001` (from `config/server.toml`) |
-| Admin UI (Vite) | `http://localhost:5174` |
-| Player UI (Vite) | `http://localhost:5173` |
-| PostgreSQL (Docker) | `localhost:5432` |
-| Redis (Docker) | `localhost:6379` |
-
-## Nexus admin API (security)
-
-**`admin_auth_required = true` is the default** — all admin routes require a valid staff token. Set `admin_auth_required = false` only on a fully trusted LAN; treat it as no authentication.
-
-The admin UI covers all operator functions (live sessions, world state, broadcasts, metrics). API endpoint details are in the source rather than documented here to avoid publishing an attack surface map.
-
-Do not expose Nexus directly on the public internet — place it behind a reverse proxy with TLS.
-
-## Philosophy
-
-**Vibe coding** — fast feedback loops and safe iteration on content and code.
-
-**Golden rule** — LLMs describe what happened; deterministic systems decide what happens.
+Developer documentation lives in [`CLAUDE.md`](CLAUDE.md) (architecture guide) and [`docs/`](docs/).
 
 ## License
 
