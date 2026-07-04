@@ -48,7 +48,12 @@ class Session:
 
 
 class SessionManager:
-    """Manages all active player sessions."""
+    """Manages all active player sessions.
+
+    Async methods (create_session, destroy_session, broadcast) perform I/O.
+    Sync methods (get_session_by_player, link_player) are in-memory lookups
+    and are intentionally synchronous — they do no I/O.
+    """
 
     def __init__(self):
         self.sessions: dict[str, Session] = {}

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from fablestar.proficiencies.data._types import LeafRow
 from fablestar.proficiencies.data.astronautics import astronautics_leaves
 from fablestar.proficiencies.data.combat import combat_leaves
 from fablestar.proficiencies.data.commerce import commerce_leaves
@@ -13,8 +14,6 @@ from fablestar.proficiencies.data.resonance import resonance_leaves
 from fablestar.proficiencies.data.signal import signal_leaves
 from fablestar.proficiencies.data.systems import systems_leaves
 from fablestar.proficiencies.data.traversal import traversal_leaves
-
-LeafRow = tuple[str, dict[str, float]]
 
 EXPECTED_LEAF_COUNT = 278
 

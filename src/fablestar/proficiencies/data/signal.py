@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-LeafRow = tuple[str, dict[str, float]]
+from fablestar.proficiencies.data._types import LeafRow
 
 
 def signal_leaves() -> list[LeafRow]:

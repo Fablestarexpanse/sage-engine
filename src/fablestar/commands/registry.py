@@ -1,5 +1,6 @@
 """CommandRegistry and @command decorator — registers handlers at import time."""
 
+import asyncio
 import importlib
 import logging
 from collections.abc import Callable
@@ -71,9 +72,11 @@ registry = CommandRegistry()
 
 
 def command(name: str, aliases: list[str] | None = None):
-    """Decorator to register a function as a command."""
+    """Decorator to register a function as a command. Handler must be async."""
 
     def decorator(func):
+        if not asyncio.iscoroutinefunction(func):
+            raise TypeError(f"Command handler '{name}' must be an async function, got {func!r}")
         registry.register(name, func, aliases)
         return func
 

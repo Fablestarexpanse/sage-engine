@@ -1168,24 +1168,27 @@ class NexusApp:
             injection: ForgeInjection,
             ctx: Annotated[AdminContext, Depends(require_tool("forge"))],
         ):
-            # 1. Validate the path
+            if ":" not in injection.id:
+                raise HTTPException(status_code=400, detail="invalid_id")
+            zone_id, room_filename = injection.id.split(":", 1)
+            if not re.match(r"^[a-zA-Z0-9_-]+$", zone_id) or not re.match(
+                r"^[a-zA-Z0-9_-]+$", room_filename
+            ):
+                raise HTTPException(status_code=400, detail="invalid_id")
+            if not ctx.may_write_zone(zone_id):
+                raise HTTPException(status_code=403, detail="zone_denied")
+
+            zone_dir = Path("content/world/zones") / zone_id / "rooms"
+            file_path = zone_dir / f"{room_filename}.yaml"
             try:
-                zone_id, room_filename = injection.id.split(":", 1)
-                if not ctx.may_write_zone(zone_id):
-                    raise HTTPException(status_code=403, detail="zone_denied")
-                zone_dir = Path("content/world/zones") / zone_id / "rooms"
                 zone_dir.mkdir(parents=True, exist_ok=True)
-
-                file_path = zone_dir / f"{room_filename}.yaml"
-
-                # 2. Write to disk
                 await asyncio.to_thread(file_path.write_text, injection.yaml_content, "utf-8")
-
-                logger.info(f"Forge: Injected room {injection.id} to {file_path}")
-                return {"status": "success", "path": str(file_path)}
-            except Exception as e:
+            except OSError as e:
                 logger.error(f"Forge: Failed to inject room: {e}")
-                raise HTTPException(status_code=500, detail=str(e))
+                raise HTTPException(status_code=500, detail="write_failed")
+
+            logger.info(f"Forge: Injected room {injection.id} to {file_path}")
+            return {"status": "success", "path": str(file_path)}
 
         # ---- Entity Template Management ----------------------------------------
 
