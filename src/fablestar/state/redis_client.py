@@ -58,6 +58,11 @@ class RedisState:
             await self.client.close()
             logger.info("Disconnected from Redis")
 
+    async def get_all_active_player_ids(self) -> list[str]:
+        """Return player IDs with an active location key (used for flush/persistence scans)."""
+        keys = await self.client.keys("player:*:location")
+        return [k.split(":")[1] for k in keys]
+
     # --- Player Location Methods ---
 
     def _get_key(self, prefix_key: str, **kwargs: Any) -> str:

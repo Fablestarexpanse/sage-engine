@@ -1,7 +1,6 @@
 """PostgresState — async SQLAlchemy engine, session factory, and DeclarativeBase."""
 
 import logging
-from collections.abc import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
@@ -40,18 +39,6 @@ class PostgresState:
         self.session_factory = async_sessionmaker(
             self.engine, expire_on_commit=False, class_=AsyncSession
         )
-
-    async def get_session(self) -> AsyncGenerator[AsyncSession, None]:
-        """Dependency for getting a database session."""
-        async with self.session_factory() as session:
-            try:
-                yield session
-                await session.commit()
-            except Exception:
-                await session.rollback()
-                raise
-            finally:
-                await session.close()
 
     async def close(self):
         """Dispose of the engine connection pool."""

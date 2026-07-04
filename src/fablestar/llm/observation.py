@@ -5,10 +5,8 @@ from typing import Any
 from fablestar.world.models import RoomModel
 
 
-def generate_room_observation(room: RoomModel, context: dict[str, Any] | None = None) -> str:
-    """
-    Converts a RoomModel into a structured fact-block for LLM grounding.
-    """
+def build_room_fact_block(room: RoomModel, context: dict[str, Any] | None = None) -> str:
+    """Converts a RoomModel into a structured fact-block for LLM grounding."""
     context = context or {}
 
     facts = []

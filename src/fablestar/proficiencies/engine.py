@@ -105,10 +105,10 @@ class ProficiencyEngine:
         for pid, lvl, floor_v in candidates:
             if applied >= amount:
                 break
-            room = lvl - floor_v
-            if room <= 0:
+            headroom = lvl - floor_v
+            if headroom <= 0:
                 continue
-            dec = min(room, amount - applied)
+            dec = min(headroom, amount - applied)
             row = prof[pid]
             row["level"] = lvl - dec
             prof[pid] = row

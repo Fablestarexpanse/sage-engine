@@ -105,23 +105,23 @@ def require_tool(tool_id: str):
     if tool_id not in NAV_TOOL_IDS:
         raise ValueError(f"require_tool: unknown tool_id {tool_id!r} — not in NAV_TOOL_IDS")
 
-    def _dep(request: Request) -> AdminContext:
+    def _check_tool_permission(request: Request) -> AdminContext:
         ctx = get_admin_ctx(request)
         if not ctx.may_use_tool(tool_id):
             raise HTTPException(status_code=403, detail=f"tool_denied:{tool_id}")
         return ctx
 
-    return _dep
+    return _check_tool_permission
 
 
 def require_any_tool(*tool_ids: str):
-    def _dep(request: Request) -> AdminContext:
+    def _check_any_tool_permission(request: Request) -> AdminContext:
         ctx = get_admin_ctx(request)
         if not any(ctx.may_use_tool(t) for t in tool_ids):
             raise HTTPException(status_code=403, detail="tool_denied")
         return ctx
 
-    return _dep
+    return _check_any_tool_permission
 
 
 class ServerStatus(BaseModel):

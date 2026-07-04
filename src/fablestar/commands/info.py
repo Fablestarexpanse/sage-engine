@@ -1,7 +1,7 @@
 """Info commands — look (with optional LLM narration) and help."""
 
 from fablestar.commands.registry import command
-from fablestar.llm.observation import generate_room_observation
+from fablestar.llm.observation import build_room_fact_block
 from fablestar.llm.validation import validator
 from fablestar.network.session import Session
 
@@ -24,7 +24,7 @@ async def look(session: Session, args: list[str]):
         await session.send(f"\r\n[ {room.id} ]")
 
         # 1. Generate Observations (Facts)
-        observation_block = generate_room_observation(room, {"time_of_day": "Eternal Night"})
+        observation_block = build_room_fact_block(room, {"time_of_day": "Eternal Night"})
 
         # 2. Render Prompt + Call LLM (non-fatal; falls back to base description)
         try:

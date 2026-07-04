@@ -27,9 +27,7 @@ class PersistenceManager:
         """Perform a full synchronization of active world state/players."""
         logger.info("Persistence: Starting background flush to PostgreSQL...")
         try:
-            active_players = await self.server.redis.client.keys("player:*:location")
-            for key in active_players:
-                player_id = key.split(":")[1]
+            for player_id in await self.server.redis.get_all_active_player_ids():
                 await self.sync_character(player_id)
         except Exception:
             logger.exception("Persistence: flush_all failed; game loop continues")

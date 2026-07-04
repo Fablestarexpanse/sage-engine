@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 def move_to(direction: str):
     """Helper to create a movement command for a specific direction."""
 
-    async def mover(session: Session, args: list[str]):
+    async def _direction_handler(session: Session, args: list[str]):
         from fablestar.app import app_instance
 
         # 1. Get current room
@@ -63,7 +63,7 @@ def move_to(direction: str):
         await session.send(f"You move {direction}.")
         await app_instance.dispatcher.dispatch(session, "look")
 
-    return mover
+    return _direction_handler
 
 
 # Register cardinal / vertical (single-letter aliases)
