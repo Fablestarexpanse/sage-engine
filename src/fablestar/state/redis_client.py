@@ -12,9 +12,11 @@ logger = logging.getLogger(__name__)
 
 
 class RedisState:
-    """
-    Wrapper for Redis operations, providing a typed interface
-    to the ephemeral game state.
+    """Typed async accessors for all hot game state (locations, stats, entities, items).
+
+    All public methods propagate ``redis.RedisError`` on connection failure
+    — callers should catch it distinctly from a missing-key result (which
+    returns None/empty collection, not an exception).
     """
 
     KEY_PREFIXES = {
