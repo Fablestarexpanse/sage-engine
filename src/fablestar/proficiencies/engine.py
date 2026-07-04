@@ -125,15 +125,16 @@ class ProficiencyEngine:
         stats: dict[str, Any],
         leaf_id: str,
         *,
-        context: dict[str, Any] | None = None,
+        vr: bool = False,
+        field_success: bool | None = None,
         roll_value: float | None = None,
     ) -> GainResult:
+        """Attempt +1 level on a leaf via field acquisition.
+
+        vr: True if acquired in a virtual-reality context (reduced gain chance).
+        field_success: if set, override the random roll (True = always gain, False = never gain).
+        roll_value: 0..1 uniform substitute for the random roll (deterministic tests).
         """
-        Attempt +1 level on a leaf via field acquisition.
-        roll_value: if set, 0..1 uniform draw substitute (deterministic tests).
-        context: vr (bool), field_success (bool override)
-        """
-        ctx = context or {}
         ensure_proficiency_block(stats)
         leaf = self.registry.get_leaf(leaf_id)
         if not leaf:
@@ -144,14 +145,14 @@ class ProficiencyEngine:
         if not self._gate_ok(stats, leaf_id):
             return GainResult(False, "depth_gate")
 
-        if ctx.get("field_success") is True:
+        if field_success is True:
             success = True
-        elif ctx.get("field_success") is False:
+        elif field_success is False:
             success = False
         else:
             lo, hi = 0.35, 0.65
             p = lo + random.random() * (hi - lo)
-            if bool(ctx.get("vr")):
+            if vr:
                 p *= 0.75
             rv = random.random() if roll_value is None else float(roll_value)
             success = rv < p
@@ -181,7 +182,7 @@ class ProficiencyEngine:
         student = self._level(stats, leaf_id)
         if teacher_leaf_level < int((1.5 * student) + 0.999):
             return GainResult(False, "teacher_not_advanced_enough")
-        return self.try_field_gain(stats, leaf_id, context={"field_success": True})
+        return self.try_field_gain(stats, leaf_id, field_success=True)
 
     def try_archive_study(
         self,
@@ -193,7 +194,7 @@ class ProficiencyEngine:
         """Guaranteed +1 if domain cap allows (caller enforces RP spend)."""
         if domain_cap_remaining <= 0:
             return GainResult(False, "archive_domain_cap")
-        r = self.try_field_gain(stats, leaf_id, context={"field_success": True})
+        r = self.try_field_gain(stats, leaf_id, field_success=True)
         if r.ok:
             dom = leaf_id.split(".", 1)[0]
             ensure_proficiency_block(stats)

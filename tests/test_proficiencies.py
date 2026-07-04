@@ -74,7 +74,7 @@ class TestEngine(unittest.TestCase):
         r = self.engine.try_field_gain(
             stats,
             leaf_id="combat.melee.blades",
-            context={"field_success": True},
+            field_success=True,
         )
         self.assertFalse(r.ok)
 
@@ -85,13 +85,13 @@ class TestEngine(unittest.TestCase):
         prof["combat.melee"] = {"level": 14, "state": "raise", "peak": 14}
         prof["combat.melee.blades"] = {"level": 0, "state": "raise", "peak": 0}
         r = self.engine.try_field_gain(
-            stats, "combat.melee.blades", context={"field_success": True}
+            stats, "combat.melee.blades", field_success=True
         )
         self.assertFalse(r.ok)
         self.assertEqual(r.message, "depth_gate")
         prof["combat.melee"]["level"] = 15
         r2 = self.engine.try_field_gain(
-            stats, "combat.melee.blades", context={"field_success": True}
+            stats, "combat.melee.blades", field_success=True
         )
         self.assertTrue(r2.ok)
 

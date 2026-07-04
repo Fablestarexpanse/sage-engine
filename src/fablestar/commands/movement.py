@@ -53,7 +53,7 @@ def move_to(direction: str):
                 eng.try_field_gain(
                     stats,
                     "traversal.navigation.pathfinding",
-                    context={"vr": False},
+                    vr=False,
                 )
                 await app_instance.redis.set_player_stats(player_id, stats)
             except Exception:

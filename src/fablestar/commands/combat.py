@@ -71,11 +71,9 @@ async def attack(session: Session, args: list[str]):
 
     target_state["hp"] = target_state["hp"] - damage_dealt
     entity_dead = target_state["hp"] <= 0
-
     if entity_dead:
         target_state["alive"] = False
-    else:
-        await app_instance.redis.set_entity_state(target_id, target_state)
+    await app_instance.redis.set_entity_state(target_id, target_state)
 
     # --- Entity counter-attacks (if still alive) ---
     counter_damage = 0
@@ -93,7 +91,7 @@ async def attack(session: Session, args: list[str]):
             "combat.ballistic.sidearms",
             "combat.tactics.threat_assessment",
         ]
-        eng.try_field_gain(player_stats, random.choice(pool), context={"vr": False})
+        eng.try_field_gain(player_stats, random.choice(pool), vr=False)
     except Exception as exc:
         logger.warning("Combat proficiency gain skipped: %s", exc)
 
