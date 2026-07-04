@@ -772,11 +772,11 @@ class NexusApp:
         async def get_players(
             _ctx: Annotated[AdminContext, Depends(require_any_tool("players", "operations"))],
         ):
-            players = []
+            players: list[dict[str, Any]] = []
             redis = self.server.redis
             for sid, session in self.server.session_manager.sessions.items():
                 room_id = None
-                if session.player_id and redis.client:
+                if session.player_id and redis.is_connected:
                     try:
                         room_id = await redis.get_player_location(session.player_id)
                     except Exception:
@@ -826,7 +826,7 @@ class NexusApp:
         async def world_live(
             _ctx: Annotated[AdminContext, Depends(require_any_tool("operations", "world"))],
         ):
-            if not self.server.redis.client:
+            if not self.server.redis.is_connected:
                 return await build_world_live_snapshot(None)
             return await build_world_live_snapshot(self.server.redis.client)
 
@@ -964,7 +964,7 @@ class NexusApp:
             cfg = self.server.config
             redis_ok = False
             try:
-                if self.server.redis.client:
+                if self.server.redis.is_connected:
                     redis_ok = bool(await self.server.redis.client.ping())
             except Exception:
                 redis_ok = False
@@ -1554,9 +1554,9 @@ class NexusApp:
 
             items = []
             for iid in item_ids:
-                state = await self.server.redis.get_item_state(iid)
-                if state:
-                    items.append(state)
+                istate = await self.server.redis.get_item_state(iid)
+                if istate:
+                    items.append(istate)
 
             return {
                 "room_id": room_id,

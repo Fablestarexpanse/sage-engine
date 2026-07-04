@@ -14,7 +14,7 @@ class WebSocketProtocol:
         self._peer = (
             f"{websocket.client.host}:{websocket.client.port}" if websocket.client else "web-client"
         )
-        self._incoming_queue = asyncio.Queue()
+        self._incoming_queue: asyncio.Queue[str] = asyncio.Queue()
 
     async def send(self, message: str) -> None:
         """Send text to the web client."""

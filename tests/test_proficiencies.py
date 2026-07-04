@@ -84,15 +84,11 @@ class TestEngine(unittest.TestCase):
         prof["combat"] = {"level": 10, "state": "raise", "peak": 10}
         prof["combat.melee"] = {"level": 14, "state": "raise", "peak": 14}
         prof["combat.melee.blades"] = {"level": 0, "state": "raise", "peak": 0}
-        r = self.engine.try_field_gain(
-            stats, "combat.melee.blades", field_success=True
-        )
+        r = self.engine.try_field_gain(stats, "combat.melee.blades", field_success=True)
         self.assertFalse(r.ok)
         self.assertEqual(r.message, "depth_gate")
         prof["combat.melee"]["level"] = 15
-        r2 = self.engine.try_field_gain(
-            stats, "combat.melee.blades", field_success=True
-        )
+        r2 = self.engine.try_field_gain(stats, "combat.melee.blades", field_success=True)
         self.assertTrue(r2.ok)
 
     def test_decay_floor(self) -> None:

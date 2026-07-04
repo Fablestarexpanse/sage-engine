@@ -2,11 +2,13 @@
 
 import json
 import logging
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 import redis.asyncio as redis
 
 from fablestar.core.config import RedisConfig
+from fablestar.state.state_types import EntityState, InventoryItem, ItemState
 
 logger = logging.getLogger(__name__)
 
@@ -34,19 +36,30 @@ class RedisState:
 
     def __init__(self, config: RedisConfig):
         self.config = config
-        self.client: redis.Redis | None = None
+        self._client: redis.Redis | None = None
+
+    @property
+    def client(self) -> redis.Redis:
+        """The live Redis connection. Raises RuntimeError if connect() has not run."""
+        if self._client is None:
+            raise RuntimeError("RedisState is not connected — call connect() first")
+        return self._client
+
+    @property
+    def is_connected(self) -> bool:
+        return self._client is not None
 
     async def connect(self):
         """Establish connection to the Redis server."""
         try:
-            self.client = redis.Redis(
+            self._client = redis.Redis(
                 host=self.config.host,
                 port=self.config.port,
                 db=self.config.db,
                 password=self.config.password,
                 decode_responses=True,
             )
-            await self.client.ping()
+            await self._client.ping()
             logger.info(f"Connected to Redis at {self.config.host}:{self.config.port}")
         except Exception as e:
             logger.error(f"Failed to connect to Redis: {e}")
@@ -54,8 +67,9 @@ class RedisState:
 
     async def disconnect(self):
         """Close the Redis connection."""
-        if self.client:
-            await self.client.close()
+        if self._client:
+            await self._client.close()
+            self._client = None
             logger.info("Disconnected from Redis")
 
     async def get_all_active_player_ids(self) -> list[str]:
@@ -98,39 +112,41 @@ class RedisState:
     # --- Player Stats Methods ---
 
     async def get_player_stats(self, player_id: str) -> dict[str, Any]:
+        """Shape documented by state_types.CharacterStats (returned as plain dict —
+        the proficiency layer mutates it with dynamic keys)."""
         key = self._get_key("player_stats", id=player_id)
         raw = await self.client.get(key)
         if raw is None:
             return {}
         return json.loads(raw)
 
-    async def set_player_stats(self, player_id: str, stats: dict[str, Any]):
+    async def set_player_stats(self, player_id: str, stats: Mapping[str, Any]):
         key = self._get_key("player_stats", id=player_id)
         await self.client.set(key, json.dumps(stats))
 
     # --- Player Inventory Methods ---
 
-    async def get_player_inventory(self, player_id: str) -> list[Any]:
+    async def get_player_inventory(self, player_id: str) -> list[InventoryItem]:
         key = self._get_key("player_inventory", id=player_id)
         raw = await self.client.get(key)
         if raw is None:
             return []
         return json.loads(raw)
 
-    async def set_player_inventory(self, player_id: str, inventory: list[Any]):
+    async def set_player_inventory(self, player_id: str, inventory: Sequence[Mapping[str, Any]]):
         key = self._get_key("player_inventory", id=player_id)
         await self.client.set(key, json.dumps(inventory))
 
     # --- Entity State Methods ---
 
-    async def get_entity_state(self, entity_id: str) -> dict[str, Any] | None:
+    async def get_entity_state(self, entity_id: str) -> EntityState | None:
         key = self._get_key("entity_state", id=entity_id)
         raw = await self.client.get(key)
         if raw is None:
             return None
         return json.loads(raw)
 
-    async def set_entity_state(self, entity_id: str, state: dict[str, Any]):
+    async def set_entity_state(self, entity_id: str, state: Mapping[str, Any]):
         key = self._get_key("entity_state", id=entity_id)
         await self.client.set(key, json.dumps(state))
 
@@ -152,14 +168,14 @@ class RedisState:
 
     # --- Floor Item State Methods ---
 
-    async def get_item_state(self, item_id: str) -> dict[str, Any] | None:
+    async def get_item_state(self, item_id: str) -> ItemState | None:
         key = self._get_key("item_state", id=item_id)
         raw = await self.client.get(key)
         if raw is None:
             return None
         return json.loads(raw)
 
-    async def set_item_state(self, item_id: str, state: dict[str, Any]):
+    async def set_item_state(self, item_id: str, state: Mapping[str, Any]):
         key = self._get_key("item_state", id=item_id)
         await self.client.set(key, json.dumps(state))
 

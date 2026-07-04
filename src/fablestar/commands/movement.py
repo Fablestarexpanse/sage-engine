@@ -39,9 +39,7 @@ def move_to(direction: str):
         # Passive traversal gain (low chance per move to avoid spam).
         from fablestar.proficiencies.field_gain import try_field_gain_for_player
 
-        await try_field_gain_for_player(
-            player_id, "traversal.navigation.pathfinding", chance=0.12
-        )
+        await try_field_gain_for_player(player_id, "traversal.navigation.pathfinding", chance=0.12)
 
         # 4. Describe new room
         await session.send(f"You move {direction}.")

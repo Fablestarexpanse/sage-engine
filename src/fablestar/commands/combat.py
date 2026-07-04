@@ -50,7 +50,7 @@ async def attack(session: Session, args: list[str]):
                 target_id = eid
                 break
 
-    if not target_state:
+    if target_state is None or target_id is None:
         await session.send(f"You see no '{target_name}' here to attack.")
         return
 

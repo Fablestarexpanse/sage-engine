@@ -57,7 +57,7 @@ async def take(session: Session, args: list[str]):
             found_state = state
             break
 
-    if not found_state:
+    if found_state is None or found_id is None:
         await session.send(f"You see no '{target_name}' here.")
         return
 
@@ -69,8 +69,8 @@ async def take(session: Session, args: list[str]):
     inv.append(
         {
             "id": found_id,
-            "template": found_state.get("template"),
-            "name": found_state.get("name"),
+            "template": found_state.get("template", ""),
+            "name": found_state.get("name", ""),
             "description": found_state.get("description", ""),
             "value": found_state.get("value", 0),
         }
@@ -108,7 +108,7 @@ async def drop(session: Session, args: list[str]):
             found_item = item
             break
 
-    if found_item is None:
+    if found_item is None or found_idx is None:
         await session.send(f"You are not carrying '{target_name}'.")
         return
 
@@ -181,9 +181,9 @@ async def examine(session: Session, args: list[str]):
     # 3. Check floor items
     item_ids = await app_instance.redis.get_room_items(room_id)
     for iid in item_ids:
-        state = await app_instance.redis.get_item_state(iid)
-        if state and target_name in state.get("name", "").lower():
-            await session.send(f"\r\n{state.get('description', 'An item.')}")
+        istate = await app_instance.redis.get_item_state(iid)
+        if istate and target_name in istate.get("name", "").lower():
+            await session.send(f"\r\n{istate.get('description', 'An item.')}")
             return
 
     # 4. Check inventory

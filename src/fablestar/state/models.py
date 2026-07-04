@@ -7,9 +7,10 @@ from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Tex
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from fablestar.state.postgres import Base
+from fablestar.state.state_types import CharacterStats, InventoryItem
 
 
-def default_character_stats() -> dict:
+def default_character_stats() -> CharacterStats:
     return {
         "strength": 10,
         "dexterity": 10,
@@ -99,11 +100,11 @@ class Character(Base):
     # Moral standing for UI (-100 evil .. 0 neutral .. +100 good); gameplay can widen range later.
     reputation: Mapped[int] = mapped_column(Integer, default=0)
 
-    # Generic stats/data stored as JSON for "Vibe Coding" flexibility
-    # This allows us to add stats without frequent schema migrations
-    stats: Mapped[dict] = mapped_column(JSON, default=default_character_stats)
+    # JSON columns: shapes documented by state_types.CharacterStats / InventoryItem.
+    # Stored as JSON so stats can evolve without schema migrations.
+    stats: Mapped[CharacterStats] = mapped_column(JSON, default=default_character_stats)
 
-    inventory: Mapped[list] = mapped_column(JSON, default=list)
+    inventory: Mapped[list[InventoryItem]] = mapped_column(JSON, default=list)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(

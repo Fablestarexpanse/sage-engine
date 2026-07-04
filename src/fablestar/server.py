@@ -1144,9 +1144,13 @@ class FablestarServer:
         portrait_gen_failed: str | None = None
         create_portrait_charged = 0
         if not p_url:
-            err, p_url, pp, portrait_gen_failed, create_portrait_charged = (
-                await self._generate_create_portrait(account_id, name, pp)
-            )
+            (
+                err,
+                p_url,
+                pp,
+                portrait_gen_failed,
+                create_portrait_charged,
+            ) = await self._generate_create_portrait(account_id, name, pp)
             if err:
                 return err
 

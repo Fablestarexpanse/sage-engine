@@ -74,7 +74,3 @@ warn_unused_ignores = true
 warn_redundant_casts = true
 no_implicit_reexport = true
 
-[[tool.mypy.overrides]]
-module = ["fablestar.admin.*", "fablestar.commands.*"]
-# These modules use dynamic patterns (registry, app_instance) that mypy struggles with
-ignore_errors = true

@@ -50,7 +50,7 @@ class ProficiencyEngine:
         row = stats[CONDUIT_KEY]["proficiencies"].get(pid) or {}
         s = row.get("state", "raise")
         if s in ("raise", "lower", "lock"):
-            return s  # type: ignore[return-value]
+            return s
         return "raise"
 
     def _gate_ok(self, stats: dict[str, Any], leaf_id: str) -> bool:

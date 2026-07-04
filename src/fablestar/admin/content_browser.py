@@ -608,15 +608,15 @@ def galaxy_overview() -> dict[str, Any]:
                     sid = entry.replace(".yaml", "")
                     systems_out.append({"id": sid, "file": f"{sid}.yaml"})
                 elif isinstance(entry, dict):
-                    sid = entry.get("id") or entry.get("system_id")
-                    fn = entry.get("file") or f"{sid}.yaml"
-                    if sid:
-                        systems_out.append({"id": str(sid), "file": str(fn)})
+                    raw_sid = entry.get("id") or entry.get("system_id")
+                    fn = entry.get("file") or f"{raw_sid}.yaml"
+                    if raw_sid:
+                        systems_out.append({"id": str(raw_sid), "file": str(fn)})
         except Exception as e:
             logger.warning("galaxy.yaml: %s", e)
     if not systems_out and SYSTEMS_DIR.is_dir():
-        for f in sorted(SYSTEMS_DIR.glob("*.yaml")):
-            systems_out.append({"id": f.stem, "file": f.name})
+        for sys_path in sorted(SYSTEMS_DIR.glob("*.yaml")):
+            systems_out.append({"id": sys_path.stem, "file": sys_path.name})
 
     details: list[dict[str, Any]] = []
     for s in systems_out:
@@ -988,7 +988,7 @@ def save_ship_room(ship_id: str, room_local_id: str, patch: dict[str, Any]) -> P
         raise FileNotFoundError("ship_not_found")
     with open(path, encoding="utf-8") as f:
         data = yaml.safe_load(f) or {}
-    ship = data.get("ship") if isinstance(data.get("ship"), dict) else data
+    ship: dict[str, Any] = data["ship"] if isinstance(data.get("ship"), dict) else data
     rooms = list(ship.get("rooms") or [])
     found = False
     for i, r in enumerate(rooms):

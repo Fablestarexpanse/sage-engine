@@ -55,9 +55,9 @@ async def look(session: Session, args: list[str]):
         item_ids = await app_instance.redis.get_room_items(room_id)
         floor_items = []
         for iid in item_ids:
-            state = await app_instance.redis.get_item_state(iid)
-            if state:
-                floor_items.append(state["name"])
+            istate = await app_instance.redis.get_item_state(iid)
+            if istate:
+                floor_items.append(istate["name"])
         if floor_items:
             await session.send(f"Items on floor: {', '.join(floor_items)}")
     else:
@@ -73,5 +73,7 @@ async def help_cmd(session: Session, args: list[str]):
     cmds = sorted(registry._commands.keys())
     for cmd_name in cmds:
         cmd = registry.get(cmd_name)
+        if cmd is None:
+            continue
         doc = cmd.handler.__doc__ or "No description."
         await session.send(f"{cmd_name.ljust(10)} - {doc.splitlines()[0]}")
