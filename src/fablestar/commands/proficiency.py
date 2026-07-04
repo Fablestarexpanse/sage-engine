@@ -28,10 +28,6 @@ def _top_leaves(stats: dict, registry, limit: int = 8) -> list[tuple[str, int]]:
 
 
 def _parse_proficiency_id(args: list[str]) -> str:
-    if not args:
-        return ""
-    if len(args) == 1:
-        return args[0].strip()
     return ".".join(a.strip() for a in args if a.strip())
 
 

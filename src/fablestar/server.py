@@ -173,9 +173,6 @@ class FablestarServer:
         self.llm_client = LLMClient(self.config.llm)
         self.prompt_manager = PromptManager()
 
-        # Set global instance (must happen before commands import app_instance)
-        app.app_instance = self
-
         # Internal state
         self._nexus_task: asyncio.Task | None = None
         self._tick_task: asyncio.Task | None = None
@@ -423,9 +420,10 @@ class FablestarServer:
         """Initialize and start all sub-systems."""
         logger.info("Fablestar MUD Platform starting up...")
 
-        # 0. Connect to state stores
+        # 0. State stores — Redis must be ready before EntitySpawnManager and PersistenceManager
         await self.redis.connect()
 
+        # 0a. Bootstrap dev accounts (requires Redis + Postgres; best-effort)
         try:
             await staff_service.ensure_dev_default_staff(self)
         except Exception as e:
@@ -435,7 +433,7 @@ class FablestarServer:
         except Exception as e:
             logger.warning("Default dev play accounts not ensured: %s", e)
 
-        # 1. Load Command Modules
+        # 1. Command registry — must complete before NexusApp handles any WebSocket connections
         registry.reload_module("fablestar.commands.info")
         registry.reload_module("fablestar.commands.communication")
         registry.reload_module("fablestar.commands.movement")
@@ -444,17 +442,17 @@ class FablestarServer:
         registry.reload_module("fablestar.commands.proficiency")
         registry.reload_module("fablestar.commands.admin")
 
-        # 2. Register base tick handlers
+        # 2. Tick handlers — must be registered before the tick loop starts in step 4
         self.tick_manager.register(self.spawner.on_tick)
         self.tick_manager.register(self.persistence.on_tick)
 
-        # 2. Start subsystems
+        # 3. HotReloader — watches content/ and commands/; safe to start any time after step 1
         await self.hot_reloader.start(["content", "src/fablestar/commands", "config", "prompts"])
 
-        # 3. Start the Nexus (FastAPI) in the background
+        # 4. NexusApp (FastAPI HTTP + WebSocket) — requires command registry (step 1) to be ready
         self._nexus_task = asyncio.create_task(self.nexus.start())
 
-        # 4. Start the tick loop
+        # 5. Tick loop — requires tick handlers registered (step 2) and Redis connected (step 0)
         self._tick_task = asyncio.create_task(self.tick_manager.run())
 
         logger.info("Startup complete. Server is running.")
@@ -1375,6 +1373,7 @@ async def run_server():
     root_logger.addHandler(file_handler)
 
     server = FablestarServer()
+    app.app_instance = server  # must be set before commands import app_instance
     await server.startup()
 
     # Await both long-running tasks (nexus HTTP + tick loop).

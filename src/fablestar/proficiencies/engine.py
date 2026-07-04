@@ -89,31 +89,27 @@ class ProficiencyEngine:
             return 0
         ensure_proficiency_block(stats)
         prof = stats[CONDUIT_KEY]["proficiencies"]
-        candidates: list[str] = []
+        candidates: list[tuple[str, int, int]] = []  # (pid, lvl, floor_v)
         for pid, row in prof.items():
             if row.get("state") != "lower":
                 continue
-            node = self.registry.get_node(pid)
-            if not node:
+            if not self.registry.get_node(pid):
                 continue
             peak = int(row.get("peak", row.get("level", 0)))
             lvl = int(row.get("level", 0))
             floor_v = decay_floor_for_peak(peak)
             if lvl > floor_v:
-                candidates.append(pid)
-        candidates.sort(key=lambda x: int(prof[x].get("level", 0)), reverse=True)
+                candidates.append((pid, lvl, floor_v))
+        candidates.sort(key=lambda t: t[1], reverse=True)
         applied = 0
-        for pid in candidates:
+        for pid, lvl, floor_v in candidates:
             if applied >= amount:
                 break
-            row = prof[pid]
-            peak = int(row.get("peak", row.get("level", 0)))
-            floor_v = decay_floor_for_peak(peak)
-            lvl = int(row.get("level", 0))
             room = lvl - floor_v
             if room <= 0:
                 continue
             dec = min(room, amount - applied)
+            row = prof[pid]
             row["level"] = lvl - dec
             prof[pid] = row
             applied += dec

@@ -82,9 +82,7 @@ async def attack(session: Session, args: list[str]):
     if not entity_dead:
         entity_attack = target_state.get("attack", 3)
         counter_damage = _roll_damage(entity_attack, player_defense_rating)
-        player_stats["hp"] = player_stats.get("hp", 20) - counter_damage
-        if player_stats["hp"] < 0:
-            player_stats["hp"] = 0
+        player_stats["hp"] = max(0, player_stats.get("hp", 20) - counter_damage)
 
     # Field proficiency: meaningful combat use (best-effort; roll may fail).
     try:
