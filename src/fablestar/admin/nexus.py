@@ -58,6 +58,13 @@ class NexusApp:
     """
     FastAPI-based administration server (The Nexus).
     Provides the backend for the World Administration Console.
+
+    Deliberately takes the whole server rather than individual subsystems:
+    settings routes replace ``server.config`` live (so a captured config object
+    would go stale), content routes write ``server.last_content_reload_at``, and
+    the routers collectively span every subsystem. The server→nexus→server
+    reference pair is the intended composition — the server owns the app's
+    lifecycle; the app exposes the server's API surface.
     """
 
     def __init__(self, server: FablestarServer):

@@ -15,9 +15,6 @@ logger = logging.getLogger(__name__)
 
 VALID_ROLES = frozenset({"head_admin", "admin", "gm"})
 
-DEV_DEFAULT_STAFF_USERNAME = "staff"
-DEV_DEFAULT_STAFF_PASSWORD = "testpass"
-
 
 def _hash_password(pw: str) -> str:
     return bcrypt.hashpw(pw.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
@@ -42,31 +39,6 @@ def staff_public(row: AdminStaff) -> dict[str, Any]:
         "created_at": row.created_at.isoformat() if row.created_at else None,
         "updated_at": row.updated_at.isoformat() if row.updated_at else None,
     }
-
-
-async def ensure_dev_default_staff(server: Any) -> None:
-    """If dev_mode, ensure admin_staff staff/test exists (head_admin). Create-only."""
-    if not getattr(server.config.server, "dev_mode", False):
-        return
-    async with server.db.session_factory() as session:
-        r = await session.execute(
-            select(AdminStaff).where(AdminStaff.username == DEV_DEFAULT_STAFF_USERNAME)
-        )
-        if r.scalar_one_or_none() is not None:
-            return
-    await create_staff(
-        server,
-        username=DEV_DEFAULT_STAFF_USERNAME,
-        password=DEV_DEFAULT_STAFF_PASSWORD,
-        display_name="Dev staff",
-        role="head_admin",
-        permissions={},
-    )
-    logger.warning(
-        "dev_mode: created default Nexus login %r / %r (head_admin)",
-        DEV_DEFAULT_STAFF_USERNAME,
-        DEV_DEFAULT_STAFF_PASSWORD,
-    )
 
 
 async def find_staff_by_play_username(server: Any, play_username: str) -> AdminStaff | None:

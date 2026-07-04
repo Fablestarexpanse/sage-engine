@@ -15,10 +15,10 @@ from typing import Any
 from sqlalchemy import select
 
 from fablestar import app
-from fablestar.admin import player_accounts, staff_service
 from fablestar.admin.comfyui_persist import save_comfyui_toml
 from fablestar.admin.llm_persist import save_llm_toml
 from fablestar.admin.nexus import NexusApp
+from fablestar.bootstrap import ensure_dev_defaults
 from fablestar.commands.registry import registry
 from fablestar.core.config import ComfyUIConfig, Config, LLMConfig, load_config
 from fablestar.core.tick import TickManager
@@ -286,15 +286,8 @@ class FablestarServer:
         # 0. State stores — Redis must be ready before EntitySpawnManager and PersistenceManager
         await self.redis.connect()
 
-        # 0a. Bootstrap dev accounts (requires Redis + Postgres; best-effort)
-        try:
-            await staff_service.ensure_dev_default_staff(self)
-        except Exception as e:
-            logger.warning("Default dev staff account not ensured: %s", e)
-        try:
-            await player_accounts.ensure_dev_default_play_accounts(self)
-        except Exception as e:
-            logger.warning("Default dev play accounts not ensured: %s", e)
+        # 0a. Bootstrap dev accounts (requires Postgres; best-effort, never fatal)
+        await ensure_dev_defaults(self.db, self.config)
 
         # 1. Command registry — must complete before NexusApp handles any WebSocket connections
         registry.reload_module("fablestar.commands.info")

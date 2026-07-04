@@ -12,11 +12,6 @@ from fablestar.state.models import Account, AdminStaff, Character
 
 logger = logging.getLogger(__name__)
 
-DEV_DEFAULT_PLAY_LOGINS: tuple[tuple[str, str, bool], ...] = (
-    ("staff", "testpass", True),
-    ("player", "testpass", False),
-)
-
 
 def _character_admin_dict(c: Character) -> dict[str, Any]:
     return {
@@ -253,32 +248,3 @@ async def patch_character(
         )
 
     return out
-
-
-async def ensure_dev_default_play_accounts(server: Any) -> None:
-    if not getattr(server.config.server, "dev_mode", False):
-        return
-    import bcrypt
-
-    start_credits = int(server.config.comfyui.starting_echo_credits)
-    for username, password, is_gm in DEV_DEFAULT_PLAY_LOGINS:
-        async with server.db.session_factory() as session:
-            r = await session.execute(select(Account).where(Account.username == username))
-            if r.scalar_one_or_none() is not None:
-                continue
-            pw_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-            session.add(
-                Account(
-                    username=username,
-                    password_hash=pw_hash,
-                    echo_credits=start_credits,
-                    is_gm=is_gm,
-                )
-            )
-            await session.commit()
-            logger.warning(
-                "dev_mode: created play login %r / %r (is_gm=%s)",
-                username,
-                password,
-                is_gm,
-            )
