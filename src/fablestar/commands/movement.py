@@ -1,9 +1,12 @@
 """Movement commands — cardinal and vertical directions, all delegating to move_to()."""
 
+import logging
 import random
 
 from fablestar.commands.registry import command
 from fablestar.network.session import Session
+
+logger = logging.getLogger(__name__)
 
 
 def move_to(direction: str):
@@ -54,7 +57,7 @@ def move_to(direction: str):
                 )
                 await app_instance.redis.set_player_stats(player_id, stats)
             except Exception:
-                pass
+                logger.warning("Traversal proficiency gain failed", exc_info=True)
 
         # 4. Describe new room
         await session.send(f"You move {direction}.")

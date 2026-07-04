@@ -97,7 +97,7 @@ async def attack(session: Session, args: list[str]):
         ]
         eng.try_field_gain(player_stats, random.choice(pool), context={"vr": False})
     except Exception as exc:
-        logger.debug("Combat proficiency gain skipped: %s", exc)
+        logger.warning("Combat proficiency gain skipped: %s", exc)
 
     await app_instance.redis.set_player_stats(player_id, player_stats)
 
