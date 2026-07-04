@@ -114,11 +114,14 @@ class TestCommandDispatcher(unittest.TestCase):
 
     def setUp(self) -> None:
         self.dispatcher = CommandDispatcher()
+        self._commands_snapshot = dict(registry._commands)
+        self._aliases_snapshot = dict(registry._aliases)
 
     def tearDown(self) -> None:
-        # Clean up any test commands registered on the singleton
-        registry._commands.pop("ping", None)
+        registry._commands.clear()
+        registry._commands.update(self._commands_snapshot)
         registry._aliases.clear()
+        registry._aliases.update(self._aliases_snapshot)
 
     def test_empty_input_sends_nothing(self) -> None:
         asyncio.run(self._empty_input())
