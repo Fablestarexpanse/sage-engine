@@ -19,6 +19,7 @@ from fablestar.admin import player_accounts, staff_service
 from fablestar.admin.comfyui_persist import save_comfyui_toml
 from fablestar.admin.llm_persist import save_llm_toml
 from fablestar.admin.nexus import NexusApp
+from fablestar.comfyui_client import generate_portrait_png
 from fablestar.commands.registry import registry
 from fablestar.core.config import (
     ComfyUIConfig,
@@ -28,7 +29,7 @@ from fablestar.core.config import (
     resolve_config_asset_path,
 )
 from fablestar.core.tick import TickManager
-from fablestar.integration.comfyui_client import generate_portrait_png
+from fablestar.hot_reload import HotReloader
 from fablestar.llm.client import LLMClient
 from fablestar.llm.prompts import PromptManager
 from fablestar.network.session import Session, SessionManager
@@ -37,7 +38,6 @@ from fablestar.state.models import Account, AccountSceneImage, Character
 from fablestar.state.persistence import PersistenceManager
 from fablestar.state.postgres import PostgresState
 from fablestar.state.redis_client import RedisState
-from fablestar.tools.hot_reload import HotReloader
 from fablestar.world.loader import ContentLoader
 from fablestar.world.spawner import EntitySpawnManager
 
@@ -945,7 +945,7 @@ class FablestarServer:
         if not cfg.enabled or not area_resolved.is_file():
             return {"ok": False, "error": "comfyui_not_configured"}
 
-        from fablestar.integration.comfyui_client import generate_comfy_png
+        from fablestar.comfyui_client import generate_comfy_png
 
         try:
             png, _ = await generate_comfy_png(cfg, image_prompt, kind="area")

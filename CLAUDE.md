@@ -23,14 +23,14 @@ src/fablestar/          Python server (Nexus)
   __main__.py           Entry point: asyncio.run(run_server())
   admin/                FastAPI REST + WebSocket admin API (NexusApp)
   commands/             MUD command handlers (@command decorator)
-  core/                 Config, EventBus, TickManager
-  integration/          External service clients (ComfyUI)
+  core/                 Config, TickManager
+  comfyui_client.py     ComfyUI image-generation client
+  hot_reload.py         HotReloader (inotify/watchdog)
   llm/                  LLM client, prompt rendering, output validation
-  network/              Protocol ABC, WebSocketProtocol, Session state machine
+  network/              WebSocketProtocol, Session state machine
   parser/               Tokenizer + CommandDispatcher
   proficiencies/        Conduit proficiency catalog, registry, engine
   state/                Redis (hot state), Postgres (persistent), ORM models
-  tools/                HotReloader (inotify/watchdog)
   world/                ContentLoader, world Pydantic models, EntitySpawnManager
 
 admin-ui/               React admin console (Vite, port 5174)
