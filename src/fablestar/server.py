@@ -26,7 +26,6 @@ from fablestar.core.config import (
     load_config,
     resolve_config_asset_path,
 )
-from fablestar.core.events import EventBus
 from fablestar.core.tick import TickManager
 from fablestar.integration.comfyui_client import generate_portrait_png
 from fablestar.llm.client import LLMClient
@@ -159,7 +158,6 @@ class FablestarServer:
 
     def __init__(self, config: Config | None = None):
         self.config = config or load_config()
-        self.event_bus = EventBus()
         self.tick_manager = TickManager(tick_rate=self.config.server.tick_rate)
         self.session_manager = SessionManager()
         self.redis = RedisState(self.config.redis)
@@ -657,6 +655,10 @@ class FablestarServer:
             "pixels_per_usd": int(c.pixels_per_usd),
             "currency_display_name": (c.currency_display_name or "pixels").strip() or "pixels",
         }
+
+    async def ping_comfyui(self) -> tuple[bool, str]:
+        """Return (reachable, error_message) for the configured ComfyUI base URL."""
+        return await _ping_comfyui_http(self.config.comfyui.base_url)
 
     async def forge_suggest_area_image_prompt(
         self,

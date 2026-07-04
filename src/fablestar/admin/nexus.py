@@ -37,6 +37,7 @@ from starlette.responses import FileResponse, JSONResponse
 
 from fablestar.admin import content_browser, player_accounts, staff_service
 from fablestar.admin.admin_security import (
+    NAV_TOOL_IDS,
     AdminContext,
     NexusAdminAuthMiddleware,
     decode_staff_token,
@@ -92,6 +93,9 @@ def _assert_console_role_grant_allowed(ctx: AdminContext, target_role: str) -> N
 
 
 def require_tool(tool_id: str):
+    if tool_id not in NAV_TOOL_IDS:
+        raise ValueError(f"require_tool: unknown tool_id {tool_id!r} — not in NAV_TOOL_IDS")
+
     def _dep(request: Request) -> AdminContext:
         ctx = get_admin_ctx(request)
         if not ctx.may_use_tool(tool_id):
@@ -1080,10 +1084,8 @@ class NexusApp:
             _ctx: Annotated[AdminContext, Depends(require_tool("server"))],
         ):
             """Ping the configured ComfyUI base_url and return reachability."""
-            from fablestar.server import _ping_comfyui_http
-
             c = self.server.config.comfyui
-            ok, err = await _ping_comfyui_http(c.base_url)
+            ok, err = await self.server.ping_comfyui()
             return {"reachable": ok, "base_url": c.base_url, "error": err or None}
 
         @self.app.post("/forge/generate")
