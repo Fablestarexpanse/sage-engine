@@ -5,6 +5,7 @@ import json
 import logging
 import re
 import uuid
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -136,18 +137,23 @@ def _character_play_dict(character: Character) -> dict[str, Any]:
     }
 
 
-def _snapshot_from_orm(character: Any) -> Any:
-    """Plain snapshot usable after the SQLAlchemy session closes."""
-    return type(
-        "_CharSnapshot",
-        (),
-        {
-            "name": character.name,
-            "room_id": character.room_id,
-            "stats": dict(character.stats or {}),
-            "inventory": list(character.inventory or []),
-        },
-    )()
+@dataclass
+class _CharSnapshot:
+    """Plain snapshot of ORM Character data usable after the SQLAlchemy session closes."""
+
+    name: str
+    room_id: str
+    stats: dict[str, Any]
+    inventory: list[Any]
+
+
+def _snapshot_from_orm(character: Any) -> _CharSnapshot:
+    return _CharSnapshot(
+        name=character.name,
+        room_id=character.room_id,
+        stats=dict(character.stats or {}),
+        inventory=list(character.inventory or []),
+    )
 
 
 class FablestarServer:
