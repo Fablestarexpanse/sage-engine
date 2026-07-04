@@ -1264,17 +1264,15 @@ class FablestarServer:
             total_lv = total_proficiency_levels(norm_stats, registry=reg)
         except Exception:
             total_lv = total_proficiency_levels(norm_stats)
-        await session.send(
-            json.dumps(
-                {
-                    "client_notice": "character_snapshot",
-                    "character_name": character.name,
-                    "stats": norm_stats,
-                    "resonance_levels_total": total_lv,
-                }
-            )
-            + "\r\n"
-        )
+        from fablestar.network.play_messages import CharacterSnapshotNotice
+
+        snapshot: CharacterSnapshotNotice = {
+            "client_notice": "character_snapshot",
+            "character_name": character.name,
+            "stats": norm_stats,
+            "resonance_levels_total": total_lv,
+        }
+        await session.send(json.dumps(snapshot) + "\r\n")
 
         # Initial look
         await self.dispatcher.dispatch(session, "look")

@@ -7,6 +7,8 @@ Error-reporting convention
 * Player WebSocket/REST endpoints (/play/*) return a JSON dict with ``{"ok": False, ...}``
   so the client can distinguish auth failures from transport errors without parsing status codes.
   This split is intentional — admin callers are server-side tools; player callers are browsers.
+
+Play message shapes are documented as TypedDicts in ``fablestar.network.play_messages``.
 """
 
 from __future__ import annotations
