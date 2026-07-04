@@ -1,7 +1,5 @@
 """Pydantic world models — RoomModel, EntityTemplate, ItemTemplate, StarSystemModel, ShipTemplate."""
 
-from typing import Any
-
 from pydantic import BaseModel, Field
 
 
@@ -77,8 +75,28 @@ class ItemTemplate(BaseModel):
     tags: set[str] = Field(default_factory=set)
 
 
+class SystemConnection(BaseModel):
+    target: str
+    type: str
+    bidirectional: bool = True
+    stability: str | None = None
+
+
+class ZoneRef(BaseModel):
+    zone_ref: str
+
+
+class CelestialBody(BaseModel):
+    id: str
+    type: str
+    name: str
+    orbit: float | None = None
+    orbits: str | None = None
+    zones: list[ZoneRef] = Field(default_factory=list)
+
+
 class StarSystemModel(BaseModel):
-    """On-disk star system YAML under content/world/systems/ (flexible bodies/connections)."""
+    """On-disk star system YAML under content/world/systems/."""
 
     id: str
     name: str
@@ -86,8 +104,16 @@ class StarSystemModel(BaseModel):
     star: dict[str, str] = Field(default_factory=dict)
     faction: str = "neutral"
     security: str = "low"
-    connections: list[dict[str, Any]] = Field(default_factory=list)
-    bodies: list[dict[str, Any]] = Field(default_factory=list)
+    connections: list[SystemConnection] = Field(default_factory=list)
+    bodies: list[CelestialBody] = Field(default_factory=list)
+
+
+class ShipRoom(BaseModel):
+    id: str
+    name: str
+    type: str = "room"
+    description: dict[str, str] = Field(default_factory=dict)
+    exits: dict[str, ExitModel] = Field(default_factory=dict)
 
 
 class ShipTemplate(BaseModel):
@@ -96,7 +122,7 @@ class ShipTemplate(BaseModel):
     id: str
     name: str
     size: str = "small"
-    rooms: list[dict[str, Any]] = Field(default_factory=list)
+    rooms: list[ShipRoom] = Field(default_factory=list)
 
 
 class GlyphEffectModel(BaseModel):

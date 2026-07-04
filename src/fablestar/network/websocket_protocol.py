@@ -1,17 +1,12 @@
-"""WebSocketProtocol — wraps a FastAPI WebSocket to implement the Protocol ABC."""
+"""WebSocketProtocol — wraps a FastAPI WebSocket for player sessions."""
 
 import asyncio
 
 from fastapi import WebSocket
 
-from fablestar.network.protocol import Protocol
 
-
-class WebSocketProtocol(Protocol):
-    """
-    Implementation of the Protocol interface for FastAPIs WebSockets.
-    Allows the engine to communicate with web-based clients.
-    """
+class WebSocketProtocol:
+    """WebSocket transport for a player session."""
 
     def __init__(self, websocket: WebSocket):
         self._websocket = websocket

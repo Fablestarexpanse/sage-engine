@@ -124,17 +124,8 @@ class PlayAuthBody(BaseModel):
 
 
 class PlayAuthCharactersBody(BaseModel):
-    """Re-list characters; optional delete, scene LLM suggest, or scene Comfy generate (same auth as login)."""
-
     username: str
     password: str = Field(..., min_length=8)
-    delete_character_id: int | None = None
-    suggest_scene: bool = False
-    narrative_context: str = ""
-    room_hint: str = ""
-    generate_scene: bool = False
-    scene_prompt: str = ""
-    character_id: int | None = None
 
 
 class PlayCreateCharacterBody(BaseModel):
@@ -661,27 +652,7 @@ class NexusApp:
 
         @self.app.post("/play/auth/characters")
         async def play_auth_characters(body: PlayAuthCharactersBody):
-            """Re-list characters, or scene suggest/generate/delete when those flags/ids are set."""
-            if body.suggest_scene:
-                return await self.server.play_suggest_scene_prompt(
-                    body.username,
-                    body.password,
-                    narrative_context=body.narrative_context,
-                    room_hint=body.room_hint,
-                )
-            if body.generate_scene:
-                return await self.server.play_generate_scene_image(
-                    body.username,
-                    body.password,
-                    body.scene_prompt,
-                    character_id=body.character_id,
-                )
-            if body.delete_character_id is not None:
-                if body.delete_character_id < 1:
-                    return {"ok": False, "error": "character_id_invalid"}
-                return await self.server.play_delete_character(
-                    body.username, body.password, body.delete_character_id
-                )
+            """Re-fetch character list and account fields for the authenticated player."""
             return await self.server.play_refresh_characters(body.username, body.password)
 
         @self.app.get("/play/comfyui/status")

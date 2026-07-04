@@ -4,7 +4,7 @@ import logging
 import uuid
 from enum import Enum, auto
 
-from fablestar.network.protocol import Protocol
+from fablestar.network.websocket_protocol import WebSocketProtocol
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ class Session:
     Bridges the network layer to the player state.
     """
 
-    def __init__(self, session_id: str, protocol: Protocol):
+    def __init__(self, session_id: str, protocol: WebSocketProtocol):
         self.id = session_id
         self.protocol = protocol
         self.state = SessionState.CONNECTED
@@ -54,7 +54,7 @@ class SessionManager:
         self.sessions: dict[str, Session] = {}
         self.player_to_session: dict[str, str] = {}
 
-    async def create_session(self, protocol: Protocol) -> Session:
+    async def create_session(self, protocol: WebSocketProtocol) -> Session:
         """Create and track a new session."""
         session_id = str(uuid.uuid4())
         session = Session(session_id, protocol)
