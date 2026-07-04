@@ -26,35 +26,41 @@ class PersistenceManager:
     async def flush_all(self):
         """Perform a full synchronization of active world state/players."""
         logger.info("Persistence: Starting background flush to PostgreSQL...")
-
-        # 1. Sync Active Players
-        active_players = await self.server.redis.client.keys("player:*:location")
-        for key in active_players:
-            player_id = key.split(":")[1]
-            await self.sync_character(player_id)
-
+        try:
+            active_players = await self.server.redis.client.keys("player:*:location")
+            for key in active_players:
+                player_id = key.split(":")[1]
+                await self.sync_character(player_id)
+        except Exception:
+            logger.exception("Persistence: flush_all failed; game loop continues")
+            return
         logger.info("Persistence: Flush complete.")
 
     async def sync_character(self, player_id: str):
         """Sync a single character's Redis state (location, stats, inventory) to the DB."""
-        current_room = await self.server.redis.get_player_location(player_id)
-        current_stats = await self.server.redis.get_player_stats(player_id)
-        current_inventory = await self.server.redis.get_player_inventory(player_id)
+        try:
+            current_room = await self.server.redis.get_player_location(player_id)
+            current_stats = await self.server.redis.get_player_stats(player_id)
+            current_inventory = await self.server.redis.get_player_inventory(player_id)
 
-        async with self.server.db.session_factory() as session:
-            async with session.begin():
-                result = await session.execute(select(Character).where(Character.name == player_id))
-                character = result.scalar_one_or_none()
+            async with self.server.db.session_factory() as session:
+                async with session.begin():
+                    result = await session.execute(
+                        select(Character).where(Character.name == player_id)
+                    )
+                    character = result.scalar_one_or_none()
 
-                if character:
-                    if current_room:
-                        character.room_id = current_room
-                    if current_stats:
-                        character.stats = current_stats
-                    if current_inventory is not None:
-                        character.inventory = current_inventory
-                    character.updated_at = datetime.utcnow()
-                    logger.debug(f"Synced character {player_id} to DB.")
+                    if character:
+                        if current_room:
+                            character.room_id = current_room
+                        if current_stats:
+                            character.stats = current_stats
+                        if current_inventory is not None:
+                            character.inventory = current_inventory
+                        character.updated_at = datetime.utcnow()
+                        logger.debug(f"Synced character {player_id} to DB.")
+        except Exception:
+            logger.exception("Persistence: sync_character failed for %s", player_id)
 
     async def on_tick(self, tick_count: int):
         """Periodic background task triggered by the TickManager."""

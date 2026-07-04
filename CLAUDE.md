@@ -218,6 +218,8 @@ Proficiencies are organised as dot-path trees, e.g. `combat.melee.blades`. Five 
 
 Hybrid mode (`proficiency_combat_hybrid = true` in `server.toml`) blends legacy stat-based and proficiency-based damage. Disable once proficiencies are fully populated.
 
+**Current status:** The flag defaults to `true` because several combat sub-domains are missing leaf definitions. Once all 12 domains have full leaf coverage and in-game skill usage has been validated, flip the flag to `false` and remove the legacy stat path from `proficiencies/state_helpers.py:combat_attack_defense_from_stats`. Track completion as a milestone before 1.0.
+
 ---
 
 ## Admin console (Nexus)
@@ -291,6 +293,15 @@ Default ports: Nexus 8001, player UI 5173, admin UI 5174, Postgres 5432, Redis 6
 WorldForge is a Tauri desktop app (`worldforge/`) for visually editing zones and rooms. It exports content directly into `content/world/`. Stamps (reusable room groups) are saved to `content/world/stamps/`.
 
 **Known issue:** WorldForge historically wrote exports to a nested `content/world/content/world/` path due to a root path misconfiguration. If you see a `content/world/content/` subtree appear after a WorldForge export, the room YAMLs must be moved to `content/world/zones/{zone_id}/rooms/` and the duplicate tree removed. This was corrected manually; check the WorldForge content root setting if it recurs.
+
+### WorldForge ↔ Nexus write-through API
+
+WorldForge uses the admin API to save rooms without requiring direct filesystem access. Key endpoints:
+
+- **`POST /forge/inject`** — write a room YAML. Body: `{id: "zone_id:room_slug", yaml_content: "..."}`. Requires the `forge` tool permission and `may_write_zone(zone_id)`. Both `zone_id` and `room_slug` are validated against `^[a-zA-Z0-9_-]+$` (no path traversal). Returns `{status: "success", path: "..."}`.
+- **`POST /forge/generate`** — LLM-generate a room YAML draft from a natural-language prompt.
+
+Zone write permissions are controlled by `AdminStaff.permissions.zones` — `["*"]` means all zones, an explicit list restricts to those zone IDs.
 
 ---
 

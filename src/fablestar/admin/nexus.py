@@ -1,4 +1,13 @@
-"""NexusApp — FastAPI application with all admin REST routes, WebSocket handlers, and middleware."""
+"""NexusApp — FastAPI application with all admin REST routes, WebSocket handlers, and middleware.
+
+Error-reporting convention
+--------------------------
+* Admin REST endpoints (/admin/*, /forge/*, /comfyui/*) raise ``HTTPException`` on failure,
+  consistent with FastAPI idioms.
+* Player WebSocket/REST endpoints (/play/*) return a JSON dict with ``{"ok": False, ...}``
+  so the client can distinguish auth failures from transport errors without parsing status codes.
+  This split is intentional — admin callers are server-side tools; player callers are browsers.
+"""
 
 from __future__ import annotations
 
