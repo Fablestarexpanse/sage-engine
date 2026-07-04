@@ -42,12 +42,15 @@ async def attack(session: Session, args: list[str]):
     for eid in entity_ids:
         state = await app_instance.redis.get_entity_state(eid)
         if state and state.get("alive", True):
-            if target_name in state.get("name", "").lower() or target_name in state.get("template", "").lower():
+            if (
+                target_name in state.get("name", "").lower()
+                or target_name in state.get("template", "").lower()
+            ):
                 target_state = state
                 target_id = eid
                 break
 
-    if not target_state:
+    if target_state is None or target_id is None:
         await session.send(f"You see no '{target_name}' here to attack.")
         return
 
@@ -68,20 +71,16 @@ async def attack(session: Session, args: list[str]):
 
     target_state["hp"] = target_state["hp"] - damage_dealt
     entity_dead = target_state["hp"] <= 0
-
     if entity_dead:
         target_state["alive"] = False
-    else:
-        await app_instance.redis.set_entity_state(target_id, target_state)
+    await app_instance.redis.set_entity_state(target_id, target_state)
 
     # --- Entity counter-attacks (if still alive) ---
     counter_damage = 0
     if not entity_dead:
         entity_attack = target_state.get("attack", 3)
         counter_damage = _roll_damage(entity_attack, player_defense_rating)
-        player_stats["hp"] = player_stats.get("hp", 20) - counter_damage
-        if player_stats["hp"] < 0:
-            player_stats["hp"] = 0
+        player_stats["hp"] = max(0, player_stats.get("hp", 20) - counter_damage)
 
     # Field proficiency: meaningful combat use (best-effort; roll may fail).
     try:
@@ -92,9 +91,9 @@ async def attack(session: Session, args: list[str]):
             "combat.ballistic.sidearms",
             "combat.tactics.threat_assessment",
         ]
-        eng.try_field_gain(player_stats, random.choice(pool), context={"vr": False})
+        eng.try_field_gain(player_stats, random.choice(pool), vr=False)
     except Exception as exc:
-        logger.debug("Combat proficiency gain skipped: %s", exc)
+        logger.warning("Combat proficiency gain skipped: %s", exc)
 
     await app_instance.redis.set_player_stats(player_id, player_stats)
 
@@ -154,7 +153,6 @@ async def attack(session: Session, args: list[str]):
 async def flee(session: Session, args: list[str]):
     """Attempt to flee combat. Usage: flee"""
     from fablestar.app import app_instance
-    from fablestar.parser.dispatcher import CommandDispatcher
 
     player_id = session.player_id
     if not player_id:
@@ -175,7 +173,6 @@ async def flee(session: Session, args: list[str]):
         target_room_id = room.exits[direction].destination
         await app_instance.redis.set_player_location(player_id, target_room_id)
         await session.send(f"You flee {direction}!")
-        dispatcher = CommandDispatcher()
-        await dispatcher.dispatch(session, "look")
+        await app_instance.dispatcher.dispatch(session, "look")
     else:
         await session.send("You fail to escape!")

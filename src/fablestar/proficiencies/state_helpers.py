@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from collections.abc import MutableMapping
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any
 
@@ -18,7 +19,7 @@ def _default_conduit_dict() -> dict[str, Any]:
     return ProficiencyStatsBlock().model_dump()
 
 
-def ensure_proficiency_block(stats: dict[str, Any]) -> dict[str, Any]:
+def ensure_proficiency_block(stats: MutableMapping[str, Any]) -> MutableMapping[str, Any]:
     """Mutate and return stats with a nested conduit proficiency block."""
     if CONDUIT_KEY not in stats or not isinstance(stats[CONDUIT_KEY], dict):
         stats[CONDUIT_KEY] = _default_conduit_dict()
@@ -48,11 +49,6 @@ def migrate_legacy_stats(stats: dict[str, Any]) -> dict[str, Any]:
         ca["PRS"] = max(1, min(200, 10 + max(0, p - 10) // 2))
     ensure_proficiency_block(out)
     return out
-
-
-def get_conduit_block(stats: dict[str, Any]) -> dict[str, Any]:
-    ensure_proficiency_block(stats)
-    return stats[CONDUIT_KEY]
 
 
 def total_proficiency_levels(

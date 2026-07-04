@@ -7,5 +7,6 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from fablestar.server import FablestarServer
 
-# This will hold the global server instance
-app_instance: FablestarServer | None = None
+# Global server instance, assigned by run_server() before any command handler runs.
+# Typed non-optional: handlers import it lazily inside function bodies, after assignment.
+app_instance: FablestarServer = None  # type: ignore[assignment]

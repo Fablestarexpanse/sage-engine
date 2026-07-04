@@ -14,6 +14,7 @@ import {
   playGenerateSceneImage,
   playFetchProficiencyCatalog,
   playApiBaseUrl,
+  getPlayToken,
 } from "./playApi.js";
 import { ChargenProficienciesStep } from "./ChargenProficienciesStep.jsx";
 import FablestarClient from "./mud/FablestarClient.jsx";
@@ -2069,14 +2070,14 @@ export default function App() {
 
     ws.onopen = () => {
       setWsConnected(true);
-      const payload = {
-        username: playSession.username,
-        password: passwordRef.current,
-      };
+      const token = getPlayToken();
+      const payload = token
+        ? { token }
+        : { username: playSession.username, password: passwordRef.current };
       if (playSession.characterId != null) payload.character_id = playSession.characterId;
       ws.send(JSON.stringify(payload));
       // Keep password in memory for this session: /play/* HTTP routes (scene LLM, Comfy, portraits)
-      // reuse the same credentials; clearing here caused false "Session expired" after connect.
+      // reuse the same credentials on older Nexus builds without token support.
     };
 
     ws.onmessage = (ev) => {

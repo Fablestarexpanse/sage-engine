@@ -15,6 +15,34 @@ export function playApiBaseUrl() {
   return b || "(this origin — dev proxy to Nexus)";
 }
 
+/**
+ * Play session token (JWT) issued by /play/auth/login and /play/auth/register.
+ * Held in memory only; sent on subsequent /play/* calls so the password is not
+ * re-transmitted on every action. Server falls back to username/password when absent.
+ */
+let playToken = "";
+
+export function getPlayToken() {
+  return playToken;
+}
+
+export function clearPlayToken() {
+  playToken = "";
+}
+
+function captureToken(data) {
+  if (data && typeof data.play_token === "string" && data.play_token) {
+    playToken = data.play_token;
+  }
+  return data;
+}
+
+/** Auth fields for authenticated /play/* payloads: token when we have one, else credentials. */
+function authFields(username, password) {
+  if (playToken) return { token: playToken };
+  return { username, password };
+}
+
 async function handlePlayResponse(r) {
   if (r.status === 502 || r.status === 503) {
     throw new Error(
@@ -54,7 +82,7 @@ export async function playLogin(username, password) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username, password }),
   });
-  return handlePlayResponse(r);
+  return captureToken(await handlePlayResponse(r));
 }
 
 export async function playRegister(username, password) {
@@ -63,7 +91,7 @@ export async function playRegister(username, password) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username, password }),
   });
-  return handlePlayResponse(r);
+  return captureToken(await handlePlayResponse(r));
 }
 
 export function playWebSocketUrl() {
@@ -117,7 +145,7 @@ export async function playGeneratePortrait(username, password, appearance_prompt
   const r = await fetch(`${base()}/play/characters/portrait`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password, appearance_prompt }),
+    body: JSON.stringify({ ...authFields(username, password), appearance_prompt }),
   });
   return handlePlayResponse(r);
 }
@@ -128,8 +156,7 @@ export async function playSuggestPortraitPrompt(username, password, character_na
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      username,
-      password,
+      ...authFields(username, password),
       character_name: character_name || "",
       appearance_notes: draftPortraitPrompt || "",
     }),
@@ -139,8 +166,7 @@ export async function playSuggestPortraitPrompt(username, password, character_na
 
 export async function playCreateCharacter(username, password, name, portrait_prompt, portrait_url, starter_proficiencies) {
   const payload = {
-    username,
-    password,
+    ...authFields(username, password),
     name,
     portrait_prompt: portrait_prompt || "",
     portrait_url: portrait_url || "",
@@ -166,12 +192,11 @@ export async function playRefreshSession(username, password) {
   const r = await fetch(`${base()}/play/auth/characters`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password }),
+    body: JSON.stringify(authFields(username, password)),
   });
   return handlePlayResponse(r);
 }
 
-/** Deletes via POST /play/auth/characters so it works on Nexus builds that lack /play/characters/delete. */
 async function parsePlayJson(r) {
   try {
     return await r.json();
@@ -197,84 +222,46 @@ function playHttpError(r, data) {
   throw new Error(msg);
 }
 
-/** Detect stale Nexus: /play/auth/characters ignored suggest_scene and returned a character list. */
-function assertSceneSuggestShape(data) {
-  if (data && data.ok && data.prompt == null && Array.isArray(data.characters)) {
-    throw new Error(
-      "Scene LLM suggest is not available on this Nexus build. Restart from the project root: python -m fablestar"
-    );
-  }
-}
-
-function assertSceneGenerateShape(data) {
-  if (data && data.ok && data.scene_image_url == null && Array.isArray(data.characters)) {
-    throw new Error(
-      "Scene image generate is not available on this Nexus build. Restart from the project root: python -m fablestar"
-    );
-  }
-}
 
 export async function playSuggestScenePrompt(username, password, narrative_context, room_hint) {
-  const payload = {
-    username,
-    password,
-    narrative_context: narrative_context || "",
-    room_hint: room_hint || "",
-  };
-  let r = await fetch(`${base()}/play/scene/suggest-prompt`, {
+  const r = await fetch(`${base()}/play/scene/suggest-prompt`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({
+      ...authFields(username, password),
+      narrative_context: narrative_context || "",
+      room_hint: room_hint || "",
+    }),
   });
-  if (r.status === 404) {
-    r = await fetch(`${base()}/play/auth/characters`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...payload, suggest_scene: true }),
-    });
-  }
   if (!r.ok) {
     const data = await parsePlayJson(r);
     playHttpError(r, data);
   }
-  const data = await parsePlayJson(r);
-  assertSceneSuggestShape(data);
-  return data;
+  return parsePlayJson(r);
 }
 
 export async function playGenerateSceneImage(username, password, scene_prompt, character_id) {
-  const payload = {
-    username,
-    password,
-    scene_prompt: scene_prompt || "",
-    ...(character_id != null && character_id >= 1 ? { character_id } : {}),
-  };
-  let r = await fetch(`${base()}/play/scene/generate`, {
+  const r = await fetch(`${base()}/play/scene/generate`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({
+      ...authFields(username, password),
+      scene_prompt: scene_prompt || "",
+      ...(character_id != null && character_id >= 1 ? { character_id } : {}),
+    }),
   });
-  if (r.status === 404) {
-    r = await fetch(`${base()}/play/auth/characters`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...payload, generate_scene: true }),
-    });
-  }
   if (!r.ok) {
     const data = await parsePlayJson(r);
     playHttpError(r, data);
   }
-  const data = await parsePlayJson(r);
-  assertSceneGenerateShape(data);
-  return data;
+  return parsePlayJson(r);
 }
 
 export async function playListSceneGallery(username, password) {
   const r = await fetch(`${base()}/play/scene/gallery`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password }),
+    body: JSON.stringify(authFields(username, password)),
   });
   return handlePlayResponse(r);
 }
@@ -284,8 +271,7 @@ export async function playApplySceneFromGallery(username, password, gallery_id, 
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      username,
-      password,
+      ...authFields(username, password),
       gallery_id,
       character_id,
     }),
@@ -294,14 +280,10 @@ export async function playApplySceneFromGallery(username, password, gallery_id, 
 }
 
 export async function playDeleteCharacter(username, password, character_id) {
-  const r = await fetch(`${base()}/play/auth/characters`, {
+  const r = await fetch(`${base()}/play/characters/delete`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      username,
-      password,
-      delete_character_id: character_id,
-    }),
+    body: JSON.stringify({ ...authFields(username, password), character_id }),
   });
   return handlePlayResponse(r);
 }

@@ -22,7 +22,7 @@ node_modules/
 logs/
 
 # Runtime game data (generated portraits, room art, etc.)
-data/
+/data/
 
 # Local LLM data (docker-compose volume)
 ollama_data/

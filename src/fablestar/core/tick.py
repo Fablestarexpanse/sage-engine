@@ -8,11 +8,13 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
+
 class TickManager:
     """
     Manages the game heart beat with a fixed timestep.
     Ensures logic runs at a consistent rate regardless of processing time.
     """
+
     def __init__(self, tick_rate: float = 0.25):
         self.tick_rate = tick_rate
         self.tick_count = 0
@@ -26,26 +28,26 @@ class TickManager:
     async def run(self) -> None:
         """Main tick loop with drift compensation."""
         self.is_running = True
-        logger.info(f"TickManager started at {1/self.tick_rate}Hz ({self.tick_rate}s interval)")
-        
+        logger.info(f"TickManager started at {1 / self.tick_rate}Hz ({self.tick_rate}s interval)")
+
         while self.is_running:
             start_time = time.monotonic()
             self.tick_count += 1
-            
+
             # Execute all handlers for this tick
             tasks = [asyncio.create_task(handler(self.tick_count)) for handler in self._handlers]
             if tasks:
                 await asyncio.gather(*tasks, return_exceptions=True)
-            
+
             # Compensation for processing time
             elapsed = time.monotonic() - start_time
             sleep_time = max(0, self.tick_rate - elapsed)
-            
+
             if elapsed > self.tick_rate:
                 logger.warning(
                     f"Tick {self.tick_count} took {elapsed:.4f}s - exceeding rate of {self.tick_rate}s!"
                 )
-            
+
             await asyncio.sleep(sleep_time)
 
     def stop(self) -> None:

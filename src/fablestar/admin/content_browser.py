@@ -61,10 +61,7 @@ def zone_summary(zone_id: str) -> dict[str, Any] | None:
             status = meta.get("status", status)
         except Exception as e:
             logger.debug("zone meta %s: %s", meta_path, e)
-    entities = sum(
-        _room_entity_count(rooms_dir / rf.name)
-        for rf in room_files
-    )
+    entities = sum(_room_entity_count(rooms_dir / rf.name) for rf in room_files)
     return {
         "id": zone_id,
         "name": name,
@@ -611,15 +608,15 @@ def galaxy_overview() -> dict[str, Any]:
                     sid = entry.replace(".yaml", "")
                     systems_out.append({"id": sid, "file": f"{sid}.yaml"})
                 elif isinstance(entry, dict):
-                    sid = entry.get("id") or entry.get("system_id")
-                    fn = entry.get("file") or f"{sid}.yaml"
-                    if sid:
-                        systems_out.append({"id": str(sid), "file": str(fn)})
+                    raw_sid = entry.get("id") or entry.get("system_id")
+                    fn = entry.get("file") or f"{raw_sid}.yaml"
+                    if raw_sid:
+                        systems_out.append({"id": str(raw_sid), "file": str(fn)})
         except Exception as e:
             logger.warning("galaxy.yaml: %s", e)
     if not systems_out and SYSTEMS_DIR.is_dir():
-        for f in sorted(SYSTEMS_DIR.glob("*.yaml")):
-            systems_out.append({"id": f.stem, "file": f.name})
+        for sys_path in sorted(SYSTEMS_DIR.glob("*.yaml")):
+            systems_out.append({"id": sys_path.stem, "file": sys_path.name})
 
     details: list[dict[str, Any]] = []
     for s in systems_out:
@@ -913,7 +910,9 @@ def ship_graph(ship_id: str) -> dict[str, Any]:
                         else r.get("description")
                     ),
                     "entityCount": 0,
-                    "exitCount": len(r.get("exits") or {}) if isinstance(r.get("exits"), dict) else 0,
+                    "exitCount": len(r.get("exits") or {})
+                    if isinstance(r.get("exits"), dict)
+                    else 0,
                     "tags": [],
                     "raw": r,
                     "shipId": ship_id,
@@ -971,7 +970,13 @@ def ship_graph(ship_id: str) -> dict[str, Any]:
                     }
                 )
 
-    return {"nodes": nodes, "edges": edges, "warnings": [], "external_exits": external, "ship": ship}
+    return {
+        "nodes": nodes,
+        "edges": edges,
+        "warnings": [],
+        "external_exits": external,
+        "ship": ship,
+    }
 
 
 def save_ship_room(ship_id: str, room_local_id: str, patch: dict[str, Any]) -> Path:
@@ -983,7 +988,7 @@ def save_ship_room(ship_id: str, room_local_id: str, patch: dict[str, Any]) -> P
         raise FileNotFoundError("ship_not_found")
     with open(path, encoding="utf-8") as f:
         data = yaml.safe_load(f) or {}
-    ship = data.get("ship") if isinstance(data.get("ship"), dict) else data
+    ship: dict[str, Any] = data["ship"] if isinstance(data.get("ship"), dict) else data
     rooms = list(ship.get("rooms") or [])
     found = False
     for i, r in enumerate(rooms):
@@ -1037,4 +1042,8 @@ def write_proficiency_catalog_document(raw: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("; ".join(errs))
     payload = doc.model_dump(mode="json")
     _atomic_write_json(PROFICIENCIES_CATALOG_JSON, payload)
-    return {"ok": True, "leaf_count": len(doc.leaves), "path": str(PROFICIENCIES_CATALOG_JSON.resolve())}
+    return {
+        "ok": True,
+        "leaf_count": len(doc.leaves),
+        "path": str(PROFICIENCIES_CATALOG_JSON.resolve()),
+    }

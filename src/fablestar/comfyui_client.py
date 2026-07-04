@@ -208,10 +208,10 @@ async def _list_checkpoints_from_comfy(client: httpx.AsyncClient, base: str) -> 
                 if isinstance(j, list):
                     cand = [str(x) for x in j if str(x).strip()]
                 elif isinstance(j, dict):
-                    cand = j.get("checkpoints")
-                    if not isinstance(cand, list):
+                    raw_cand = j.get("checkpoints")
+                    if not isinstance(raw_cand, list):
                         continue
-                    cand = [str(x) for x in cand if str(x).strip()]
+                    cand = [str(x) for x in raw_cand if str(x).strip()]
                 else:
                     continue
                 if len(cand) > len(best):

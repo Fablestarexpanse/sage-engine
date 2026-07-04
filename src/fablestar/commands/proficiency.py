@@ -28,10 +28,6 @@ def _top_leaves(stats: dict, registry, limit: int = 8) -> list[tuple[str, int]]:
 
 
 def _parse_proficiency_id(args: list[str]) -> str:
-    if not args:
-        return ""
-    if len(args) == 1:
-        return args[0].strip()
     return ".".join(a.strip() for a in args if a.strip())
 
 
@@ -178,7 +174,9 @@ async def bonus_cmd(session: Session, args: list[str]):
         f"Level: {lv}  Peak: {peak}  State: {st}",
         f"Stat weights: {wstr}",
         f"Your conduit: FRT {frt}  RFX {rfx}  ACU {acu}  RSV {rsv}  PRS {prs}",
-        f"Stat factor (weighted product): {stat_product:.3f}" if lv > 0 else "Stat factor: n/a (level 0)",
+        f"Stat factor (weighted product): {stat_product:.3f}"
+        if lv > 0
+        else "Stat factor: n/a (level 0)",
         f"Level factor (√level): {lf:.3f}" if lv > 0 else "Level factor: 0",
         f"Computed bonus: {b}",
     ]

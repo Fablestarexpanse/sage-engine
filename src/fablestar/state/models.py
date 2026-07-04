@@ -7,9 +7,10 @@ from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Tex
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from fablestar.state.postgres import Base
+from fablestar.state.state_types import CharacterStats, InventoryItem
 
 
-def default_character_stats() -> dict:
+def default_character_stats() -> CharacterStats:
     return {
         "strength": 10,
         "dexterity": 10,
@@ -33,6 +34,7 @@ def default_character_stats() -> dict:
 
 class Account(Base):
     """Player account credentials and metadata."""
+
     __tablename__ = "accounts"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -47,7 +49,9 @@ class Account(Base):
     is_gm: Mapped[bool] = mapped_column(Boolean, default=False)
 
     # Relationships
-    characters: Mapped[list["Character"]] = relationship(back_populates="account", cascade="all, delete-orphan")
+    characters: Mapped[list["Character"]] = relationship(
+        back_populates="account", cascade="all, delete-orphan"
+    )
     scene_images: Mapped[list["AccountSceneImage"]] = relationship(
         back_populates="account", cascade="all, delete-orphan"
     )
@@ -59,7 +63,9 @@ class AccountSceneImage(Base):
     __tablename__ = "account_scene_images"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id", ondelete="CASCADE"), index=True)
+    account_id: Mapped[int] = mapped_column(
+        ForeignKey("accounts.id", ondelete="CASCADE"), index=True
+    )
     image_url: Mapped[str] = mapped_column(String(2048))
     character_id: Mapped[int | None] = mapped_column(
         ForeignKey("characters.id", ondelete="SET NULL"), nullable=True
@@ -72,6 +78,7 @@ class AccountSceneImage(Base):
 
 class Character(Base):
     """Persistent game character data linked to an account."""
+
     __tablename__ = "characters"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -85,22 +92,24 @@ class Character(Base):
     last_scene_image_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
 
     # World state
-    room_id: Mapped[str] = mapped_column(String(255), default="test_zone:entrance")
+    room_id: Mapped[str] = mapped_column(String(255), default="starter_zone:entrance")
     # In-world wallet (display name from server.game_currency_display_name, e.g. Digi).
     digi_balance: Mapped[int] = mapped_column(Integer, default=0)
     # Opt-in player vs player; default off until toggled in-game or by admin.
     pvp_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     # Moral standing for UI (-100 evil .. 0 neutral .. +100 good); gameplay can widen range later.
     reputation: Mapped[int] = mapped_column(Integer, default=0)
-    
-    # Generic stats/data stored as JSON for "Vibe Coding" flexibility
-    # This allows us to add stats without frequent schema migrations
-    stats: Mapped[dict] = mapped_column(JSON, default=default_character_stats)
-    
-    inventory: Mapped[list] = mapped_column(JSON, default=list)
-    
+
+    # JSON columns: shapes documented by state_types.CharacterStats / InventoryItem.
+    # Stored as JSON so stats can evolve without schema migrations.
+    stats: Mapped[CharacterStats] = mapped_column(JSON, default=default_character_stats)
+
+    inventory: Mapped[list[InventoryItem]] = mapped_column(JSON, default=list)
+
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
 
     # Relationships
     account: Mapped["Account"] = relationship(back_populates="characters")

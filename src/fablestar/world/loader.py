@@ -1,4 +1,4 @@
-"""ContentLoader — lazy, cached YAML loader for rooms, entities, items, and proficiency catalog."""
+"""ContentLoader — lazy, cached YAML loader for world content (rooms, entities, items)."""
 
 import logging
 from pathlib import Path
@@ -7,23 +7,26 @@ from typing import Any, TypeVar
 import yaml
 from pydantic import BaseModel
 
-from fablestar.proficiencies.catalog_loader import load_proficiency_catalog_from_disk
 from fablestar.proficiencies.registry import ProficiencyRegistry
+from fablestar.proficiencies.registry_cache import ProficiencyRegistryCache
 from fablestar.world.models import EntityTemplate, ItemTemplate, RoomModel
 
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T", bound=BaseModel)
 
+
 class ContentLoader:
     """
     Loads and caches YAML content with validation.
     Supports invalidating cache for hot-reloads.
     """
+
     def __init__(self, content_dir: str = "content"):
         self.content_dir = Path(content_dir)
         self._cache: dict[str, Any] = {}
-        
+        self._proficiency_cache = ProficiencyRegistryCache(self.content_dir)
+
     def _get_cache_key(self, content_type: str, content_id: str) -> str:
         return f"{content_type}:{content_id}"
 
@@ -38,17 +41,19 @@ class ContentLoader:
         cache_key = self._get_cache_key("room", room_id)
         if cache_key in self._cache:
             return self._cache[cache_key]
-        
+
         # Room IDs are formatted as "zone_id:room_id"
         # File path: content/world/zones/{zone_id}/rooms/{room_id}.yaml
         try:
             zone_id, room_filename = room_id.split(":")
-            room_path = self.content_dir / "world" / "zones" / zone_id / "rooms" / f"{room_filename}.yaml"
-            
+            room_path = (
+                self.content_dir / "world" / "zones" / zone_id / "rooms" / f"{room_filename}.yaml"
+            )
+
             if not room_path.exists():
                 logger.error(f"Room file not found: {room_path}")
                 return None
-            
+
             room = self.load_yaml(room_path, RoomModel)
             self._cache[cache_key] = room
             return room
@@ -118,27 +123,18 @@ class ContentLoader:
         return results
 
     def get_proficiency_registry(self) -> ProficiencyRegistry:
-        """Load and cache the Conduit proficiency tree (leaves + inferred internal nodes)."""
-        cache_key = self._get_cache_key("proficiency_registry", content_id="all")
-        if cache_key in self._cache:
-            return self._cache[cache_key]
-        doc = load_proficiency_catalog_from_disk(self.content_dir)
-        reg = ProficiencyRegistry(doc.leaves)
-        self._cache[cache_key] = reg
-        return reg
+        """Delegate to the proficiencies package's own registry cache."""
+        return self._proficiency_cache.get()
 
     def invalidate(self, file_path: Path):
         """Invalidate cache entries associated with a changed file."""
         # Simple implementation: clear all or try to match path
         # In a more advanced version, we would maps paths to cache keys
         logger.info(f"Invalidating cache for {file_path}")
-        
+
         # For now, we'll just clear the specific type if we can determine it
         if "proficiencies" in file_path.parts:
-            k = self._get_cache_key("proficiency_registry", content_id="all")
-            if k in self._cache:
-                del self._cache[k]
-                logger.info("Evicted proficiency_registry from cache")
+            self._proficiency_cache.invalidate()
         elif "rooms" in file_path.parts:
             room_id = f"{file_path.parent.parent.name}:{file_path.stem}"
             cache_key = self._get_cache_key("room", room_id)
@@ -152,4 +148,5 @@ class ContentLoader:
     def clear_cache(self):
         """Force clear the entire content cache."""
         self._cache.clear()
+        self._proficiency_cache.invalidate()
         logger.info("Content cache cleared.")

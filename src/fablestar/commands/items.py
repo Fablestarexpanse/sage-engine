@@ -57,7 +57,7 @@ async def take(session: Session, args: list[str]):
             found_state = state
             break
 
-    if not found_state:
+    if found_state is None or found_id is None:
         await session.send(f"You see no '{target_name}' here.")
         return
 
@@ -66,13 +66,15 @@ async def take(session: Session, args: list[str]):
     await app_instance.redis.delete_item_state(found_id)
 
     inv = await app_instance.redis.get_player_inventory(player_id)
-    inv.append({
-        "id": found_id,
-        "template": found_state.get("template"),
-        "name": found_state.get("name"),
-        "description": found_state.get("description", ""),
-        "value": found_state.get("value", 0),
-    })
+    inv.append(
+        {
+            "id": found_id,
+            "template": found_state.get("template", ""),
+            "name": found_state.get("name", ""),
+            "description": found_state.get("description", ""),
+            "value": found_state.get("value", 0),
+        }
+    )
     await app_instance.redis.set_player_inventory(player_id, inv)
     await session.send(f"You pick up the {found_state['name']}.")
 
@@ -106,7 +108,7 @@ async def drop(session: Session, args: list[str]):
             found_item = item
             break
 
-    if found_item is None:
+    if found_item is None or found_idx is None:
         await session.send(f"You are not carrying '{target_name}'.")
         return
 
@@ -152,7 +154,9 @@ async def examine(session: Session, args: list[str]):
     # 1. Check room features
     if room:
         for feature in room.features:
-            if target_name in feature.name.lower() or any(target_name in kw.lower() for kw in feature.keywords):
+            if target_name in feature.name.lower() or any(
+                target_name in kw.lower() for kw in feature.keywords
+            ):
                 await session.send(f"\r\n{feature.description}")
                 return
 
@@ -163,7 +167,11 @@ async def examine(session: Session, args: list[str]):
         if state and state.get("alive", True):
             if target_name in state.get("name", "").lower():
                 tmpl = app_instance.content_loader.get_entity_template(state["template"])
-                desc = tmpl.description.get("long", tmpl.description.get("short", "")) if tmpl else state["name"]
+                desc = (
+                    tmpl.description.get("long", tmpl.description.get("short", ""))
+                    if tmpl
+                    else state["name"]
+                )
                 hp = state.get("hp", "?")
                 max_hp = state.get("max_hp", "?")
                 await session.send(f"\r\n{desc}")
@@ -173,9 +181,9 @@ async def examine(session: Session, args: list[str]):
     # 3. Check floor items
     item_ids = await app_instance.redis.get_room_items(room_id)
     for iid in item_ids:
-        state = await app_instance.redis.get_item_state(iid)
-        if state and target_name in state.get("name", "").lower():
-            await session.send(f"\r\n{state.get('description', 'An item.')}")
+        istate = await app_instance.redis.get_item_state(iid)
+        if istate and target_name in istate.get("name", "").lower():
+            await session.send(f"\r\n{istate.get('description', 'An item.')}")
             return
 
     # 4. Check inventory

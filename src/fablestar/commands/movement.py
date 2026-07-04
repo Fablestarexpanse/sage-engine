@@ -1,18 +1,20 @@
 """Movement commands — cardinal and vertical directions, all delegating to move_to()."""
 
-import random
-
 from fablestar.commands.registry import command
 from fablestar.network.session import Session
 
 
 def move_to(direction: str):
     """Helper to create a movement command for a specific direction."""
-    async def mover(session: Session, args: list[str]):
-        from fablestar.__main__ import app_instance
-        
+
+    async def _direction_handler(session: Session, args: list[str]):
+        from fablestar.app import app_instance
+
         # 1. Get current room
-        player_id = session.player_id or "test_player"
+        if not session.player_id:
+            await session.send("Not authenticated.")
+            return
+        player_id = session.player_id
         room_id = await app_instance.redis.get_player_location(player_id)
         if not room_id:
             await session.send("You are lost in the void.")
@@ -30,36 +32,21 @@ def move_to(direction: str):
 
         exit_meta = room.exits[direction]
         target_room_id = exit_meta.destination
-        
+
         # 3. Update location
         await app_instance.redis.set_player_location(player_id, target_room_id)
 
-        # Optional field gain: traversal (low chance per move to avoid spam).
-        if random.random() < 0.12:
-            try:
-                from fablestar.proficiencies.engine import ProficiencyEngine
-                from fablestar.proficiencies.state_helpers import ensure_proficiency_block
+        # Passive traversal gain (low chance per move to avoid spam).
+        from fablestar.proficiencies.field_gain import try_field_gain_for_player
 
-                stats = await app_instance.redis.get_player_stats(player_id)
-                ensure_proficiency_block(stats)
-                eng = ProficiencyEngine(app_instance.content_loader.get_proficiency_registry())
-                eng.try_field_gain(
-                    stats,
-                    "traversal.navigation.pathfinding",
-                    context={"vr": False},
-                )
-                await app_instance.redis.set_player_stats(player_id, stats)
-            except Exception:
-                pass
+        await try_field_gain_for_player(player_id, "traversal.navigation.pathfinding", chance=0.12)
 
         # 4. Describe new room
         await session.send(f"You move {direction}.")
-        # Re-dispatch look to describe the new room
-        from fablestar.parser.dispatcher import CommandDispatcher
-        dispatcher = CommandDispatcher()
-        await dispatcher.dispatch(session, "look")
+        await app_instance.dispatcher.dispatch(session, "look")
 
-    return mover
+    return _direction_handler
+
 
 # Register cardinal / vertical (single-letter aliases)
 for direction, aliases in [

@@ -12,11 +12,6 @@ from fablestar.state.models import Account, AdminStaff, Character
 
 logger = logging.getLogger(__name__)
 
-DEV_DEFAULT_PLAY_LOGINS: tuple[tuple[str, str, bool], ...] = (
-    ("staff", "test", True),
-    ("player", "test", False),
-)
-
 
 def _character_admin_dict(c: Character) -> dict[str, Any]:
     return {
@@ -49,9 +44,7 @@ def _account_summary_dict(a: Account, char_count: int) -> dict[str, Any]:
     }
 
 
-async def lookup_characters_by_names(
-    server: Any, names: list[str]
-) -> dict[str, dict[str, int]]:
+async def lookup_characters_by_names(server: Any, names: list[str]) -> dict[str, dict[str, int]]:
     """Map character name -> {character_id, account_id} for live-session linking."""
     uniq = sorted({n for n in names if n and isinstance(n, str)})
     if not uniq:
@@ -81,7 +74,9 @@ async def list_accounts_with_counts(server: Any) -> list[dict[str, Any]]:
         return out
 
 
-def _console_access_dict(account_username: str, staff_row: AdminStaff | None) -> dict[str, Any] | None:
+def _console_access_dict(
+    account_username: str, staff_row: AdminStaff | None
+) -> dict[str, Any] | None:
     if staff_row is None:
         return None
     return {
@@ -130,7 +125,9 @@ async def patch_account(
         old_ec = int(account.echo_credits)
         old_gm = bool(account.is_gm)
         if patch.get("echo_credits_add") is not None:
-            account.echo_credits = max(0, int(account.echo_credits) + int(patch["echo_credits_add"]))
+            account.echo_credits = max(
+                0, int(account.echo_credits) + int(patch["echo_credits_add"])
+            )
         elif patch.get("echo_credits") is not None:
             account.echo_credits = max(0, int(patch["echo_credits"]))
         if "is_gm" in patch:
@@ -173,7 +170,9 @@ async def patch_account(
             actor_display_name=str(actor.get("display_name") or actor.get("username") or "Staff"),
             actor_role=str(actor.get("role") or "gm"),
             summary_lines=lines,
-            echo_credits=new_ec if (patch.get("echo_credits_add") is not None or patch.get("echo_credits") is not None) else None,
+            echo_credits=new_ec
+            if (patch.get("echo_credits_add") is not None or patch.get("echo_credits") is not None)
+            else None,
             echo_credits_added=delta if delta > 0 else None,
             play_account_is_gm=new_gm if "is_gm" in patch else None,
         )
@@ -249,32 +248,3 @@ async def patch_character(
         )
 
     return out
-
-
-async def ensure_dev_default_play_accounts(server: Any) -> None:
-    if not getattr(server.config.server, "dev_mode", False):
-        return
-    import bcrypt
-
-    start_credits = int(server.config.comfyui.starting_echo_credits)
-    for username, password, is_gm in DEV_DEFAULT_PLAY_LOGINS:
-        async with server.db.session_factory() as session:
-            r = await session.execute(select(Account).where(Account.username == username))
-            if r.scalar_one_or_none() is not None:
-                continue
-            pw_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-            session.add(
-                Account(
-                    username=username,
-                    password_hash=pw_hash,
-                    echo_credits=start_credits,
-                    is_gm=is_gm,
-                )
-            )
-            await session.commit()
-            logger.warning(
-                "dev_mode: created play login %r / %r (is_gm=%s)",
-                username,
-                password,
-                is_gm,
-            )

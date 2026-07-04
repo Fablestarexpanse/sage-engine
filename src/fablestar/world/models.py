@@ -1,7 +1,5 @@
 """Pydantic world models — RoomModel, EntityTemplate, ItemTemplate, StarSystemModel, ShipTemplate."""
 
-from typing import Any
-
 from pydantic import BaseModel, Field
 
 
@@ -10,6 +8,7 @@ class ExitModel(BaseModel):
     description: str
     one_way: bool = False
 
+
 class FeatureModel(BaseModel):
     id: str
     name: str
@@ -17,16 +16,19 @@ class FeatureModel(BaseModel):
     description: str
     interaction: str | None = "examine"
 
+
 class EntitySpawnModel(BaseModel):
     template: str
     chance: float = 1.0
     max_count: int = 1
+
 
 class HazardModel(BaseModel):
     id: str
     type: str
     severity: int
     description: str
+
 
 class RoomModel(BaseModel):
     id: str
@@ -41,20 +43,27 @@ class RoomModel(BaseModel):
     hazards: list[HazardModel] = Field(default_factory=list)
     tags: set[str] = Field(default_factory=set)
 
+
 class ZoneModel(BaseModel):
     id: str
     name: str
     description: str
     depth_range: list[int] = Field(default_factory=lambda: [1, 3])
 
+
 class EntityTemplate(BaseModel):
     id: str
     name: str
     type: str = "creature"
-    description: dict[str, str] = Field(default_factory=lambda: {"short": "A creature.", "long": "A creature lurks here."})
-    stats: dict[str, int] = Field(default_factory=lambda: {"hp": 10, "max_hp": 10, "attack": 3, "defense": 1})
+    description: dict[str, str] = Field(
+        default_factory=lambda: {"short": "A creature.", "long": "A creature lurks here."}
+    )
+    stats: dict[str, int] = Field(
+        default_factory=lambda: {"hp": 10, "max_hp": 10, "attack": 3, "defense": 1}
+    )
     tags: set[str] = Field(default_factory=set)
     loot: list[str] = Field(default_factory=list)  # item template IDs it may drop
+
 
 class ItemTemplate(BaseModel):
     id: str
@@ -66,8 +75,28 @@ class ItemTemplate(BaseModel):
     tags: set[str] = Field(default_factory=set)
 
 
+class SystemConnection(BaseModel):
+    target: str
+    type: str
+    bidirectional: bool = True
+    stability: str | None = None
+
+
+class ZoneRef(BaseModel):
+    zone_ref: str
+
+
+class CelestialBody(BaseModel):
+    id: str
+    type: str
+    name: str
+    orbit: float | None = None
+    orbits: str | None = None
+    zones: list[ZoneRef] = Field(default_factory=list)
+
+
 class StarSystemModel(BaseModel):
-    """On-disk star system YAML under content/world/systems/ (flexible bodies/connections)."""
+    """On-disk star system YAML under content/world/systems/."""
 
     id: str
     name: str
@@ -75,8 +104,16 @@ class StarSystemModel(BaseModel):
     star: dict[str, str] = Field(default_factory=dict)
     faction: str = "neutral"
     security: str = "low"
-    connections: list[dict[str, Any]] = Field(default_factory=list)
-    bodies: list[dict[str, Any]] = Field(default_factory=list)
+    connections: list[SystemConnection] = Field(default_factory=list)
+    bodies: list[CelestialBody] = Field(default_factory=list)
+
+
+class ShipRoom(BaseModel):
+    id: str
+    name: str
+    type: str = "room"
+    description: dict[str, str] = Field(default_factory=dict)
+    exits: dict[str, ExitModel] = Field(default_factory=dict)
 
 
 class ShipTemplate(BaseModel):
@@ -85,7 +122,7 @@ class ShipTemplate(BaseModel):
     id: str
     name: str
     size: str = "small"
-    rooms: list[dict[str, Any]] = Field(default_factory=list)
+    rooms: list[ShipRoom] = Field(default_factory=list)
 
 
 class GlyphEffectModel(BaseModel):

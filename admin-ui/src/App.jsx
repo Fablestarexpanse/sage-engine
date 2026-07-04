@@ -1578,6 +1578,296 @@ const LmStudioPanel = () => {
 };
 
 
+// ─── ComfyUI Workflows & Economy Panel ──────────────────────────────────────
+
+const COMFY_TABS = [
+  { id: "status",    label: "Status" },
+  { id: "portrait",  label: "Portrait workflow" },
+  { id: "scene",     label: "Scene/Area workflow" },
+  { id: "economy",   label: "Economy" },
+];
+
+const ComfyUIPanel = () => {
+  const { colors: COLORS } = useAdminTheme();
+  const [tab, setTab] = useState("status");
+  const [status, setStatus] = useState(null);
+  const [form, setForm] = useState({
+    enabled: false,
+    base_url: "http://127.0.0.1:8188",
+    workflow_path: "config/comfyui_character_portrait_workflow.json",
+    positive_prompt_node_id: "57",
+    output_node_id: "40",
+    area_workflow_path: "config/comfyui_scene_workflow.json",
+    area_positive_prompt_node_id: "16",
+    area_output_node_id: "17",
+    checkpoint_name: "",
+    timeout_seconds: 600,
+    poll_interval_seconds: 0.75,
+    economy_enabled: true,
+    starting_echo_credits: 50,
+    portrait_generation_cost: 3,
+    area_generation_cost: 3,
+    character_create_portrait_cost: 3,
+    currency_display_name: "pixels",
+    pixels_per_usd: 100,
+  });
+  const [persist, setPersist] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [testResult, setTestResult] = useState(null);
+  const [saveMsg, setSaveMsg] = useState("");
+
+  const syncStatus = useCallback(async () => {
+    try {
+      const { data } = await axios.get(`${API_BASE}/comfyui/status`);
+      setStatus(data);
+      setForm((prev) => ({
+        ...prev,
+        enabled: data.enabled ?? prev.enabled,
+        base_url: data.base_url ?? prev.base_url,
+        workflow_path: data.workflow_path ?? prev.workflow_path,
+        positive_prompt_node_id: data.positive_prompt_node_id ?? prev.positive_prompt_node_id,
+        output_node_id: data.output_node_id ?? prev.output_node_id,
+        area_workflow_path: data.area_workflow_path ?? prev.area_workflow_path,
+        area_positive_prompt_node_id: data.area_positive_prompt_node_id ?? prev.area_positive_prompt_node_id,
+        area_output_node_id: data.area_output_node_id ?? prev.area_output_node_id,
+        checkpoint_name: data.checkpoint_name ?? prev.checkpoint_name,
+        timeout_seconds: data.timeout_seconds ?? prev.timeout_seconds,
+        poll_interval_seconds: data.poll_interval_seconds ?? prev.poll_interval_seconds,
+        economy_enabled: data.economy_enabled ?? prev.economy_enabled,
+        starting_echo_credits: data.starting_echo_credits ?? prev.starting_echo_credits,
+        portrait_generation_cost: data.portrait_generation_cost ?? prev.portrait_generation_cost,
+        area_generation_cost: data.area_generation_cost ?? prev.area_generation_cost,
+        character_create_portrait_cost: data.character_create_portrait_cost ?? prev.character_create_portrait_cost,
+        currency_display_name: data.currency_display_name ?? prev.currency_display_name,
+        pixels_per_usd: data.pixels_per_usd ?? prev.pixels_per_usd,
+      }));
+    } catch {
+      setStatus(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    syncStatus();
+    const id = setInterval(syncStatus, 120000);
+    return () => clearInterval(id);
+  }, [syncStatus]);
+
+  const testConnection = async () => {
+    setBusy(true);
+    setTestResult(null);
+    try {
+      const { data } = await axios.post(`${API_BASE}/comfyui/test-connection`);
+      setTestResult({ ok: data.reachable, msg: data.reachable ? `Reachable · ${data.base_url}` : (data.error || "Not reachable") });
+    } catch (e) {
+      setTestResult({ ok: false, msg: e.response?.data?.detail || e.message || "Request failed" });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const saveSettings = async () => {
+    setBusy(true);
+    setSaveMsg("");
+    try {
+      const body = { ...form };
+      body.timeout_seconds = Number(form.timeout_seconds);
+      body.poll_interval_seconds = Number(form.poll_interval_seconds);
+      body.starting_echo_credits = Number(form.starting_echo_credits);
+      body.portrait_generation_cost = Number(form.portrait_generation_cost);
+      body.area_generation_cost = Number(form.area_generation_cost);
+      body.character_create_portrait_cost = Number(form.character_create_portrait_cost);
+      body.pixels_per_usd = Number(form.pixels_per_usd);
+      const { data } = await axios.patch(`${API_BASE}/comfyui/settings?persist=${persist}`, body);
+      setStatus(data);
+      setSaveMsg(persist ? "Saved to config/comfyui.toml." : "Applied (in-memory only).");
+    } catch (e) {
+      setSaveMsg(e.response?.data?.detail || e.message || "Save failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const inp = {
+    width: "100%", padding: "8px 10px",
+    background: COLORS.bgInput, border: `1px solid ${COLORS.border}`,
+    borderRadius: 6, color: COLORS.text, fontSize: 12,
+    fontFamily: "'DM Sans', sans-serif",
+  };
+  const F = (label, key, type = "text", opts = {}) => (
+    <div key={key}>
+      <label style={{ fontSize: 11, color: COLORS.textMuted, display: "block", marginBottom: 4 }}>{label}</label>
+      <input
+        type={type}
+        value={form[key] ?? ""}
+        onChange={(e) => setForm((p) => ({ ...p, [key]: e.target.value }))}
+        style={inp}
+        {...opts}
+      />
+    </div>
+  );
+
+  const StatusBadge = ({ ok, yes, no }) => (
+    <span style={{
+      display: "inline-flex", alignItems: "center", gap: 5,
+      padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700,
+      background: ok ? `${COLORS.success}22` : `${COLORS.danger}22`,
+      color: ok ? COLORS.success : COLORS.danger,
+      border: `1px solid ${ok ? COLORS.success : COLORS.danger}44`,
+    }}>
+      <StatusDot color={ok ? COLORS.success : COLORS.danger} pulse={ok} />
+      {ok ? yes : no}
+    </span>
+  );
+
+  return (
+    <div style={{ background: COLORS.bgCard, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 18, display: "flex", flexDirection: "column", gap: 14 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+        <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: COLORS.text, fontFamily: "'DM Sans', sans-serif", display: "flex", alignItems: "center", gap: 8 }}>
+          <Icons.Wand /> ComfyUI Workflows
+        </h3>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <StatusBadge ok={status?.enabled} yes="Enabled" no="Disabled" />
+          <StatusBadge ok={status?.comfy_reachable} yes="Reachable" no="Offline" />
+        </div>
+      </div>
+
+      <TabBar tabs={COMFY_TABS} active={tab} onChange={setTab} />
+
+      {tab === "status" && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "'JetBrains Mono', monospace" }}>Connection</div>
+            <div style={{ fontSize: 12, color: COLORS.text, fontFamily: "'JetBrains Mono', monospace", lineHeight: 1.8 }}>
+              <div><span style={{ color: COLORS.textDim }}>Base URL</span> {status?.base_url || "—"}</div>
+              <div><span style={{ color: COLORS.textDim }}>Enabled</span> {status?.enabled ? "Yes" : "No"}</div>
+              <div><span style={{ color: COLORS.textDim }}>Reachable</span> {status?.comfy_reachable ? "Yes" : "No"}</div>
+              {status?.comfy_ping_error && <div style={{ color: COLORS.danger, fontSize: 11 }}>{status.comfy_ping_error}</div>}
+            </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+              <ActionButton small variant="ghost" icon={<Icons.Refresh />} onClick={syncStatus} disabled={busy}>Refresh</ActionButton>
+              <ActionButton small variant="primary" icon={<Icons.Terminal />} onClick={testConnection} disabled={busy}>Test connection</ActionButton>
+            </div>
+            {testResult && (
+              <div style={{
+                display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 6,
+                background: testResult.ok ? COLORS.successBg : COLORS.dangerBg,
+                border: `1px solid ${testResult.ok ? COLORS.success : COLORS.danger}22`,
+                fontSize: 11.5, fontFamily: "'JetBrains Mono', monospace",
+                color: testResult.ok ? COLORS.success : COLORS.danger,
+              }}>
+                <StatusDot color={testResult.ok ? COLORS.success : COLORS.danger} pulse={testResult.ok} />
+                {testResult.msg}
+              </div>
+            )}
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "'JetBrains Mono', monospace" }}>Workflows</div>
+            <div style={{ fontSize: 12, fontFamily: "'JetBrains Mono', monospace", lineHeight: 1.8 }}>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span style={{ color: COLORS.textDim }}>Portrait</span>
+                <StatusBadge ok={status?.workflow_present} yes="file found" no="missing" />
+              </div>
+              <div style={{ color: COLORS.textMuted, fontSize: 11, marginBottom: 6, wordBreak: "break-all" }}>{status?.workflow_path || "—"}</div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span style={{ color: COLORS.textDim }}>Scene / Area</span>
+                <StatusBadge ok={status?.area_workflow_present} yes="file found" no="missing" />
+              </div>
+              <div style={{ color: COLORS.textMuted, fontSize: 11, wordBreak: "break-all" }}>{status?.area_workflow_path || "—"}</div>
+            </div>
+            {status?.suggest_checkpoint_name_in_toml && (
+              <div style={{ fontSize: 11, color: COLORS.warning, padding: "6px 10px", background: `${COLORS.warning}11`, border: `1px solid ${COLORS.warning}44`, borderRadius: 6 }}>
+                Area workflow uses a CheckpointLoaderSimple node but <strong>checkpoint_name</strong> is not set — set it in the Workflows tab so the server can inject it automatically.
+              </div>
+            )}
+            <div style={{ fontSize: 12, fontFamily: "'JetBrains Mono', monospace", lineHeight: 1.8 }}>
+              <div><span style={{ color: COLORS.textDim }}>Economy enabled</span> {status?.economy_enabled ? "Yes" : "No"}</div>
+              <div><span style={{ color: COLORS.textDim }}>Currency</span> {status?.currency_display_name || "—"}</div>
+              <div><span style={{ color: COLORS.textDim }}>Portrait cost</span> {status?.portrait_generation_cost ?? "—"}</div>
+              <div><span style={{ color: COLORS.textDim }}>Scene cost</span> {status?.area_generation_cost ?? "—"}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {tab === "portrait" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ fontSize: 11, color: COLORS.textMuted, fontFamily: "'DM Sans', sans-serif", lineHeight: 1.5 }}>
+            Used for <strong style={{ color: COLORS.text }}>character portraits</strong> — triggered at character creation and from the player client. The JSON must be a ComfyUI API-format workflow.
+          </div>
+          {F("Workflow JSON path", "workflow_path")}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            {F("Positive prompt node ID", "positive_prompt_node_id")}
+            {F("Output (SaveImage) node ID", "output_node_id")}
+          </div>
+          {F("Base URL", "base_url")}
+          {F("Checkpoint name (optional — injected into CheckpointLoaderSimple nodes)", "checkpoint_name")}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            {F("Timeout (s)", "timeout_seconds", "number", { min: 10, step: 10 })}
+            {F("Poll interval (s)", "poll_interval_seconds", "number", { min: 0.1, step: 0.25 })}
+          </div>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: COLORS.textMuted, cursor: "pointer" }}>
+            <input type="checkbox" checked={form.enabled} onChange={(e) => setForm((p) => ({ ...p, enabled: e.target.checked }))} />
+            ComfyUI integration enabled
+          </label>
+        </div>
+      )}
+
+      {tab === "scene" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ fontSize: 11, color: COLORS.textMuted, fontFamily: "'DM Sans', sans-serif", lineHeight: 1.5 }}>
+            Used for <strong style={{ color: COLORS.text }}>room / area scene images</strong> — triggered by AI Forge and from the player client. Falls back to the portrait workflow JSON if this path is not set.
+          </div>
+          {F("Area workflow JSON path", "area_workflow_path")}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            {F("Positive prompt node ID", "area_positive_prompt_node_id")}
+            {F("Output (SaveImage) node ID", "area_output_node_id")}
+          </div>
+          {F("Base URL", "base_url")}
+          {F("Checkpoint name (optional)", "checkpoint_name")}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            {F("Timeout (s)", "timeout_seconds", "number", { min: 10, step: 10 })}
+            {F("Poll interval (s)", "poll_interval_seconds", "number", { min: 0.1, step: 0.25 })}
+          </div>
+        </div>
+      )}
+
+      {tab === "economy" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ fontSize: 11, color: COLORS.textMuted, fontFamily: "'DM Sans', sans-serif", lineHeight: 1.5 }}>
+            Controls the art-credit economy. The currency (e.g. <em>pixels</em>) is separate from the in-world Digi balance — it&apos;s spent only on ComfyUI generation.
+          </div>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: COLORS.textMuted, cursor: "pointer" }}>
+            <input type="checkbox" checked={form.economy_enabled} onChange={(e) => setForm((p) => ({ ...p, economy_enabled: e.target.checked }))} />
+            Economy enabled (deduct credits on generation)
+          </label>
+          {F("Currency display name", "currency_display_name")}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+            {F("Portrait cost", "portrait_generation_cost", "number", { min: 0 })}
+            {F("Scene cost", "area_generation_cost", "number", { min: 0 })}
+            {F("Chargen portrait cost", "character_create_portrait_cost", "number", { min: 0 })}
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            {F("Starting credits (new accounts)", "starting_echo_credits", "number", { min: 0 })}
+            {F("Credits per USD (reference only)", "pixels_per_usd", "number", { min: 1 })}
+          </div>
+        </div>
+      )}
+
+      {tab !== "status" && (
+        <div style={{ display: "flex", alignItems: "center", gap: 12, paddingTop: 6, borderTop: `1px solid ${COLORS.border}44` }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: COLORS.textMuted, cursor: "pointer", flexShrink: 0 }}>
+            <input type="checkbox" checked={persist} onChange={(e) => setPersist(e.target.checked)} />
+            Save to config/comfyui.toml
+          </label>
+          <ActionButton variant="primary" icon={<Icons.Save />} onClick={saveSettings} disabled={busy}>{busy ? "Saving…" : "Apply settings"}</ActionButton>
+          {saveMsg && <span style={{ fontSize: 11, color: COLORS.textMuted, fontFamily: "'JetBrains Mono', monospace" }}>{saveMsg}</span>}
+        </div>
+      )}
+    </div>
+  );
+};
+
+
 // ═══════════════════════════════════════════════════════════════
 // EXISTING PAGE COMPONENTS (condensed from v1)
 // ═══════════════════════════════════════════════════════════════
@@ -2254,6 +2544,7 @@ const ServerPage = () => {
         />
       )}
       <LmStudioPanel />
+      <ComfyUIPanel />
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 14 }}>
         {metrics.map((m) => (
           <div key={m.label} style={{ background: COLORS.bgCard, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>

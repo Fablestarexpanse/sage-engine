@@ -3,7 +3,9 @@
 import logging
 import random
 import uuid
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
+
+from fablestar.state.state_types import EntityState, ItemState
 
 if TYPE_CHECKING:
     from fablestar.server import FablestarServer
@@ -85,7 +87,7 @@ class EntitySpawnManager:
 
         entity_id = f"{template_id}_{uuid.uuid4().hex[:8]}"
         stats = dict(tmpl.stats)
-        state: dict[str, Any] = {
+        state: EntityState = {
             "id": entity_id,
             "template": template_id,
             "name": tmpl.name,
@@ -131,7 +133,7 @@ class EntitySpawnManager:
         if not tmpl:
             return None
         item_id = f"{template_id}_{uuid.uuid4().hex[:8]}"
-        item_state = {
+        item_state: ItemState = {
             "id": item_id,
             "template": template_id,
             "name": tmpl.name,

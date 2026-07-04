@@ -14,5 +14,6 @@ def main():
         # Graceful exit for CTRL+C outside of the loop
         sys.exit(0)
 
+
 if __name__ == "__main__":
     main()
