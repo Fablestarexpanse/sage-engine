@@ -657,35 +657,35 @@ class NexusApp:
         @_limiter.limit("10/minute")
         async def play_auth_login(request: Request, body: PlayAuthBody):
             """Web player: validate credentials and list characters."""
-            return await self.server.play_login(body.username, body.password)
+            return await self.server.player.login(body.username, body.password)
 
         @self.app.post("/play/auth/register")
         @_limiter.limit("5/minute")
         async def play_auth_register(request: Request, body: PlayAuthBody):
             """Web player: create account (add characters in the UI)."""
-            return await self.server.play_register(body.username, body.password)
+            return await self.server.player.register(body.username, body.password)
 
         @self.app.post("/play/auth/characters")
         async def play_auth_characters(body: PlayAuthCharactersBody):
             """Re-fetch character list and account fields for the authenticated player."""
-            return await self.server.play_refresh_characters(body.username, body.password)
+            return await self.server.player.refresh_characters(body.username, body.password)
 
         @self.app.get("/play/comfyui/status")
         async def play_comfyui_status():
             """Whether ComfyUI portrait generation is configured."""
-            return await self.server.play_comfyui_status()
+            return await self.server.scenes.comfyui_status()
 
         @self.app.post("/play/characters/portrait")
         async def play_character_portrait(body: PlayPortraitBody):
             """Generate a portrait via ComfyUI (optional); returns /media/portraits/... URL."""
-            return await self.server.play_generate_portrait(
+            return await self.server.scenes.generate_portrait(
                 body.username, body.password, body.appearance_prompt
             )
 
         @self.app.post("/play/characters/suggest-portrait-prompt")
         async def play_suggest_portrait_prompt(body: PlaySuggestPortraitPromptBody):
             """LLM: suggest a ComfyUI portrait prompt from character name and notes."""
-            return await self.server.play_suggest_portrait_prompt(
+            return await self.server.scenes.suggest_portrait_prompt(
                 body.username,
                 body.password,
                 body.character_name,
@@ -700,7 +700,7 @@ class NexusApp:
                 coerced: dict[str, Any] = {str(k): v for k, v in starter.items()}
             else:
                 coerced = {}
-            return await self.server.play_create_character(
+            return await self.server.player.create_character(
                 body.username,
                 body.password,
                 body.name,
@@ -731,14 +731,14 @@ class NexusApp:
         @self.app.post("/play/characters/delete")
         async def play_character_delete(body: PlayDeleteCharacterBody):
             """Remove a character owned by the account."""
-            return await self.server.play_delete_character(
+            return await self.server.player.delete_character(
                 body.username, body.password, body.character_id
             )
 
         @self.app.post("/play/scene/suggest-prompt")
         async def play_scene_suggest_prompt(body: PlaySceneSuggestBody):
             """LLM: suggest a ComfyUI environment prompt from recent narrative text."""
-            return await self.server.play_suggest_scene_prompt(
+            return await self.server.scenes.suggest_scene_prompt(
                 body.username,
                 body.password,
                 narrative_context=body.narrative_context,
@@ -748,7 +748,7 @@ class NexusApp:
         @self.app.post("/play/scene/generate")
         async def play_scene_generate(body: PlaySceneGenerateBody):
             """Run area ComfyUI workflow; returns scene_image_url under /media/rooms/."""
-            return await self.server.play_generate_scene_image(
+            return await self.server.scenes.generate_scene_image(
                 body.username,
                 body.password,
                 body.scene_prompt,
@@ -758,12 +758,12 @@ class NexusApp:
         @self.app.post("/play/scene/gallery")
         async def play_scene_gallery(body: PlaySceneGalleryListBody):
             """List scene images saved for this account (ComfyUI history)."""
-            return await self.server.play_list_scene_gallery(body.username, body.password)
+            return await self.server.scenes.list_scene_gallery(body.username, body.password)
 
         @self.app.post("/play/scene/apply-gallery")
         async def play_scene_apply_gallery(body: PlaySceneApplyGalleryBody):
             """Apply a gallery image as this character's current scene art."""
-            return await self.server.play_apply_scene_from_gallery(
+            return await self.server.scenes.apply_scene_from_gallery(
                 body.username,
                 body.password,
                 body.gallery_id,
@@ -1074,7 +1074,7 @@ class NexusApp:
             _ctx: Annotated[AdminContext, Depends(require_tool("server"))],
         ):
             """Full ComfyUI config + live reachability check."""
-            return await self.server.play_comfyui_status()
+            return await self.server.scenes.comfyui_status()
 
         @self.app.patch("/comfyui/settings")
         async def comfyui_settings_patch(
@@ -1088,7 +1088,7 @@ class NexusApp:
                 self.server.update_comfyui_settings(patch, persist=persist)
             except (ValueError, TypeError) as e:
                 raise HTTPException(status_code=400, detail=str(e)) from e
-            return await self.server.play_comfyui_status()
+            return await self.server.scenes.comfyui_status()
 
         @self.app.post("/comfyui/test-connection")
         async def comfyui_test_connection(
@@ -1096,7 +1096,7 @@ class NexusApp:
         ):
             """Ping the configured ComfyUI base_url and return reachability."""
             c = self.server.config.comfyui
-            ok, err = await self.server.ping_comfyui()
+            ok, err = await self.server.scenes.ping()
             return {"reachable": ok, "base_url": c.base_url, "error": err or None}
 
         @self.app.post("/forge/generate")
@@ -1130,7 +1130,7 @@ class NexusApp:
             _ctx: Annotated[AdminContext, Depends(require_tool("forge"))],
         ):
             """LM Studio / OpenAI-compatible: suggest a ComfyUI prompt from room description."""
-            return await self.server.forge_suggest_area_image_prompt(
+            return await self.server.scenes.forge_suggest_area_image_prompt(
                 req.room_name,
                 req.room_type,
                 req.depth,
@@ -1143,7 +1143,7 @@ class NexusApp:
             _ctx: Annotated[AdminContext, Depends(require_tool("forge"))],
         ):
             """Generate room scene PNG via ComfyUI; returns area_image_url under /media/rooms/."""
-            return await self.server.forge_generate_room_area_image(
+            return await self.server.scenes.generate_room_area_image(
                 req.prompt,
                 zone_id=req.zone_id,
                 room_slug=req.room_slug,

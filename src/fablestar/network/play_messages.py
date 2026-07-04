@@ -42,7 +42,7 @@ class CharacterSnapshotNotice(TypedDict):
 
 
 class CharacterPayload(TypedDict):
-    """One character entry, as built by server._character_play_dict()."""
+    """One character entry, as built by PlayerService.character_play_dict()."""
 
     id: int
     name: str
@@ -76,7 +76,7 @@ class PlayAccountResponse(TypedDict, total=False):
     characters: list[CharacterPayload]
     echo_credits: int
     is_gm: bool
-    # Economy fields (server._economy_public_fields)
+    # Economy fields (EconomyService.public_fields)
     currency_display_name: str
     game_currency_display_name: str
     pixels_per_usd: int
