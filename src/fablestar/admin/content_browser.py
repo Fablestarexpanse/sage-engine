@@ -177,6 +177,17 @@ def get_room_yaml(zone_id: str, room_slug: str) -> str | None:
     return path.read_text(encoding="utf-8")
 
 
+def room_file_mtime(zone_id: str, room_slug: str) -> float | None:
+    """On-disk mtime for a room YAML, used as an optimistic-concurrency token."""
+    if not _safe_segment(zone_id) or not _safe_segment(room_slug):
+        return None
+    path = ZONES_ROOT / zone_id / "rooms" / f"{room_slug}.yaml"
+    try:
+        return path.stat().st_mtime
+    except OSError:
+        return None
+
+
 def aggregate_entity_spawns() -> list[dict[str, Any]]:
     """Roll up entity_spawns.template across all rooms."""
     tally: dict[str, dict[str, Any]] = {}
@@ -419,9 +430,14 @@ def zone_graph(zone_id: str) -> dict[str, Any]:
     warnings: list[str] = []
     external_exits: list[dict[str, Any]] = []
     room_data_by_slug: dict[str, dict[str, Any]] = {}
+    room_mtime_by_slug: dict[str, float | None] = {}
 
     for rf in sorted(rooms_dir.glob("*.yaml")):
         slug = rf.stem
+        try:
+            room_mtime_by_slug[slug] = rf.stat().st_mtime
+        except OSError:
+            room_mtime_by_slug[slug] = None
         try:
             with open(rf, encoding="utf-8") as f:
                 room_data_by_slug[slug] = yaml.safe_load(f) or {}
@@ -468,6 +484,8 @@ def zone_graph(zone_id: str) -> dict[str, Any]:
                     "exitCount": len(exits),
                     "tags": tags,
                     "raw": data,
+                    # Optimistic-concurrency token: echo back as expected_mtime on room writes.
+                    "mtime": room_mtime_by_slug.get(slug),
                 },
             }
         )

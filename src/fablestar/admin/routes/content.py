@@ -24,12 +24,17 @@ class ContentInjectBody(BaseModel):
 
     path: str  # e.g. "entities/stalker" or "items/sword"
     yaml_content: str
+    # Optimistic-concurrency token from the read endpoints; when set, the write is
+    # rejected with 409 content_modified if the file changed on disk since it was read.
+    expected_mtime: float | None = None
 
 
 class RoomJsonBody(BaseModel):
     """Full or partial room document merged into existing YAML."""
 
     room: dict[str, Any] = Field(default_factory=dict)
+    # See ContentInjectBody.expected_mtime.
+    expected_mtime: float | None = None
 
 
 class CreateRoomBody(BaseModel):
@@ -76,6 +81,21 @@ def build_content_router(server: FablestarServer) -> APIRouter:
 
     def _mark_reloaded() -> None:
         server.last_content_reload_at = datetime.now(UTC).isoformat()
+
+    def _check_room_write_conflict(
+        zone_id: str, room_slug: str, expected_mtime: float | None
+    ) -> None:
+        """Advisory optimistic-concurrency check for room writes.
+
+        WorldForge (and IDEs) write room YAML directly to disk, bypassing this API;
+        rejecting a stale write here keeps admin-ui from silently clobbering those
+        changes. Best-effort (stat-then-write), not a transactional lock.
+        """
+        if expected_mtime is None:
+            return
+        actual = content_browser.room_file_mtime(zone_id, room_slug)
+        if actual is not None and abs(actual - expected_mtime) > 0.0005:
+            raise HTTPException(status_code=409, detail="content_modified")
 
     @router.get("/content/overview")
     async def content_overview(
@@ -168,7 +188,7 @@ def build_content_router(server: FablestarServer) -> APIRouter:
         raw = content_browser.get_room_yaml(zone_id, room_slug)
         if raw is None:
             raise HTTPException(status_code=404, detail="Room not found")
-        return {"yaml": raw}
+        return {"yaml": raw, "mtime": content_browser.room_file_mtime(zone_id, room_slug)}
 
     @router.post("/content/cache/reload")
     async def content_cache_reload(
@@ -293,6 +313,7 @@ def build_content_router(server: FablestarServer) -> APIRouter:
             r"^[a-zA-Z0-9_-]+$", room_slug
         ):
             raise HTTPException(status_code=400, detail="Invalid zone or room slug")
+        _check_room_write_conflict(zone_id, room_slug, body.expected_mtime)
         path = Path("content/world/zones") / zone_id / "rooms" / f"{room_slug}.yaml"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(body.yaml_content, encoding="utf-8")
@@ -335,6 +356,7 @@ def build_content_router(server: FablestarServer) -> APIRouter:
     ):
         if not ctx.may_write_zone(zone_id):
             raise HTTPException(status_code=403, detail="zone_denied")
+        _check_room_write_conflict(zone_id, room_slug, body.expected_mtime)
         try:
             path = content_browser.save_room_dict(zone_id, room_slug, body.room)
         except ValueError as e:

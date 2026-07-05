@@ -4,7 +4,6 @@ import WorldBuilderPage from "./builder/WorldBuilderPage.jsx";
 import PlayerAccountsTab from "./PlayerAccountsTab.jsx";
 import ProficienciesPage from "./ProficienciesPage.jsx";
 import { useAdminTheme } from "./AdminThemeContext.jsx";
-import { ADMIN_THEME_DARK } from "./adminTheme.js";
 import { API_BASE, WS_BASE } from "./apiConfig.js";
 
 // ═══════════════════════════════════════════════════════════════
@@ -579,13 +578,68 @@ const MiniMap = () => {
   );
 };
 
+// Shared polled fetch — distinguishes "request failed" from "genuinely empty"
+// so an API outage never renders as blank content.
+
+function usePolledList(url, intervalMs, { enabled = true } = {}) {
+  const [rows, setRows] = useState([]);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    if (!enabled || !url) {
+      setRows([]);
+      setError("");
+      return undefined;
+    }
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const { data } = await axios.get(url);
+        if (cancelled) return;
+        setRows(Array.isArray(data) ? data : []);
+        setError("");
+      } catch (e) {
+        if (cancelled) return;
+        // Keep last known rows; the banner explains the failure.
+        setError(e.response?.data?.detail || e.message || "Request failed");
+      }
+    };
+    load();
+    const id = setInterval(load, intervalMs);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [url, intervalMs, enabled]);
+  return { rows, error };
+}
+
+const FetchErrorBanner = ({ error, label }) => {
+  const { colors: COLORS } = useAdminTheme();
+  if (!error) return null;
+  return (
+    <div
+      style={{
+        padding: "10px 14px",
+        borderRadius: 8,
+        fontSize: 12,
+        fontFamily: "'DM Sans', sans-serif",
+        color: COLORS.danger,
+        background: `${COLORS.danger}12`,
+        border: `1px solid ${COLORS.danger}40`,
+      }}
+    >
+      Failed to load {label}: {error} — showing last known data, retrying automatically.
+    </div>
+  );
+};
+
 // ═══════════════════════════════════════════════════════════════
 // AI FORGE — LLM Content Generation Studio
 // ═══════════════════════════════════════════════════════════════
 
 const FORGE_CATEGORIES = [
   {
-    id: "room", label: "Room / Location", icon: <Icons.Locations />, color: ADMIN_THEME_DARK.info,
+    id: "room", label: "Room / Location", icon: <Icons.Locations />, colorKey: "info",
     desc: "Generate room descriptions, exits, ambient messages, and environmental details",
     fields: [
       { key: "zone", label: "Target Zone", type: "select", options: ["Outer Labyrinth", "Archive Depths", "The Crucible", "Shattered Gallery", "Resonance Caverns", "Tutorial Spire", "Pumpkin Fields"] },
@@ -602,7 +656,7 @@ const FORGE_CATEGORIES = [
     ],
   },
   {
-    id: "entity", label: "Entity / NPC", icon: <Icons.Entities />, color: ADMIN_THEME_DARK.warning,
+    id: "entity", label: "Entity / NPC", icon: <Icons.Entities />, colorKey: "warning",
     desc: "Create NPCs with dialogue, behavior patterns, combat abilities, and memory templates",
     fields: [
       { key: "entity_type", label: "Entity Type", type: "select", options: ["Hunter", "Watcher", "Guide", "Archivist", "Boss", "Vendor", "Ambient", "Quest NPC"] },
@@ -619,7 +673,7 @@ const FORGE_CATEGORIES = [
     ],
   },
   {
-    id: "item", label: "Item", icon: <Icons.Items />, color: ADMIN_THEME_DARK.success,
+    id: "item", label: "Item", icon: <Icons.Items />, colorKey: "success",
     desc: "Design equipment, consumables, lore objects, and key items with stats and flavor text",
     fields: [
       { key: "item_type", label: "Item Type", type: "select", options: ["Equipment", "Consumable", "Material", "Key", "Lore", "Currency", "Artifact"] },
@@ -635,7 +689,7 @@ const FORGE_CATEGORIES = [
     ],
   },
   {
-    id: "glyph", label: "Glyph / Ability", icon: <Icons.Glyphs />, color: ADMIN_THEME_DARK.accent,
+    id: "glyph", label: "Glyph / Ability", icon: <Icons.Glyphs />, colorKey: "accent",
     desc: "Design glyph tattoos with mechanics, visual descriptions, and balance parameters",
     fields: [
       { key: "category", label: "Category", type: "select", options: ["Combat", "Defense", "Utility", "Perception", "Movement", "Social"] },
@@ -651,7 +705,7 @@ const FORGE_CATEGORIES = [
     ],
   },
   {
-    id: "quest", label: "Quest / Objective", icon: <Icons.Content />, color: ADMIN_THEME_DARK.danger,
+    id: "quest", label: "Quest / Objective", icon: <Icons.Content />, colorKey: "danger",
     desc: "Create quest chains with objectives, branching paths, dialogue, and reward structures",
     fields: [
       { key: "quest_type", label: "Quest Type", type: "select", options: ["Main story", "Side quest", "Discovery", "Repeatable", "Event", "Hidden", "Tutorial"] },
@@ -667,7 +721,7 @@ const FORGE_CATEGORIES = [
     ],
   },
   {
-    id: "dialogue", label: "Dialogue Tree", icon: <Icons.Activity />, color: ADMIN_THEME_DARK.cyan,
+    id: "dialogue", label: "Dialogue Tree", icon: <Icons.Activity />, colorKey: "cyan",
     desc: "Write NPC conversation flows with conditions, personality, and memory integration",
     fields: [
       { key: "npc_type", label: "NPC Type", type: "select", options: ["Guide", "Archivist", "Vendor", "Quest giver", "Lore keeper", "Antagonist", "Fellow Conduit"] },
@@ -683,7 +737,7 @@ const FORGE_CATEGORIES = [
     ],
   },
   {
-    id: "zone", label: "Zone / Region", icon: <Icons.World />, color: ADMIN_THEME_DARK.forge,
+    id: "zone", label: "Zone / Region", icon: <Icons.World />, colorKey: "forge",
     desc: "Design entire zones with room layouts, entity populations, lore, and progression flow",
     fields: [
       { key: "zone_type", label: "Zone Type", type: "select", options: ["exploration", "dungeon", "boss", "safe", "tutorial", "puzzle", "gauntlet"] },
@@ -699,6 +753,16 @@ const FORGE_CATEGORIES = [
     ],
   },
 ];
+
+// Resolve category colors from the ACTIVE theme so Forge follows light/dark mode
+// (a static dark-palette lookup here previously pinned these to dark-mode colors).
+function useForgeCategories() {
+  const { colors } = useAdminTheme();
+  return useMemo(
+    () => FORGE_CATEGORIES.map((c) => ({ ...c, color: colors[c.colorKey] || colors.accent })),
+    [colors]
+  );
+}
 
 const ForgePromptTemplateButton = ({ tmpl, cat, onPick }) => {
   const { colors: COLORS } = useAdminTheme();
@@ -733,7 +797,8 @@ const ForgeChat = ({ category, onClose }) => {
   const [lastInjectId, setLastInjectId] = useState(null);
   const [injectBusy, setInjectBusy] = useState(false);
   const chatRef = useRef(null);
-  const cat = FORGE_CATEGORIES.find(c => c.id === category);
+  const forgeCategories = useForgeCategories();
+  const cat = forgeCategories.find(c => c.id === category);
 
   const runGeneration = useCallback(async (prompt) => {
     setIsGenerating(true);
@@ -1153,6 +1218,7 @@ const ForgeCategoryPickCard = ({ cat, onPick }) => {
 
 const AiForgePage = () => {
   const { colors: COLORS } = useAdminTheme();
+  const forgeCategories = useForgeCategories();
   const [activeCategory, setActiveCategory] = useState(null);
   const [historyFilter, setHistoryFilter] = useState("all");
   const [forgeHistoryRows] = useState([]);
@@ -1216,7 +1282,7 @@ const AiForgePage = () => {
           Choose Content Type
         </h3>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 14 }}>
-          {FORGE_CATEGORIES.map((cat) => (
+          {forgeCategories.map((cat) => (
             <ForgeCategoryPickCard key={cat.id} cat={cat} onPick={setActiveCategory} />
           ))}
         </div>
@@ -1242,7 +1308,7 @@ const AiForgePage = () => {
           <DataTable
             columns={[
               { label: "Type", render: row => {
-                const cat = FORGE_CATEGORIES.find(c => c.id === row.category);
+                const cat = forgeCategories.find(c => c.id === row.category);
                 return <Badge color={cat?.color}>{row.category}</Badge>;
               }},
               { label: "Prompt", render: row => (
@@ -2164,21 +2230,8 @@ const PlayersPage = () => {
 const WorldPage = () => {
   const { colors: COLORS } = useAdminTheme();
   const [filter, setFilter] = useState("all");
-  const [zones, setZones] = useState([]);
+  const { rows: zones, error: zonesError } = usePolledList(`${API_BASE}/content/zones`, 10000);
   const typeColors = { tutorial: COLORS.success, exploration: COLORS.info, dungeon: COLORS.accent, boss: COLORS.danger, safe: COLORS.warning };
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const { data } = await axios.get(`${API_BASE}/content/zones`);
-        setZones(data);
-      } catch {
-        setZones([]);
-      }
-    };
-    load();
-    const id = setInterval(load, 10000);
-    return () => clearInterval(id);
-  }, []);
   const filtered = zones.filter((z) => filter === "all" || z.status === filter);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -2189,7 +2242,8 @@ const WorldPage = () => {
           <ActionButton variant="primary" icon={<Icons.Plus />} onClick={() => window.alert("Create a folder under content/world/zones/<zone_id>/rooms/ or use AI Forge to inject rooms.")}>New Zone</ActionButton>
         </div>
       </div>
-      {filtered.length === 0 && <div style={{ color: COLORS.textMuted, fontFamily: "'DM Sans', sans-serif" }}>No zones found under content/world/zones.</div>}
+      <FetchErrorBanner error={zonesError} label="zones" />
+      {filtered.length === 0 && !zonesError && <div style={{ color: COLORS.textMuted, fontFamily: "'DM Sans', sans-serif" }}>No zones found under content/world/zones.</div>}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 14 }}>
         {filtered.map((zone) => (
           <div key={zone.id} style={{ background: COLORS.bgCard, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 18, display: "flex", flexDirection: "column", gap: 12, cursor: "pointer" }}
@@ -2238,21 +2292,8 @@ const WorldPage = () => {
 const EntitiesPage = () => {
   const { colors: COLORS } = useAdminTheme();
   const [search, setSearch] = useState("");
-  const [rows, setRows] = useState([]);
+  const { rows, error: rowsError } = usePolledList(`${API_BASE}/content/entities/spawns`, 12000);
   const typeColors = { Hunter: COLORS.danger, Guide: COLORS.success, Watcher: COLORS.info, Boss: COLORS.warning, Vendor: COLORS.accent, spawn: COLORS.accent };
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const { data } = await axios.get(`${API_BASE}/content/entities/spawns`);
-        setRows(data);
-      } catch {
-        setRows([]);
-      }
-    };
-    load();
-    const id = setInterval(load, 12000);
-    return () => clearInterval(id);
-  }, []);
   const filtered = rows.filter((e) => String(e.name).toLowerCase().includes(search.toLowerCase()));
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -2264,6 +2305,7 @@ const EntitiesPage = () => {
         </div>
       </div>
       <p style={{ margin: 0, fontSize: 12, color: COLORS.textMuted, fontFamily: "'DM Sans', sans-serif" }}>Rows aggregate <code style={{ color: COLORS.textDim }}>entity_spawns</code> entries from all room YAML files.</p>
+      <FetchErrorBanner error={rowsError} label="entity spawns" />
       <div style={{ background: COLORS.bgCard, border: `1px solid ${COLORS.border}`, borderRadius: 10, overflow: "hidden" }}>
         <DataTable columns={[
           { label: "Template", render: (row) => <span style={{ fontWeight: 600 }}>{row.name}</span> },
@@ -2282,20 +2324,7 @@ const EntitiesPage = () => {
 const ItemsPage = () => {
   const { colors: COLORS } = useAdminTheme();
   const rarityColors = { common: COLORS.textMuted, uncommon: COLORS.success, rare: COLORS.info, epic: COLORS.accent, legendary: COLORS.warning };
-  const [items, setItems] = useState([]);
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const { data } = await axios.get(`${API_BASE}/content/items`);
-        setItems(data);
-      } catch {
-        setItems([]);
-      }
-    };
-    load();
-    const id = setInterval(load, 15000);
-    return () => clearInterval(id);
-  }, []);
+  const { rows: items, error: itemsError } = usePolledList(`${API_BASE}/content/items`, 15000);
   const display = items;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -2306,7 +2335,8 @@ const ItemsPage = () => {
           <ActionButton variant="forge" icon={<Icons.Sparkles />} onClick={() => window.alert("Use AI Forge → Item, then save YAML into content/world/items/.")}>AI Generate</ActionButton>
         </div>
       </div>
-      {!items.length && <div style={{ fontSize: 12, color: COLORS.textMuted, fontFamily: "'DM Sans', sans-serif" }}>No items found. Add YAML under <code style={{ color: COLORS.textDim }}>content/world/items/</code> or generate with AI Forge.</div>}
+      <FetchErrorBanner error={itemsError} label="items" />
+      {!items.length && !itemsError && <div style={{ fontSize: 12, color: COLORS.textMuted, fontFamily: "'DM Sans', sans-serif" }}>No items found. Add YAML under <code style={{ color: COLORS.textDim }}>content/world/items/</code> or generate with AI Forge.</div>}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 14 }}>
         {display.map((item) => (
           <div key={item.id} style={{ background: COLORS.bgCard, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 16, display: "flex", flexDirection: "column", gap: 10, borderLeft: `3px solid ${rarityColors[item.rarity] || COLORS.border}` }}>
@@ -2329,20 +2359,7 @@ const ItemsPage = () => {
 const GlyphsPage = () => {
   const { colors: COLORS } = useAdminTheme();
   const catColors = { Combat: COLORS.danger, Defense: COLORS.info, Utility: COLORS.success };
-  const [glyphs, setGlyphs] = useState([]);
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const { data } = await axios.get(`${API_BASE}/content/glyphs`);
-        setGlyphs(data);
-      } catch {
-        setGlyphs([]);
-      }
-    };
-    load();
-    const id = setInterval(load, 15000);
-    return () => clearInterval(id);
-  }, []);
+  const { rows: glyphs, error: glyphsError } = usePolledList(`${API_BASE}/content/glyphs`, 15000);
   const rows = glyphs.map((g) => ({
     ...g,
     tier: g.tier ?? "—",
@@ -2361,7 +2378,8 @@ const GlyphsPage = () => {
           <ActionButton variant="forge" icon={<Icons.Sparkles />} onClick={() => window.alert("Use AI Forge → Glyph / Ability.")}>AI Forge Glyph</ActionButton>
         </div>
       </div>
-      {!glyphs.length && <div style={{ fontSize: 12, color: COLORS.textMuted, fontFamily: "'DM Sans', sans-serif" }}>No glyphs found. Add YAML under <code style={{ color: COLORS.textDim }}>content/world/glyphs/</code> or use AI Forge.</div>}
+      <FetchErrorBanner error={glyphsError} label="glyphs" />
+      {!glyphs.length && !glyphsError && <div style={{ fontSize: 12, color: COLORS.textMuted, fontFamily: "'DM Sans', sans-serif" }}>No glyphs found. Add YAML under <code style={{ color: COLORS.textDim }}>content/world/glyphs/</code> or use AI Forge.</div>}
       <div style={{ background: COLORS.bgCard, border: `1px solid ${COLORS.border}`, borderRadius: 10, overflow: "hidden" }}>
         <DataTable columns={[
           { label: "Glyph", render: (row) => (<div style={{ display: "flex", alignItems: "center", gap: 10 }}><div style={{ width: 32, height: 32, borderRadius: 6, background: `${(catColors[row.category] || COLORS.accent)}15`, border: `1px solid ${(catColors[row.category] || COLORS.accent)}30`, display: "flex", alignItems: "center", justifyContent: "center", color: (catColors[row.category] || COLORS.accent), fontSize: 14 }}><Icons.Glyphs /></div><div><div style={{ fontWeight: 600, fontSize: 13 }}>{row.name}</div><div style={{ fontSize: 11, color: COLORS.textMuted, fontFamily: "'JetBrains Mono', monospace" }}>{row.id}</div></div></div>) },
@@ -2379,41 +2397,16 @@ const GlyphsPage = () => {
 
 const LocationsPage = () => {
   const { colors: COLORS } = useAdminTheme();
-  const [zones, setZones] = useState([]);
   const [selectedZone, setSelectedZone] = useState("");
-  const [roomRows, setRoomRows] = useState([]);
+  const { rows: zones, error: zonesError } = usePolledList(`${API_BASE}/content/zones`, 12000);
+  const { rows: roomRows, error: roomsError } = usePolledList(
+    selectedZone ? `${API_BASE}/content/zones/${selectedZone}/rooms` : null,
+    10000,
+    { enabled: !!selectedZone }
+  );
   useEffect(() => {
-    const loadZones = async () => {
-      try {
-        const { data } = await axios.get(`${API_BASE}/content/zones`);
-        setZones(data);
-        if (data.length && !selectedZone) setSelectedZone(data[0].id);
-      } catch {
-        setZones([]);
-      }
-    };
-    loadZones();
-    const id = setInterval(loadZones, 12000);
-    return () => clearInterval(id);
-  }, []);
-
-  useEffect(() => {
-    if (!selectedZone) {
-      setRoomRows([]);
-      return;
-    }
-    const loadRooms = async () => {
-      try {
-        const { data } = await axios.get(`${API_BASE}/content/zones/${selectedZone}/rooms`);
-        setRoomRows(data);
-      } catch {
-        setRoomRows([]);
-      }
-    };
-    loadRooms();
-    const id = setInterval(loadRooms, 10000);
-    return () => clearInterval(id);
-  }, [selectedZone]);
+    if (zones.length && !selectedZone) setSelectedZone(zones[0].id);
+  }, [zones, selectedZone]);
 
   const zone = zones.find((z) => z.id === selectedZone);
 
@@ -2451,6 +2444,8 @@ const LocationsPage = () => {
           <ActionButton variant="forge" icon={<Icons.Sparkles />} onClick={() => window.alert("Open AI Forge → Room.")}>AI Generate Rooms</ActionButton>
         </div>
       </div>
+      <FetchErrorBanner error={zonesError} label="zones" />
+      <FetchErrorBanner error={roomsError} label="rooms" />
       <div style={{ background: COLORS.bgCard, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 18, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
         <div>
           <div style={{ fontSize: 16, fontWeight: 700, color: COLORS.text, fontFamily: "'Space Grotesk', sans-serif" }}>{zone?.name || "—"}</div>

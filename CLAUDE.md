@@ -294,9 +294,13 @@ WorldForge is a Tauri desktop app (`worldforge/`) for visually editing zones and
 
 **Known issue:** WorldForge historically wrote exports to a nested `content/world/content/world/` path due to a root path misconfiguration. If you see a `content/world/content/` subtree appear after a WorldForge export, the room YAMLs must be moved to `content/world/zones/{zone_id}/rooms/` and the duplicate tree removed. This was corrected manually; check the WorldForge content root setting if it recurs.
 
-### WorldForge ↔ Nexus write-through API
+### How WorldForge saves (and the conflict risk)
 
-WorldForge uses the admin API to save rooms without requiring direct filesystem access. Key endpoints:
+WorldForge does **not** save through the Nexus HTTP API. Its `saveRoomFile()` (`worldforge/src/editors/ZoneEditor.jsx`) calls the Tauri `write_file` command (`worldforge/src-tauri/src/commands.rs`) and writes room YAML **directly to disk**; the server's `HotReloader` then notices the file change and invalidates the content cache. The admin-ui World Builder, by contrast, writes through Nexus (`PUT/POST/DELETE /content/zones/{zone}/rooms/*` in `admin/routes/content.py`).
+
+Because these two paths are unsynchronized, running both editors on the same zone risks last-write-wins clobbering. The `/content/*` room-write routes accept an optional `expected_mtime` (returned by the room-read endpoints) and reject with **409 `content_modified`** when the file changed on disk since it was loaded — the admin-ui builder sends it; direct WorldForge disk writes bypass this guard entirely, so avoid editing the same zone in both tools at once.
+
+Related Nexus endpoints (available for HTTP write-through, e.g. the forge chat deploy flow):
 
 - **`POST /forge/inject`** — write a room YAML. Body: `{id: "zone_id:room_slug", yaml_content: "..."}`. Requires the `forge` tool permission and `may_write_zone(zone_id)`. Both `zone_id` and `room_slug` are validated against `^[a-zA-Z0-9_-]+$` (no path traversal). Returns `{status: "success", path: "..."}`.
 - **`POST /forge/generate`** — LLM-generate a room YAML draft from a natural-language prompt.
