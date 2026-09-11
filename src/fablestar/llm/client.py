@@ -15,6 +15,10 @@ from fablestar.llm.openai_util import normalize_openai_compatible_base
 logger = logging.getLogger(__name__)
 
 
+class LLMGenerationError(Exception):
+    """LLM generation failed (timeout, transport error, or empty response)."""
+
+
 def chat_model_is_auto(chat_model: str, model_ids: list[str], backend: str) -> bool:
     """True when Nexus should pick the model from the server list (not a fixed id)."""
     raw = (chat_model or "").strip()
@@ -250,15 +254,18 @@ class LLMClient:
             self._status_cache_at = now
             return dict(fresh)
 
-    async def generate(
+    async def generate_or_raise(
         self,
         prompt: str,
         system_prompt: str = "You are a master storyteller for a dark sci-fi MUD.",
         max_tokens: int = 250,
     ) -> str:
         """
-        Generate text from the LLM.
-        Returns a fallback string if the request fails or times out.
+        Generate text from the LLM, raising LLMGenerationError on failure.
+
+        Use this when the caller needs to distinguish real output from failure
+        (structured generation, API responses). Narration paths that want a
+        graceful in-fiction fallback should call generate() instead.
         """
         model = await self.effective_chat_model()
         try:
@@ -276,13 +283,35 @@ class LLMClient:
                 ),
                 timeout=self.timeout,
             )
-
-            result = response.choices[0].message.content
-            return result.strip() if result else "[The narration fades into static...]"
-
-        except TimeoutError:
+        except TimeoutError as e:
             logger.warning("LLM request timed out.")
-            return "[The engine hums, but silence follows...]"
+            raise LLMGenerationError("LLM request timed out") from e
         except Exception as e:
             logger.error("LLM Error: %s", e)
+            raise LLMGenerationError(f"LLM request failed: {e}") from e
+
+        result = response.choices[0].message.content
+        if not result or not result.strip():
+            raise LLMGenerationError("LLM returned an empty response")
+        return result.strip()
+
+    async def generate(
+        self,
+        prompt: str,
+        system_prompt: str = "You are a master storyteller for a dark sci-fi MUD.",
+        max_tokens: int = 250,
+    ) -> str:
+        """
+        Generate text from the LLM.
+        Returns an in-fiction fallback string if the request fails or times out.
+        """
+        try:
+            return await self.generate_or_raise(
+                prompt, system_prompt=system_prompt, max_tokens=max_tokens
+            )
+        except LLMGenerationError as e:
+            if "timed out" in str(e):
+                return "[The engine hums, but silence follows...]"
+            if "empty response" in str(e):
+                return "[The narration fades into static...]"
             return "[Description unavailable: Connection to the Forge lost.]"

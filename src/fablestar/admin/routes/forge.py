@@ -14,6 +14,7 @@ from pydantic import BaseModel
 
 from fablestar.admin.admin_security import AdminContext
 from fablestar.admin.route_helpers import require_tool
+from fablestar.llm.client import LLMGenerationError
 
 if TYPE_CHECKING:
     from fablestar.server import FablestarServer
@@ -67,7 +68,10 @@ def build_forge_router(server: FablestarServer) -> APIRouter:
 
         # 2. Call LLM
         logger.info(f"Forge: Generating room from seed '{req.seed}'")
-        raw_yaml = await server.llm_client.generate(prompt, max_tokens=2048)
+        try:
+            raw_yaml = await server.llm_client.generate_or_raise(prompt, max_tokens=2048)
+        except LLMGenerationError as e:
+            raise HTTPException(status_code=502, detail=f"LLM unavailable: {e}") from e
 
         # 3. Clean and Validate
         try:
@@ -118,11 +122,14 @@ def build_forge_router(server: FablestarServer) -> APIRouter:
             context=req.context or {},
         )
         logger.info("Forge: generic generate category=%s", cat)
-        raw_yaml = await server.llm_client.generate(
-            prompt,
-            system_prompt="You output only valid YAML for a MUD. No markdown.",
-            max_tokens=3072,
-        )
+        try:
+            raw_yaml = await server.llm_client.generate_or_raise(
+                prompt,
+                system_prompt="You output only valid YAML for a MUD. No markdown.",
+                max_tokens=3072,
+            )
+        except LLMGenerationError as e:
+            raise HTTPException(status_code=502, detail=f"LLM unavailable: {e}") from e
         try:
             parsed = yaml.safe_load(raw_yaml)
         except Exception as e:

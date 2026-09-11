@@ -14,6 +14,7 @@ from sqlalchemy import select
 
 from fablestar.comfyui_client import generate_portrait_png
 from fablestar.core.config import resolve_config_asset_path
+from fablestar.llm.client import LLMGenerationError
 from fablestar.services._shared import resolve_play_account, save_portrait_png
 from fablestar.state.models import AccountSceneImage, Character
 
@@ -147,11 +148,15 @@ class SceneService:
             room_depth=int(depth or 1),
             description_base=(description_base or "").strip(),
         )
-        raw = await self.server.llm_client.generate(
-            prompt,
-            system_prompt="You output only a single image-generation prompt for Stable Diffusion or ComfyUI. No quotes, markdown, labels, or preamble.",
-            max_tokens=400,
-        )
+        try:
+            raw = await self.server.llm_client.generate_or_raise(
+                prompt,
+                system_prompt="You output only a single image-generation prompt for Stable Diffusion or ComfyUI. No quotes, markdown, labels, or preamble.",
+                max_tokens=400,
+            )
+        except LLMGenerationError as e:
+            logger.warning("forge area image prompt LLM failed: %s", e)
+            return {"ok": False, "error": "llm_failed", "detail": str(e)}
         text = (raw or "").strip().strip('"').strip("'")
         text = " ".join(text.split())
         if len(text) < 8:
@@ -185,7 +190,7 @@ class SceneService:
             appearance_notes=notes or "(none)",
         )
         try:
-            raw = await self.server.llm_client.generate(
+            raw = await self.server.llm_client.generate_or_raise(
                 prompt,
                 system_prompt=(
                     "You output only a single image-generation prompt for a character portrait "
@@ -231,7 +236,7 @@ class SceneService:
             room_hint=rh,
         )
         try:
-            raw = await self.server.llm_client.generate(
+            raw = await self.server.llm_client.generate_or_raise(
                 prompt,
                 system_prompt=(
                     "You output only a single image-generation prompt for an environment or scene. "
