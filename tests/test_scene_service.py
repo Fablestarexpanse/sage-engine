@@ -11,7 +11,6 @@ from types import SimpleNamespace
 from fablestar.services.scene_service import SceneService, _is_safe_player_scene_storage_url
 from fablestar.state.models import Account, AccountSceneImage, Character
 
-
 # ---- storage-URL guard ------------------------------------------------------
 
 
