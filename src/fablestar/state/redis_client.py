@@ -74,7 +74,7 @@ class RedisState:
 
     async def get_all_active_player_ids(self) -> list[str]:
         """Return player IDs with an active location key (used for flush/persistence scans)."""
-        keys = await self.client.keys("player:*:location")
+        keys = await self.client.keys(self._get_key("player_location", id="*"))
         return [k.split(":")[1] for k in keys]
 
     # --- Player Location Methods ---

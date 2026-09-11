@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 import jwt
 
-from fablestar.admin.admin_security import jwt_secret_for_server
+from fablestar.core.security import jwt_secret_for_server
 
 if TYPE_CHECKING:
     from fablestar.server import FablestarServer

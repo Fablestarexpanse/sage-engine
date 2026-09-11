@@ -15,12 +15,12 @@ from typing import Any
 from sqlalchemy import select
 
 from fablestar import app
-from fablestar.admin.comfyui_persist import save_comfyui_toml
-from fablestar.admin.llm_persist import save_llm_toml
 from fablestar.admin.nexus import NexusApp
 from fablestar.bootstrap import ensure_dev_defaults
 from fablestar.commands.registry import registry
+from fablestar.core.comfyui_persist import save_comfyui_toml
 from fablestar.core.config import ComfyUIConfig, Config, LLMConfig, load_config
+from fablestar.core.llm_persist import save_llm_toml
 from fablestar.core.tick import TickManager
 from fablestar.hot_reload import HotReloader
 from fablestar.llm.client import LLMClient
@@ -290,13 +290,13 @@ class FablestarServer:
         await ensure_dev_defaults(self.db, self.config)
 
         # 1. Command registry — must complete before NexusApp handles any WebSocket connections
-        registry.reload_module("fablestar.commands.info")
-        registry.reload_module("fablestar.commands.communication")
-        registry.reload_module("fablestar.commands.movement")
-        registry.reload_module("fablestar.commands.combat")
-        registry.reload_module("fablestar.commands.items")
-        registry.reload_module("fablestar.commands.proficiency")
-        registry.reload_module("fablestar.commands.admin")
+        registry.load_module_strict("fablestar.commands.info")
+        registry.load_module_strict("fablestar.commands.communication")
+        registry.load_module_strict("fablestar.commands.movement")
+        registry.load_module_strict("fablestar.commands.combat")
+        registry.load_module_strict("fablestar.commands.items")
+        registry.load_module_strict("fablestar.commands.proficiency")
+        registry.load_module_strict("fablestar.commands.admin")
 
         # 2. Tick handlers — must be registered before the tick loop starts in step 4
         self.tick_manager.register(self.spawner.on_tick)
@@ -443,7 +443,7 @@ class FablestarServer:
         await self.dispatcher.dispatch(session, "look")
         await session.send_prompt()
 
-    async def _session_loop(self, session: Session):
+    async def run_session_loop(self, session: Session):
         """Main input/output loop for a single session: authenticate → bootstrap → command loop."""
         try:
             character = await self._authenticate_websocket(session)

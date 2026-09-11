@@ -95,7 +95,7 @@ class LLMConfig(BaseModel):
     @field_validator("lm_studio_url", "ollama_url")
     @classmethod
     def _normalize_openai_base(cls, v: str) -> str:
-        from fablestar.llm.openai_util import normalize_openai_compatible_base
+        from fablestar.core.openai_util import normalize_openai_compatible_base
 
         return normalize_openai_compatible_base(v)
 

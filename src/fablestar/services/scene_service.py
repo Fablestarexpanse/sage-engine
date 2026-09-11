@@ -14,7 +14,12 @@ from sqlalchemy import select
 
 from fablestar.comfyui_client import generate_portrait_png
 from fablestar.core.config import resolve_config_asset_path
-from fablestar.services._shared import resolve_play_account, save_portrait_png
+from fablestar.llm.client import LLMGenerationError
+from fablestar.services._shared import (
+    resolve_play_account,
+    resolve_play_account_or_error,
+    save_portrait_png,
+)
 from fablestar.state.models import AccountSceneImage, Character
 
 if TYPE_CHECKING:
@@ -62,7 +67,7 @@ def _workflow_has_checkpoint_simple_node(workflow_path: Path) -> bool:
     return False
 
 
-def _safe_player_scene_storage_url(url: str | None) -> bool:
+def _is_safe_player_scene_storage_url(url: str | None) -> bool:
     """Only allow persisting Nexus-served paths we write under data/ or bundled room-art."""
     u = (url or "").strip()
     if not u.startswith("/media/") or ".." in u or len(u) > 2048:
@@ -147,11 +152,15 @@ class SceneService:
             room_depth=int(depth or 1),
             description_base=(description_base or "").strip(),
         )
-        raw = await self.server.llm_client.generate(
-            prompt,
-            system_prompt="You output only a single image-generation prompt for Stable Diffusion or ComfyUI. No quotes, markdown, labels, or preamble.",
-            max_tokens=400,
-        )
+        try:
+            raw = await self.server.llm_client.generate_or_raise(
+                prompt,
+                system_prompt="You output only a single image-generation prompt for Stable Diffusion or ComfyUI. No quotes, markdown, labels, or preamble.",
+                max_tokens=400,
+            )
+        except LLMGenerationError as e:
+            logger.warning("forge area image prompt LLM failed: %s", e)
+            return {"ok": False, "error": "llm_failed", "detail": str(e)}
         text = (raw or "").strip().strip('"').strip("'")
         text = " ".join(text.split())
         if len(text) < 8:
@@ -164,18 +173,15 @@ class SceneService:
         password: str,
         character_name: str,
         appearance_notes: str = "",
+        *,
         token: str = "",
     ) -> dict[str, Any]:
         """LLM: single-line ComfyUI-style portrait prompt from name and optional notes."""
-        username = (username or "").strip()
-        if not username and not token:
-            return {"ok": False, "error": "username_required"}
-        async with self.server.db.session_factory() as db_session:
-            account = await resolve_play_account(
-                db_session, self.server, token=token, username=username, password=password
-            )
-            if account is None:
-                return {"ok": False, "error": "invalid_credentials"}
+        _account, err = await resolve_play_account_or_error(
+            self.server, token=token, username=username, password=password
+        )
+        if err:
+            return err
 
         cn = (character_name or "").strip() or "?"
         notes = (appearance_notes or "").strip()
@@ -185,7 +191,7 @@ class SceneService:
             appearance_notes=notes or "(none)",
         )
         try:
-            raw = await self.server.llm_client.generate(
+            raw = await self.server.llm_client.generate_or_raise(
                 prompt,
                 system_prompt=(
                     "You output only a single image-generation prompt for a character portrait "
@@ -193,8 +199,8 @@ class SceneService:
                 ),
                 max_tokens=400,
             )
-        except Exception as e:
-            logger.warning("play suggest portrait prompt LLM failed: %s", e, exc_info=True)
+        except LLMGenerationError as e:
+            logger.warning("play suggest portrait prompt LLM failed: %s", e)
             return {"ok": False, "error": "llm_failed", "detail": str(e)}
         text = (raw or "").strip().strip('"').strip("'")
         text = " ".join(text.split())
@@ -208,18 +214,15 @@ class SceneService:
         password: str,
         narrative_context: str = "",
         room_hint: str = "",
+        *,
         token: str = "",
     ) -> dict[str, Any]:
         """LLM: ComfyUI-style environment prompt from recent narrative text."""
-        username = (username or "").strip()
-        if not username and not token:
-            return {"ok": False, "error": "username_required"}
-        async with self.server.db.session_factory() as db_session:
-            account = await resolve_play_account(
-                db_session, self.server, token=token, username=username, password=password
-            )
-            if account is None:
-                return {"ok": False, "error": "invalid_credentials"}
+        _account, err = await resolve_play_account_or_error(
+            self.server, token=token, username=username, password=password
+        )
+        if err:
+            return err
 
         ctx = (narrative_context or "").strip()
         if len(ctx) > 8000:
@@ -231,7 +234,7 @@ class SceneService:
             room_hint=rh,
         )
         try:
-            raw = await self.server.llm_client.generate(
+            raw = await self.server.llm_client.generate_or_raise(
                 prompt,
                 system_prompt=(
                     "You output only a single image-generation prompt for an environment or scene. "
@@ -239,8 +242,8 @@ class SceneService:
                 ),
                 max_tokens=500,
             )
-        except Exception as e:
-            logger.warning("play suggest scene prompt LLM failed: %s", e, exc_info=True)
+        except LLMGenerationError as e:
+            logger.warning("play suggest scene prompt LLM failed: %s", e)
             return {"ok": False, "error": "llm_failed", "detail": str(e)}
         text = (raw or "").strip().strip('"').strip("'")
         text = " ".join(text.split())
@@ -258,19 +261,16 @@ class SceneService:
         password: str,
         scene_prompt: str,
         character_id: int | None = None,
+        *,
         token: str = "",
     ) -> dict[str, Any]:
         """ComfyUI area workflow: save PNG under /media/rooms/ (or room-art); optional character_id persists URL for reload."""
-        username = (username or "").strip()
-        if not username and not token:
-            return {"ok": False, "error": "username_required"}
-        async with self.server.db.session_factory() as db_session:
-            account = await resolve_play_account(
-                db_session, self.server, token=token, username=username, password=password
-            )
-            if account is None:
-                return {"ok": False, "error": "invalid_credentials"}
-            account_id = account.id
+        account, err = await resolve_play_account_or_error(
+            self.server, token=token, username=username, password=password
+        )
+        if err or account is None:
+            return err or {"ok": False, "error": "invalid_credentials"}
+        account_id = account.id
         ip = (scene_prompt or "").strip()
         if len(ip) < 3:
             return {"ok": False, "error": "prompt_too_short"}
@@ -302,7 +302,7 @@ class SceneService:
             }
         scene_url = res.get("area_image_url")
         scene_url_str = str(scene_url).strip()[:2048] if scene_url else ""
-        if scene_url and _safe_player_scene_storage_url(scene_url_str):
+        if scene_url and _is_safe_player_scene_storage_url(scene_url_str):
             async with self.server.db.session_factory() as db_session:
                 db_session.add(
                     AccountSceneImage(
@@ -332,23 +332,19 @@ class SceneService:
         self, username: str, password: str, *, token: str = ""
     ) -> dict[str, Any]:
         """List ComfyUI scene images recorded for this account (newest first)."""
-        username = (username or "").strip()
-        if not username and not token:
-            return {"ok": False, "error": "username_required"}
+        account, err = await resolve_play_account_or_error(
+            self.server, token=token, username=username, password=password
+        )
+        if err or account is None:
+            return err or {"ok": False, "error": "invalid_credentials"}
+        q = (
+            select(AccountSceneImage, Character.name)
+            .outerjoin(Character, AccountSceneImage.character_id == Character.id)
+            .where(AccountSceneImage.account_id == account.id)
+            .order_by(AccountSceneImage.created_at.desc())
+            .limit(200)
+        )
         async with self.server.db.session_factory() as db_session:
-            account = await resolve_play_account(
-                db_session, self.server, token=token, username=username, password=password
-            )
-            if account is None:
-                return {"ok": False, "error": "invalid_credentials"}
-            aid = account.id
-            q = (
-                select(AccountSceneImage, Character.name)
-                .outerjoin(Character, AccountSceneImage.character_id == Character.id)
-                .where(AccountSceneImage.account_id == aid)
-                .order_by(AccountSceneImage.created_at.desc())
-                .limit(200)
-            )
             rows = (await db_session.execute(q)).all()
         items = []
         for img, char_name in rows:
@@ -371,6 +367,7 @@ class SceneService:
         password: str,
         gallery_id: int,
         character_id: int,
+        *,
         token: str = "",
     ) -> dict[str, Any]:
         """Set the active scene image for a character from a row in this account's gallery."""
@@ -390,7 +387,7 @@ class SceneService:
             if row is None or row.account_id != aid:
                 return {"ok": False, "error": "gallery_item_not_found"}
             url = (row.image_url or "").strip()[:2048]
-            if not _safe_player_scene_storage_url(url):
+            if not _is_safe_player_scene_storage_url(url):
                 return {"ok": False, "error": "invalid_stored_url"}
             char = await db_session.get(Character, character_id)
             if char is None or char.account_id != aid:
@@ -460,16 +457,12 @@ class SceneService:
     async def generate_portrait(
         self, username: str, password: str, appearance_prompt: str, *, token: str = ""
     ) -> dict[str, Any]:
-        username = (username or "").strip()
-        if not username and not token:
-            return {"ok": False, "error": "username_required"}
-        async with self.server.db.session_factory() as db_session:
-            account = await resolve_play_account(
-                db_session, self.server, token=token, username=username, password=password
-            )
-            if account is None:
-                return {"ok": False, "error": "invalid_credentials"}
-            account_id = account.id
+        account, err = await resolve_play_account_or_error(
+            self.server, token=token, username=username, password=password
+        )
+        if err or account is None:
+            return err or {"ok": False, "error": "invalid_credentials"}
+        account_id = account.id
 
         cfg = self.server.config.comfyui
         eco = self.server.economy.public_fields()

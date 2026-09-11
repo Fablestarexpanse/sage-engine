@@ -24,6 +24,32 @@ async def authenticate_account(db_session, username: str, password: str) -> Acco
     return account
 
 
+async def resolve_play_account_or_error(
+    server: FablestarServer,
+    *,
+    token: str = "",
+    username: str = "",
+    password: str = "",
+) -> tuple[Account | None, dict | None]:
+    """Auth preamble for /play service methods that only need the account itself.
+
+    Opens its own short-lived session; returns (account, None) on success or
+    (None, {"ok": False, ...}) ready to return to the caller. Methods that keep
+    using the DB session must call resolve_play_account() inside their own
+    session instead.
+    """
+    username = (username or "").strip()
+    if not username and not token:
+        return None, {"ok": False, "error": "username_required"}
+    async with server.db.session_factory() as db_session:
+        account = await resolve_play_account(
+            db_session, server, token=token, username=username, password=password
+        )
+    if account is None:
+        return None, {"ok": False, "error": "invalid_credentials"}
+    return account, None
+
+
 async def resolve_play_account(
     db_session,
     server: FablestarServer,

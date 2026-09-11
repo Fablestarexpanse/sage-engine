@@ -370,18 +370,26 @@ async def generate_comfy_png(
         while loop.time() < deadline:
             try:
                 hr = await client.get(f"{base}/history/{prompt_id}")
-            except httpx.RequestError:
+            except httpx.RequestError as e:
+                logger.debug("ComfyUI history poll transient error: %s", e)
+                await asyncio.sleep(cfg.poll_interval_seconds)
                 continue
             if hr.status_code == 404:
+                await asyncio.sleep(cfg.poll_interval_seconds)
                 continue
             if hr.status_code != 200:
+                logger.debug("ComfyUI history poll HTTP %s", hr.status_code)
+                await asyncio.sleep(cfg.poll_interval_seconds)
                 continue
             try:
                 history = hr.json()
             except json.JSONDecodeError:
+                logger.debug("ComfyUI history poll returned non-JSON body")
+                await asyncio.sleep(cfg.poll_interval_seconds)
                 continue
             entry = _get_history_entry(history, prompt_id)
             if not isinstance(entry, dict):
+                await asyncio.sleep(cfg.poll_interval_seconds)
                 continue
             err = _history_entry_failed(entry)
             if err:
@@ -436,8 +444,3 @@ async def generate_portrait_png(
 ) -> tuple[bytes, str]:
     """Portrait workflow (backwards-compatible name)."""
     return await generate_comfy_png(cfg, appearance_prompt, kind="portrait")
-
-
-def workflow_template_copy_destination() -> Path:
-    """Hint path for operators copying the example workflow."""
-    return Path("config/comfyui_portrait_workflow.json")

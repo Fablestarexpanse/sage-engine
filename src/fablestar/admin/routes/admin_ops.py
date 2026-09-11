@@ -19,6 +19,7 @@ from fablestar.admin.route_helpers import (
     get_admin_ctx,
     limiter,
     require_any_tool,
+    require_head_admin,
     require_head_or_admin_console,
     require_tool,
 )
@@ -105,18 +106,17 @@ def build_admin_ops_router(server: FablestarServer) -> APIRouter:
         return get_admin_ctx(request).public_dict()
 
     @router.get("/admin/staff")
-    async def admin_staff_list(request: Request):
-        ctx = get_admin_ctx(request)
-        if not ctx.is_head_admin():
-            raise HTTPException(status_code=403, detail="head_admin_only")
+    async def admin_staff_list(
+        _ctx: Annotated[AdminContext, Depends(require_head_admin)],
+    ):
         rows = await staff_service.list_staff(server)
         return [staff_service.staff_public(r) for r in rows]
 
     @router.post("/admin/staff")
-    async def admin_staff_create(request: Request, body: StaffCreateBody):
-        ctx = get_admin_ctx(request)
-        if not ctx.is_head_admin():
-            raise HTTPException(status_code=403, detail="head_admin_only")
+    async def admin_staff_create(
+        body: StaffCreateBody,
+        _ctx: Annotated[AdminContext, Depends(require_head_admin)],
+    ):
         row = await staff_service.create_staff(
             server,
             username=body.username,
@@ -128,10 +128,11 @@ def build_admin_ops_router(server: FablestarServer) -> APIRouter:
         return staff_service.staff_public(row)
 
     @router.patch("/admin/staff/{staff_id}")
-    async def admin_staff_patch(request: Request, staff_id: int, body: StaffPatchBody):
-        ctx = get_admin_ctx(request)
-        if not ctx.is_head_admin():
-            raise HTTPException(status_code=403, detail="head_admin_only")
+    async def admin_staff_patch(
+        staff_id: int,
+        body: StaffPatchBody,
+        _ctx: Annotated[AdminContext, Depends(require_head_admin)],
+    ):
         patch = body.model_dump(exclude_unset=True)
         row = await staff_service.apply_staff_patch(server, staff_id, patch)
         return staff_service.staff_public(row)

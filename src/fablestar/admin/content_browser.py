@@ -7,6 +7,7 @@ import logging
 import os
 import re
 import tempfile
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -14,6 +15,7 @@ import yaml
 
 logger = logging.getLogger(__name__)
 
+CONTENT_WORLD = Path("content/world")
 ZONES_ROOT = Path("content/world/zones")
 ITEMS_DIR = Path("content/world/items")
 GLYPHS_DIR = Path("content/world/glyphs")
@@ -24,18 +26,18 @@ POSITIONS_FILENAME = ".positions.json"
 _POSITIONS_DOC_KEYS = frozenset({"version", "positions", "notes", "reference_image", "muted_edges"})
 
 
-def _safe_segment(segment: str) -> bool:
+def _is_safe_segment(segment: str) -> bool:
     return bool(re.match(r"^[a-zA-Z0-9_-]+$", segment))
 
 
 def list_zone_ids() -> list[str]:
     if not ZONES_ROOT.is_dir():
         return []
-    return sorted(p.name for p in ZONES_ROOT.iterdir() if p.is_dir() and _safe_segment(p.name))
+    return sorted(p.name for p in ZONES_ROOT.iterdir() if p.is_dir() and _is_safe_segment(p.name))
 
 
 def zone_summary(zone_id: str) -> dict[str, Any] | None:
-    if not _safe_segment(zone_id):
+    if not _is_safe_segment(zone_id):
         return None
     zpath = ZONES_ROOT / zone_id
     if not zpath.is_dir():
@@ -98,9 +100,9 @@ def create_zone(zone_id: str, zone_name: str) -> Path:
     rooms_dir.mkdir(parents=True, exist_ok=True)
     display = (zone_name or "").strip() or zone_id.replace("_", " ").title()
     meta = {"name": display, "type": "exploration", "status": "active"}
-    (root / "zone.yaml").write_text(
+    _atomic_write_text(
+        root / "zone.yaml",
         yaml.safe_dump(meta, default_flow_style=False, allow_unicode=True, sort_keys=False),
-        encoding="utf-8",
     )
     entrance: dict[str, Any] = {
         "id": f"{zone_id}:entrance",
@@ -113,9 +115,9 @@ def create_zone(zone_id: str, zone_name: str) -> Path:
         "entity_spawns": [],
         "tags": [],
     }
-    (rooms_dir / "entrance.yaml").write_text(
+    _atomic_write_text(
+        rooms_dir / "entrance.yaml",
         yaml.safe_dump(entrance, default_flow_style=False, allow_unicode=True, sort_keys=False),
-        encoding="utf-8",
     )
     return rooms_dir
 
@@ -139,7 +141,7 @@ def room_row(zone_id: str, stem: str, data: dict[str, Any]) -> dict[str, Any]:
 
 
 def list_rooms(zone_id: str) -> list[dict[str, Any]]:
-    if not _safe_segment(zone_id):
+    if not _is_safe_segment(zone_id):
         return []
     rooms_dir = ZONES_ROOT / zone_id / "rooms"
     if not rooms_dir.is_dir():
@@ -169,12 +171,23 @@ def list_rooms(zone_id: str) -> list[dict[str, Any]]:
 
 
 def get_room_yaml(zone_id: str, room_slug: str) -> str | None:
-    if not _safe_segment(zone_id) or not _safe_segment(room_slug):
+    if not _is_safe_segment(zone_id) or not _is_safe_segment(room_slug):
         return None
     path = ZONES_ROOT / zone_id / "rooms" / f"{room_slug}.yaml"
     if not path.is_file():
         return None
     return path.read_text(encoding="utf-8")
+
+
+def room_file_mtime(zone_id: str, room_slug: str) -> float | None:
+    """On-disk mtime for a room YAML, used as an optimistic-concurrency token."""
+    if not _is_safe_segment(zone_id) or not _is_safe_segment(room_slug):
+        return None
+    path = ZONES_ROOT / zone_id / "rooms" / f"{room_slug}.yaml"
+    try:
+        return path.stat().st_mtime
+    except OSError:
+        return None
 
 
 def aggregate_entity_spawns() -> list[dict[str, Any]]:
@@ -292,12 +305,12 @@ def load_zone_positions(zone_id: str) -> dict[str, dict[str, float]]:
     return out
 
 
-def _atomic_write_json(path: Path, obj: Any) -> None:
+def _atomic_write_text(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp = tempfile.mkstemp(prefix=".wf_", suffix=".json", dir=str(path.parent), text=True)
+    fd, tmp = tempfile.mkstemp(prefix=".wf_", suffix=path.suffix, dir=str(path.parent), text=True)
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
-            json.dump(obj, f, indent=2)
+            f.write(text)
         os.replace(tmp, path)
     except Exception:
         try:
@@ -305,32 +318,42 @@ def _atomic_write_json(path: Path, obj: Any) -> None:
         except OSError:
             pass
         raise
+
+
+def save_room_yaml_text(zone_id: str, room_slug: str, text: str) -> Path:
+    """Write raw room YAML through the content seam (validated segments, atomic write)."""
+    if not _is_safe_segment(zone_id) or not _is_safe_segment(room_slug):
+        raise ValueError("invalid_slug")
+    path = ZONES_ROOT / zone_id / "rooms" / f"{room_slug}.yaml"
+    _atomic_write_text(path, text)
+    return path
+
+
+def save_template_yaml_text(kind: str, slug: str, text: str) -> Path:
+    """Write raw entity/item template YAML (validated slug, atomic write)."""
+    if kind not in ("entities", "items"):
+        raise ValueError("invalid_kind")
+    if not slug.replace("_", "").isalnum():
+        raise ValueError("invalid_slug")
+    path = CONTENT_WORLD / kind / f"{slug}.yaml"
+    _atomic_write_text(path, text)
+    return path
+
+
+def _atomic_write_json(path: Path, obj: Any) -> None:
+    _atomic_write_text(path, json.dumps(obj, indent=2))
 
 
 def _atomic_write_yaml(path: Path, data: Any) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp = tempfile.mkstemp(prefix=".wf_", suffix=".yaml", dir=str(path.parent), text=True)
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            yaml.safe_dump(
-                data,
-                f,
-                default_flow_style=False,
-                allow_unicode=True,
-                sort_keys=False,
-            )
-        os.replace(tmp, path)
-    except Exception:
-        try:
-            os.unlink(tmp)
-        except OSError:
-            pass
-        raise
+    _atomic_write_text(
+        path,
+        yaml.safe_dump(data, default_flow_style=False, allow_unicode=True, sort_keys=False),
+    )
 
 
 def save_zone_positions(zone_id: str, positions: dict[str, Any]) -> str:
     """Map room slug -> {x, y}. Merges into v2 .positions.json; preserves WorldForge metadata."""
-    if not _safe_segment(zone_id):
+    if not _is_safe_segment(zone_id):
         raise ValueError("invalid_zone")
     zpath = ZONES_ROOT / zone_id
     if not zpath.is_dir():
@@ -351,7 +374,7 @@ def save_zone_positions(zone_id: str, positions: dict[str, Any]) -> str:
 
     authoritative: dict[str, dict[str, Any]] = {}
     for k, v in (positions or {}).items():
-        if not _safe_segment(str(k)):
+        if not _is_safe_segment(str(k)):
             continue
         if isinstance(v, dict):
             authoritative[str(k)] = v
@@ -397,7 +420,12 @@ def _resolve_exit_destination(zone_id: str, dest: str, known_ids: set[str]) -> s
     return cand if cand in known_ids else None
 
 
-def _opposite_dir(direction: str) -> str:
+def _opposite_dir(direction: str) -> str | None:
+    """Opposite cardinal direction, or None for non-cardinal exits.
+
+    None (rather than a fabricated default) lets React Flow attach the edge to
+    the node body instead of silently pinning unknown directions to one side.
+    """
     return {
         "north": "south",
         "south": "north",
@@ -405,11 +433,58 @@ def _opposite_dir(direction: str) -> str:
         "west": "east",
         "up": "down",
         "down": "up",
-    }.get(str(direction).lower(), "south")
+    }.get(str(direction).lower())
+
+
+def _exit_edge(
+    source_id: str,
+    direction: str,
+    target_id: str,
+    description: str,
+    *,
+    one_way: bool | None = None,
+) -> dict[str, Any]:
+    """Shared React Flow edge shape for zone_graph and ship_graph."""
+    dlow = str(direction).lower()
+    data: dict[str, Any] = {"direction": str(direction), "description": description}
+    if one_way is not None:
+        data["oneWay"] = one_way
+    return {
+        "id": f"{source_id}|{direction}|{target_id}",
+        "source": source_id,
+        "target": target_id,
+        "sourceHandle": dlow,
+        "targetHandle": _opposite_dir(dlow),
+        "type": "exit",
+        "label": str(direction),
+        "data": data,
+    }
+
+
+def _load_zone_rooms(
+    rooms_dir: Path,
+    warnings: list[str],
+) -> tuple[dict[str, dict[str, Any]], dict[str, float | None]]:
+    """Load every room YAML in a zone: (data by slug, on-disk mtime by slug)."""
+    room_data_by_slug: dict[str, dict[str, Any]] = {}
+    room_mtime_by_slug: dict[str, float | None] = {}
+    for rf in sorted(rooms_dir.glob("*.yaml")):
+        slug = rf.stem
+        try:
+            room_mtime_by_slug[slug] = rf.stat().st_mtime
+        except OSError:
+            room_mtime_by_slug[slug] = None
+        try:
+            with open(rf, encoding="utf-8") as f:
+                room_data_by_slug[slug] = yaml.safe_load(f) or {}
+        except Exception as e:
+            warnings.append(f"parse_error:{slug}:{e}")
+            room_data_by_slug[slug] = {}
+    return room_data_by_slug, room_mtime_by_slug
 
 
 def zone_graph(zone_id: str) -> dict[str, Any]:
-    if not _safe_segment(zone_id):
+    if not _is_safe_segment(zone_id):
         return {"nodes": [], "edges": [], "warnings": ["invalid_zone"], "external_exits": []}
     rooms_dir = ZONES_ROOT / zone_id / "rooms"
     if not rooms_dir.is_dir():
@@ -418,16 +493,7 @@ def zone_graph(zone_id: str) -> dict[str, Any]:
     positions = load_zone_positions(zone_id)
     warnings: list[str] = []
     external_exits: list[dict[str, Any]] = []
-    room_data_by_slug: dict[str, dict[str, Any]] = {}
-
-    for rf in sorted(rooms_dir.glob("*.yaml")):
-        slug = rf.stem
-        try:
-            with open(rf, encoding="utf-8") as f:
-                room_data_by_slug[slug] = yaml.safe_load(f) or {}
-        except Exception as e:
-            warnings.append(f"parse_error:{slug}:{e}")
-            room_data_by_slug[slug] = {}
+    room_data_by_slug, room_mtime_by_slug = _load_zone_rooms(rooms_dir, warnings)
 
     known_ids: set[str] = set()
     for slug, data in room_data_by_slug.items():
@@ -468,6 +534,8 @@ def zone_graph(zone_id: str) -> dict[str, Any]:
                     "exitCount": len(exits),
                     "tags": tags,
                     "raw": data,
+                    # Optimistic-concurrency token: echo back as expected_mtime on room writes.
+                    "mtime": room_mtime_by_slug.get(slug),
                 },
             }
         )
@@ -490,23 +558,9 @@ def zone_graph(zone_id: str) -> dict[str, Any]:
                 if eid in edge_ids_used:
                     continue
                 edge_ids_used.add(eid)
-                dlow = str(direction).lower()
                 one_way = bool(ex.get("one_way")) if isinstance(ex, dict) else False
                 edges.append(
-                    {
-                        "id": eid,
-                        "source": source_id,
-                        "target": target_id,
-                        "sourceHandle": dlow,
-                        "targetHandle": _opposite_dir(dlow),
-                        "type": "exit",
-                        "label": str(direction),
-                        "data": {
-                            "direction": str(direction),
-                            "description": edesc,
-                            "oneWay": one_way,
-                        },
-                    }
+                    _exit_edge(source_id, str(direction), target_id, edesc, one_way=one_way)
                 )
             else:
                 external_exits.append(
@@ -532,7 +586,7 @@ def _deep_merge_room(existing: dict[str, Any], patch: dict[str, Any]) -> dict[st
 
 
 def save_room_dict(zone_id: str, room_slug: str, data: dict[str, Any]) -> Path:
-    if not _safe_segment(zone_id) or not _safe_segment(room_slug):
+    if not _is_safe_segment(zone_id) or not _is_safe_segment(room_slug):
         raise ValueError("invalid_slug")
     path = ZONES_ROOT / zone_id / "rooms" / f"{room_slug}.yaml"
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -541,18 +595,21 @@ def save_room_dict(zone_id: str, room_slug: str, data: dict[str, Any]) -> Path:
         try:
             with open(path, encoding="utf-8") as f:
                 existing = yaml.safe_load(f) or {}
-        except Exception:
+        except Exception as e:
+            logger.warning(
+                "save_room_dict: could not parse existing %s (%s); merging onto empty", path, e
+            )
             existing = {}
     merged = _deep_merge_room(existing, data)
     merged["id"] = merged.get("id") or f"{zone_id}:{room_slug}"
     merged["zone"] = zone_id
     text = yaml.safe_dump(merged, default_flow_style=False, allow_unicode=True, sort_keys=False)
-    path.write_text(text, encoding="utf-8")
+    _atomic_write_text(path, text)
     return path
 
 
 def create_room(zone_id: str, slug: str, initial: dict[str, Any] | None = None) -> Path:
-    if not _safe_segment(zone_id) or not _safe_segment(slug):
+    if not _is_safe_segment(zone_id) or not _is_safe_segment(slug):
         raise ValueError("invalid_slug")
     path = ZONES_ROOT / zone_id / "rooms" / f"{slug}.yaml"
     if path.is_file():
@@ -574,12 +631,12 @@ def create_room(zone_id: str, slug: str, initial: dict[str, Any] | None = None) 
     base["id"] = f"{zone_id}:{slug}"
     base["zone"] = zone_id
     text = yaml.safe_dump(base, default_flow_style=False, allow_unicode=True, sort_keys=False)
-    path.write_text(text, encoding="utf-8")
+    _atomic_write_text(path, text)
     return path
 
 
 def delete_room(zone_id: str, room_slug: str) -> None:
-    if not _safe_segment(zone_id) or not _safe_segment(room_slug):
+    if not _is_safe_segment(zone_id) or not _is_safe_segment(room_slug):
         raise ValueError("invalid_slug")
     path = ZONES_ROOT / zone_id / "rooms" / f"{room_slug}.yaml"
     if not path.is_file():
@@ -631,7 +688,7 @@ def galaxy_overview() -> dict[str, Any]:
 
 
 def system_detail(system_id: str) -> dict[str, Any] | None:
-    if not _safe_segment(system_id):
+    if not _is_safe_segment(system_id):
         return None
     path = SYSTEMS_DIR / f"{system_id}.yaml"
     if not path.is_file():
@@ -639,7 +696,8 @@ def system_detail(system_id: str) -> dict[str, Any] | None:
     try:
         with open(path, encoding="utf-8") as f:
             data = yaml.safe_load(f) or {}
-    except Exception:
+    except Exception as e:
+        logger.warning("system_detail: could not parse %s: %s", path, e)
         return None
     sys_block = data.get("system") or data
     return {
@@ -655,6 +713,26 @@ def system_detail(system_id: str) -> dict[str, Any] | None:
     }
 
 
+def _search_category(
+    label: str,
+    rows: Callable[[], Any],
+    hit: Callable[[dict[str, Any]], dict[str, Any] | None],
+    cap: int,
+) -> list[dict[str, Any]]:
+    """Collect up to `cap` matches from a category, logging (not swallowing) failures."""
+    found: list[dict[str, Any]] = []
+    try:
+        for row in rows():
+            h = hit(row)
+            if h is not None:
+                found.append(h)
+                if len(found) >= cap:
+                    break
+    except Exception as e:
+        logger.debug("builder_search %s: %s", label, e)
+    return found
+
+
 def builder_search(query: str, limit: int = 30) -> dict[str, list[dict[str, Any]]]:
     """Lightweight cross-content search for the World Builder (prefix/substring match)."""
     q = (query or "").strip().lower()
@@ -663,94 +741,67 @@ def builder_search(query: str, limit: int = 30) -> dict[str, list[dict[str, Any]
         return out
     per_cat = max(3, min(limit // 4, 20))
 
-    try:
-        for row in list_zones():
-            nid = str(row.get("id", ""))
-            name = str(row.get("name", ""))
-            if q in nid.lower() or q in name.lower():
-                out["zones"].append(
-                    {
-                        "kind": "zone",
-                        "id": nid,
-                        "label": name or nid,
-                        "detail": f"{row.get('type', '')} · {row.get('rooms', 0)} rooms",
-                    }
-                )
-                if len(out["zones"]) >= per_cat:
-                    break
-    except Exception as e:
-        logger.debug("builder_search zones: %s", e)
+    def zone_hit(row: dict[str, Any]) -> dict[str, Any] | None:
+        nid, name = str(row.get("id", "")), str(row.get("name", ""))
+        if q not in nid.lower() and q not in name.lower():
+            return None
+        return {
+            "kind": "zone",
+            "id": nid,
+            "label": name or nid,
+            "detail": f"{row.get('type', '')} · {row.get('rooms', 0)} rooms",
+        }
 
-    try:
-        for s in galaxy_overview().get("systems") or []:
-            if s.get("error"):
-                continue
-            sid = str(s.get("id", ""))
-            name = str(s.get("name", ""))
-            fac = str(s.get("faction", ""))
-            if q in sid.lower() or q in name.lower() or q in fac.lower():
-                out["systems"].append(
-                    {
-                        "kind": "system",
-                        "id": sid,
-                        "label": name or sid,
-                        "detail": fac or "—",
-                    }
-                )
-                if len(out["systems"]) >= per_cat:
-                    break
-    except Exception as e:
-        logger.debug("builder_search systems: %s", e)
+    def system_hit(s: dict[str, Any]) -> dict[str, Any] | None:
+        if s.get("error"):
+            return None
+        sid, name, fac = str(s.get("id", "")), str(s.get("name", "")), str(s.get("faction", ""))
+        if q not in sid.lower() and q not in name.lower() and q not in fac.lower():
+            return None
+        return {"kind": "system", "id": sid, "label": name or sid, "detail": fac or "—"}
 
-    try:
-        for sh in list_ship_templates():
-            sid = str(sh.get("id", ""))
-            name = str(sh.get("name", ""))
-            if q in sid.lower() or q in name.lower():
-                out["ships"].append(
-                    {
-                        "kind": "ship",
-                        "id": sid,
-                        "label": name or sid,
-                        "detail": str(sh.get("size", "")),
-                    }
-                )
-                if len(out["ships"]) >= per_cat:
-                    break
-    except Exception as e:
-        logger.debug("builder_search ships: %s", e)
+    def ship_hit(sh: dict[str, Any]) -> dict[str, Any] | None:
+        sid, name = str(sh.get("id", "")), str(sh.get("name", ""))
+        if q not in sid.lower() and q not in name.lower():
+            return None
+        return {"kind": "ship", "id": sid, "label": name or sid, "detail": str(sh.get("size", ""))}
 
-    room_cap = min(per_cat * 2, 40)
-    try:
+    out["zones"] = _search_category("zones", list_zones, zone_hit, per_cat)
+    out["systems"] = _search_category(
+        "systems", lambda: galaxy_overview().get("systems") or [], system_hit, per_cat
+    )
+    out["ships"] = _search_category("ships", list_ship_templates, ship_hit, per_cat)
+
+    def all_rooms() -> Any:
         for zid in list_zone_ids():
             try:
-                for row in list_rooms(zid):
-                    stem = str(row.get("name", ""))
-                    rid = str(row.get("id", ""))
-                    hay = f"{stem} {rid} {zid}".lower()
-                    if q in hay:
-                        out["rooms"].append(
-                            {
-                                "kind": "room",
-                                "zone_id": zid,
-                                "room_slug": stem,
-                                "label": rid if ":" in rid else f"{zid}:{stem}",
-                                "detail": f"type {row.get('type', '?')}",
-                            }
-                        )
-                        if len(out["rooms"]) >= room_cap:
-                            return out
-            except Exception:
+                rows = list_rooms(zid)
+            except Exception as e:
+                logger.debug("builder_search rooms zone %s: %s", zid, e)
                 continue
-    except Exception as e:
-        logger.debug("builder_search rooms: %s", e)
+            for row in rows:
+                yield zid, row
 
+    def room_hit(pair: tuple[str, dict[str, Any]]) -> dict[str, Any] | None:
+        zid, row = pair
+        stem, rid = str(row.get("name", "")), str(row.get("id", ""))
+        if q not in f"{stem} {rid} {zid}".lower():
+            return None
+        return {
+            "kind": "room",
+            "zone_id": zid,
+            "room_slug": stem,
+            "label": rid if ":" in rid else f"{zid}:{stem}",
+            "detail": f"type {row.get('type', '?')}",
+        }
+
+    out["rooms"] = _search_category("rooms", all_rooms, room_hit, min(per_cat * 2, 40))
     return out
 
 
 def ensure_system_in_galaxy_index(system_id: str, filename: str | None = None) -> None:
     """Append system id to galaxy.yaml if missing."""
-    if not _safe_segment(system_id):
+    if not _is_safe_segment(system_id):
         raise ValueError("invalid_system_id")
     fn = filename or f"{system_id}.yaml"
     gal_root: dict[str, Any] = {}
@@ -780,7 +831,7 @@ def ensure_system_in_galaxy_index(system_id: str, filename: str | None = None) -
 
 def save_system_document(system_id: str, document: dict[str, Any]) -> Path:
     """Overwrite systems/{system_id}.yaml with document (must include a top-level `system` dict)."""
-    if not _safe_segment(system_id):
+    if not _is_safe_segment(system_id):
         raise ValueError("invalid_system_id")
     if not isinstance(document, dict) or not isinstance(document.get("system"), dict):
         raise ValueError("document_must_have_system_key")
@@ -804,7 +855,7 @@ def create_system(
     star_name: str = "",
     add_to_galaxy: bool = True,
 ) -> Path:
-    if not _safe_segment(system_id):
+    if not _is_safe_segment(system_id):
         raise ValueError("invalid_system_id")
     path = SYSTEMS_DIR / f"{system_id}.yaml"
     if path.is_file():
@@ -830,7 +881,7 @@ def create_system(
 
 
 def create_ship_template(ship_id: str, name: str, size: str = "small") -> Path:
-    if not _safe_segment(ship_id):
+    if not _is_safe_segment(ship_id):
         raise ValueError("invalid_ship_id")
     path = SHIPS_DIR / f"{ship_id}.yaml"
     if path.is_file():
@@ -846,7 +897,7 @@ def list_ship_templates() -> list[dict[str, Any]]:
         return []
     out: list[dict[str, Any]] = []
     for f in sorted(SHIPS_DIR.glob("*.yaml")):
-        if not _safe_segment(f.stem):
+        if not _is_safe_segment(f.stem):
             continue
         try:
             with open(f, encoding="utf-8") as fp:
@@ -866,21 +917,39 @@ def list_ship_templates() -> list[dict[str, Any]]:
 
 def ship_graph(ship_id: str) -> dict[str, Any]:
     """React Flow graph from content/world/ships/{ship_id}.yaml (ship.rooms list)."""
-    if not _safe_segment(ship_id):
-        return {"nodes": [], "edges": [], "warnings": ["invalid_ship"], "external_exits": []}
+    if not _is_safe_segment(ship_id):
+        return {
+            "nodes": [],
+            "edges": [],
+            "warnings": ["invalid_ship"],
+            "external_exits": [],
+            "ship": None,
+        }
     path = SHIPS_DIR / f"{ship_id}.yaml"
     if not path.is_file():
-        return {"nodes": [], "edges": [], "warnings": ["not_found"], "external_exits": []}
+        return {
+            "nodes": [],
+            "edges": [],
+            "warnings": ["not_found"],
+            "external_exits": [],
+            "ship": None,
+        }
     try:
         with open(path, encoding="utf-8") as f:
             data = yaml.safe_load(f) or {}
     except Exception as e:
-        return {"nodes": [], "edges": [], "warnings": [str(e)], "external_exits": []}
+        return {"nodes": [], "edges": [], "warnings": [str(e)], "external_exits": [], "ship": None}
 
     ship = data.get("ship") or data
     rooms = ship.get("rooms") or []
     if not isinstance(rooms, list):
-        return {"nodes": [], "edges": [], "warnings": ["no_rooms"], "external_exits": []}
+        return {
+            "nodes": [],
+            "edges": [],
+            "warnings": ["no_rooms"],
+            "external_exits": [],
+            "ship": None,
+        }
 
     prefix = f"ship:{ship_id}:"
     known: set[str] = set()
@@ -947,19 +1016,7 @@ def ship_graph(ship_id: str) -> dict[str, Any]:
                 eid = f"{source_id}|{direction}|{target_id}"
                 if eid not in seen:
                     seen.add(eid)
-                    dlow = str(direction).lower()
-                    edges.append(
-                        {
-                            "id": eid,
-                            "source": source_id,
-                            "target": target_id,
-                            "sourceHandle": dlow,
-                            "targetHandle": _opposite_dir(dlow),
-                            "type": "exit",
-                            "label": str(direction),
-                            "data": {"direction": str(direction), "description": edesc},
-                        }
-                    )
+                    edges.append(_exit_edge(source_id, str(direction), target_id, edesc))
             else:
                 external.append(
                     {
@@ -981,7 +1038,7 @@ def ship_graph(ship_id: str) -> dict[str, Any]:
 
 def save_ship_room(ship_id: str, room_local_id: str, patch: dict[str, Any]) -> Path:
     """Merge patch into one entry in ship.rooms[] matching id."""
-    if not _safe_segment(ship_id) or not _safe_segment(room_local_id):
+    if not _is_safe_segment(ship_id) or not _is_safe_segment(room_local_id):
         raise ValueError("invalid_slug")
     path = SHIPS_DIR / f"{ship_id}.yaml"
     if not path.is_file():
@@ -1000,7 +1057,7 @@ def save_ship_room(ship_id: str, room_local_id: str, patch: dict[str, Any]) -> P
         raise ValueError("room_not_found")
     ship["rooms"] = rooms
     text = yaml.safe_dump(data, default_flow_style=False, allow_unicode=True, sort_keys=False)
-    path.write_text(text, encoding="utf-8")
+    _atomic_write_text(path, text)
     return path
 
 

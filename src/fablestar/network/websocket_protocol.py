@@ -1,8 +1,11 @@
 """WebSocketProtocol — wraps a FastAPI WebSocket for player sessions."""
 
 import asyncio
+import logging
 
 from fastapi import WebSocket
+
+logger = logging.getLogger(__name__)
 
 
 class WebSocketProtocol:
@@ -24,7 +27,8 @@ class WebSocketProtocol:
         try:
             # We send as a simple string; the frontend will handle terminal rendering
             await self._websocket.send_text(message)
-        except Exception:
+        except Exception as e:
+            logger.debug("websocket send failed for %s: %s", self._peer, e)
             self._is_connected = False
 
     async def receive(self) -> str | None:
@@ -38,7 +42,8 @@ class WebSocketProtocol:
             # but for a simple MUD loop, we can just return it.
             data = await self._websocket.receive_text()
             return data.strip()
-        except Exception:
+        except Exception as e:
+            logger.debug("websocket receive ended for %s: %s", self._peer, e)
             self._is_connected = False
             return None
 
@@ -47,8 +52,8 @@ class WebSocketProtocol:
         self._is_connected = False
         try:
             await self._websocket.close()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("websocket close for %s: %s", self._peer, e)
 
     @property
     def is_connected(self) -> bool:

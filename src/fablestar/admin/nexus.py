@@ -99,15 +99,18 @@ class NexusApp:
         try:
             raw = await asyncio.wait_for(websocket.receive_text(), timeout=10.0)
         except TimeoutError:
+            logger.debug("admin ws auth: no auth envelope within 10s")
             return None
-        except Exception:
+        except Exception as e:
+            logger.debug("admin ws auth: receive failed: %s", e)
             return None
         try:
             import json as _json
 
             msg = _json.loads(raw)
             token = (msg.get("token") or "").strip() if isinstance(msg, dict) else ""
-        except Exception:
+        except Exception as e:
+            logger.debug("admin ws auth: invalid auth envelope: %s", e)
             return None
         if not token:
             return None
@@ -129,7 +132,8 @@ class NexusApp:
         for ws in self._admin_ws_sockets:
             try:
                 await ws.send_json(payload)
-            except Exception:
+            except Exception as e:
+                logger.debug("broadcast_admin_presence: dropping dead admin socket: %s", e)
                 dead.append(ws)
         for ws in dead:
             if ws in self._admin_ws_sockets:
@@ -221,11 +225,16 @@ class NexusApp:
 
     async def broadcast_log(self, message: str):
         """Send a log message to all connected admin consoles."""
+        dead: list[WebSocket] = []
         for ws in self._active_sockets:
             try:
                 await ws.send_json({"type": "log", "content": message})
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("broadcast_log: dropping dead admin socket: %s", e)
+                dead.append(ws)
+        for ws in dead:
+            if ws in self._active_sockets:
+                self._active_sockets.remove(ws)
 
     async def start(self):
         """Run the uvicorn server in the same event loop."""

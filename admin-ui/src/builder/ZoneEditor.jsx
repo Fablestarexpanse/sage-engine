@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, forwardRef, useImperativeHandle } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, forwardRef, useImperativeHandle } from "react";
 import yaml from "js-yaml";
 import {
   ReactFlow,
@@ -28,9 +28,16 @@ import "./builder.css";
 const nodeTypes = { room: RoomNode };
 const edgeTypes = { exit: ExitEdge };
 
+const CONFLICT_MSG =
+  "Room changed on disk since the graph was loaded (edited in WorldForge or another tab?). The graph has been reloaded — redo the change.";
+
+const errDetail = (e) =>
+  e.response?.status === 409 ? CONFLICT_MSG : e.response?.data?.detail || e.message;
+
 function ZoneEditorInner({ zoneId, onSync, forwardedRef, navigateRoomSlug, onNavigateRoomDone }) {
   const { colors: COLORS } = useAdminTheme();
   const rf = useReactFlow();
+  const panelDirtyRef = useRef(false);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selected, setSelected] = useState(null);
@@ -91,6 +98,7 @@ function ZoneEditorInner({ zoneId, onSync, forwardedRef, navigateRoomSlug, onNav
     forwardedRef,
     () => ({
       savePositions,
+      hasUnsavedChanges: () => panelDirtyRef.current,
     }),
     [savePositions]
   );
@@ -147,7 +155,10 @@ function ZoneEditorInner({ zoneId, onSync, forwardedRef, navigateRoomSlug, onNav
       };
       raw.exits = exits;
       try {
-        await axios.put(`${API_BASE}/content/zones/${zoneId}/rooms/${sourceNode.data.slug}`, { room: raw });
+        await axios.put(`${API_BASE}/content/zones/${zoneId}/rooms/${sourceNode.data.slug}`, {
+          room: raw,
+          expected_mtime: sourceNode.data?.mtime ?? null,
+        });
         setEdges((eds) =>
           addEdge(
             {
@@ -163,7 +174,8 @@ function ZoneEditorInner({ zoneId, onSync, forwardedRef, navigateRoomSlug, onNav
         setSyncMsg("Synced ✓");
         onSync?.();
       } catch (e) {
-        window.alert(e.response?.data?.detail || e.message);
+        window.alert(errDetail(e));
+        if (e.response?.status === 409) await loadGraph({ keepSlug: sourceNode.data?.slug });
       }
     },
     [rf, zoneId, setEdges, loadGraph, onSync, COLORS]
@@ -219,13 +231,24 @@ function ZoneEditorInner({ zoneId, onSync, forwardedRef, navigateRoomSlug, onNav
 
   const onNodesDelete = useCallback(
     async (deleted) => {
-      for (const n of deleted) {
-        const s = n.data?.slug;
-        if (!s) continue;
+      const slugs = deleted.map((n) => n.data?.slug).filter(Boolean);
+      const mtimeBySlug = Object.fromEntries(
+        deleted.filter((n) => n.data?.slug).map((n) => [n.data.slug, n.data?.mtime ?? null])
+      );
+      if (!slugs.length) return;
+      // react-flow already removed the nodes locally; on cancel, reload restores them.
+      const label = slugs.length === 1 ? `room "${slugs[0]}"` : `${slugs.length} rooms (${slugs.join(", ")})`;
+      if (!window.confirm(`Delete ${label}? This removes the YAML file(s) and cannot be undone.`)) {
+        await loadGraph();
+        return;
+      }
+      for (const s of slugs) {
         try {
-          await axios.delete(`${API_BASE}/content/zones/${zoneId}/rooms/${s}`);
+          await axios.delete(`${API_BASE}/content/zones/${zoneId}/rooms/${s}`, {
+            params: mtimeBySlug[s] != null ? { expected_mtime: mtimeBySlug[s] } : {},
+          });
         } catch (e) {
-          window.alert(e.response?.data?.detail || e.message);
+          window.alert(errDetail(e));
         }
       }
       await loadGraph();
@@ -237,6 +260,15 @@ function ZoneEditorInner({ zoneId, onSync, forwardedRef, navigateRoomSlug, onNav
 
   const onEdgesDelete = useCallback(
     async (deletedEdges) => {
+      if (!deletedEdges.length) return;
+      const what =
+        deletedEdges.length === 1
+          ? `the "${deletedEdges[0].data?.direction ?? deletedEdges[0].sourceHandle ?? "?"}" exit`
+          : `${deletedEdges.length} exits`;
+      if (!window.confirm(`Remove ${what} from the room YAML?`)) {
+        await loadGraph();
+        return;
+      }
       for (const edge of deletedEdges) {
         const dirHint = edge.data?.direction ?? edge.sourceHandle;
         if (!dirHint) {
@@ -258,12 +290,16 @@ function ZoneEditorInner({ zoneId, onSync, forwardedRef, navigateRoomSlug, onNav
         delete exits[match];
         raw.exits = exits;
         try {
-          await axios.put(`${API_BASE}/content/zones/${zoneId}/rooms/${slug}`, { room: raw });
+          await axios.put(`${API_BASE}/content/zones/${zoneId}/rooms/${slug}`, {
+            room: raw,
+            expected_mtime: sourceNode.data?.mtime ?? null,
+          });
           await loadGraph({ keepSlug: slug });
           setSyncMsg("Exit removed ✓");
           onSync?.();
         } catch (e) {
-          window.alert(e.response?.data?.detail || e.message);
+          window.alert(errDetail(e));
+          if (e.response?.status === 409) await loadGraph({ keepSlug: slug });
         }
       }
     },
@@ -362,7 +398,10 @@ function ZoneEditorInner({ zoneId, onSync, forwardedRef, navigateRoomSlug, onNav
                 ? { ...prevDesc, base: base.trim() }
                 : { base: base.trim() },
           };
-          await axios.put(`${API_BASE}/content/zones/${zoneId}/rooms/${slug}`, { room: merged });
+          await axios.put(`${API_BASE}/content/zones/${zoneId}/rooms/${slug}`, {
+            room: merged,
+            expected_mtime: ywrap.mtime ?? null,
+          });
           done += 1;
         }
       }
@@ -533,6 +572,9 @@ function ZoneEditorInner({ zoneId, onSync, forwardedRef, navigateRoomSlug, onNav
               mode="zone"
               node={selected}
               neighborSlugs={neighborSlugs}
+              onDirtyChange={(d) => {
+                panelDirtyRef.current = d;
+              }}
               onSaved={() => {
                 const s = selected?.data?.slug;
                 loadGraph({ keepSlug: s });

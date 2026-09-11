@@ -21,21 +21,23 @@ src/fablestar/          Python server (Nexus)
   app.py                Global singleton (app_instance)
   server.py             FablestarServer class — owns all subsystems
   __main__.py           Entry point: asyncio.run(run_server())
-  admin/                FastAPI REST + WebSocket admin API (NexusApp)
+  admin/                FastAPI REST + WebSocket admin API (NexusApp + routes/)
   commands/             MUD command handlers (@command decorator)
-  core/                 Config, TickManager
+  core/                 Config, TickManager, security (JWT secret), TOML persist
   comfyui_client.py     ComfyUI image-generation client
   hot_reload.py         HotReloader (inotify/watchdog)
   llm/                  LLM client, prompt rendering, output validation
   network/              WebSocketProtocol, Session state machine
   parser/               Tokenizer + CommandDispatcher
   proficiencies/        Conduit proficiency catalog, registry, engine
+  services/             EconomyService, PlayerService, SceneService, play tokens
   state/                Redis (hot state), Postgres (persistent), ORM models
   world/                ContentLoader, world Pydantic models, EntitySpawnManager
 
 admin-ui/               React admin console (Vite, port 5174)
 player-ui/              React player client (Vite, port 5173)
 worldforge/             Tauri desktop WorldForge editor
+worldforge-mcp/         MCP server exposing map-building tools (mcp__worldforge__*)
 content/world/          Game content (YAML — gitignored changes hot-reload)
   galaxy.yaml           Galaxy definition (systems index)
   entities/             Entity templates (NPC/mob definitions)
@@ -231,7 +233,7 @@ WebSocket admin connections use a **first-message auth envelope**: after accepti
 Rate limits (via `slowapi`): login endpoints 10 req/min, register 5 req/min.
 
 Key admin modules:
-- `admin/nexus.py` — all FastAPI route definitions
+- `admin/nexus.py` — FastAPI app shell (middleware, WebSockets); routes live in `admin/routes/` domain routers (admin_ops, content, world, forge, play, llm_comfyui)
 - `admin/admin_security.py` — JWT middleware, `jwt_secret_for_server()`
 - `admin/staff_service.py` — admin staff CRUD
 - `admin/player_accounts.py` — player account management
@@ -294,9 +296,15 @@ WorldForge is a Tauri desktop app (`worldforge/`) for visually editing zones and
 
 **Known issue:** WorldForge historically wrote exports to a nested `content/world/content/world/` path due to a root path misconfiguration. If you see a `content/world/content/` subtree appear after a WorldForge export, the room YAMLs must be moved to `content/world/zones/{zone_id}/rooms/` and the duplicate tree removed. This was corrected manually; check the WorldForge content root setting if it recurs.
 
-### WorldForge ↔ Nexus write-through API
+### How WorldForge saves (and the conflict risk)
 
-WorldForge uses the admin API to save rooms without requiring direct filesystem access. Key endpoints:
+WorldForge does **not** save through the Nexus HTTP API. Its `saveRoomFile()` (`worldforge/src/editors/ZoneEditor.jsx`) calls the Tauri `write_file` command (`worldforge/src-tauri/src/commands.rs`) and writes room YAML **directly to disk**; the server's `HotReloader` then notices the file change and invalidates the content cache. The admin-ui World Builder, by contrast, writes through Nexus (`PUT/POST/DELETE /content/zones/{zone}/rooms/*` in `admin/routes/content.py`).
+
+Because these two paths are unsynchronized, running both editors on the same zone risks last-write-wins clobbering. The `/content/*` room-write routes accept an optional `expected_mtime` (returned by the room-read endpoints) and reject with **409 `content_modified`** when the file changed on disk since it was loaded — the admin-ui builder sends it; direct WorldForge disk writes bypass this guard entirely, so avoid editing the same zone in both tools at once.
+
+There is a **third writer**: `worldforge-mcp/server.py` (the MCP server behind the `mcp__worldforge__*` tools) also reads and writes room YAML and `.positions.json` directly to disk (`_read_room`/`_write_room`/`_write_positions`), with no `expected_mtime` guard — same accepted last-write-wins risk as the Tauri app. Treat any two of the three writers (admin-ui Builder, WorldForge Tauri app, worldforge-mcp tools) editing the same zone concurrently as unsafe.
+
+Related Nexus endpoints (available for HTTP write-through, e.g. the forge chat deploy flow):
 
 - **`POST /forge/inject`** — write a room YAML. Body: `{id: "zone_id:room_slug", yaml_content: "..."}`. Requires the `forge` tool permission and `may_write_zone(zone_id)`. Both `zone_id` and `room_slug` are validated against `^[a-zA-Z0-9_-]+$` (no path traversal). Returns `{status: "success", path: "..."}`.
 - **`POST /forge/generate`** — LLM-generate a room YAML draft from a natural-language prompt.

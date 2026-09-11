@@ -243,6 +243,7 @@ class PlayerService:
         portrait_prompt: str = "",
         portrait_url: str = "",
         starter_proficiencies: dict[str, int] | None = None,
+        *,
         token: str = "",
     ) -> dict[str, Any]:
         username = (username or "").strip()

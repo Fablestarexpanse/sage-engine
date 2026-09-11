@@ -54,6 +54,14 @@ def assert_console_role_grant_allowed(ctx: AdminContext, target_role: str) -> No
     raise HTTPException(status_code=403, detail="head_admin_required_for_role")
 
 
+def require_head_admin(request: Request) -> AdminContext:
+    """FastAPI dependency: reject with 403 unless the caller is head admin."""
+    ctx = get_admin_ctx(request)
+    if not ctx.is_head_admin():
+        raise HTTPException(status_code=403, detail="head_admin_only")
+    return ctx
+
+
 def require_tool(tool_id: str):
     if tool_id not in NAV_TOOL_IDS:
         raise ValueError(f"require_tool: unknown tool_id {tool_id!r} — not in NAV_TOOL_IDS")

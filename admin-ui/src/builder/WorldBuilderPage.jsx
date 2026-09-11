@@ -101,17 +101,37 @@ export default function WorldBuilderPage() {
   const current = crumbs[crumbs.length - 1];
   const activeScale = current.scale;
 
-  const drill = useCallback((newScale, id, label) => {
-    setNavigateRoomSlug(null);
-    setCrumbs((p) => [...p, { scale: newScale, id, label: label || id }]);
+  // Unsaved-changes guard: the zone editor's property panel tracks a dirty flag;
+  // every navigation path away from the zone must check it or edits vanish silently.
+  const confirmLeave = useCallback(() => {
+    if (zoneEditorRef.current?.hasUnsavedChanges?.()) {
+      return window.confirm("You have unsaved room edits. Leave without saving?");
+    }
+    return true;
   }, []);
 
-  const goCrumb = useCallback((index) => {
-    setNavigateRoomSlug(null);
-    setCrumbs((p) => p.slice(0, index + 1));
-  }, []);
+  const drill = useCallback(
+    (newScale, id, label) => {
+      if (!confirmLeave()) return;
+      setNavigateRoomSlug(null);
+      setCrumbs((p) => [...p, { scale: newScale, id, label: label || id }]);
+    },
+    [confirmLeave]
+  );
+
+  const goCrumb = useCallback(
+    (index) => {
+      if (index >= crumbs.length - 1) return; // already here — no-op, no prompt
+      if (!confirmLeave()) return;
+      setNavigateRoomSlug(null);
+      setCrumbs((p) => p.slice(0, index + 1));
+    },
+    [crumbs.length, confirmLeave]
+  );
 
   const jumpTab = useCallback((tabId) => {
+    if (tabId === activeScale) return; // already on this view
+    if (!confirmLeave()) return;
     setNavigateRoomSlug(null);
     if (tabId === "galaxy") {
       setCrumbs([{ scale: "galaxy", id: null, label: "Galaxy" }]);
@@ -146,7 +166,7 @@ export default function WorldBuilderPage() {
       }
       return [{ scale: "galaxy", id: null, label: "Galaxy" }];
     });
-  }, []);
+  }, [activeScale, confirmLeave]);
 
   const tabBtnSeg = (active, isFirst, isLast) => ({
     padding: "7px 12px",
@@ -306,6 +326,7 @@ export default function WorldBuilderPage() {
           <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: COLORS.textDim, marginBottom: 6 }}>Search</div>
           <BuilderSearchPanel
             onOpenZone={(id, label) => {
+              if (!confirmLeave()) return;
               setNavigateRoomSlug(null);
               setCrumbs([
                 { scale: "galaxy", id: null, label: "Galaxy" },
@@ -313,6 +334,7 @@ export default function WorldBuilderPage() {
               ]);
             }}
             onOpenSystem={(id, label) => {
+              if (!confirmLeave()) return;
               setNavigateRoomSlug(null);
               setCrumbs([
                 { scale: "galaxy", id: null, label: "Galaxy" },
@@ -320,6 +342,7 @@ export default function WorldBuilderPage() {
               ]);
             }}
             onOpenShip={(id, label) => {
+              if (!confirmLeave()) return;
               setNavigateRoomSlug(null);
               setCrumbs([
                 { scale: "galaxy", id: null, label: "Galaxy" },
@@ -327,6 +350,7 @@ export default function WorldBuilderPage() {
               ]);
             }}
             onOpenRoom={(zid, slug) => {
+              if (!confirmLeave()) return;
               setNavigateRoomSlug(slug);
               setCrumbs([
                 { scale: "galaxy", id: null, label: "Galaxy" },

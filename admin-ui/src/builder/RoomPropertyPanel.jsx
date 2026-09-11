@@ -61,6 +61,7 @@ export default function RoomPropertyPanel({
   onSaved,
   onDeleted,
   onRevertRequest,
+  onDirtyChange,
 }) {
   const { colors: COLORS } = useAdminTheme();
   const ROOM_TYPE_COLORS = adminRoomTypeColors(COLORS);
@@ -94,6 +95,10 @@ export default function RoomPropertyPanel({
 
   const slug = node?.data?.slug;
   const roomLocalId = node?.data?.slug;
+
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
 
   const neighbors = (neighborSlugs || []).filter((s) => s && s !== slug);
 
@@ -187,6 +192,17 @@ export default function RoomPropertyPanel({
     setRaw((prev) => ({ ...prev, tags: tagsArr }));
   };
 
+  // Sent as expected_mtime so a room edited elsewhere (WorldForge, an IDE) since this
+  // graph load rejects with 409 instead of being silently clobbered.
+  const loadedMtime = node?.data?.mtime;
+  const CONFLICT_MSG =
+    "Room changed on disk since it was loaded (edited in WorldForge or another tab?). Reload the zone, then reapply your edit.";
+
+  const saveErrMsg = (e, fallback) => {
+    if (e.response?.status === 409) return CONFLICT_MSG;
+    return e.response?.data?.detail || e.message || fallback;
+  };
+
   const saveJson = async () => {
     setBusy(true);
     setMsg("");
@@ -195,14 +211,17 @@ export default function RoomPropertyPanel({
       if (mode === "ship" && shipId) {
         await axios.put(`${API_BASE}/content/ships/${shipId}/rooms/${roomLocalId}`, { room: payload });
       } else {
-        await axios.put(`${API_BASE}/content/zones/${zoneId}/rooms/${slug}`, { room: payload });
+        await axios.put(`${API_BASE}/content/zones/${zoneId}/rooms/${slug}`, {
+          room: payload,
+          expected_mtime: loadedMtime ?? null,
+        });
       }
       setRaw(payload);
       setDirty(false);
       setMsg("Saved ✓");
       onSaved?.();
     } catch (e) {
-      setMsg(e.response?.data?.detail || e.message || "Save failed");
+      setMsg(saveErrMsg(e, "Save failed"));
     } finally {
       setBusy(false);
     }
@@ -218,7 +237,10 @@ export default function RoomPropertyPanel({
       if (mode === "ship" && shipId) {
         await axios.put(`${API_BASE}/content/ships/${shipId}/rooms/${roomLocalId}`, { room: payload });
       } else {
-        await axios.put(`${API_BASE}/content/zones/${zoneId}/rooms/${slug}`, { room: payload });
+        await axios.put(`${API_BASE}/content/zones/${zoneId}/rooms/${slug}`, {
+          room: payload,
+          expected_mtime: loadedMtime ?? null,
+        });
       }
       setRaw(payload);
       try {
@@ -230,7 +252,7 @@ export default function RoomPropertyPanel({
       setMsg("Saved ✓");
       onSaved?.();
     } catch (e) {
-      setMsg(e.message || "YAML save failed");
+      setMsg(saveErrMsg(e, "YAML save failed"));
     } finally {
       setBusy(false);
     }
@@ -240,10 +262,12 @@ export default function RoomPropertyPanel({
     if (!window.confirm(`Delete room ${slug}?`)) return;
     setBusy(true);
     try {
-      await axios.delete(`${API_BASE}/content/zones/${zoneId}/rooms/${slug}`);
+      await axios.delete(`${API_BASE}/content/zones/${zoneId}/rooms/${slug}`, {
+        params: loadedMtime != null ? { expected_mtime: loadedMtime } : {},
+      });
       onDeleted?.();
     } catch (e) {
-      window.alert(e.response?.data?.detail || e.message);
+      window.alert(e.response?.status === 409 ? CONFLICT_MSG : e.response?.data?.detail || e.message);
     } finally {
       setBusy(false);
     }

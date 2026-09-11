@@ -31,7 +31,7 @@ do not decide it.
                     │ Session (player_id, state, Protocol)
 ┌───────────────────▼─────────────────────────────────────────────┐
 │ Game Engine                                                       │
-│   TickManager (4 Hz)  ·  EventBus  ·  CommandDispatcher          │
+│   TickManager (4 Hz)  ·  CommandDispatcher                       │
 │   CommandRegistry  ·  ProficiencyEngine (Conduit)                │
 │   EntitySpawnManager  ·  PersistenceManager                      │
 │   [optional] LLMClient + PromptManager  ·  ComfyUI client        │
@@ -62,9 +62,10 @@ The server mounts a FastAPI app (`NexusApp`) on uvicorn. Two connection types:
 
 ### Layer 2 — Game Engine
 
-**Tick loop.** `TickManager` fires `"tick"` on the `EventBus` at 4 Hz.
-Subscribers: `PersistenceManager` (flushes Redis → Postgres every 240 ticks
-≈ 60 s) and `EntitySpawnManager` (per-tick respawn logic).
+**Tick loop.** Handlers register directly on `TickManager` (no event bus —
+`core/events.py`'s EventBus exists but is not wired in). Registered handlers:
+`PersistenceManager.on_tick` (flushes Redis → Postgres every 240 ticks ≈ 60 s)
+and `EntitySpawnManager.on_tick` (per-tick respawn logic).
 
 **Command pipeline.** Player input flows:
 ```
@@ -124,10 +125,20 @@ WebSocket text  →  WebSocketProtocol  →  CommandDispatcher.dispatch()
 ### Tick cycle
 
 ```
-TickManager._run_loop()  →  EventBus.emit("tick")
-  → PersistenceManager          every 240 ticks: flush Redis → Postgres
-  → EntitySpawnManager          per-tick respawn rolls
+TickManager._run_loop()  →  registered tick handlers, in order
+  → EntitySpawnManager.on_tick  per-tick respawn rolls
+  → PersistenceManager.on_tick  every 240 ticks: flush Redis → Postgres
 ```
+
+### Content writers
+
+Three independent writers persist `content/world` YAML: the Nexus HTTP API
+(`admin/routes/content.py`, the only path with the `expected_mtime` 409
+conflict guard), the WorldForge Tauri app (direct disk writes via the Tauri
+`write_file` command), and `worldforge-mcp/server.py` (direct disk writes from
+the `mcp__worldforge__*` tools). The two direct-disk writers rely on the
+HotReloader picking up changes and accept last-write-wins risk — see
+CLAUDE.md's "How WorldForge saves (and the conflict risk)".
 
 ### Content hot-reload
 

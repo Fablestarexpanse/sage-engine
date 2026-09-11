@@ -2,19 +2,15 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 from fablestar.core.config import LLMConfig
-
-
-def _toml_string(s: str) -> str:
-    return json.dumps(s)
+from fablestar.core.toml_persist import atomic_write_toml
+from fablestar.core.toml_persist import toml_str as _toml_string
 
 
 def save_llm_toml(llm: LLMConfig, path: Path | None = None) -> Path:
     target = path or Path("config/llm.toml")
-    target.parent.mkdir(parents=True, exist_ok=True)
     lines = [
         "# Auto-written by Fablestar Nexus (admin UI). Safe to edit by hand.",
         f"primary_backend = {_toml_string(llm.primary_backend)}",
@@ -27,5 +23,4 @@ def save_llm_toml(llm: LLMConfig, path: Path | None = None) -> Path:
         f"temperature = {float(llm.temperature)}",
         "",
     ]
-    target.write_text("\n".join(lines), encoding="utf-8")
-    return target
+    return atomic_write_toml(target, lines)
