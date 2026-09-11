@@ -94,6 +94,23 @@ class PlaySceneApplyGalleryBody(BaseModel):
     character_id: int = Field(..., ge=1)
 
 
+_MEDIA_SEG_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}$")
+_MEDIA_PNG_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_.-]{1,120}\.png$")
+
+
+def _room_art_file_response(*parts: str) -> FileResponse:
+    """Serve a room-art PNG under content/world/zones, 404 on any traversal attempt."""
+    path = Path("content/world/zones").joinpath(*parts).resolve()
+    zones_root = Path("content/world/zones").resolve()
+    try:
+        path.relative_to(zones_root)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="not_found") from None
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="not_found")
+    return FileResponse(path, media_type="image/png")
+
+
 def build_play_router(server: FablestarServer) -> APIRouter:
     router = APIRouter()
 
@@ -105,37 +122,20 @@ def build_play_router(server: FablestarServer) -> APIRouter:
     @router.get("/media/room-art/{zone_id}/{room_slug}/v/{filename}")
     async def media_room_art_variant(zone_id: str, room_slug: str, filename: str):
         """Scene art variant: zones/{zone}/rooms/art/{room}/{filename}.png"""
-        seg_re = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}$")
-        fn_re = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_.-]{1,120}\.png$")
-        if not seg_re.match(zone_id) or not seg_re.match(room_slug) or not fn_re.match(filename):
+        if (
+            not _MEDIA_SEG_RE.match(zone_id)
+            or not _MEDIA_SEG_RE.match(room_slug)
+            or not _MEDIA_PNG_RE.match(filename)
+        ):
             raise HTTPException(status_code=404, detail="not_found")
-        path = (
-            Path("content/world/zones") / zone_id / "rooms" / "art" / room_slug / filename
-        ).resolve()
-        zones_root = Path("content/world/zones").resolve()
-        try:
-            path.relative_to(zones_root)
-        except ValueError:
-            raise HTTPException(status_code=404, detail="not_found") from None
-        if not path.is_file():
-            raise HTTPException(status_code=404, detail="not_found")
-        return FileResponse(path, media_type="image/png")
+        return _room_art_file_response(zone_id, "rooms", "art", room_slug, filename)
 
     @router.get("/media/room-art/{zone_id}/{slug}.png")
     async def media_room_art_png(zone_id: str, slug: str):
         """Legacy flat file: zones/{zone}/rooms/art/{slug}.png (bundled with zone)."""
-        seg_re = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}$")
-        if not seg_re.match(zone_id) or not seg_re.match(slug):
+        if not _MEDIA_SEG_RE.match(zone_id) or not _MEDIA_SEG_RE.match(slug):
             raise HTTPException(status_code=404, detail="not_found")
-        path = (Path("content/world/zones") / zone_id / "rooms" / "art" / f"{slug}.png").resolve()
-        zones_root = Path("content/world/zones").resolve()
-        try:
-            path.relative_to(zones_root)
-        except ValueError:
-            raise HTTPException(status_code=404, detail="not_found") from None
-        if not path.is_file():
-            raise HTTPException(status_code=404, detail="not_found")
-        return FileResponse(path, media_type="image/png")
+        return _room_art_file_response(zone_id, "rooms", "art", f"{slug}.png")
 
     @router.post("/play/auth/login")
     @limiter.limit("10/minute")

@@ -1,5 +1,6 @@
 """Combat commands — attack (with proficiency damage and LLM narration) and flee."""
 
+import asyncio
 import logging
 import random
 
@@ -7,6 +8,18 @@ from fablestar.commands.registry import command
 from fablestar.network.session import Session
 
 logger = logging.getLogger(__name__)
+
+# Per-entity locks so two players attacking the same target can't interleave
+# the read-modify-write of its Redis state (lost HP updates / double kills).
+# Single-process server, so an in-process asyncio.Lock is sufficient.
+_entity_locks: dict[str, asyncio.Lock] = {}
+
+
+def _entity_lock(entity_id: str) -> asyncio.Lock:
+    lock = _entity_locks.get(entity_id)
+    if lock is None:
+        lock = _entity_locks[entity_id] = asyncio.Lock()
+    return lock
 
 
 def _roll_damage(attacker_attack: int, defender_defense: int) -> int:
@@ -67,13 +80,21 @@ async def attack(session: Session, args: list[str]):
     player_attack, player_defense_rating = combat_attack_defense_from_stats(
         player_stats, hybrid_legacy=hybrid
     )
-    damage_dealt = _roll_damage(player_attack, target_state["defense"])
 
-    target_state["hp"] = target_state["hp"] - damage_dealt
-    entity_dead = target_state["hp"] <= 0
-    if entity_dead:
-        target_state["alive"] = False
-    await app_instance.redis.set_entity_state(target_id, target_state)
+    async with _entity_lock(target_id):
+        # Re-read under the lock: another attacker may have hit (or killed)
+        # the target between the room search above and now.
+        fresh = await app_instance.redis.get_entity_state(target_id)
+        if fresh is None or not fresh.get("alive", True):
+            await session.send(f"{target_state.get('name', 'It')} is already dead.")
+            return
+        target_state = fresh
+        damage_dealt = _roll_damage(player_attack, target_state["defense"])
+        target_state["hp"] = target_state["hp"] - damage_dealt
+        entity_dead = target_state["hp"] <= 0
+        if entity_dead:
+            target_state["alive"] = False
+        await app_instance.redis.set_entity_state(target_id, target_state)
 
     # --- Entity counter-attacks (if still alive) ---
     counter_damage = 0
@@ -132,6 +153,7 @@ async def attack(session: Session, args: list[str]):
 
     # --- Post-combat cleanup ---
     if entity_dead:
+        _entity_locks.pop(target_id, None)
         dropped = await app_instance.spawner.kill_entity(target_id, room_id)
         if dropped:
             drop_names = []

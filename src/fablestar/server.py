@@ -290,13 +290,13 @@ class FablestarServer:
         await ensure_dev_defaults(self.db, self.config)
 
         # 1. Command registry — must complete before NexusApp handles any WebSocket connections
-        registry.reload_module("fablestar.commands.info")
-        registry.reload_module("fablestar.commands.communication")
-        registry.reload_module("fablestar.commands.movement")
-        registry.reload_module("fablestar.commands.combat")
-        registry.reload_module("fablestar.commands.items")
-        registry.reload_module("fablestar.commands.proficiency")
-        registry.reload_module("fablestar.commands.admin")
+        registry.load_module_strict("fablestar.commands.info")
+        registry.load_module_strict("fablestar.commands.communication")
+        registry.load_module_strict("fablestar.commands.movement")
+        registry.load_module_strict("fablestar.commands.combat")
+        registry.load_module_strict("fablestar.commands.items")
+        registry.load_module_strict("fablestar.commands.proficiency")
+        registry.load_module_strict("fablestar.commands.admin")
 
         # 2. Tick handlers — must be registered before the tick loop starts in step 4
         self.tick_manager.register(self.spawner.on_tick)

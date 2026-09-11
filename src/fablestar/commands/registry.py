@@ -51,18 +51,24 @@ class CommandRegistry:
 
         return None
 
-    def reload_module(self, module_name: str):
-        """Hot-reload commands from a specific module."""
-        try:
-            if module_name in self._modules:
-                module = importlib.reload(self._modules[module_name])
-            else:
-                module = importlib.import_module(module_name)
-                self._modules[module_name] = module
+    def load_module_strict(self, module_name: str):
+        """Import a command module, re-raising on failure.
 
-            # Re-scaning module for registration is one way,
-            # but we'll use the decorator pattern which triggers on import/reload.
-            logger.info(f"Reloaded command module: {module_name}")
+        Use at server boot: a broken command module must abort startup
+        instead of logging an error and reporting "Startup complete".
+        """
+        if module_name in self._modules:
+            module = importlib.reload(self._modules[module_name])
+        else:
+            module = importlib.import_module(module_name)
+            self._modules[module_name] = module
+        # Registration happens via the @command decorator on import/reload.
+        logger.info(f"Loaded command module: {module_name}")
+
+    def reload_module(self, module_name: str):
+        """Hot-reload commands from a specific module (lenient: log and keep running)."""
+        try:
+            self.load_module_strict(module_name)
         except Exception as e:
             logger.error(f"Failed to reload command module {module_name}: {e}")
 
