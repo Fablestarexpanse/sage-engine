@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from fablestar.core.config import ComfyUIConfig
+from fablestar.core.toml_persist import atomic_write_toml
 from fablestar.core.toml_persist import toml_str as _toml_str
 
 
@@ -36,5 +37,4 @@ def save_comfyui_toml(cfg: ComfyUIConfig, path: Path | None = None) -> Path:
         f"pixels_per_usd = {int(cfg.pixels_per_usd)}",
         "",
     ]
-    target.write_text("\n".join(lines), encoding="utf-8")
-    return target
+    return atomic_write_toml(target, lines)

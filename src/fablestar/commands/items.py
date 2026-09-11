@@ -174,11 +174,11 @@ async def examine(session: Session, args: list[str]):
         entity_ids, app_instance.redis.get_entity_state, target_name, require_alive=True
     )
     if state:
-        tmpl = app_instance.content_loader.get_entity_template(state["template"])
+        tmpl = app_instance.content_loader.get_entity_template(state.get("template", ""))
         desc = (
             tmpl.description.get("long", tmpl.description.get("short", ""))
             if tmpl
-            else state["name"]
+            else state.get("name", "something")
         )
         hp = state.get("hp", "?")
         max_hp = state.get("max_hp", "?")

@@ -1,9 +1,13 @@
 """Info commands — look (with optional LLM narration) and help."""
 
+import logging
+
 from fablestar.commands.registry import command
 from fablestar.llm.observation import build_room_fact_block
 from fablestar.llm.validation import validator
 from fablestar.network.session import Session
+
+logger = logging.getLogger(__name__)
 
 
 @command("look", aliases=["l"])
@@ -34,7 +38,8 @@ async def look(session: Session, args: list[str]):
             narration = await app_instance.llm_client.generate(prompt)
             clean_narration = validator.sanitize(narration)
             await session.send(clean_narration)
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Room narration failed: {e}")
             await session.send(room.description.get("base", ""))
 
         if room.exits:
@@ -47,7 +52,7 @@ async def look(session: Session, args: list[str]):
         for eid in entity_ids:
             state = await app_instance.redis.get_entity_state(eid)
             if state and state.get("alive", True):
-                alive.append(state["name"])
+                alive.append(state.get("name", "something"))
         if alive:
             await session.send(f"Entities: {', '.join(alive)}")
 
@@ -57,7 +62,7 @@ async def look(session: Session, args: list[str]):
         for iid in item_ids:
             istate = await app_instance.redis.get_item_state(iid)
             if istate:
-                floor_items.append(istate["name"])
+                floor_items.append(istate.get("name", "something"))
         if floor_items:
             await session.send(f"Items on floor: {', '.join(floor_items)}")
     else:

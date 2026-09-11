@@ -100,9 +100,9 @@ def create_zone(zone_id: str, zone_name: str) -> Path:
     rooms_dir.mkdir(parents=True, exist_ok=True)
     display = (zone_name or "").strip() or zone_id.replace("_", " ").title()
     meta = {"name": display, "type": "exploration", "status": "active"}
-    (root / "zone.yaml").write_text(
+    _atomic_write_text(
+        root / "zone.yaml",
         yaml.safe_dump(meta, default_flow_style=False, allow_unicode=True, sort_keys=False),
-        encoding="utf-8",
     )
     entrance: dict[str, Any] = {
         "id": f"{zone_id}:entrance",
@@ -115,9 +115,9 @@ def create_zone(zone_id: str, zone_name: str) -> Path:
         "entity_spawns": [],
         "tags": [],
     }
-    (rooms_dir / "entrance.yaml").write_text(
+    _atomic_write_text(
+        rooms_dir / "entrance.yaml",
         yaml.safe_dump(entrance, default_flow_style=False, allow_unicode=True, sort_keys=False),
-        encoding="utf-8",
     )
     return rooms_dir
 
@@ -620,7 +620,10 @@ def save_room_dict(zone_id: str, room_slug: str, data: dict[str, Any]) -> Path:
         try:
             with open(path, encoding="utf-8") as f:
                 existing = yaml.safe_load(f) or {}
-        except Exception:
+        except Exception as e:
+            logger.warning(
+                "save_room_dict: could not parse existing %s (%s); merging onto empty", path, e
+            )
             existing = {}
     merged = _deep_merge_room(existing, data)
     merged["id"] = merged.get("id") or f"{zone_id}:{room_slug}"
