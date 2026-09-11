@@ -262,10 +262,12 @@ export default function RoomPropertyPanel({
     if (!window.confirm(`Delete room ${slug}?`)) return;
     setBusy(true);
     try {
-      await axios.delete(`${API_BASE}/content/zones/${zoneId}/rooms/${slug}`);
+      await axios.delete(`${API_BASE}/content/zones/${zoneId}/rooms/${slug}`, {
+        params: loadedMtime != null ? { expected_mtime: loadedMtime } : {},
+      });
       onDeleted?.();
     } catch (e) {
-      window.alert(e.response?.data?.detail || e.message);
+      window.alert(e.response?.status === 409 ? CONFLICT_MSG : e.response?.data?.detail || e.message);
     } finally {
       setBusy(false);
     }

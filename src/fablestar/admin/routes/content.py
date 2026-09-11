@@ -199,7 +199,52 @@ def build_content_router(server: FablestarServer) -> APIRouter:
         _mark_reloaded()
         return {"status": "ok", "message": "Content and prompt caches cleared."}
 
-    # ---- Entity Template Management ----------------------------------------
+    # ---- Entity / Item template management (shared factory) -----------------
+
+    def _register_template_routes(kind: str, tool: str) -> None:
+        """Register get/put/inject YAML routes for a flat template dir (entities, items)."""
+        base_dir = Path("content/world") / kind
+        label = kind[:-1].capitalize()  # "entities" -> "Entity"
+
+        @router.get(f"/content/{kind}/{{template_id}}/yaml")
+        async def get_template_yaml(
+            template_id: str,
+            _ctx: Annotated[AdminContext, Depends(require_tool(tool))],
+        ):
+            if not template_id.replace("_", "").isalnum():
+                raise HTTPException(status_code=400, detail=f"Invalid {label.lower()} id")
+            path = base_dir / f"{template_id}.yaml"
+            if not path.is_file():
+                raise HTTPException(status_code=404, detail=f"{label} not found")
+            return {"yaml": path.read_text(encoding="utf-8")}
+
+        @router.put(f"/content/{kind}/{{template_id}}/yaml")
+        async def save_template_yaml(
+            template_id: str,
+            body: ContentInjectBody,
+            _ctx: Annotated[AdminContext, Depends(require_tool(tool))],
+        ):
+            if not template_id.replace("_", "").isalnum():
+                raise HTTPException(status_code=400, detail=f"Invalid {label.lower()} id")
+            path = base_dir / f"{template_id}.yaml"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(body.yaml_content, encoding="utf-8")
+            server.content_loader.clear_cache()
+            return {"status": "saved", "path": str(path)}
+
+        @router.post(f"/content/{kind}/inject")
+        async def inject_template(
+            body: ContentInjectBody,
+            _ctx: Annotated[AdminContext, Depends(require_tool(tool))],
+        ):
+            slug = body.path.lstrip("/").removeprefix(f"{kind}/").replace("/", "_")
+            if not slug.replace("_", "").isalnum():
+                raise HTTPException(status_code=400, detail="Invalid path")
+            path = base_dir / f"{slug}.yaml"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(body.yaml_content, encoding="utf-8")
+            server.content_loader.clear_cache()
+            return {"status": "injected", "path": str(path)}
 
     @router.get("/content/entities")
     async def list_entity_templates(
@@ -209,93 +254,8 @@ def build_content_router(server: FablestarServer) -> APIRouter:
         templates = server.content_loader.list_entity_templates()
         return [t.model_dump() for t in templates]
 
-    @router.get("/content/entities/{entity_id}/yaml")
-    async def get_entity_yaml(
-        entity_id: str,
-        _ctx: Annotated[AdminContext, Depends(require_tool("entities"))],
-    ):
-        """Return raw YAML for an entity template."""
-        if not entity_id.replace("_", "").isalnum():
-            raise HTTPException(status_code=400, detail="Invalid entity id")
-        path = Path("content/world/entities") / f"{entity_id}.yaml"
-        if not path.is_file():
-            raise HTTPException(status_code=404, detail="Entity not found")
-        return {"yaml": path.read_text(encoding="utf-8")}
-
-    @router.put("/content/entities/{entity_id}/yaml")
-    async def save_entity_yaml(
-        entity_id: str,
-        body: ContentInjectBody,
-        _ctx: Annotated[AdminContext, Depends(require_tool("entities"))],
-    ):
-        """Write/overwrite an entity template YAML file."""
-        if not entity_id.replace("_", "").isalnum():
-            raise HTTPException(status_code=400, detail="Invalid entity id")
-        path = Path("content/world/entities") / f"{entity_id}.yaml"
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(body.yaml_content, encoding="utf-8")
-        server.content_loader.clear_cache()
-        return {"status": "saved", "path": str(path)}
-
-    @router.post("/content/entities/inject")
-    async def inject_entity(
-        body: ContentInjectBody,
-        _ctx: Annotated[AdminContext, Depends(require_tool("entities"))],
-    ):
-        """Save a new entity template to disk (path = 'entities/<id>')."""
-        slug = body.path.lstrip("/").removeprefix("entities/").replace("/", "_")
-        if not slug.replace("_", "").isalnum():
-            raise HTTPException(status_code=400, detail="Invalid path")
-        path = Path("content/world/entities") / f"{slug}.yaml"
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(body.yaml_content, encoding="utf-8")
-        server.content_loader.clear_cache()
-        return {"status": "injected", "path": str(path)}
-
-    # ---- Item Template Management ------------------------------------------
-
-    @router.get("/content/items/{item_id}/yaml")
-    async def get_item_yaml(
-        item_id: str,
-        _ctx: Annotated[AdminContext, Depends(require_tool("items"))],
-    ):
-        """Return raw YAML for an item template."""
-        if not item_id.replace("_", "").isalnum():
-            raise HTTPException(status_code=400, detail="Invalid item id")
-        path = Path("content/world/items") / f"{item_id}.yaml"
-        if not path.is_file():
-            raise HTTPException(status_code=404, detail="Item not found")
-        return {"yaml": path.read_text(encoding="utf-8")}
-
-    @router.put("/content/items/{item_id}/yaml")
-    async def save_item_yaml(
-        item_id: str,
-        body: ContentInjectBody,
-        _ctx: Annotated[AdminContext, Depends(require_tool("items"))],
-    ):
-        """Write/overwrite an item template YAML file."""
-        if not item_id.replace("_", "").isalnum():
-            raise HTTPException(status_code=400, detail="Invalid item id")
-        path = Path("content/world/items") / f"{item_id}.yaml"
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(body.yaml_content, encoding="utf-8")
-        server.content_loader.clear_cache()
-        return {"status": "saved", "path": str(path)}
-
-    @router.post("/content/items/inject")
-    async def inject_item(
-        body: ContentInjectBody,
-        _ctx: Annotated[AdminContext, Depends(require_tool("items"))],
-    ):
-        """Save a new item template to disk (path = 'items/<id>')."""
-        slug = body.path.lstrip("/").removeprefix("items/").replace("/", "_")
-        if not slug.replace("_", "").isalnum():
-            raise HTTPException(status_code=400, detail="Invalid path")
-        path = Path("content/world/items") / f"{slug}.yaml"
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(body.yaml_content, encoding="utf-8")
-        server.content_loader.clear_cache()
-        return {"status": "injected", "path": str(path)}
+    _register_template_routes("entities", "entities")
+    _register_template_routes("items", "items")
 
     # ---- Room YAML editing -------------------------------------------------
 
@@ -391,9 +351,11 @@ def build_content_router(server: FablestarServer) -> APIRouter:
         zone_id: str,
         room_slug: str,
         ctx: Annotated[AdminContext, Depends(require_any_tool("builder", "locations"))],
+        expected_mtime: float | None = None,
     ):
         if not ctx.may_write_zone(zone_id):
             raise HTTPException(status_code=403, detail="zone_denied")
+        _check_room_write_conflict(zone_id, room_slug, expected_mtime)
         try:
             content_browser.delete_room(zone_id, room_slug)
         except FileNotFoundError:

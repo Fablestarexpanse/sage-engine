@@ -63,7 +63,7 @@ def _workflow_has_checkpoint_simple_node(workflow_path: Path) -> bool:
     return False
 
 
-def _safe_player_scene_storage_url(url: str | None) -> bool:
+def _is_safe_player_scene_storage_url(url: str | None) -> bool:
     """Only allow persisting Nexus-served paths we write under data/ or bundled room-art."""
     u = (url or "").strip()
     if not u.startswith("/media/") or ".." in u or len(u) > 2048:
@@ -307,7 +307,7 @@ class SceneService:
             }
         scene_url = res.get("area_image_url")
         scene_url_str = str(scene_url).strip()[:2048] if scene_url else ""
-        if scene_url and _safe_player_scene_storage_url(scene_url_str):
+        if scene_url and _is_safe_player_scene_storage_url(scene_url_str):
             async with self.server.db.session_factory() as db_session:
                 db_session.add(
                     AccountSceneImage(
@@ -395,7 +395,7 @@ class SceneService:
             if row is None or row.account_id != aid:
                 return {"ok": False, "error": "gallery_item_not_found"}
             url = (row.image_url or "").strip()[:2048]
-            if not _safe_player_scene_storage_url(url):
+            if not _is_safe_player_scene_storage_url(url):
                 return {"ok": False, "error": "invalid_stored_url"}
             char = await db_session.get(Character, character_id)
             if char is None or char.account_id != aid:

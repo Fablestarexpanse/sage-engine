@@ -232,6 +232,9 @@ function ZoneEditorInner({ zoneId, onSync, forwardedRef, navigateRoomSlug, onNav
   const onNodesDelete = useCallback(
     async (deleted) => {
       const slugs = deleted.map((n) => n.data?.slug).filter(Boolean);
+      const mtimeBySlug = Object.fromEntries(
+        deleted.filter((n) => n.data?.slug).map((n) => [n.data.slug, n.data?.mtime ?? null])
+      );
       if (!slugs.length) return;
       // react-flow already removed the nodes locally; on cancel, reload restores them.
       const label = slugs.length === 1 ? `room "${slugs[0]}"` : `${slugs.length} rooms (${slugs.join(", ")})`;
@@ -241,9 +244,11 @@ function ZoneEditorInner({ zoneId, onSync, forwardedRef, navigateRoomSlug, onNav
       }
       for (const s of slugs) {
         try {
-          await axios.delete(`${API_BASE}/content/zones/${zoneId}/rooms/${s}`);
+          await axios.delete(`${API_BASE}/content/zones/${zoneId}/rooms/${s}`, {
+            params: mtimeBySlug[s] != null ? { expected_mtime: mtimeBySlug[s] } : {},
+          });
         } catch (e) {
-          window.alert(e.response?.data?.detail || e.message);
+          window.alert(errDetail(e));
         }
       }
       await loadGraph();
