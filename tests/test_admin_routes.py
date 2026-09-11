@@ -143,3 +143,84 @@ def test_room_delete_conflict_returns_409(client, server, monkeypatch):
     )
     assert r.status_code == 409
     assert r.json()["detail"] == "content_modified"
+
+
+# ---- player-account moderation endpoints -----------------------------------
+
+
+def test_account_patch_requires_players_tool(client, server):
+    # staff 2 has only "dashboard"
+    r = client.patch("/admin/player-accounts/1", json={"is_gm": True}, headers=_auth(server, 2))
+    assert r.status_code == 403
+
+
+def test_console_access_grant_requires_head_or_admin_role(client, server, monkeypatch):
+    # staff 2 is a gm; give them the players tool so only the role gate can reject
+    rows = {(AdminStaff, 2): _staff_row(2, role="gm", tools=["players", "dashboard"])}
+    monkeypatch.setattr(server.db, "session_factory", lambda: _FakeSession(rows))
+    r = client.put(
+        "/admin/player-accounts/1/console-access",
+        json={"password": "longenough1", "role": "gm"},
+        headers=_auth(server, 2),
+    )
+    assert r.status_code == 403
+    assert r.json()["detail"] == "head_or_admin_required"
+
+
+def test_account_patch_missing_account_404(client, server, monkeypatch):
+    from fablestar.admin.routes import admin_ops as admin_ops_mod
+
+    async def _none(*a, **k):
+        return None
+
+    monkeypatch.setattr(admin_ops_mod.player_accounts, "patch_account", _none)
+    r = client.patch("/admin/player-accounts/999", json={"is_gm": True}, headers=_auth(server, 1))
+    assert r.status_code == 404
+    assert r.json()["detail"] == "account_not_found"
+
+
+def test_account_patch_passes_patch_and_actor(client, server, monkeypatch):
+    from fablestar.admin.routes import admin_ops as admin_ops_mod
+
+    captured = {}
+
+    async def _patch_account(srv, account_id, patch, actor=None):
+        captured.update({"account_id": account_id, "patch": patch, "actor": actor})
+        return {"id": account_id, **patch}
+
+    monkeypatch.setattr(admin_ops_mod.player_accounts, "patch_account", _patch_account)
+    r = client.patch("/admin/player-accounts/7", json={"is_gm": True}, headers=_auth(server, 1))
+    assert r.status_code == 200
+    assert captured["account_id"] == 7
+    assert captured["patch"] == {"is_gm": True}
+    assert captured["actor"]["username"] == "staff1"
+
+
+def test_character_patch_missing_character_404(client, server, monkeypatch):
+    from fablestar.admin.routes import admin_ops as admin_ops_mod
+
+    async def _none(*a, **k):
+        return None
+
+    monkeypatch.setattr(admin_ops_mod.player_accounts, "patch_character", _none)
+    r = client.patch(
+        "/admin/player-accounts/1/characters/5",
+        json={"name": "NewName"},
+        headers=_auth(server, 1),
+    )
+    assert r.status_code == 404
+    assert r.json()["detail"] == "character_not_found"
+
+
+def test_console_access_revoke_reports_missing_grant(client, server, monkeypatch):
+    from fablestar.admin.routes import admin_ops as admin_ops_mod
+
+    async def _revoke(srv, account_id):
+        return False
+
+    monkeypatch.setattr(
+        admin_ops_mod.staff_service, "revoke_console_access_for_play_account", _revoke
+    )
+    r = client.delete("/admin/player-accounts/3/console-access", headers=_auth(server, 1))
+    assert r.status_code == 404
+    assert r.json()["detail"] == "console_access_not_found"

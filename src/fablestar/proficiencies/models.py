@@ -92,7 +92,12 @@ class ConduitAttributes(BaseModel):
 
 
 class LeafRuntimeState(BaseModel):
-    """Per-leaf (or internal node) runtime state on a character."""
+    """Per-leaf (or internal node) runtime state on a character.
+
+    Storage-contract twin: ``fablestar.state.state_types.ProficiencyRow``
+    (TypedDict) describes the same row as raw Redis/Postgres JSON. Keep the
+    field lists in sync.
+    """
 
     level: int = Field(default=0, ge=0, le=200)
     state: ProficiencyState = "raise"

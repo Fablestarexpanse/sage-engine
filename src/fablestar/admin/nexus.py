@@ -129,7 +129,8 @@ class NexusApp:
         for ws in self._admin_ws_sockets:
             try:
                 await ws.send_json(payload)
-            except Exception:
+            except Exception as e:
+                logger.debug("broadcast_admin_presence: dropping dead admin socket: %s", e)
                 dead.append(ws)
         for ws in dead:
             if ws in self._admin_ws_sockets:

@@ -4,8 +4,9 @@ These document the shapes stored in Redis and in the Postgres JSON columns
 (Character.stats, Character.inventory). They are structural annotations only —
 neither store enforces them at runtime.
 
-Deliberate dual definitions: ``ConduitAttributes`` and ``ProficiencyRow`` also
-exist as validated pydantic BaseModels in ``fablestar.proficiencies.models``.
+Deliberate dual definitions: ``ConduitAttributes`` has a validated pydantic
+BaseModel twin of the same name in ``fablestar.proficiencies.models``, and
+``ProficiencyRow``'s validated twin there is named ``LeafRuntimeState``.
 The split is intentional — these TypedDicts describe the raw storage contract
 (no validation, no defaults), while the BaseModels are for validated
 construction at the catalog/chargen boundary. Keep the field lists in sync.

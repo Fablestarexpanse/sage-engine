@@ -130,6 +130,16 @@ TickManager._run_loop()  →  registered tick handlers, in order
   → PersistenceManager.on_tick  every 240 ticks: flush Redis → Postgres
 ```
 
+### Content writers
+
+Three independent writers persist `content/world` YAML: the Nexus HTTP API
+(`admin/routes/content.py`, the only path with the `expected_mtime` 409
+conflict guard), the WorldForge Tauri app (direct disk writes via the Tauri
+`write_file` command), and `worldforge-mcp/server.py` (direct disk writes from
+the `mcp__worldforge__*` tools). The two direct-disk writers rely on the
+HotReloader picking up changes and accept last-write-wins risk — see
+CLAUDE.md's "How WorldForge saves (and the conflict risk)".
+
 ### Content hot-reload
 
 ```

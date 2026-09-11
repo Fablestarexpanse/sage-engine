@@ -22,6 +22,11 @@ def _entity_lock(entity_id: str) -> asyncio.Lock:
     return lock
 
 
+def discard_entity_lock(entity_id: str) -> None:
+    """Drop the lock for an entity leaving the world (called from spawner despawn)."""
+    _entity_locks.pop(entity_id, None)
+
+
 def _roll_damage(attacker_attack: int, defender_defense: int) -> int:
     """Deterministic damage roll. LLMs describe what happened; math decides it."""
     roll = random.randint(1, 6)
@@ -89,8 +94,8 @@ async def attack(session: Session, args: list[str]):
             await session.send(f"{target_state.get('name', 'It')} is already dead.")
             return
         target_state = fresh
-        damage_dealt = _roll_damage(player_attack, target_state["defense"])
-        target_state["hp"] = target_state["hp"] - damage_dealt
+        damage_dealt = _roll_damage(player_attack, target_state.get("defense", 0))
+        target_state["hp"] = target_state.get("hp", 1) - damage_dealt
         entity_dead = target_state["hp"] <= 0
         if entity_dead:
             target_state["alive"] = False
@@ -119,13 +124,13 @@ async def attack(session: Session, args: list[str]):
     await app_instance.redis.set_player_stats(player_id, player_stats)
 
     # --- LLM narrates the exchange ---
-    entity_name = target_state["name"]
+    entity_name = target_state.get("name", "the creature")
     outcome = "killed" if entity_dead else "wounded"
     narration_facts = (
         f"Player attacks: {entity_name}\n"
         f"Damage dealt: {damage_dealt}\n"
         f"Entity outcome: {outcome}\n"
-        f"Entity remaining HP: {max(0, target_state['hp'])}/{target_state['max_hp']}\n"
+        f"Entity remaining HP: {max(0, target_state['hp'])}/{target_state.get('max_hp', '?')}\n"
     )
     if not entity_dead:
         narration_facts += (
@@ -153,7 +158,7 @@ async def attack(session: Session, args: list[str]):
 
     # --- Post-combat cleanup ---
     if entity_dead:
-        _entity_locks.pop(target_id, None)
+        # kill_entity → despawn_entity discards the per-entity lock
         dropped = await app_instance.spawner.kill_entity(target_id, room_id)
         if dropped:
             drop_names = []

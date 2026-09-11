@@ -105,8 +105,11 @@ class EntitySpawnManager:
 
     async def despawn_entity(self, entity_id: str, room_id: str):
         """Remove an entity from the world entirely."""
+        from fablestar.commands.combat import discard_entity_lock  # lazy — avoids import cycle
+
         await self.server.redis.remove_entity_from_room(entity_id, room_id)
         await self.server.redis.delete_entity_state(entity_id)
+        discard_entity_lock(entity_id)
         logger.debug(f"Spawner: despawned {entity_id} from {room_id}")
 
     async def kill_entity(self, entity_id: str, room_id: str) -> list[str]:

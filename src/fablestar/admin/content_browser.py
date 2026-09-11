@@ -15,6 +15,7 @@ import yaml
 
 logger = logging.getLogger(__name__)
 
+CONTENT_WORLD = Path("content/world")
 ZONES_ROOT = Path("content/world/zones")
 ITEMS_DIR = Path("content/world/items")
 GLYPHS_DIR = Path("content/world/glyphs")
@@ -304,6 +305,41 @@ def load_zone_positions(zone_id: str) -> dict[str, dict[str, float]]:
     return out
 
 
+def _atomic_write_text(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(prefix=".wf_", suffix=path.suffix, dir=str(path.parent), text=True)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(text)
+        os.replace(tmp, path)
+    except Exception:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+
+def save_room_yaml_text(zone_id: str, room_slug: str, text: str) -> Path:
+    """Write raw room YAML through the content seam (validated segments, atomic write)."""
+    if not _is_safe_segment(zone_id) or not _is_safe_segment(room_slug):
+        raise ValueError("invalid_slug")
+    path = ZONES_ROOT / zone_id / "rooms" / f"{room_slug}.yaml"
+    _atomic_write_text(path, text)
+    return path
+
+
+def save_template_yaml_text(kind: str, slug: str, text: str) -> Path:
+    """Write raw entity/item template YAML (validated slug, atomic write)."""
+    if kind not in ("entities", "items"):
+        raise ValueError("invalid_kind")
+    if not slug.replace("_", "").isalnum():
+        raise ValueError("invalid_slug")
+    path = CONTENT_WORLD / kind / f"{slug}.yaml"
+    _atomic_write_text(path, text)
+    return path
+
+
 def _atomic_write_json(path: Path, obj: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp = tempfile.mkstemp(prefix=".wf_", suffix=".json", dir=str(path.parent), text=True)
@@ -590,7 +626,7 @@ def save_room_dict(zone_id: str, room_slug: str, data: dict[str, Any]) -> Path:
     merged["id"] = merged.get("id") or f"{zone_id}:{room_slug}"
     merged["zone"] = zone_id
     text = yaml.safe_dump(merged, default_flow_style=False, allow_unicode=True, sort_keys=False)
-    path.write_text(text, encoding="utf-8")
+    _atomic_write_text(path, text)
     return path
 
 
@@ -617,7 +653,7 @@ def create_room(zone_id: str, slug: str, initial: dict[str, Any] | None = None) 
     base["id"] = f"{zone_id}:{slug}"
     base["zone"] = zone_id
     text = yaml.safe_dump(base, default_flow_style=False, allow_unicode=True, sort_keys=False)
-    path.write_text(text, encoding="utf-8")
+    _atomic_write_text(path, text)
     return path
 
 
@@ -1024,7 +1060,7 @@ def save_ship_room(ship_id: str, room_local_id: str, patch: dict[str, Any]) -> P
         raise ValueError("room_not_found")
     ship["rooms"] = rooms
     text = yaml.safe_dump(data, default_flow_style=False, allow_unicode=True, sort_keys=False)
-    path.write_text(text, encoding="utf-8")
+    _atomic_write_text(path, text)
     return path
 
 

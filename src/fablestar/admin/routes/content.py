@@ -224,11 +224,10 @@ def build_content_router(server: FablestarServer) -> APIRouter:
             body: ContentInjectBody,
             _ctx: Annotated[AdminContext, Depends(require_tool(tool))],
         ):
-            if not template_id.replace("_", "").isalnum():
-                raise HTTPException(status_code=400, detail=f"Invalid {label.lower()} id")
-            path = base_dir / f"{template_id}.yaml"
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(body.yaml_content, encoding="utf-8")
+            try:
+                path = content_browser.save_template_yaml_text(kind, template_id, body.yaml_content)
+            except ValueError:
+                raise HTTPException(status_code=400, detail=f"Invalid {label.lower()} id") from None
             server.content_loader.clear_cache()
             return {"status": "saved", "path": str(path)}
 
@@ -238,11 +237,10 @@ def build_content_router(server: FablestarServer) -> APIRouter:
             _ctx: Annotated[AdminContext, Depends(require_tool(tool))],
         ):
             slug = body.path.lstrip("/").removeprefix(f"{kind}/").replace("/", "_")
-            if not slug.replace("_", "").isalnum():
-                raise HTTPException(status_code=400, detail="Invalid path")
-            path = base_dir / f"{slug}.yaml"
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(body.yaml_content, encoding="utf-8")
+            try:
+                path = content_browser.save_template_yaml_text(kind, slug, body.yaml_content)
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid path") from None
             server.content_loader.clear_cache()
             return {"status": "injected", "path": str(path)}
 
@@ -269,14 +267,11 @@ def build_content_router(server: FablestarServer) -> APIRouter:
         """Write/overwrite a room YAML file and invalidate cache."""
         if not ctx.may_write_zone(zone_id):
             raise HTTPException(status_code=403, detail="zone_denied")
-        if not re.match(r"^[a-zA-Z0-9_-]+$", zone_id) or not re.match(
-            r"^[a-zA-Z0-9_-]+$", room_slug
-        ):
-            raise HTTPException(status_code=400, detail="Invalid zone or room slug")
         _check_room_write_conflict(zone_id, room_slug, body.expected_mtime)
-        path = Path("content/world/zones") / zone_id / "rooms" / f"{room_slug}.yaml"
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(body.yaml_content, encoding="utf-8")
+        try:
+            path = content_browser.save_room_yaml_text(zone_id, room_slug, body.yaml_content)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid zone or room slug") from None
         server.content_loader.invalidate(path)
         return {"status": "saved", "path": str(path)}
 

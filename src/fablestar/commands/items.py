@@ -8,6 +8,19 @@ from fablestar.network.session import Session
 logger = logging.getLogger(__name__)
 
 
+async def _find_first_named(ids, fetch_state, target_name: str, *, require_alive: bool = False):
+    """First (id, state) whose Redis state name contains target_name, else (None, None)."""
+    for oid in ids:
+        state = await fetch_state(oid)
+        if not state:
+            continue
+        if require_alive and not state.get("alive", True):
+            continue
+        if target_name in state.get("name", "").lower():
+            return oid, state
+    return None, None
+
+
 @command("inventory", aliases=["i", "inv"])
 async def inventory(session: Session, args: list[str]):
     """List your carried inventory."""
@@ -48,14 +61,9 @@ async def take(session: Session, args: list[str]):
 
     # Find matching item on floor
     item_ids = await app_instance.redis.get_room_items(room_id)
-    found_id = None
-    found_state = None
-    for iid in item_ids:
-        state = await app_instance.redis.get_item_state(iid)
-        if state and target_name in state.get("name", "").lower():
-            found_id = iid
-            found_state = state
-            break
+    found_id, found_state = await _find_first_named(
+        item_ids, app_instance.redis.get_item_state, target_name
+    )
 
     if found_state is None or found_id is None:
         await session.send(f"You see no '{target_name}' here.")
@@ -162,29 +170,28 @@ async def examine(session: Session, args: list[str]):
 
     # 2. Check live entities
     entity_ids = await app_instance.redis.get_room_entities(room_id)
-    for eid in entity_ids:
-        state = await app_instance.redis.get_entity_state(eid)
-        if state and state.get("alive", True):
-            if target_name in state.get("name", "").lower():
-                tmpl = app_instance.content_loader.get_entity_template(state["template"])
-                desc = (
-                    tmpl.description.get("long", tmpl.description.get("short", ""))
-                    if tmpl
-                    else state["name"]
-                )
-                hp = state.get("hp", "?")
-                max_hp = state.get("max_hp", "?")
-                await session.send(f"\r\n{desc}")
-                await session.send(f"[HP: {hp}/{max_hp}]")
-                return
+    _, state = await _find_first_named(
+        entity_ids, app_instance.redis.get_entity_state, target_name, require_alive=True
+    )
+    if state:
+        tmpl = app_instance.content_loader.get_entity_template(state["template"])
+        desc = (
+            tmpl.description.get("long", tmpl.description.get("short", ""))
+            if tmpl
+            else state["name"]
+        )
+        hp = state.get("hp", "?")
+        max_hp = state.get("max_hp", "?")
+        await session.send(f"\r\n{desc}")
+        await session.send(f"[HP: {hp}/{max_hp}]")
+        return
 
     # 3. Check floor items
     item_ids = await app_instance.redis.get_room_items(room_id)
-    for iid in item_ids:
-        istate = await app_instance.redis.get_item_state(iid)
-        if istate and target_name in istate.get("name", "").lower():
-            await session.send(f"\r\n{istate.get('description', 'An item.')}")
-            return
+    _, istate = await _find_first_named(item_ids, app_instance.redis.get_item_state, target_name)
+    if istate:
+        await session.send(f"\r\n{istate.get('description', 'An item.')}")
+        return
 
     # 4. Check inventory
     inv = await app_instance.redis.get_player_inventory(player_id)
