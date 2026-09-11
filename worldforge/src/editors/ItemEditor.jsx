@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import yaml from "js-yaml";
 import { joinPaths } from "../utils/paths.js";
 import { useTheme } from "../ThemeContext.jsx";
 import * as fs from "../hooks/useFileSystem.js";
+import TextPromptModal from "../components/TextPromptModal.jsx";
 import { useContent } from "../hooks/useContentStore.js";
 
 export default function ItemEditor({ worldRoot, selectedId, onSelect }) {
@@ -54,13 +55,19 @@ export default function ItemEditor({ worldRoot, selectedId, onSelect }) {
   const { items, itemIds, dispatch } = useContent();
   const [draft, setDraft] = useState(null);
   const [dirty, setDirty] = useState(false);
+  const [newIdOpen, setNewIdOpen] = useState(false);
 
+  // Reset the draft when selection changes; on live-watch store refreshes,
+  // never clobber in-progress (dirty) edits.
+  const lastSelectedRef = useRef(null);
   useEffect(() => {
-    if (selectedId && items[selectedId]) {
-      setDraft(JSON.parse(JSON.stringify(items[selectedId])));
-      setDirty(false);
-    }
-  }, [selectedId, items]);
+    if (!selectedId || !items[selectedId]) return;
+    const switched = lastSelectedRef.current !== selectedId;
+    lastSelectedRef.current = selectedId;
+    if (!switched && dirty) return;
+    setDraft(JSON.parse(JSON.stringify(items[selectedId])));
+    setDirty(false);
+  }, [selectedId, items, dirty]);
 
   const save = async () => {
     if (!selectedId || !draft) return;
@@ -81,16 +88,7 @@ export default function ItemEditor({ worldRoot, selectedId, onSelect }) {
   return (
     <div style={{ display: "flex", height: "100%", background: COLORS.bg }}>
       <div style={{ width: 220, borderRight: `1px solid ${COLORS.border}`, overflow: "auto", background: COLORS.bgPanel }}>
-        <button type="button" style={btn} onClick={() => {
-          const id = window.prompt("Item id");
-          if (!id || !/^[a-zA-Z0-9_-]+$/.test(id)) return;
-          const base = { id, name: id, type: "misc", description: "", value: 0, weight: 0, tags: [] };
-          fs.writeYaml(joinPaths(worldRoot, "items", `${id}.yaml`), base).then(() => {
-            dispatch({ type: "UPDATE_ITEM", id, data: base });
-            dispatch({ type: "ADD_ITEM_ID", id });
-            onSelect(id);
-          });
-        }}>+ New</button>
+        <button type="button" style={btn} onClick={() => setNewIdOpen(true)}>+ New</button>
         {itemIds.map((id) => (
           <button key={id} type="button" onClick={() => onSelect(id)} style={{ ...listBtn, background: id === selectedId ? COLORS.bgHover : "transparent" }}>{id}</button>
         ))}
@@ -122,6 +120,26 @@ export default function ItemEditor({ worldRoot, selectedId, onSelect }) {
           <div style={{ color: COLORS.textMuted }}>Select an item.</div>
         )}
       </div>
+      <TextPromptModal
+        open={newIdOpen}
+        title="New item"
+        hint="Letters, numbers, underscore, and hyphen only."
+        initialValue=""
+        confirmLabel="Create"
+        validate={(v) => /^[a-zA-Z0-9_-]+$/.test(v)}
+        invalidMessage="Use only letters, numbers, underscore (_), and hyphen (-)."
+        onConfirm={(id) => {
+          setNewIdOpen(false);
+      const base = { id, name: id, type: "misc", description: "", value: 0, weight: 0, tags: [] };
+      fs.writeYaml(joinPaths(worldRoot, "items", `${id}.yaml`), base).then(() => {
+      dispatch({ type: "UPDATE_ITEM", id, data: base });
+      dispatch({ type: "ADD_ITEM_ID", id });
+      onSelect(id);
+      });
+
+        }}
+        onCancel={() => setNewIdOpen(false)}
+      />
     </div>
   );
 }

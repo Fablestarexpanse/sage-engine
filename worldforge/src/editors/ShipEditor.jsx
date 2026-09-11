@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import {
   ReactFlow,
   Background,
@@ -81,13 +81,18 @@ function Inner({ shipId, worldRoot, onShipId }) {
     rebuild();
   }, [rebuild]);
 
+  // Reset the draft when selection changes; on live-watch store refreshes,
+  // never clobber in-progress (dirty) edits.
+  const lastSelectedRef = useRef(null);
   useEffect(() => {
-    if (selectedLocal) {
-      const r = (shipDoc.ship?.rooms || []).find((x) => x.id === selectedLocal);
-      setDraft(r ? JSON.parse(JSON.stringify(r)) : { id: selectedLocal, name: selectedLocal, type: "corridor", description: { base: "" }, exits: {} });
-      setDirty(false);
-    }
-  }, [selectedLocal, shipDoc]);
+    if (!selectedLocal) return;
+    const switched = lastSelectedRef.current !== selectedLocal;
+    lastSelectedRef.current = selectedLocal;
+    if (!switched && dirty) return;
+    const r = (shipDoc.ship?.rooms || []).find((x) => x.id === selectedLocal);
+    setDraft(r ? JSON.parse(JSON.stringify(r)) : { id: selectedLocal, name: selectedLocal, type: "corridor", description: { base: "" }, exits: {} });
+    setDirty(false);
+  }, [selectedLocal, shipDoc, dirty]);
 
   const saveShip = async (doc) => {
     await fs.writeYaml(shipPath, doc);

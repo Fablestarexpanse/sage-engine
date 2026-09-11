@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import {
   ReactFlow,
   Background,
@@ -87,12 +87,17 @@ function Inner({ worldRoot }) {
     rebuild();
   }, [rebuild]);
 
+  // Reset the draft when selection changes; on live-watch store refreshes,
+  // never clobber in-progress (dirty) edits.
+  const lastSelectedRef = useRef(null);
   useEffect(() => {
-    if (selectedId && systems[selectedId]) {
-      setDraft(JSON.parse(JSON.stringify(systems[selectedId])));
-      setDirty(false);
-    }
-  }, [selectedId, systems]);
+    if (!selectedId || !systems[selectedId]) return;
+    const switched = lastSelectedRef.current !== selectedId;
+    lastSelectedRef.current = selectedId;
+    if (!switched && dirty) return;
+    setDraft(JSON.parse(JSON.stringify(systems[selectedId])));
+    setDirty(false);
+  }, [selectedId, systems, dirty]);
 
   const saveSystem = async () => {
     if (!selectedId || !draft) return;

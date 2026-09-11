@@ -1,6 +1,6 @@
 import { useTheme } from "../ThemeContext.jsx";
 
-export function ValidationPanel({ issues, onPick }) {
+function ValidationPanel({ issues, onPick }) {
   const { colors: COLORS } = useTheme();
   if (!issues?.length) {
     return (

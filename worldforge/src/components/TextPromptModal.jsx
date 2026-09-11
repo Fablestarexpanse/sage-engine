@@ -11,7 +11,7 @@ export default function TextPromptModal({
   initialValue = "",
   confirmLabel = "OK",
   cancelLabel = "Cancel",
-  validate,
+  validate = () => true,
   invalidMessage = "Invalid value.",
   onConfirm,
   onCancel,

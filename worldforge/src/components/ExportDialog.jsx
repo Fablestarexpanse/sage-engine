@@ -1,7 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { joinPaths } from "../utils/paths.js";
 import { useTheme } from "../ThemeContext.jsx";
 import * as fs from "../hooks/useFileSystem.js";
+import { listStampSlugs } from "../utils/stampBundle.js";
+import { useContent } from "../hooks/useContentStore.js";
 
 const row = { display: "flex", alignItems: "center", gap: 8, fontSize: 12, marginTop: 4 };
 
@@ -25,6 +27,23 @@ export default function ExportDialog({ worldRoot, contentRoot, zoneIds, systemId
   const [i, setI] = useState(() => Object.fromEntries(itemIds.map((id) => [id, true])));
   const [g, setG] = useState(() => Object.fromEntries(glyphIds.map((id) => [id, true])));
   const [gal, setGal] = useState(true);
+  const [stampIds, setStampIds] = useState([]);
+  const [st, setSt] = useState({});
+  const { loadAll } = useContent();
+
+  useEffect(() => {
+    let alive = true;
+    listStampSlugs(worldRoot)
+      .then((slugs) => {
+        if (!alive) return;
+        setStampIds(slugs);
+        setSt(Object.fromEntries(slugs.map((id) => [id, true])));
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [worldRoot]);
   const [msg, setMsg] = useState("");
   const [importPreview, setImportPreview] = useState(null);
 
@@ -51,8 +70,12 @@ export default function ExportDialog({ worldRoot, contentRoot, zoneIds, systemId
       if (!g[id]) continue;
       out.push(joinPaths(worldRoot, "glyphs", `${id}.yaml`));
     }
+    for (const id of stampIds) {
+      if (!st[id]) continue;
+      out.push(joinPaths(worldRoot, "stamps", id));
+    }
     return out;
-  }, [worldRoot, zoneIds, systemIds, entityIds, itemIds, glyphIds, z, s, e, i, g, gal]);
+  }, [worldRoot, zoneIds, systemIds, entityIds, itemIds, glyphIds, stampIds, z, s, e, i, g, st, gal]);
 
   const collectFiles = async () => {
     const files = [];
@@ -99,7 +122,7 @@ export default function ExportDialog({ worldRoot, contentRoot, zoneIds, systemId
     setMsg(`Imported ${written.length} files`);
     setImportPreview(null);
     onClose();
-    window.location.reload();
+    await loadAll(contentRoot);
   };
 
   return (
@@ -155,6 +178,12 @@ export default function ExportDialog({ worldRoot, contentRoot, zoneIds, systemId
         <div style={{ maxHeight: 100, overflow: "auto" }}>
           {glyphIds.map((id) => (
             <label key={id} style={row}><input type="checkbox" checked={!!g[id]} onChange={(ev) => setG({ ...g, [id]: ev.target.checked })} /> {id}</label>
+          ))}
+        </div>
+        <div style={{ marginTop: 8, fontWeight: 600, fontSize: 12 }}>Stamps</div>
+        <div style={{ maxHeight: 100, overflow: "auto" }}>
+          {stampIds.map((id) => (
+            <label key={id} style={row}><input type="checkbox" checked={!!st[id]} onChange={(ev) => setSt({ ...st, [id]: ev.target.checked })} /> {id}</label>
           ))}
         </div>
         <div style={{ marginTop: 16, display: "flex", gap: 8 }}>

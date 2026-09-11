@@ -18,6 +18,16 @@ export const COLORS_DARK = {
   info: "#60a5fa",
   cyan: "#22d3ee",
   forge: "#e879f9",
+  // Tint tokens — kept in parity with admin-ui's adminTheme.js so components
+  // ported between the two apps don't silently render "undefined" backgrounds.
+  accentSoft: "#5a4bc7",
+  successBg: "rgba(52,211,153,0.08)",
+  warningBg: "rgba(251,191,36,0.08)",
+  dangerBg: "rgba(248,113,113,0.08)",
+  infoBg: "rgba(96,165,250,0.08)",
+  cyanBg: "rgba(34,211,238,0.08)",
+  forgeBg: "rgba(232,121,249,0.08)",
+  forgeGlow: "rgba(232,121,249,0.15)",
 };
 
 export const ROOM_TYPE_COLORS_DARK = {
@@ -56,6 +66,15 @@ export const COLORS_LIGHT = {
   info: "#2563eb",
   cyan: "#0e7490",
   forge: "#a21caf",
+  // Tint tokens — parity with adminTheme.js (see COLORS_DARK note).
+  accentSoft: "#4338a8",
+  successBg: "rgba(5,150,105,0.1)",
+  warningBg: "rgba(180,83,9,0.1)",
+  dangerBg: "rgba(220,38,38,0.1)",
+  infoBg: "rgba(37,99,235,0.1)",
+  cyanBg: "rgba(8,145,178,0.1)",
+  forgeBg: "rgba(162,28,175,0.1)",
+  forgeGlow: "rgba(162,28,175,0.15)",
 };
 
 export const ROOM_TYPE_COLORS_LIGHT = {
