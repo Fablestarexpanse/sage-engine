@@ -17,6 +17,9 @@ if TYPE_CHECKING:
     from fablestar.state.models import AdminStaff
 
 # Sidebar / API permission keys (admin UI should match).
+# "team" gates only sidebar visibility in the admin UI; the /admin/staff routes
+# it points at are head-admin-only regardless (require_head_admin), so no
+# backend require_tool("team") exists by design.
 NAV_TOOL_IDS = frozenset(
     {
         "dashboard",

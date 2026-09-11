@@ -221,11 +221,16 @@ class NexusApp:
 
     async def broadcast_log(self, message: str):
         """Send a log message to all connected admin consoles."""
+        dead: list[WebSocket] = []
         for ws in self._active_sockets:
             try:
                 await ws.send_json({"type": "log", "content": message})
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("broadcast_log: dropping dead admin socket: %s", e)
+                dead.append(ws)
+        for ws in dead:
+            if ws in self._active_sockets:
+                self._active_sockets.remove(ws)
 
     async def start(self):
         """Run the uvicorn server in the same event loop."""
