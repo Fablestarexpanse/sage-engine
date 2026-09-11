@@ -721,7 +721,8 @@ def system_detail(system_id: str) -> dict[str, Any] | None:
     try:
         with open(path, encoding="utf-8") as f:
             data = yaml.safe_load(f) or {}
-    except Exception:
+    except Exception as e:
+        logger.warning("system_detail: could not parse %s: %s", path, e)
         return None
     sys_block = data.get("system") or data
     return {
@@ -942,20 +943,38 @@ def list_ship_templates() -> list[dict[str, Any]]:
 def ship_graph(ship_id: str) -> dict[str, Any]:
     """React Flow graph from content/world/ships/{ship_id}.yaml (ship.rooms list)."""
     if not _is_safe_segment(ship_id):
-        return {"nodes": [], "edges": [], "warnings": ["invalid_ship"], "external_exits": []}
+        return {
+            "nodes": [],
+            "edges": [],
+            "warnings": ["invalid_ship"],
+            "external_exits": [],
+            "ship": None,
+        }
     path = SHIPS_DIR / f"{ship_id}.yaml"
     if not path.is_file():
-        return {"nodes": [], "edges": [], "warnings": ["not_found"], "external_exits": []}
+        return {
+            "nodes": [],
+            "edges": [],
+            "warnings": ["not_found"],
+            "external_exits": [],
+            "ship": None,
+        }
     try:
         with open(path, encoding="utf-8") as f:
             data = yaml.safe_load(f) or {}
     except Exception as e:
-        return {"nodes": [], "edges": [], "warnings": [str(e)], "external_exits": []}
+        return {"nodes": [], "edges": [], "warnings": [str(e)], "external_exits": [], "ship": None}
 
     ship = data.get("ship") or data
     rooms = ship.get("rooms") or []
     if not isinstance(rooms, list):
-        return {"nodes": [], "edges": [], "warnings": ["no_rooms"], "external_exits": []}
+        return {
+            "nodes": [],
+            "edges": [],
+            "warnings": ["no_rooms"],
+            "external_exits": [],
+            "ship": None,
+        }
 
     prefix = f"ship:{ship_id}:"
     known: set[str] = set()

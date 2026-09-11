@@ -443,7 +443,7 @@ class FablestarServer:
         await self.dispatcher.dispatch(session, "look")
         await session.send_prompt()
 
-    async def _session_loop(self, session: Session):
+    async def run_session_loop(self, session: Session):
         """Main input/output loop for a single session: authenticate → bootstrap → command loop."""
         try:
             character = await self._authenticate_websocket(session)

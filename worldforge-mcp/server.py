@@ -9,9 +9,12 @@ Environment:
   WORLDFORGE_ROOT  Path to content/world (the directory that contains zones/).
                    Defaults to ./content/world relative to the project root.
 """
+
 from __future__ import annotations
 
 import json
+import os
+import tempfile
 import os
 import re
 from pathlib import Path
@@ -317,36 +320,52 @@ RECOMMENDED BUILD ORDER
 SLUG_RE = re.compile(r"^[a-zA-Z0-9_-]+$")
 
 DIR_OPPOSITE: dict[str, str] = {
-    "north": "south", "south": "north",
-    "east": "west",   "west": "east",
-    "northeast": "southwest", "southwest": "northeast",
-    "northwest": "southeast", "southeast": "northwest",
-    "up": "down",     "down": "up",
+    "north": "south",
+    "south": "north",
+    "east": "west",
+    "west": "east",
+    "northeast": "southwest",
+    "southwest": "northeast",
+    "northwest": "southeast",
+    "southeast": "northwest",
+    "up": "down",
+    "down": "up",
 }
 
 # Pixel offsets used by auto_layout — matches WorldForge canvas spacing
 DIR_OFFSET: dict[str, tuple[float, float]] = {
-    "north":     (   0, -130),
-    "south":     (   0,  130),
-    "east":      ( 220,    0),
-    "west":      (-220,    0),
-    "northeast": ( 220, -130),
+    "north": (0, -130),
+    "south": (0, 130),
+    "east": (220, 0),
+    "west": (-220, 0),
+    "northeast": (220, -130),
     "northwest": (-220, -130),
-    "southeast": ( 220,  130),
-    "southwest": (-220,  130),
+    "southeast": (220, 130),
+    "southwest": (-220, 130),
 }
 
 DEFAULT_W = 176
 DEFAULT_H = 108
 
 VALID_ROOM_TYPES = {
-    "chamber", "corridor", "junction", "alcove", "descent",
-    "danger", "safe", "boss", "hub", "command", "engineering", "airlock",
+    "chamber",
+    "corridor",
+    "junction",
+    "alcove",
+    "descent",
+    "danger",
+    "safe",
+    "boss",
+    "hub",
+    "command",
+    "engineering",
+    "airlock",
 }
 
 # ---------------------------------------------------------------------------
 # Path helpers
 # ---------------------------------------------------------------------------
+
 
 def _world_root() -> Path:
     raw = os.environ.get("WORLDFORGE_ROOT", "content/world")
@@ -376,6 +395,7 @@ def _positions_path(zone_id: str) -> Path:
 # YAML / JSON I/O
 # ---------------------------------------------------------------------------
 
+
 def _read_room(zone_id: str, slug: str) -> dict:
     p = _rooms_dir(zone_id) / f"{slug}.yaml"
     if not p.exists():
@@ -383,14 +403,32 @@ def _read_room(zone_id: str, slug: str) -> dict:
     return yaml.safe_load(p.read_text(encoding="utf-8")) or {}
 
 
+def _atomic_write_text(p: Path, text: str) -> None:
+    """Crash-safe write: tempfile in the same dir, then os.replace (matches Nexus's seam)."""
+    p.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(prefix=".wf_", suffix=p.suffix, dir=str(p.parent), text=True)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(text)
+        os.replace(tmp, p)
+    except Exception:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+
 def _write_room(zone_id: str, slug: str, data: dict) -> None:
     p = _rooms_dir(zone_id) / f"{slug}.yaml"
-    p.parent.mkdir(parents=True, exist_ok=True)
-    with open(p, "w", encoding="utf-8") as f:
-        yaml.dump(data, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
+    _atomic_write_text(
+        p, yaml.dump(data, allow_unicode=True, default_flow_style=False, sort_keys=False)
+    )
 
 
-def _link_exit(zone_id: str, from_slug: str, to_slug: str, direction: str, description: str) -> None:
+def _link_exit(
+    zone_id: str, from_slug: str, to_slug: str, direction: str, description: str
+) -> None:
     """Read a room, write one exit entry, save — the shared half of every connect tool."""
     room = _read_room(zone_id, from_slug)
     room.setdefault("exits", {})[direction] = {
@@ -409,27 +447,29 @@ def _read_positions(zone_id: str) -> dict:
         return {
             "version": 2,
             "positions": dict(raw.get("positions") or {}),
-            "notes":     list(raw.get("notes") or []),
+            "notes": list(raw.get("notes") or []),
             "muted_edges": list(raw.get("muted_edges") or []),
-            "floors":    dict(raw.get("floors") or {}),
+            "floors": dict(raw.get("floors") or {}),
         }
     # Legacy v1 — inline positions
     return {
         "version": 2,
         "positions": {k: v for k, v in raw.items() if isinstance(v, dict) and "x" in v},
-        "notes": [], "muted_edges": [], "floors": {},
+        "notes": [],
+        "muted_edges": [],
+        "floors": {},
     }
 
 
 def _write_positions(zone_id: str, doc: dict) -> None:
     p = _positions_path(zone_id)
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(json.dumps(doc, indent=2), encoding="utf-8")
+    _atomic_write_text(p, json.dumps(doc, indent=2))
 
 
 # ---------------------------------------------------------------------------
 # Validation
 # ---------------------------------------------------------------------------
+
 
 def _require_slug(slug: str) -> None:
     if not SLUG_RE.match(slug):
@@ -447,7 +487,9 @@ def _floor_label(n: int) -> str:
     return f"F{n}" if n > 0 else f"B{abs(n)}"
 
 
-def _auto_position(zone_id: str, slug: str, from_room: str, from_dir: str) -> tuple[float, float] | None:
+def _auto_position(
+    zone_id: str, slug: str, from_room: str, from_dir: str
+) -> tuple[float, float] | None:
     """
     Compute a canvas position for `slug` by taking `from_room`'s position and
     applying the direction offset.  Returns (x, y) or None if from_room has no position.
@@ -464,16 +506,40 @@ def _auto_position(zone_id: str, slug: str, from_room: str, from_dir: str) -> tu
 
 # Keywords that strongly imply a below-ground room (basement/sub-level)
 _BASEMENT_KEYWORDS = (
-    "basement", "bsmt", "cellar", "sub_deck", "subdeck",
-    "underground", "vault", "sublevel", "sub_level", "lower_deck",
-    "lowerdeck", "underdeck", "under_deck", "subfloor", "sub_floor",
+    "basement",
+    "bsmt",
+    "cellar",
+    "sub_deck",
+    "subdeck",
+    "underground",
+    "vault",
+    "sublevel",
+    "sub_level",
+    "lower_deck",
+    "lowerdeck",
+    "underdeck",
+    "under_deck",
+    "subfloor",
+    "sub_floor",
 )
 
 # Keywords that strongly imply an above-ground (upper) room
 _UPPER_FLOOR_KEYWORDS = (
-    "upper", "upstairs", "mezzanine", "penthouse", "attic",
-    "rooftop", "roof_top", "roofdeck", "roof_deck", "loft",
-    "topfloor", "top_floor", "topdeck", "top_deck", "skydeck",
+    "upper",
+    "upstairs",
+    "mezzanine",
+    "penthouse",
+    "attic",
+    "rooftop",
+    "roof_top",
+    "roofdeck",
+    "roof_deck",
+    "loft",
+    "topfloor",
+    "top_floor",
+    "topdeck",
+    "top_deck",
+    "skydeck",
 )
 
 
@@ -526,7 +592,7 @@ def _check_orphan_room(zone_id: str, slug: str) -> str:
         return ""
     full_id = f"{zone_id}:{slug}"
     own = _read_room(zone_id, slug)
-    if (own.get("exits") or {}):
+    if own.get("exits") or {}:
         return ""
     # Look for any other room pointing TO this one
     for f in rd.glob("*.yaml"):
@@ -562,8 +628,10 @@ def _validate_exit_direction(zone_id: str, from_slug: str, to_slug: str, directi
         return  # can't check without both positions
 
     inferred = _infer_direction(
-        float(pos_a["x"]), float(pos_a["y"]),
-        float(pos_b["x"]), float(pos_b["y"]),
+        float(pos_a["x"]),
+        float(pos_a["y"]),
+        float(pos_b["x"]),
+        float(pos_b["y"]),
     )
     if inferred != direction:
         raise ValueError(
@@ -587,7 +655,7 @@ def _validate_vertical_exit(zone_id: str, from_slug: str, to_slug: str, directio
     doc = _read_positions(zone_id)
     floors = doc.get("floors", {})
     from_floor = int(floors.get(from_slug, 0))
-    to_floor   = int(floors.get(to_slug,   0))
+    to_floor = int(floors.get(to_slug, 0))
     if from_floor == to_floor:
         raise ValueError(
             f"Cannot create a '{direction}' exit between '{from_slug}' and '{to_slug}': "
@@ -602,6 +670,7 @@ def _validate_vertical_exit(zone_id: str, from_slug: str, to_slug: str, directio
 # ---------------------------------------------------------------------------
 # Tools
 # ---------------------------------------------------------------------------
+
 
 @mcp.tool()
 def list_zones() -> list[str]:
@@ -753,14 +822,23 @@ def create_room(
                 final_x, final_y = computed
                 auto_note = f" (auto-placed {from_dir} of {from_room})"
             else:
-                auto_note = f" (WARNING: {from_room} has no position yet — run auto_layout_zone to fix)"
+                auto_note = (
+                    f" (WARNING: {from_room} has no position yet — run auto_layout_zone to fix)"
+                )
 
     if final_x is not None and final_y is not None:
-        doc["positions"][slug] = {"x": final_x, "y": final_y, "width": DEFAULT_W, "height": DEFAULT_H}
+        doc["positions"][slug] = {
+            "x": final_x,
+            "y": final_y,
+            "width": DEFAULT_W,
+            "height": DEFAULT_H,
+        }
 
     _write_positions(zone_id, doc)
 
-    pos_str = f" at ({final_x:.0f}, {final_y:.0f})" if final_x is not None else " (position: pending)"
+    pos_str = (
+        f" at ({final_x:.0f}, {final_y:.0f})" if final_x is not None else " (position: pending)"
+    )
     floor_warning = _warn_basement_floor(slug, floor)
     result = f"Created {zone_id}:{slug} on {_floor_label(floor)}{pos_str}{auto_note}"
     if floor_warning:
@@ -840,7 +918,9 @@ def delete_room(zone_id: str, slug: str) -> str:
             if dirty:
                 room["exits"] = exits
                 with open(f, "w", encoding="utf-8") as wf:
-                    yaml.dump(room, wf, allow_unicode=True, default_flow_style=False, sort_keys=False)
+                    yaml.dump(
+                        room, wf, allow_unicode=True, default_flow_style=False, sort_keys=False
+                    )
 
     doc = _read_positions(zone_id)
     doc["positions"].pop(slug, None)
@@ -1001,7 +1081,9 @@ def auto_layout_zone(
     if not rd.exists():
         return "No rooms found"
 
-    all_rooms = {f.stem: yaml.safe_load(f.read_text(encoding="utf-8")) or {} for f in rd.glob("*.yaml")}
+    all_rooms = {
+        f.stem: yaml.safe_load(f.read_text(encoding="utf-8")) or {} for f in rd.glob("*.yaml")
+    }
     doc = _read_positions(zone_id)
     floors_map = doc["floors"]
 
@@ -1013,7 +1095,9 @@ def auto_layout_zone(
             continue
         floor_groups.setdefault(fl, []).append(slug)
 
-    def _bfs_floor(slugs: list[str], start: str, start_x: float, start_y: float) -> dict[str, tuple[float, float]]:
+    def _bfs_floor(
+        slugs: list[str], start: str, start_x: float, start_y: float
+    ) -> dict[str, tuple[float, float]]:
         """BFS layout for one floor, anchored at (start_x, start_y) for start room."""
         positions: dict[str, tuple[float, float]] = {}
         queue: list[tuple[str, float, float]] = [(start, start_x, start_y)]
@@ -1059,12 +1143,12 @@ def auto_layout_zone(
 
         if fl == 0 or floor is not None:
             # Ground floor (or single-floor layout): use root_slug or first alphabetically
-            anchor_slug = (root_slug if root_slug and root_slug in slugs else sorted(slugs)[0])
+            anchor_slug = root_slug if root_slug and root_slug in slugs else sorted(slugs)[0]
             anchor_x, anchor_y = 400.0, 300.0
         else:
             # Upper/lower floor: find the stairwell and inherit its position from the
             # adjacent floor that was already laid out.
-            connect_dir = "down" if fl > 0 else "up"   # how THIS floor connects back
+            connect_dir = "down" if fl > 0 else "up"  # how THIS floor connects back
             stair = _find_stairwell(slugs, connect_dir)
             if stair:
                 # Look up what position the matching room on the adjacent floor got
@@ -1096,7 +1180,13 @@ def auto_layout_zone(
 
         for slug, (x, y) in positions.items():
             prev = doc["positions"].get(slug) or {}
-            doc["positions"][slug] = {**prev, "x": x, "y": y, "width": DEFAULT_W, "height": DEFAULT_H}
+            doc["positions"][slug] = {
+                **prev,
+                "x": x,
+                "y": y,
+                "width": DEFAULT_W,
+                "height": DEFAULT_H,
+            }
 
         total += len(positions)
 
@@ -1180,8 +1270,10 @@ def connect_rooms(
         pos_b = doc["positions"].get(room_b)
         if pos_a and pos_b:
             direction = _infer_direction(
-                float(pos_a["x"]), float(pos_a["y"]),
-                float(pos_b["x"]), float(pos_b["y"]),
+                float(pos_a["x"]),
+                float(pos_a["y"]),
+                float(pos_b["x"]),
+                float(pos_b["y"]),
             )
         else:
             direction = "east"  # safe default when positions unknown
@@ -1201,9 +1293,7 @@ def connect_rooms(
 
     how = "inferred from positions" if not direction_was_explicit else "explicit"
     return (
-        f"{room_a} →[{direction}]→ {room_b}"
-        + (" + return" if bidirectional else "")
-        + f" ({how})"
+        f"{room_a} →[{direction}]→ {room_b}" + (" + return" if bidirectional else "") + f" ({how})"
     )
 
 
@@ -1282,31 +1372,31 @@ def get_layout_guide() -> dict:
             },
         },
         "patterns": {
-            "linear":    "A→B→C→D. Branches hang off each node. Good for corridors, tunnels, streets.",
+            "linear": "A→B→C→D. Branches hang off each node. Good for corridors, tunnels, streets.",
             "hub_spoke": "Up to 8 spokes radiate from one central hub. Good for plazas, bridges, crossroads.",
             "ring_loop": "Rooms connect in a circle; last connects back to first. Two routes between any points.",
-            "grid":      "Rows/columns of rooms with N/S/E/W exits. Good for cities, dungeon levels.",
-            "tree":      "Branches split but never rejoin — players must backtrack. Good for caves, dead-ends.",
+            "grid": "Rows/columns of rooms with N/S/E/W exits. Good for cities, dungeon levels.",
+            "tree": "Branches split but never rejoin — players must backtrack. Good for caves, dead-ends.",
         },
         "sizing_guide": {
-            "shop":           "2-3 rooms: entrance, shop_floor, back_room",
-            "bar_or_cafe":    "3-4 rooms: entrance, bar_area, seating, back_office",
-            "small_apartment":"4 rooms: hallway, living_room, bedroom, bathroom",
-            "large_apartment":"6-7 rooms: hallway, living_room, kitchen, bedroom×2, bathroom, balcony",
-            "docking_bay":    "5-6 rooms: outer_airlock, inner_airlock, docking_floor, cargo_area, control_booth",
-            "office_floor":   "corridor×N + offices on each side (2 offices per corridor section)",
+            "shop": "2-3 rooms: entrance, shop_floor, back_room",
+            "bar_or_cafe": "3-4 rooms: entrance, bar_area, seating, back_office",
+            "small_apartment": "4 rooms: hallway, living_room, bedroom, bathroom",
+            "large_apartment": "6-7 rooms: hallway, living_room, kitchen, bedroom×2, bathroom, balcony",
+            "docking_bay": "5-6 rooms: outer_airlock, inner_airlock, docking_floor, cargo_area, control_booth",
+            "office_floor": "corridor×N + offices on each side (2 offices per corridor section)",
         },
         "offsets": {
-            "north":     {"dx":    0, "dy": -130},
-            "south":     {"dx":    0, "dy":  130},
-            "east":      {"dx":  220, "dy":    0},
-            "west":      {"dx": -220, "dy":    0},
-            "northeast": {"dx":  220, "dy": -130},
+            "north": {"dx": 0, "dy": -130},
+            "south": {"dx": 0, "dy": 130},
+            "east": {"dx": 220, "dy": 0},
+            "west": {"dx": -220, "dy": 0},
+            "northeast": {"dx": 220, "dy": -130},
             "northwest": {"dx": -220, "dy": -130},
-            "southeast": {"dx":  220, "dy":  130},
-            "southwest": {"dx": -220, "dy":  130},
-            "up":        {"dx":    0, "dy":    0, "note": "same x,y — different floor number"},
-            "down":      {"dx":    0, "dy":    0, "note": "same x,y — different floor number"},
+            "southeast": {"dx": 220, "dy": 130},
+            "southwest": {"dx": -220, "dy": 130},
+            "up": {"dx": 0, "dy": 0, "note": "same x,y — different floor number"},
+            "down": {"dx": 0, "dy": 0, "note": "same x,y — different floor number"},
         },
         "room_size": {"width": 176, "height": 108},
         "canvas": {
@@ -1366,10 +1456,10 @@ def get_layout_guide() -> dict:
                     "floor=0 is always ground/street/main-deck."
                 ),
                 "stack": {
-                    "floor=3":  "+Z  top/roof level",
-                    "floor=2":  "+Z  second floor up",
-                    "floor=1":  "+Z  first floor up",
-                    "floor=0":  " 0  GROUND (default)",
+                    "floor=3": "+Z  top/roof level",
+                    "floor=2": "+Z  second floor up",
+                    "floor=1": "+Z  first floor up",
+                    "floor=0": " 0  GROUND (default)",
                     "floor=-1": "-Z  first basement / sub-level",
                     "floor=-2": "-Z  second basement",
                     "floor=-3": "-Z  third basement / deep vault",
@@ -1384,9 +1474,9 @@ def get_layout_guide() -> dict:
             },
             "stairwell_chain_examples": {
                 "3_storey_building": "lobby(0)→stair_f1(1)→stair_f2(2)→stair_f3(3)",
-                "2_level_basement":  "lobby(0)→stair_b1(-1)→stair_b2(-2)",
-                "mixed_building":    "vault(-2)→stair_b1(-1)→lobby(0)→stair_f1(1)→roof(2)",
-                "connection_rule":   "Each connect_rooms call links ONE adjacent floor pair only.",
+                "2_level_basement": "lobby(0)→stair_b1(-1)→stair_b2(-2)",
+                "mixed_building": "vault(-2)→stair_b1(-1)→lobby(0)→stair_f1(1)→roof(2)",
+                "connection_rule": "Each connect_rooms call links ONE adjacent floor pair only.",
             },
             "CRITICAL_floor_is_never_inferred": (
                 "The server NEVER guesses floor from a room name. "

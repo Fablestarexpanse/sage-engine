@@ -99,15 +99,18 @@ class NexusApp:
         try:
             raw = await asyncio.wait_for(websocket.receive_text(), timeout=10.0)
         except TimeoutError:
+            logger.debug("admin ws auth: no auth envelope within 10s")
             return None
-        except Exception:
+        except Exception as e:
+            logger.debug("admin ws auth: receive failed: %s", e)
             return None
         try:
             import json as _json
 
             msg = _json.loads(raw)
             token = (msg.get("token") or "").strip() if isinstance(msg, dict) else ""
-        except Exception:
+        except Exception as e:
+            logger.debug("admin ws auth: invalid auth envelope: %s", e)
             return None
         if not token:
             return None

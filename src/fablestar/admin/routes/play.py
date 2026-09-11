@@ -271,6 +271,6 @@ def build_play_router(server: FablestarServer) -> APIRouter:
         # Create session and run the loop directly — the WebSocket stays
         # open as long as this handler is awaiting (FastAPI keeps it alive).
         session = await server.session_manager.create_session(protocol)
-        await server._session_loop(session)
+        await server.run_session_loop(session)
 
     return router
