@@ -67,7 +67,4 @@ export const PLAY_THEMES = {
   light: PLAY_THEME_LIGHT,
 };
 
-/** @deprecated use usePlayTheme().T */
-export const T = PLAY_THEME_DARK;
-
 export const clamp = (v, mn, mx) => Math.max(mn, Math.min(mx, v));

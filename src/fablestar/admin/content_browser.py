@@ -341,39 +341,14 @@ def save_template_yaml_text(kind: str, slug: str, text: str) -> Path:
 
 
 def _atomic_write_json(path: Path, obj: Any) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp = tempfile.mkstemp(prefix=".wf_", suffix=".json", dir=str(path.parent), text=True)
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            json.dump(obj, f, indent=2)
-        os.replace(tmp, path)
-    except Exception:
-        try:
-            os.unlink(tmp)
-        except OSError:
-            pass
-        raise
+    _atomic_write_text(path, json.dumps(obj, indent=2))
 
 
 def _atomic_write_yaml(path: Path, data: Any) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp = tempfile.mkstemp(prefix=".wf_", suffix=".yaml", dir=str(path.parent), text=True)
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            yaml.safe_dump(
-                data,
-                f,
-                default_flow_style=False,
-                allow_unicode=True,
-                sort_keys=False,
-            )
-        os.replace(tmp, path)
-    except Exception:
-        try:
-            os.unlink(tmp)
-        except OSError:
-            pass
-        raise
+    _atomic_write_text(
+        path,
+        yaml.safe_dump(data, default_flow_style=False, allow_unicode=True, sort_keys=False),
+    )
 
 
 def save_zone_positions(zone_id: str, positions: dict[str, Any]) -> str:

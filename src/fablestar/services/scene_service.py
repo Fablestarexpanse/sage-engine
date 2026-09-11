@@ -173,6 +173,7 @@ class SceneService:
         password: str,
         character_name: str,
         appearance_notes: str = "",
+        *,
         token: str = "",
     ) -> dict[str, Any]:
         """LLM: single-line ComfyUI-style portrait prompt from name and optional notes."""
@@ -213,6 +214,7 @@ class SceneService:
         password: str,
         narrative_context: str = "",
         room_hint: str = "",
+        *,
         token: str = "",
     ) -> dict[str, Any]:
         """LLM: ComfyUI-style environment prompt from recent narrative text."""
@@ -259,6 +261,7 @@ class SceneService:
         password: str,
         scene_prompt: str,
         character_id: int | None = None,
+        *,
         token: str = "",
     ) -> dict[str, Any]:
         """ComfyUI area workflow: save PNG under /media/rooms/ (or room-art); optional character_id persists URL for reload."""
@@ -364,6 +367,7 @@ class SceneService:
         password: str,
         gallery_id: int,
         character_id: int,
+        *,
         token: str = "",
     ) -> dict[str, Any]:
         """Set the active scene image for a character from a row in this account's gallery."""
