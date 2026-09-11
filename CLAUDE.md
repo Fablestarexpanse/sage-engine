@@ -21,15 +21,16 @@ src/fablestar/          Python server (Nexus)
   app.py                Global singleton (app_instance)
   server.py             FablestarServer class — owns all subsystems
   __main__.py           Entry point: asyncio.run(run_server())
-  admin/                FastAPI REST + WebSocket admin API (NexusApp)
+  admin/                FastAPI REST + WebSocket admin API (NexusApp + routes/)
   commands/             MUD command handlers (@command decorator)
-  core/                 Config, TickManager
+  core/                 Config, TickManager, security (JWT secret), TOML persist
   comfyui_client.py     ComfyUI image-generation client
   hot_reload.py         HotReloader (inotify/watchdog)
   llm/                  LLM client, prompt rendering, output validation
   network/              WebSocketProtocol, Session state machine
   parser/               Tokenizer + CommandDispatcher
   proficiencies/        Conduit proficiency catalog, registry, engine
+  services/             EconomyService, PlayerService, SceneService, play tokens
   state/                Redis (hot state), Postgres (persistent), ORM models
   world/                ContentLoader, world Pydantic models, EntitySpawnManager
 
@@ -231,7 +232,7 @@ WebSocket admin connections use a **first-message auth envelope**: after accepti
 Rate limits (via `slowapi`): login endpoints 10 req/min, register 5 req/min.
 
 Key admin modules:
-- `admin/nexus.py` — all FastAPI route definitions
+- `admin/nexus.py` — FastAPI app shell (middleware, WebSockets); routes live in `admin/routes/` domain routers (admin_ops, content, world, forge, play, llm_comfyui)
 - `admin/admin_security.py` — JWT middleware, `jwt_secret_for_server()`
 - `admin/staff_service.py` — admin staff CRUD
 - `admin/player_accounts.py` — player account management

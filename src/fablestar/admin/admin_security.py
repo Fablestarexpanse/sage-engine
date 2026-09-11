@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -12,6 +11,8 @@ import jwt
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
+
+from fablestar.core.security import jwt_secret_for_server
 
 if TYPE_CHECKING:
     from fablestar.state.models import AdminStaff
@@ -139,23 +140,6 @@ class AdminContext:
             "tools_effective": sorted(et) if et is not None else None,
             "allowed_tools": self.allowed_tool_ids(),
         }
-
-
-def jwt_secret_for_server(server: Any) -> str:
-    cfg = server.config.server
-    env = os.environ.get("FABLESTAR_ADMIN_JWT_SECRET", "").strip()
-    if env:
-        return env
-    if cfg.admin_jwt_secret and str(cfg.admin_jwt_secret).strip():
-        return str(cfg.admin_jwt_secret).strip()
-    if cfg.admin_auth_required:
-        raise RuntimeError(
-            "admin_auth_required is true but no JWT secret is configured. "
-            "Set FABLESTAR_ADMIN_JWT_SECRET env var or admin_jwt_secret in server.toml. "
-            'Generate one with: python -c "import secrets; print(secrets.token_hex(32))"'
-        )
-    # dev_mode only — auth is disabled, secret value is never used to validate real tokens
-    return "dev-only-no-auth"
 
 
 def issue_staff_token(server: Any, staff_id: int, ttl_seconds: int = 86400) -> str:

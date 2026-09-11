@@ -75,6 +75,10 @@ class ConduitAttributes(BaseModel):
     """
     Five core Conduit stats (stored on character).
 
+    Storage-contract twin: ``fablestar.state.state_types.ConduitAttributes``
+    (TypedDict) describes the same fields as raw Redis/Postgres JSON. This
+    BaseModel is the validated-construction side; keep field lists in sync.
+
     Design target (Fablestar Expanse): 65 points at chargen, each 8-23, default 13/13/13/13/13.
     Stored values may differ for legacy rows; see fablestar.proficiencies.bonus.validate_chargen_conduit_allocation
     for strict chargen validation when the UI/API enforces that flow.

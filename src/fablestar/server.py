@@ -15,12 +15,12 @@ from typing import Any
 from sqlalchemy import select
 
 from fablestar import app
-from fablestar.admin.comfyui_persist import save_comfyui_toml
-from fablestar.admin.llm_persist import save_llm_toml
 from fablestar.admin.nexus import NexusApp
 from fablestar.bootstrap import ensure_dev_defaults
 from fablestar.commands.registry import registry
+from fablestar.core.comfyui_persist import save_comfyui_toml
 from fablestar.core.config import ComfyUIConfig, Config, LLMConfig, load_config
+from fablestar.core.llm_persist import save_llm_toml
 from fablestar.core.tick import TickManager
 from fablestar.hot_reload import HotReloader
 from fablestar.llm.client import LLMClient

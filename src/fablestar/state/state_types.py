@@ -3,6 +3,12 @@
 These document the shapes stored in Redis and in the Postgres JSON columns
 (Character.stats, Character.inventory). They are structural annotations only —
 neither store enforces them at runtime.
+
+Deliberate dual definitions: ``ConduitAttributes`` and ``ProficiencyRow`` also
+exist as validated pydantic BaseModels in ``fablestar.proficiencies.models``.
+The split is intentional — these TypedDicts describe the raw storage contract
+(no validation, no defaults), while the BaseModels are for validated
+construction at the catalog/chargen boundary. Keep the field lists in sync.
 """
 
 from typing import Any, TypedDict
