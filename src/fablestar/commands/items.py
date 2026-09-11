@@ -84,7 +84,7 @@ async def take(session: Session, args: list[str]):
         }
     )
     await app_instance.redis.set_player_inventory(player_id, inv)
-    await session.send(f"You pick up the {found_state['name']}.")
+    await session.send(f"You pick up the {found_state.get('name', 'item')}.")
 
 
 @command("drop", aliases=["discard"])
@@ -136,7 +136,7 @@ async def drop(session: Session, args: list[str]):
     }
     await app_instance.redis.set_item_state(item_id, floor_state)
     await app_instance.redis.add_item_to_room(item_id, room_id)
-    await session.send(f"You drop the {found_item['name']}.")
+    await session.send(f"You drop the {found_item.get('name', 'item')}.")
 
 
 @command("examine", aliases=["ex", "look at", "inspect"])

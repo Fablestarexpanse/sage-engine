@@ -4,14 +4,13 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import re
-from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any
 
 import yaml
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from fablestar.admin import content_browser
 from fablestar.admin.admin_security import AdminContext
 from fablestar.admin.route_helpers import require_tool
 from fablestar.llm.client import LLMGenerationError
@@ -145,22 +144,20 @@ def build_forge_router(server: FablestarServer) -> APIRouter:
         if ":" not in injection.id:
             raise HTTPException(status_code=400, detail="invalid_id")
         zone_id, room_filename = injection.id.split(":", 1)
-        if not re.match(r"^[a-zA-Z0-9_-]+$", zone_id) or not re.match(
-            r"^[a-zA-Z0-9_-]+$", room_filename
-        ):
-            raise HTTPException(status_code=400, detail="invalid_id")
         if not ctx.may_write_zone(zone_id):
             raise HTTPException(status_code=403, detail="zone_denied")
 
-        zone_dir = Path("content/world/zones") / zone_id / "rooms"
-        file_path = zone_dir / f"{room_filename}.yaml"
         try:
-            zone_dir.mkdir(parents=True, exist_ok=True)
-            await asyncio.to_thread(file_path.write_text, injection.yaml_content, "utf-8")
+            file_path = await asyncio.to_thread(
+                content_browser.save_room_yaml_text, zone_id, room_filename, injection.yaml_content
+            )
+        except ValueError:
+            raise HTTPException(status_code=400, detail="invalid_id") from None
         except OSError as e:
             logger.error(f"Forge: Failed to inject room: {e}")
             raise HTTPException(status_code=500, detail="write_failed")
 
+        server.content_loader.invalidate(file_path)
         logger.info(f"Forge: Injected room {injection.id} to {file_path}")
         return {"status": "success", "path": str(file_path)}
 

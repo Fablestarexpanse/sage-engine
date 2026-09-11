@@ -165,7 +165,7 @@ async def attack(session: Session, args: list[str]):
             for iid in dropped:
                 istate = await app_instance.redis.get_item_state(iid)
                 if istate:
-                    drop_names.append(istate["name"])
+                    drop_names.append(istate.get("name", "something"))
             if drop_names:
                 await session.send(f"{entity_name} drops: {', '.join(drop_names)}.")
         else:

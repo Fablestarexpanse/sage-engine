@@ -10,7 +10,7 @@ import httpx
 from openai import AsyncOpenAI
 
 from fablestar.core.config import LLMConfig
-from fablestar.llm.openai_util import normalize_openai_compatible_base
+from fablestar.core.openai_util import normalize_openai_compatible_base
 
 logger = logging.getLogger(__name__)
 

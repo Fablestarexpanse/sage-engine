@@ -2,19 +2,14 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 from fablestar.core.config import ComfyUIConfig
-
-
-def _toml_str(s: str) -> str:
-    return json.dumps(s)
+from fablestar.core.toml_persist import toml_str as _toml_str
 
 
 def save_comfyui_toml(cfg: ComfyUIConfig, path: Path | None = None) -> Path:
     target = path or Path("config/comfyui.toml")
-    target.parent.mkdir(parents=True, exist_ok=True)
     lines = [
         "# Auto-written by Fablestar Nexus (admin UI). Safe to edit by hand.",
         f"enabled = {str(cfg.enabled).lower()}",

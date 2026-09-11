@@ -224,3 +224,64 @@ def test_console_access_revoke_reports_missing_grant(client, server, monkeypatch
     r = client.delete("/admin/player-accounts/3/console-access", headers=_auth(server, 1))
     assert r.status_code == 404
     assert r.json()["detail"] == "console_access_not_found"
+
+
+# ---- staff create / patch ---------------------------------------------------
+
+
+def test_staff_create_forwards_fields_and_requires_head_admin(client, server, monkeypatch):
+    from fablestar.admin.routes import admin_ops as admin_ops_mod
+
+    captured = {}
+
+    async def _create_staff(srv, *, username, password, display_name, role, permissions):
+        captured.update(
+            {
+                "username": username,
+                "display_name": display_name,
+                "role": role,
+                "permissions": permissions,
+            }
+        )
+        return _staff_row(9, role=role)
+
+    monkeypatch.setattr(admin_ops_mod.staff_service, "create_staff", _create_staff)
+    body = {
+        "username": "newgm",
+        "password": "longenough1",
+        "display_name": "New GM",
+        "role": "gm",
+        "permissions": {"tools": ["dashboard"]},
+    }
+    # gm caller rejected before the service is touched
+    r = client.post("/admin/staff", json=body, headers=_auth(server, 2))
+    assert r.status_code == 403
+    assert captured == {}
+    # head admin succeeds and the payload reaches the service intact
+    r = client.post("/admin/staff", json=body, headers=_auth(server, 1))
+    assert r.status_code == 200
+    assert captured["username"] == "newgm"
+    assert captured["role"] == "gm"
+    assert captured["permissions"] == {"tools": ["dashboard"]}
+
+
+def test_staff_patch_sends_only_set_fields(client, server, monkeypatch):
+    from fablestar.admin.routes import admin_ops as admin_ops_mod
+
+    captured = {}
+
+    async def _apply_staff_patch(srv, staff_id, patch):
+        captured.update({"staff_id": staff_id, "patch": patch})
+        return _staff_row(staff_id)
+
+    monkeypatch.setattr(admin_ops_mod.staff_service, "apply_staff_patch", _apply_staff_patch)
+    r = client.patch("/admin/staff/4", json={"is_active": False}, headers=_auth(server, 1))
+    assert r.status_code == 200
+    assert captured["staff_id"] == 4
+    # exclude_unset: untouched optional fields must not leak into the patch
+    assert captured["patch"] == {"is_active": False}
+
+
+def test_staff_patch_rejects_short_password(client, server):
+    r = client.patch("/admin/staff/4", json={"password": "short"}, headers=_auth(server, 1))
+    assert r.status_code == 422

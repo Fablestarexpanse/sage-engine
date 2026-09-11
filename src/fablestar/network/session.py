@@ -50,7 +50,8 @@ class Session:
 class SessionManager:
     """Manages all active player sessions.
 
-    Async methods (create_session, destroy_session, broadcast) perform I/O.
+    Async methods (destroy_session, broadcast) perform I/O; create_session is
+    async only for interface symmetry — it just registers the session in memory.
     Sync methods (get_session_by_player, link_player) are in-memory lookups
     and are intentionally synchronous — they do no I/O.
     """
