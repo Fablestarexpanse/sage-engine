@@ -1,4 +1,5 @@
 import { MarkerType } from "@xyflow/react";
+import { deepClone } from "./clone.js";
 import { COLORS_DARK } from "../theme.js";
 import { oppositeDir } from "./zoneGraph.js";
 
@@ -78,7 +79,7 @@ export function roomsArrayFromDoc(shipDoc) {
 }
 
 export function updateRoomInShipDoc(shipDoc, localId, roomData) {
-  const next = JSON.parse(JSON.stringify(shipDoc || { ship: { rooms: [] } }));
+  const next = deepClone(shipDoc || { ship: { rooms: [] } });
   const ship = next.ship || (next.ship = {});
   ship.rooms = Array.isArray(ship.rooms) ? [...ship.rooms] : [];
   const idx = ship.rooms.findIndex((r) => r.id === localId);
@@ -88,7 +89,7 @@ export function updateRoomInShipDoc(shipDoc, localId, roomData) {
 }
 
 export function deleteRoomFromShipDoc(shipDoc, localId) {
-  const next = JSON.parse(JSON.stringify(shipDoc || { ship: { rooms: [] } }));
+  const next = deepClone(shipDoc || { ship: { rooms: [] } });
   const ship = next.ship || (next.ship = {});
   ship.rooms = (ship.rooms || []).filter((r) => r.id !== localId);
   return next;

@@ -1,4 +1,5 @@
 import { joinPaths } from "./paths.js";
+import { deepClone } from "./clone.js";
 import { parsePositionsDoc, serializePositionsDoc } from "./positionsDoc.js";
 import { DEFAULT_ROOM_NODE_H, DEFAULT_ROOM_NODE_W } from "./zoneGraph.js";
 import * as fs from "../hooks/useFileSystem.js";
@@ -75,7 +76,7 @@ function remapExitDestination(dest, sourceZoneId, slugToLogical) {
  * @param {StampPreserveFlags} preserve
  */
 export function buildStampRoomYaml(sourceRoom, sourceZoneId, logicalKey, slugToLogical, preserve) {
-  const copy = JSON.parse(JSON.stringify(sourceRoom || {}));
+  const copy = deepClone(sourceRoom || {});
   copy.id = `${STAMP_ZONE_ID}:${logicalKey}`;
   copy.zone = STAMP_ZONE_ID;
   copy.slug = logicalKey;
@@ -314,7 +315,7 @@ export function expandStampForPlacement(targetZoneId, stampRoomsMap, stampPositi
   for (const [lk, yamlIn] of Object.entries(stampRoomsMap)) {
     const newSlug = logicalToNewSlug[lk];
     if (!newSlug) continue;
-    const y = JSON.parse(JSON.stringify(yamlIn || {}));
+    const y = deepClone(yamlIn || {});
     y.id = `${targetZoneId}:${newSlug}`;
     y.zone = targetZoneId;
     delete y.slug;

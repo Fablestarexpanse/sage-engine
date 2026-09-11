@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from "react";
+import { deepClone } from "../utils/clone.js";
 import {
   ReactFlow,
   Background,
@@ -90,7 +91,7 @@ function Inner({ shipId, worldRoot, onShipId }) {
     lastSelectedRef.current = selectedLocal;
     if (!switched && dirty) return;
     const r = (shipDoc.ship?.rooms || []).find((x) => x.id === selectedLocal);
-    setDraft(r ? JSON.parse(JSON.stringify(r)) : { id: selectedLocal, name: selectedLocal, type: "corridor", description: { base: "" }, exits: {} });
+    setDraft(r ? deepClone(r) : { id: selectedLocal, name: selectedLocal, type: "corridor", description: { base: "" }, exits: {} });
     setDirty(false);
   }, [selectedLocal, shipDoc, dirty]);
 
@@ -183,7 +184,7 @@ function Inner({ shipId, worldRoot, onShipId }) {
               const entry = { ...draft, id: selectedLocal };
               if (idx >= 0) rooms[idx] = entry;
               else rooms.push(entry);
-              const next = JSON.parse(JSON.stringify(shipDoc));
+              const next = deepClone(shipDoc);
               next.ship = next.ship || {};
               next.ship.rooms = rooms;
               await saveShip(next);
@@ -191,7 +192,7 @@ function Inner({ shipId, worldRoot, onShipId }) {
             }}
             onRevert={() => {
               const r = (shipDoc.ship?.rooms || []).find((x) => x.id === selectedLocal);
-              setDraft(r ? JSON.parse(JSON.stringify(r)) : null);
+              setDraft(r ? deepClone(r) : null);
               setDirty(false);
             }}
             dirty={dirty}

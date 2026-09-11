@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from "react";
+import { deepClone } from "../utils/clone.js";
 import {
   ReactFlow,
   Background,
@@ -95,7 +96,7 @@ function Inner({ worldRoot }) {
     const switched = lastSelectedRef.current !== selectedId;
     lastSelectedRef.current = selectedId;
     if (!switched && dirty) return;
-    setDraft(JSON.parse(JSON.stringify(systems[selectedId])));
+    setDraft(deepClone(systems[selectedId]));
     setDirty(false);
   }, [selectedId, systems, dirty]);
 
@@ -155,7 +156,7 @@ function Inner({ worldRoot }) {
             }}
             onSave={saveSystem}
             onRevert={() => {
-              setDraft(JSON.parse(JSON.stringify(systems[selectedId])));
+              setDraft(deepClone(systems[selectedId]));
               setDirty(false);
             }}
             dirty={dirty}

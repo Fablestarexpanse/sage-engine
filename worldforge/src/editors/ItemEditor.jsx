@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useRef } from "react";
+import { deepClone } from "../utils/clone.js";
 import yaml from "js-yaml";
 import { joinPaths } from "../utils/paths.js";
 import { useTheme } from "../ThemeContext.jsx";
@@ -65,7 +66,7 @@ export default function ItemEditor({ worldRoot, selectedId, onSelect }) {
     const switched = lastSelectedRef.current !== selectedId;
     lastSelectedRef.current = selectedId;
     if (!switched && dirty) return;
-    setDraft(JSON.parse(JSON.stringify(items[selectedId])));
+    setDraft(deepClone(items[selectedId]));
     setDirty(false);
   }, [selectedId, items, dirty]);
 
