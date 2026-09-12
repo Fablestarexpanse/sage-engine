@@ -428,10 +428,30 @@ class FablestarServer:
         ensure_proficiency_block(norm_stats)
         character.stats = norm_stats
 
+        # Death recovery: a character persisted at 0 hp wakes in the medbay at
+        # half health with death-bound effects cleared, instead of logging in
+        # as a corpse that dies to the first breeze.
+        respawned = False
+        if int(norm_stats.get("hp", 1)) <= 0:
+            from fablestar.effects.engine import clear_on_death
+
+            clear_on_death(norm_stats)
+            norm_stats["hp"] = max(1, int(norm_stats.get("max_hp", 20)) // 2)
+            respawn_room = "starter_zone:medbay"
+            if self.content_loader.get_room(respawn_room) is not None:
+                character.room_id = respawn_room
+            respawned = True
+
         # Seed Redis with the character's current state
         await self.redis.set_player_location(character.name, character.room_id)
         await self.redis.set_player_stats(character.name, norm_stats)
         await self.redis.set_player_inventory(character.name, character.inventory)
+
+        if respawned:
+            await session.send(
+                "\r\nYou wake on a diagnostic bed, patched together and aching. "
+                "The dispensary arm gives you an encouraging whir."
+            )
 
         await self.push_character_snapshot(session)
 
