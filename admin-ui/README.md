@@ -1,16 +1,18 @@
-# React + Vite
+# Fablestar Admin Console
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React (Vite) admin console for the Nexus server — dashboard, Content Library
+(zones/rooms/entities/items/glyphs), World Builder graph editor, AI Forge,
+player-account moderation, staff roles, and live presence.
 
-Currently, two official plugins are available:
+## Run
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```bash
+npm install
+VITE_API_BASE=http://localhost:8001 VITE_WS_BASE=ws://localhost:8001 npm run dev -- --port 5174 --host
+```
 
-## React Compiler
+Requires the Nexus server on port 8001 (see the root README quick start).
+Staff log in with Nexus console credentials; in `dev_mode` the bootstrap
+seeds a head-admin account.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+`npm run build` for production, `npm run lint` for ESLint.

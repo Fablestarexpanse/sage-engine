@@ -98,3 +98,20 @@ been audited before this.
 
 Note: `worldforge/src` currently carries uncommitted user WIP — fixes touching
 those files should coordinate with that work rather than land blind.
+
+
+## Status update — 2026-09-11 (same day)
+
+Fixed in commits `3419b3b`, `29a0d44`, `44c105f`:
+- MCP `create_room` crash and `reference_image` loss (criticals 1 and 5)
+- Nested `content/world/content/world` scaffold recurrence (critical 6)
+- Live-watch draft clobber in all five secondary editors (critical 2)
+- `window.prompt` → TextPromptModal, stamps in Export, import via `loadAll`
+- Vitest infrastructure + 27 tests (utils, stamp bundle, Tauri IPC bridge)
+- Theme tint-token parity, validation typedefs, dead export, shared deepClone
+
+Still open — deferred as one batch blocked on the in-progress editor WIP
+(criticals 3, 4, 7, 8 and the ZoneEditor decomposition): dirty-switch guards,
+write-before-dispatch with visible errors, atomic Rust writes, path
+confinement, mtime guard, TEMP delete-all retirement. Tracked as 31 skipped
+issues in `worldforge/.desloppify/` with the reason attested.

@@ -4,7 +4,7 @@
 pure-logic modules that currently have zero tests (parser, command registry,
 config loading, session state machine).
 
-**Status:** in-progress
+**Status:** completed — exit criteria exceeded (150 server tests, ruff/compileall clean; parser, config, and session suites all landed during the 2026-07/09 code-health cycles)
 
 **Depends on:** none (green ruff baseline landed in the bootstrap commit)
 
