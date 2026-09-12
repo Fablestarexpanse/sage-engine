@@ -65,6 +65,7 @@ const nodeTypes = { room: RoomNode, note: NoteNode };
 const edgeTypes = { exit: ExitEdge };
 
 const SLUG_OK = (s) => /^[a-zA-Z0-9_-]+$/.test(s);
+const floorLabel = (n) => (n === 0 ? "Ground" : n > 0 ? `F${n}` : `B${Math.abs(n)}`);
 
 const UNDO_LIMIT = 40;
 
@@ -234,8 +235,11 @@ function ZoneEditorInner({
   const saveStampDraftRef = useRef(null);
   const [stampLibraryOpen, setStampLibraryOpen] = useState(false);
   const [pendingStampPlace, setPendingStampPlace] = useState(null);
+  const [pendingStairLink, setPendingStairLink] = useState(null);
+  // { slug, ghostFloor, ghostDir: "up"|"down" }
   const [marqueeScreen, setMarqueeScreen] = useState(null);
   const [arrangeableSelectionCount, setArrangeableSelectionCount] = useState(0);
+  const [currentFloor, setCurrentFloor] = useState(0);
 
   const positionsDocRef = useRef(positionsDoc);
   positionsDocRef.current = positionsDoc;
@@ -369,6 +373,12 @@ function ZoneEditorInner({
           };
           await fs.writeYaml(joinPaths(worldRoot, "zones", zoneId, "rooms", `${slug}.yaml`), base);
           dispatch({ type: "UPDATE_ZONE_ROOM", zoneId, slug, data: base });
+          {
+            const prev = positionsDocRef.current;
+            const next = { ...prev, floors: { ...(prev.floors || {}), [slug]: currentFloor } };
+            setPositionsDoc(next);
+            await fs.writeText(positionsPath, serializePositionsDoc(next));
+          }
           break;
         }
         case "placeholder": {
@@ -387,6 +397,12 @@ function ZoneEditorInner({
           };
           await fs.writeYaml(joinPaths(worldRoot, "zones", zoneId, "rooms", `${slug}.yaml`), base);
           dispatch({ type: "UPDATE_ZONE_ROOM", zoneId, slug, data: base });
+          {
+            const prev = positionsDocRef.current;
+            const next = { ...prev, floors: { ...(prev.floors || {}), [slug]: currentFloor } };
+            setPositionsDoc(next);
+            await fs.writeText(positionsPath, serializePositionsDoc(next));
+          }
           break;
         }
         case "addHere": {
@@ -405,13 +421,19 @@ function ZoneEditorInner({
           };
           await fs.writeYaml(joinPaths(worldRoot, "zones", zoneId, "rooms", `${slug}.yaml`), base);
           dispatch({ type: "UPDATE_ZONE_ROOM", zoneId, slug, data: base });
-          setPositionsDoc((prev) => ({
-            ...prev,
-            positions: {
-              ...prev.positions,
-              [slug]: { x: p.x, y: p.y, width: DEFAULT_ROOM_NODE_W, height: DEFAULT_ROOM_NODE_H },
-            },
-          }));
+          {
+            const prev = positionsDocRef.current;
+            const next = {
+              ...prev,
+              positions: {
+                ...prev.positions,
+                [slug]: { x: p.x, y: p.y, width: DEFAULT_ROOM_NODE_W, height: DEFAULT_ROOM_NODE_H },
+              },
+              floors: { ...(prev.floors || {}), [slug]: currentFloor },
+            };
+            setPositionsDoc(next);
+            await fs.writeText(positionsPath, serializePositionsDoc(next));
+          }
           break;
         }
         case "duplicate": {
@@ -420,13 +442,21 @@ function ZoneEditorInner({
           const copy = buildDuplicateRoomYaml(src, zoneId, slug, from);
           await fs.writeYaml(joinPaths(worldRoot, "zones", zoneId, "rooms", `${slug}.yaml`), copy);
           dispatch({ type: "UPDATE_ZONE_ROOM", zoneId, slug, data: copy });
+          {
+            // Inherit source room's floor so duplicate lands on the same level
+            const prev = positionsDocRef.current;
+            const fromFloor = (prev.floors || {})[from] ?? currentFloor;
+            const next = { ...prev, floors: { ...(prev.floors || {}), [slug]: fromFloor } };
+            setPositionsDoc(next);
+            await fs.writeText(positionsPath, serializePositionsDoc(next));
+          }
           break;
         }
         default:
           break;
       }
     },
-    [zoneId, worldRoot, dispatch, defaultRoomType]
+    [zoneId, worldRoot, dispatch, defaultRoomType, currentFloor, positionsPath]
   );
 
   const onRoomSlugModalConfirm = useCallback(
@@ -483,6 +513,25 @@ function ZoneEditorInner({
       setStatusMsg("Undid clear all connections");
     }
   }, [zoneId, worldRoot, dispatch, positionsPath]);
+
+  const linkStairs = useCallback(
+    async (fromSlug, fromDir, toSlug) => {
+      const zr = zonesRef.current;
+      const fromRoom = { ...(zr[zoneId]?.rooms?.[fromSlug] || {}) };
+      fromRoom.exits = { ...(fromRoom.exits || {}) };
+      fromRoom.exits[fromDir] = { destination: `${zoneId}:${toSlug}`, description: "" };
+      dispatch({ type: "UPDATE_ZONE_ROOM", zoneId, slug: fromSlug, data: fromRoom });
+      await fs.writeYaml(joinPaths(worldRoot, "zones", zoneId, "rooms", `${fromSlug}.yaml`), fromRoom);
+      const toDir = oppositeDir(fromDir);
+      const toRoom = { ...(zr[zoneId]?.rooms?.[toSlug] || {}) };
+      toRoom.exits = { ...(toRoom.exits || {}) };
+      toRoom.exits[toDir] = { destination: `${zoneId}:${fromSlug}`, description: "" };
+      dispatch({ type: "UPDATE_ZONE_ROOM", zoneId, slug: toSlug, data: toRoom });
+      await fs.writeYaml(joinPaths(worldRoot, "zones", zoneId, "rooms", `${toSlug}.yaml`), toRoom);
+      setStatusMsg(`Linked ${fromSlug} ↕ ${toSlug}`);
+    },
+    [zoneId, worldRoot, dispatch]
+  );
 
   const duplicateSelectedRooms = useCallback(async () => {
     if (duplicateBusyRef.current) {
@@ -818,6 +867,12 @@ function ZoneEditorInner({
           setStampLibraryOpen(false);
           return;
         }
+        if (pendingStairLink) {
+          e.preventDefault();
+          setPendingStairLink(null);
+          setStatusMsg("Stair link cancelled");
+          return;
+        }
         if (pendingStampPlace) {
           e.preventDefault();
           setPendingStampPlace(null);
@@ -846,6 +901,7 @@ function ZoneEditorInner({
     groupModalOpen,
     saveStampOpen,
     stampLibraryOpen,
+    pendingStairLink,
     pendingStampPlace,
     duplicateSelectedRooms,
     applyUndo,
@@ -946,7 +1002,14 @@ function ZoneEditorInner({
           const cur = { ...(zr[zoneId]?.rooms?.[slug] || {}) };
           cur.exits = { ...(cur.exits || {}) };
           if (cur.exits[dir]) {
-            setStatusMsg(`Exit ${dir} already exists`);
+            const dest = String(cur.exits[dir]?.destination || "").trim();
+            if (dest && !window.confirm(`Remove ${dir} exit from ${slug}?\nThis will clear its link to "${dest}".`)) return;
+            delete cur.exits[dir];
+            dispatch({ type: "UPDATE_ZONE_ROOM", zoneId, slug, data: cur });
+            fs.writeYaml(joinPaths(worldRoot, "zones", zoneId, "rooms", `${slug}.yaml`), cur).catch(() => {});
+            setSelectedSlug(slug);
+            setPanelDraft(cur);
+            setStatusMsg(`Removed ${dir} exit`);
             return;
           }
           cur.exits[dir] = { destination: "", description: "" };
@@ -955,6 +1018,24 @@ function ZoneEditorInner({
           setSelectedSlug(slug);
           setPanelDraft(cur);
           setStatusMsg("Set destination in Exits tab");
+        },
+        onToggleStair: (dir) => {
+          const slug = n.data.slug;
+          const cur = { ...(zr[zoneId]?.rooms?.[slug] || {}) };
+          cur.exits = { ...(cur.exits || {}) };
+          if (cur.exits[dir]) {
+            const dest = String(cur.exits[dir]?.destination || "").trim();
+            if (dest && !window.confirm(`Remove ${dir} exit from ${slug}?\nThis will clear its link to "${dest}".`)) return;
+            delete cur.exits[dir];
+            setStatusMsg(`Removed ${dir} exit`);
+          } else {
+            cur.exits[dir] = { destination: "", description: "" };
+            setStatusMsg(`Added ${dir} exit — set destination in Exits tab`);
+          }
+          dispatch({ type: "UPDATE_ZONE_ROOM", zoneId, slug, data: cur });
+          fs.writeYaml(joinPaths(worldRoot, "zones", zoneId, "rooms", `${slug}.yaml`), cur).catch(() => {});
+          setSelectedSlug(slug);
+          setPanelDraft(cur);
         },
         onDuplicate: () => {
           setRoomSlugModal({
@@ -1056,8 +1137,99 @@ function ZoneEditorInner({
       },
     }));
     const reFlow = dedupeMutualBidirectionalEdges(re);
-    setNodes([...rn, ...notes]);
-    setEdges(reFlow);
+
+    // Z-level floor filtering
+    const floorsMap = positionsDoc.floors || {};
+    const currentFloorSlugs = new Set(
+      Object.keys(roomsMap).filter((s) => (floorsMap[s] ?? 0) === currentFloor)
+    );
+    // Ghost nodes: rooms on the floor directly below with an "up" exit, and rooms on the
+    // floor directly above with a "down" exit — rendered at their canvas position so you
+    // can see where stairs land and build/connect accordingly.
+    const ghostData = {};
+    const floorBelow = currentFloor - 1;
+    const floorAbove = currentFloor + 1;
+    for (const [slug, room] of Object.entries(roomsMap)) {
+      const roomFloor = floorsMap[slug] ?? 0;
+      if (roomFloor !== floorBelow && roomFloor !== floorAbove) continue;
+      const exits = room.exits && typeof room.exits === "object" ? room.exits : {};
+      if (roomFloor === floorBelow) {
+        const upExit = Object.entries(exits).find(([k]) => k.toLowerCase() === "up")?.[1];
+        if (upExit !== undefined) {
+          const linked = Boolean(String(upExit?.destination || "").trim());
+          ghostData[slug] = { ghostFloor: floorBelow, ghostDir: "up", ghostLinked: linked };
+        }
+      } else if (roomFloor === floorAbove) {
+        const downExit = Object.entries(exits).find(([k]) => k.toLowerCase() === "down")?.[1];
+        if (downExit !== undefined) {
+          const linked = Boolean(String(downExit?.destination || "").trim());
+          ghostData[slug] = { ghostFloor: floorAbove, ghostDir: "down", ghostLinked: linked };
+        }
+      }
+    }
+    // Also ghost explicit up/down destinations of current-floor rooms not already covered.
+    for (const slug of currentFloorSlugs) {
+      const room = roomsMap[slug] || {};
+      const exits = room.exits && typeof room.exits === "object" ? room.exits : {};
+      for (const [dir, ex] of Object.entries(exits)) {
+        if (dir.toLowerCase() !== "up" && dir.toLowerCase() !== "down") continue;
+        const dest = String(ex?.destination || "");
+        if (!dest) continue;
+        const tgtSlug = dest.includes(":")
+          ? dest.startsWith(`${zoneId}:`) ? dest.slice(zoneId.length + 1) : null
+          : dest;
+        if (!tgtSlug || !roomsMap[tgtSlug] || ghostData[tgtSlug]) continue;
+        const tgtFloor = floorsMap[tgtSlug] ?? 0;
+        if (tgtFloor !== currentFloor) {
+          ghostData[tgtSlug] = { ghostFloor: tgtFloor, ghostDir: dir.toLowerCase(), ghostLinked: true };
+        }
+      }
+    }
+    const visibleNodeIds = new Set();
+    const filteredRn = rn.flatMap((n) => {
+      const slug = n.data?.slug;
+      if (!slug) return [n];
+      if (currentFloorSlugs.has(slug)) { visibleNodeIds.add(n.id); return [n]; }
+      if (ghostData[slug]) {
+        visibleNodeIds.add(n.id);
+        const gd = ghostData[slug];
+        return [{
+          ...n,
+          draggable: false,
+          selectable: false,
+          data: {
+            ...n.data,
+            ghost: true,
+            ghostFloor: gd.ghostFloor,
+            ghostDir: gd.ghostDir,
+            ghostLinked: gd.ghostLinked,
+            toolbar: {
+              onStartLink: () => setPendingStairLink({ slug, ghostFloor: gd.ghostFloor, ghostDir: gd.ghostDir }),
+              onToggleExit: async () => {
+                const dir = gd.ghostDir;
+                const cur = { ...(zr[zoneId]?.rooms?.[slug] || {}) };
+                cur.exits = { ...(cur.exits || {}) };
+                if (cur.exits[dir]) {
+                  const dest = String(cur.exits[dir]?.destination || "").trim();
+                  if (dest && !window.confirm(`Remove ${dir} exit from "${slug}"?\nThis will clear its link to "${dest}".`)) return;
+                  delete cur.exits[dir];
+                } else {
+                  cur.exits[dir] = { destination: "", description: "" };
+                }
+                dispatch({ type: "UPDATE_ZONE_ROOM", zoneId, slug, data: cur });
+                await fs.writeYaml(joinPaths(worldRoot, "zones", zoneId, "rooms", `${slug}.yaml`), cur);
+                setStatusMsg(`${cur.exits[dir] ? "Added" : "Removed"} ${dir} exit on ${slug}`);
+              },
+            },
+          },
+        }];
+      }
+      return [];
+    });
+    const filteredEdges = reFlow.filter((e) => visibleNodeIds.has(e.source) && visibleNodeIds.has(e.target));
+
+    setNodes([...filteredRn, ...notes]);
+    setEdges(filteredEdges);
     setIssues(
       runZoneValidation(rn, reFlow, externalExits, {
         zoneId,
@@ -1092,6 +1264,8 @@ function ZoneEditorInner({
     setEdges,
     removeLinkedExitPair,
     COLORS,
+    currentFloor,
+    linkStairs,
   ]);
 
   useEffect(() => {
@@ -1442,11 +1616,22 @@ function ZoneEditorInner({
     const pos = { ...(positionsDoc.positions || {}) };
     for (const n of nds) {
       if (n.type !== "room") continue;
+      if (n.data?.ghost) continue; // ghost nodes belong to another floor — don't overwrite their saved position
       const slug = n.data?.slug;
       if (!slug) continue;
       const prev = pos[slug] || {};
       const box = readNodeBox(n.style, DEFAULT_ROOM_NODE_W, DEFAULT_ROOM_NODE_H);
       pos[slug] = { ...prev, x: n.position.x, y: n.position.y, width: box.width, height: box.height };
+    }
+    // Assign auto-positions for rooms that have no saved position yet (e.g. added via
+    // keyboard shortcut on a different floor and never explicitly placed).
+    const floorCounters = {};
+    for (const slug of Object.keys(roomsMap)) {
+      if (pos[slug]) continue;
+      const floor = (positionsDoc.floors || {})[slug] ?? 0;
+      const i = floorCounters[floor] ?? 0;
+      floorCounters[floor] = i + 1;
+      pos[slug] = { x: (i % 6) * 220, y: Math.floor(i / 6) * 130, width: DEFAULT_ROOM_NODE_W, height: DEFAULT_ROOM_NODE_H };
     }
     const notes = nds
       .filter((n) => n.type === "note")
@@ -1461,7 +1646,7 @@ function ZoneEditorInner({
     setPositionsDoc(nextDoc);
     await fs.writeText(positionsPath, serializePositionsDoc(nextDoc));
     setStatusMsg("Layout saved");
-  }, [rf, positionsDoc, positionsPath]);
+  }, [rf, positionsDoc, positionsPath, roomsMap]);
 
   const onConnectStart = useCallback(
     (_event, { nodeId, handleId, handleType }) => {
@@ -2027,6 +2212,17 @@ function ZoneEditorInner({
           }}
           onNodeClick={(_, n) => {
             if (n.type === "room") {
+              if (pendingStairLink) {
+                if (!n.data?.ghost) {
+                  linkStairs(pendingStairLink.slug, pendingStairLink.ghostDir, n.data.slug).catch(() => {});
+                  setPendingStairLink(null);
+                } else {
+                  setPendingStairLink(null);
+                  setCurrentFloor(n.data.ghostFloor);
+                }
+                return;
+              }
+              if (n.data?.ghost) { setCurrentFloor(n.data.ghostFloor); return; }
               const slug = n.data.slug;
               setSelectedSlug(slug);
               setPanelDraft(zones[zoneId]?.rooms?.[slug] || null);
@@ -2069,6 +2265,108 @@ function ZoneEditorInner({
           <Controls />
           <MiniMap />
         </ReactFlow>
+
+        {/* Z-level floor switcher */}
+        {(() => {
+          const floorsMap = positionsDoc.floors || {};
+          const floorSet = new Set([0, ...Object.values(floorsMap).map(Number).filter(Number.isFinite)]);
+          const allFloors = [...floorSet].sort((a, b) => b - a);
+          return (
+            <div
+              style={{
+                position: "absolute",
+                left: 10,
+                top: 10,
+                zIndex: 100,
+                display: "flex",
+                flexDirection: "column",
+                gap: 2,
+                background: COLORS.bgPanel,
+                border: `1px solid ${COLORS.border}`,
+                borderRadius: 8,
+                padding: "4px 2px",
+                pointerEvents: "all",
+                boxShadow: `0 2px 8px ${COLORS.bg}88`,
+              }}
+            >
+              <button
+                type="button"
+                title="Go up one floor"
+                onClick={() => setCurrentFloor((f) => f + 1)}
+                style={{ fontSize: 13, lineHeight: 1, padding: "3px 10px", background: "none", border: "none", color: COLORS.info, cursor: "pointer", borderRadius: 5 }}
+              >
+                ▲
+              </button>
+              {allFloors.map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  title={`Switch to ${floorLabel(f)}`}
+                  onClick={() => setCurrentFloor(f)}
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    fontFamily: "'JetBrains Mono', monospace",
+                    padding: "3px 10px",
+                    background: f === currentFloor ? COLORS.accent : "none",
+                    border: f === currentFloor ? `1px solid ${COLORS.accent}` : "1px solid transparent",
+                    borderRadius: 5,
+                    color: f === currentFloor ? "#fff" : COLORS.textDim,
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {floorLabel(f)}
+                </button>
+              ))}
+              <button
+                type="button"
+                title="Go down one floor"
+                onClick={() => setCurrentFloor((f) => f - 1)}
+                style={{ fontSize: 13, lineHeight: 1, padding: "3px 10px", background: "none", border: "none", color: COLORS.forge, cursor: "pointer", borderRadius: 5 }}
+              >
+                ▼
+              </button>
+            </div>
+          );
+        })()}
+
+        {/* Stair link mode banner */}
+        {pendingStairLink ? (
+          <div
+            style={{
+              position: "absolute",
+              top: 10,
+              left: "50%",
+              transform: "translateX(-50%)",
+              zIndex: 200,
+              background: pendingStairLink.ghostDir === "up" ? COLORS.info : COLORS.forge,
+              color: "#fff",
+              padding: "6px 16px",
+              borderRadius: 8,
+              fontSize: 12,
+              fontWeight: 700,
+              fontFamily: "'DM Sans', sans-serif",
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              boxShadow: "0 2px 10px #0009",
+              pointerEvents: "all",
+            }}
+          >
+            <span>
+              {pendingStairLink.ghostDir === "up" ? "↑" : "↓"} Click a room to link {pendingStairLink.ghostDir} from{" "}
+              <b>{pendingStairLink.slug}</b> ({floorLabel(pendingStairLink.ghostFloor)}) — ESC to cancel
+            </span>
+            <button
+              type="button"
+              onClick={() => setPendingStairLink(null)}
+              style={{ background: "none", border: "none", color: "#ffffffcc", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: 0 }}
+            >
+              ✕
+            </button>
+          </div>
+        ) : null}
 
         {marqueeScreen && marqueeScreen.width + marqueeScreen.height > 0 ? (
           <div
@@ -2317,6 +2615,15 @@ function ZoneEditorInner({
             onChangeRoom={(d) => {
               setPanelDraft(d);
               setPanelDirty(true);
+              if (selectedSlug) {
+                setNodes((nds) =>
+                  nds.map((n) =>
+                    n.data?.slug === selectedSlug
+                      ? { ...n, data: { ...n.data, label: d.name || selectedSlug } }
+                      : n
+                  )
+                );
+              }
             }}
             onSave={() => saveRoomFile(selectedSlug, panelDraft)}
             onRevert={() => {

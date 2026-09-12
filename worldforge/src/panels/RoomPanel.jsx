@@ -1056,6 +1056,8 @@ export default function RoomPanel({
 }
 
 function AddExitForm({ existing, onAdd }) {
+  const { colors: COLORS } = useTheme();
+  const { btn } = useMemo(() => roomPanelChrome(COLORS), [COLORS]);
   const dirs = [
     "north",
     "south",

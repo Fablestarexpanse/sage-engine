@@ -1,6 +1,14 @@
 import { invoke } from "@tauri-apps/api/core";
 import yaml from "js-yaml";
 
+export async function getExePath() {
+  return invoke("get_exe_path");
+}
+
+export async function getEnvVar(name) {
+  return invoke("get_env_var", { name });
+}
+
 export async function readYaml(path) {
   const text = await invoke("read_file", { path });
   return yaml.load(text);

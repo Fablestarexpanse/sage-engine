@@ -16,6 +16,9 @@ function showFatal(message, detail) {
 }
 
 window.addEventListener("error", (ev) => {
+  // ResizeObserver loop warnings are benign browser noise from ReactFlow —
+  // they fire when the canvas resizes faster than the observer can flush.
+  if (ev.message?.includes("ResizeObserver loop")) return;
   showFatal(ev.message, ev.error?.stack || `${ev.filename}:${ev.lineno}`);
 });
 window.addEventListener("unhandledrejection", (ev) => {

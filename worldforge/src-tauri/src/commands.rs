@@ -23,6 +23,21 @@ fn norm_err(e: impl std::fmt::Display) -> String {
     e.to_string()
 }
 
+/// Returns the running executable's path so the frontend can walk up to auto-detect
+/// the project / content root without requiring the user to pick a folder.
+#[tauri::command]
+pub fn get_exe_path() -> Result<String, String> {
+    std::env::current_exe()
+        .map(|p| p.to_string_lossy().into_owned())
+        .map_err(norm_err)
+}
+
+/// Return the value of an environment variable (used for WORLDFORGE_ROOT override).
+#[tauri::command]
+pub fn get_env_var(name: String) -> Option<String> {
+    std::env::var(name).ok()
+}
+
 #[tauri::command]
 pub fn read_file(path: String) -> Result<String, String> {
     fs::read_to_string(&path).map_err(norm_err)
