@@ -93,6 +93,7 @@ class ItemTemplate(BaseModel):
     description: str = ""
     value: int = 0
     weight: float = 0.0
+    heal: int = 0  # hp restored when consumed via `use` (0 = not consumable)
     tags: set[str] = Field(default_factory=set)
 
 

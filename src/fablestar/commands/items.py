@@ -41,6 +41,45 @@ async def inventory(session: Session, args: list[str]):
         await session.send(f"  {name}")
 
 
+@command("use", aliases=["eat", "consume", "drink"])
+async def use(session: Session, args: list[str]):
+    """Use a consumable from your inventory. Usage: use <item>"""
+    from fablestar.app import app_instance
+
+    player_id = session.player_id
+    if not player_id:
+        return
+    if not args:
+        await session.send("Use what? Usage: use <item>")
+        return
+
+    target_name = " ".join(args).lower()
+    inv = await app_instance.redis.get_player_inventory(player_id)
+    item = next((it for it in inv if target_name in it.get("name", "").lower()), None)
+    if item is None:
+        await session.send(f"You aren't carrying any '{target_name}'.")
+        return
+
+    template = app_instance.content_loader.get_item_template(item.get("template", ""))
+    heal = int(template.heal) if template else 0
+    if heal <= 0:
+        await session.send(f"You can't think of a way to use the {item.get('name', 'item')}.")
+        return
+
+    stats = await app_instance.redis.get_player_stats(player_id)
+    max_hp = int(stats.get("max_hp", stats.get("hp", 20)))
+    before = int(stats.get("hp", 0))
+    stats["hp"] = min(max_hp, before + heal)
+    await app_instance.redis.set_player_stats(player_id, stats)
+    await app_instance.redis.set_player_inventory(
+        player_id, [it for it in inv if it.get("id") != item.get("id")]
+    )
+    gained = stats["hp"] - before
+    await session.send(
+        f"You consume the {item.get('name', 'item')} (+{gained} hp, {stats['hp']}/{max_hp})."
+    )
+
+
 @command("take", aliases=["get", "pick"])
 async def take(session: Session, args: list[str]):
     """Pick up an item from the floor. Usage: take <item>"""
@@ -209,6 +248,5 @@ async def examine(session: Session, args: list[str]):
         )
     else:
         await session.send(
-            f"You see nothing notable called '{target_name}'. "
-            "Nothing here rewards a closer look."
+            f"You see nothing notable called '{target_name}'. Nothing here rewards a closer look."
         )

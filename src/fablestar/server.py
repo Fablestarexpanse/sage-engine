@@ -430,6 +430,10 @@ class FablestarServer:
 
         norm_stats = migrate_legacy_stats(dict(character.stats))
         ensure_proficiency_block(norm_stats)
+        # Canonical vitals: nothing else seeds them, and every consumer was
+        # falling back to a different default (combat 20, client bar 100).
+        norm_stats.setdefault("max_hp", 100)
+        norm_stats.setdefault("hp", int(norm_stats["max_hp"]))
         character.stats = norm_stats
 
         # Death recovery: a character persisted at 0 hp wakes in the medbay at
