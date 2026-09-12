@@ -69,6 +69,16 @@ Test suites: server **150** pytest, WorldForge **34** vitest — all green.
       leaf coverage, then delete the legacy stat path (pre-1.0 milestone)
 - [ ] Build out real zones/content (starter_zone currently minimal after
       test-content cleanup)
+
+Epitaph-derived roadmap (design + priorities in `docs/design/EPITAPH_LESSONS.md`):
+- [ ] Achievements system — YAML criteria counters, tiers, Redis counter API (small; do first)
+- [ ] Room chats / ambient events — `ambient:` list on rooms, tick-driven (small)
+- [ ] Effects framework — timed buffs/debuffs/DoT on players+entities (medium; unlocks hazards/glyphs/bosses)
+- [ ] Search/scavenge profiles — `search <feature>` + loot pools + perception check (small-medium)
+- [ ] Faction data model — rep levels, encounter behaviour, teaching, shop stock (medium)
+- [ ] Missions vs quests split — template faction missions + hand-crafted puzzle quests, `questsense` hints (medium, after factions)
+- [ ] Maestro-style event director — player-scored random events, LLM-narrated (medium-large, after effects)
+- [ ] Feature-density check in WorldForge Validate / `validate_zone` (small)
 - [ ] UX niceties parked from the audit: redo, delete-key, bulk multi-select
       actions, keyboard-shortcut discoverability
 
