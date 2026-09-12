@@ -35,6 +35,32 @@ describe("runZoneValidation", () => {
     expect(msgs).toContain("prerequisite unknown: missing_glyph");
   });
 
+  it("warns on low feature density and reports it as info when healthy", () => {
+    const empty = runZoneValidation([node("a"), node("b"), node("c")], [], { zoneId: "z1" });
+    expect(empty.some((i) => i.level === "warn" && i.msg.includes("Low feature density"))).toBe(true);
+
+    const rich = runZoneValidation(
+      [
+        node("a", { features: [{ name: "crates", description: "d" }], entity_spawns: [] }),
+        node("b", { hazards: [{ id: "h", type: "radiation", severity: 1, description: "d" }] }),
+      ],
+      [],
+      { zoneId: "z1" }
+    );
+    expect(rich.some((i) => i.level === "info" && i.msg.includes("Feature density 1.00"))).toBe(true);
+    expect(rich.some((i) => i.msg.includes("Low feature density"))).toBe(false);
+  });
+
+  it("counts an ambient block as one draw", () => {
+    const issues = runZoneValidation(
+      [node("a", { ambient: { lines: ["x"] } }), node("b", { ambient: { lines: [] } })],
+      [],
+      { zoneId: "z1" }
+    );
+    const density = issues.find((i) => i.msg.includes("density"));
+    expect(density.msg).toContain("(1 draws / 2 rooms");
+  });
+
   it("validationCounts splits errors and warnings", () => {
     const counts = validationCounts([
       { level: "error", msg: "e" },

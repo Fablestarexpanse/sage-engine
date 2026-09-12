@@ -102,7 +102,8 @@ Epitaph-derived roadmap (design + priorities in `docs/design/EPITAPH_LESSONS.md`
       contracts from faction config, one active, kill progress in combat,
       collect turn-in consumes inventory, mission_rep + missions_completed
       counter + Contractor achievement; `missions` command (10 tests).
-      Hand-crafted puzzle quests + `questsense` remain a future system
+      Hand-crafted puzzle quests + `questsense`: deliberately NOT planned for
+      now (owner call 2026-09-12) — missions cover advancement; revisit post-1.0
 - [ ] Maestro-style event director — player-scored random events, LLM-narrated (medium-large, after effects)
 - [ ] Feature-density check in WorldForge Validate / `validate_zone` (small)
 - [ ] UX niceties parked from the audit: redo, delete-key, bulk multi-select
