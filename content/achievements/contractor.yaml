@@ -1,0 +1,8 @@
+id: contractor
+name: Contractor
+story: did the job and got paid
+level: minor
+criteria:
+  missions_completed: 1
+category: [factions]
+instructions: Complete any generated faction mission.

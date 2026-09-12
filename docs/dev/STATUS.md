@@ -98,7 +98,11 @@ Epitaph-derived roadmap (design + priorities in `docs/design/EPITAPH_LESSONS.md`
       kill penalties (own faction) + kill rewards (enemies list), standing-crossing
       announcements, `factions` command; 2 dock factions live (8 tests). Deferred:
       teaching, shops, encounter behaviour (need NPC AI / shop systems first)
-- [ ] Missions vs quests split — template faction missions + hand-crafted puzzle quests, `questsense` hints (medium, after factions)
+- [x] Faction missions (missions half of the split) — generated kill/collect
+      contracts from faction config, one active, kill progress in combat,
+      collect turn-in consumes inventory, mission_rep + missions_completed
+      counter + Contractor achievement; `missions` command (10 tests).
+      Hand-crafted puzzle quests + `questsense` remain a future system
 - [ ] Maestro-style event director — player-scored random events, LLM-narrated (medium-large, after effects)
 - [ ] Feature-density check in WorldForge Validate / `validate_zone` (small)
 - [ ] UX niceties parked from the audit: redo, delete-key, bulk multi-select

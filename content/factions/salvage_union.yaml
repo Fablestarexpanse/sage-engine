@@ -3,4 +3,6 @@ name: Salvage Union
 description: The drone-wrangling collective that owns every scrap claim on the docks.
 initial_rep: 0
 kill_rep: -8
+wanted_items: [power_cell]
+mission_rep: 10
 tags: [docks, industry]

@@ -149,6 +149,22 @@ async def attack(session: Session, args: list[str]):
         except Exception as exc:
             logger.warning("Faction reputation skipped: %s", exc)
 
+        # Active kill-mission progress (completion pays out immediately).
+        try:
+            from fablestar.achievements.engine import record_counter
+            from fablestar.factions.missions import record_kill
+
+            fac_registry = app_instance.content_loader.get_faction_registry()
+            mission_msgs, completed = record_kill(
+                player_stats, fac_registry, target_state.get("template", "")
+            )
+            faction_messages += mission_msgs
+            if completed:
+                ach_registry = app_instance.content_loader.get_achievement_registry()
+                newly_granted += record_counter(player_stats, ach_registry, "missions_completed")
+        except Exception as exc:
+            logger.warning("Mission progress skipped: %s", exc)
+
     await app_instance.redis.set_player_stats(player_id, player_stats)
 
     # --- LLM narrates the exchange ---

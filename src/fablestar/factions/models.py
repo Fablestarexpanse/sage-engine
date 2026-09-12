@@ -38,4 +38,11 @@ class FactionModel(BaseModel):
     # RAISES standing with this faction by `enemy_kill_rep`.
     enemies: list[str] = Field(default_factory=list)
     enemy_kill_rep: int = 2
+    # Item template ids this faction pays for (collect missions draw from these).
+    wanted_items: list[str] = Field(default_factory=list)
+    # Rep granted for completing one generated mission.
+    mission_rep: int = 10
     tags: list[str] = Field(default_factory=list)
+
+    def offers_missions(self) -> bool:
+        return bool(self.enemies or self.wanted_items)
