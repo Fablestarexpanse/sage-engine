@@ -9,12 +9,22 @@ class ExitModel(BaseModel):
     one_way: bool = False
 
 
+class SearchModel(BaseModel):
+    """Scavenge profile on a feature — what searching it can yield."""
+
+    items: list[str] = Field(min_length=1)  # item template ids
+    max_finds: int = Field(default=1, ge=1)  # per respawn window (shared by all players)
+    respawn_s: float = Field(default=600.0, gt=0)
+    chance: float = Field(default=0.7, ge=0.0, le=1.0)  # base find chance per attempt
+
+
 class FeatureModel(BaseModel):
     id: str
     name: str
     keywords: list[str]
     description: str
     interaction: str | None = "examine"
+    search: SearchModel | None = None
 
 
 class EntitySpawnModel(BaseModel):

@@ -78,7 +78,9 @@ Epitaph-derived roadmap (design + priorities in `docs/design/EPITAPH_LESSONS.md`
 - [x] Effects framework — dot/hot/flag effects with merge/expiry/survive-death,
       EffectsManager tick processing, `effects` command; room hazards now apply
       DoT on entry with `hazard_resist` proficiency checks (13 tests)
-- [ ] Search/scavenge profiles — `search <feature>` + loot pools + perception check (small-medium)
+- [x] Search/scavenge profiles — `search:` block on features (item pool, shared
+      per-window find cap via Redis TTL), `search` command with anomaly_scan
+      perception bonus + field gains + `scavenged` counter (7 tests)
 - [ ] Faction data model — rep levels, encounter behaviour, teaching, shop stock (medium)
 - [ ] Missions vs quests split — template faction missions + hand-crafted puzzle quests, `questsense` hints (medium, after factions)
 - [ ] Maestro-style event director — player-scored random events, LLM-narrated (medium-large, after effects)
