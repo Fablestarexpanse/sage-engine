@@ -35,7 +35,6 @@ import {
   alignRoomsTop,
   distributeRoomsHorizontally,
   distributeRoomsVertically,
-  flowRectIntersects,
   getRoomRectFlow,
 } from "../utils/layoutAlign.js";
 import { layoutGraph } from "../utils/autoLayout.js";
@@ -45,6 +44,8 @@ import NoteNode from "../nodes/NoteNode.jsx";
 import ExitEdge from "../edges/ExitEdge.jsx";
 import RoomPanel from "../panels/RoomPanel.jsx";
 import ValidationPanel from "../components/ValidationPanel.jsx";
+import ConnectionDebugPanel from "../components/ConnectionDebugPanel.jsx";
+import FloorSwitcher from "../components/FloorSwitcher.jsx";
 import TextPromptModal from "../components/TextPromptModal.jsx";
 import GroupFormModal from "../components/GroupFormModal.jsx";
 import SaveStampModal, { stampSlugFromDisplayName } from "../components/SaveStampModal.jsx";
@@ -60,36 +61,14 @@ import { useTheme } from "../ThemeContext.jsx";
 import * as fs from "../utils/fsBridge.js";
 import { useContent } from "../hooks/useContentStore.js";
 import { writeSnapEnabled } from "../hooks/useLocalSettings.js";
+import { useUndoStack } from "../hooks/useUndoStack.js";
+import { useMarqueeSelect } from "../hooks/useMarqueeSelect.js";
 import { deepClone } from "../utils/clone.js";
 
 const nodeTypes = { room: RoomNode, note: NoteNode };
 const edgeTypes = { exit: ExitEdge };
 
 const SLUG_OK = (s) => /^[a-zA-Z0-9_-]+$/.test(s);
-const floorLabel = (n) => (n === 0 ? "Ground" : n > 0 ? `F${n}` : `B${Math.abs(n)}`);
-
-const UNDO_LIMIT = 40;
-
-const CONN_DEBUG_PANEL_POS_KEY = "worldforge_conn_debug_panel_pos";
-
-function readConnDebugPanelPos() {
-  try {
-    const raw = localStorage.getItem(CONN_DEBUG_PANEL_POS_KEY);
-    if (!raw) return null;
-    const p = JSON.parse(raw);
-    if (
-      typeof p.left === "number" &&
-      typeof p.top === "number" &&
-      Number.isFinite(p.left) &&
-      Number.isFinite(p.top)
-    ) {
-      return { left: p.left, top: p.top };
-    }
-  } catch {
-    /* ignore */
-  }
-  return null;
-}
 
 function clonePositionsDoc(doc) {
   return deepClone(doc ?? parsePositionsDoc(null));
@@ -259,8 +238,6 @@ function ZoneEditorInner({
   const rfRef = useRef(rf);
   rfRef.current = rf;
   const containerRef = useRef(null);
-  const connDebugPanelRef = useRef(null);
-  const [connDebugPanelPos, setConnDebugPanelPos] = useState(() => readConnDebugPanelPos());
   const suppressPaneContextUntilRef = useRef(0);
   const { zones, zoneIds, dispatch, entities, entityIds, items, itemIds, glyphs, glyphIds, saveZoneRoom } = useContent();
 
@@ -295,7 +272,6 @@ function ZoneEditorInner({
   const positionsDocRef = useRef(positionsDoc);
   positionsDocRef.current = positionsDoc;
   saveStampDraftRef.current = saveStampDraft;
-  const undoStackRef = useRef([]);
   const duplicateBusyRef = useRef(false);
   const stampPlaceBusyRef = useRef(false);
   const connectBusyRef = useRef(false);
@@ -316,53 +292,20 @@ function ZoneEditorInner({
     setConnectionDebugLines([...connectionDebugLinesRef.current]);
   }, [connectionDebugLog]);
 
-  const onConnDebugPanelHeaderPointerDown = useCallback((e) => {
-    if (e.button !== 0 || e.target.closest("button")) return;
-    const root = containerRef.current;
-    const panel = connDebugPanelRef.current;
-    if (!root || !panel) return;
-    e.preventDefault();
-    const rootR = root.getBoundingClientRect();
-    const pr = panel.getBoundingClientRect();
-    const curLeft = connDebugPanelPos != null ? connDebugPanelPos.left : pr.left - rootR.left;
-    const curTop = connDebugPanelPos != null ? connDebugPanelPos.top : pr.top - rootR.top;
-    const drag = { startX: e.clientX, startY: e.clientY, origLeft: curLeft, origTop: curTop };
-    let lastPos = { left: curLeft, top: curTop };
-
-    const onMove = (ev) => {
-      const w = panel.offsetWidth;
-      const h = panel.offsetHeight;
-      const dx = ev.clientX - drag.startX;
-      const dy = ev.clientY - drag.startY;
-      let left = drag.origLeft + dx;
-      let top = drag.origTop + dy;
-      left = Math.max(4, Math.min(left, rootR.width - w - 4));
-      top = Math.max(4, Math.min(top, rootR.height - h - 4));
-      lastPos = { left, top };
-      setConnDebugPanelPos(lastPos);
-    };
-
-    const onUp = () => {
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-      window.removeEventListener("pointercancel", onUp);
-      try {
-        localStorage.setItem(CONN_DEBUG_PANEL_POS_KEY, JSON.stringify(lastPos));
-      } catch {
-        /* ignore */
-      }
-    };
-
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
-    window.addEventListener("pointercancel", onUp);
-  }, [connDebugPanelPos]);
-
   const roomsMap = useMemo(() => zones[zoneId]?.rooms ?? {}, [zones, zoneId]);
   const zonesRef = useRef(zones);
   zonesRef.current = zones;
 
   const positionsPath = useMemo(() => joinPaths(worldRoot, "zones", zoneId, ".positions.json"), [worldRoot, zoneId]);
+
+  const { push: pushUndo, undo: applyUndo } = useUndoStack({
+    zoneId,
+    worldRoot,
+    dispatch,
+    positionsPath,
+    setPositionsDoc,
+    setStatusMsg,
+  });
   const groupsPath = useMemo(() => joinPaths(worldRoot, "zones", zoneId, "groups.yaml"), [worldRoot, zoneId]);
 
   const roomIndexForPicker = useMemo(() => {
@@ -478,10 +421,6 @@ function ZoneEditorInner({
     [roomSlugModal, submitRoomSlug]
   );
 
-  useEffect(() => {
-    undoStackRef.current = [];
-  }, [zoneId]);
-
   /** Announce, once per zone visit, any rooms whose YAML failed to parse (see roomsMap). */
   const parseErrorAnnouncedForZoneRef = useRef(null);
   useEffect(() => {
@@ -495,47 +434,6 @@ function ZoneEditorInner({
       parseErrorAnnouncedForZoneRef.current = zoneId;
     }
   }, [zoneId, roomsMap]);
-
-  const applyUndo = useCallback(async () => {
-    const stack = undoStackRef.current;
-    if (!stack.length) {
-      setStatusMsg("Nothing to undo");
-      return;
-    }
-    const entry = stack.pop();
-    if (entry.type === "duplicate" || entry.type === "stampPlace") {
-      for (const slug of entry.createdSlugs) {
-        try {
-          await fs.deleteFile(joinPaths(worldRoot, "zones", zoneId, "rooms", `${slug}.yaml`));
-        } catch {
-          /* missing file */
-        }
-        dispatch({ type: "DELETE_ZONE_ROOM", zoneId, slug });
-      }
-      const restored = clonePositionsDoc(entry.prevPositionsDoc);
-      setPositionsDoc(restored);
-      await fs.writeText(positionsPath, serializePositionsDoc(restored));
-      setStatusMsg(
-        entry.type === "stampPlace"
-          ? `Undid stamp placement (${entry.createdSlugs.length} room(s))`
-          : `Undid duplicate (${entry.createdSlugs.length} room(s))`
-      );
-    } else if (entry.type === "layout") {
-      const restored = clonePositionsDoc(entry.prevPositionsDoc);
-      setPositionsDoc(restored);
-      await fs.writeText(positionsPath, serializePositionsDoc(restored));
-      setStatusMsg("Undid layout / rotate / map border");
-    } else if (entry.type === "clearConnections") {
-      for (const [slug, data] of Object.entries(entry.prevRooms || {})) {
-        dispatch({ type: "UPDATE_ZONE_ROOM", zoneId, slug, data });
-        await fs.writeYaml(joinPaths(worldRoot, "zones", zoneId, "rooms", `${slug}.yaml`), data);
-      }
-      const restored = clonePositionsDoc(entry.prevPositionsDoc);
-      setPositionsDoc(restored);
-      await fs.writeText(positionsPath, serializePositionsDoc(restored));
-      setStatusMsg("Undid clear all connections");
-    }
-  }, [zoneId, worldRoot, dispatch, positionsPath]);
 
   const linkStairs = useCallback(
     async (fromSlug, fromDir, toSlug) => {
@@ -642,12 +540,11 @@ function ZoneEditorInner({
         });
       });
 
-      undoStackRef.current.push({
+      pushUndo({
         type: "duplicate",
         prevPositionsDoc: snapshotBefore,
         createdSlugs: pairs.map((p) => p.newSlug),
       });
-      if (undoStackRef.current.length > UNDO_LIMIT) undoStackRef.current.shift();
 
       const notDuped = selectedNodes.length - pairs.length;
       const warn =
@@ -785,12 +682,11 @@ function ZoneEditorInner({
           });
         });
 
-        undoStackRef.current.push({
+        pushUndo({
           type: "stampPlace",
           prevPositionsDoc: snapshotBefore,
           createdSlugs: newSlugs,
         });
-        if (undoStackRef.current.length > UNDO_LIMIT) undoStackRef.current.shift();
 
         const newIds = newSlugs.map((s) => `${zoneId}:${s}`);
         const selectIds = new Set(newIds);
@@ -1309,11 +1205,10 @@ function ZoneEditorInner({
       const raw = hex != null ? String(hex).trim() : "";
       const clearIt = raw === "";
 
-      undoStackRef.current.push({
+      pushUndo({
         type: "layout",
         prevPositionsDoc: clonePositionsDoc(positionsDocRef.current),
       });
-      if (undoStackRef.current.length > UNDO_LIMIT) undoStackRef.current.shift();
 
       setPositionsDoc((prev) => {
         const positions = { ...prev.positions };
@@ -1336,11 +1231,10 @@ function ZoneEditorInner({
   const applyRoomLayoutPatches = useCallback(
     (patches) => {
       if (!patches?.length) return;
-      undoStackRef.current.push({
+      pushUndo({
         type: "layout",
         prevPositionsDoc: clonePositionsDoc(positionsDocRef.current),
       });
-      if (undoStackRef.current.length > UNDO_LIMIT) undoStackRef.current.shift();
       setNodes((nds) =>
         nds.map((n) => {
           const p = patches.find((x) => x.id === n.id);
@@ -1380,11 +1274,10 @@ function ZoneEditorInner({
         setStatusMsg("Select unlocked rooms to rotate");
         return;
       }
-      undoStackRef.current.push({
+      pushUndo({
         type: "layout",
         prevPositionsDoc: clonePositionsDoc(positionsDocRef.current),
       });
-      if (undoStackRef.current.length > UNDO_LIMIT) undoStackRef.current.shift();
 
       const boxes = sel.map((n) => {
         const r = getRoomRectFlow(n, DEFAULT_ROOM_NODE_W, DEFAULT_ROOM_NODE_H);
@@ -1453,11 +1346,10 @@ function ZoneEditorInner({
       setStatusMsg("Select unlocked rooms to reset rotation");
       return;
     }
-    undoStackRef.current.push({
+    pushUndo({
       type: "layout",
       prevPositionsDoc: clonePositionsDoc(positionsDocRef.current),
     });
-    if (undoStackRef.current.length > UNDO_LIMIT) undoStackRef.current.shift();
 
     setPositionsDoc((prev) => {
       const positions = { ...prev.positions };
@@ -1475,125 +1367,14 @@ function ZoneEditorInner({
     setStatusMsg("Rotation reset");
   }, [positionsPath]);
 
-  useEffect(() => {
-    const root = containerRef.current;
-    if (!root) return;
-
-    const isChromeUi = (el) =>
-      Boolean(
-        el?.closest?.(".react-flow__minimap") ||
-          el?.closest?.(".react-flow__controls") ||
-          el?.closest?.(".react-flow__panel")
-      );
-
-    const onPointerDownCapture = (e) => {
-      if (e.pointerType === "touch") return;
-
-      const rightMarquee = e.button === 2;
-      if (!rightMarquee) return;
-
-      const viewport = root.querySelector(".react-flow__viewport");
-      if (!viewport || !viewport.contains(e.target) || isChromeUi(e.target)) return;
-
-      const startX = e.clientX;
-      const startY = e.clientY;
-      let curX = startX;
-      let curY = startY;
-      const additive = e.ctrlKey || e.metaKey;
-
-      let pointerCaptureHeld = false;
-      try {
-        viewport.setPointerCapture(e.pointerId);
-        pointerCaptureHeld = true;
-      } catch {
-        /* WebView may omit setPointerCapture */
-      }
-
-      const paint = () => {
-        const rr = root.getBoundingClientRect();
-        setMarqueeScreen({
-          left: Math.min(startX, curX) - rr.left,
-          top: Math.min(startY, curY) - rr.top,
-          width: Math.abs(curX - startX),
-          height: Math.abs(curY - startY),
-        });
-      };
-      paint();
-
-      const onContextMenuWhileDrag = (ev) => {
-        if (Math.abs(curX - startX) > 2 || Math.abs(curY - startY) > 2) {
-          ev.preventDefault();
-          ev.stopPropagation();
-        }
-      };
-      window.addEventListener("contextmenu", onContextMenuWhileDrag, true);
-
-      const onMove = (ev) => {
-        curX = ev.clientX;
-        curY = ev.clientY;
-        paint();
-      };
-
-      const finish = (ev) => {
-        window.removeEventListener("pointermove", onMove);
-        window.removeEventListener("pointerup", finish);
-        window.removeEventListener("pointercancel", finish);
-        window.removeEventListener("contextmenu", onContextMenuWhileDrag, true);
-
-        if (pointerCaptureHeld) {
-          try {
-            viewport.releasePointerCapture(ev.pointerId);
-          } catch {
-            /* ignore */
-          }
-        }
-
-        const endX = ev.clientX;
-        const endY = ev.clientY;
-        setMarqueeScreen(null);
-
-        if (Math.abs(endX - startX) < 5 && Math.abs(endY - startY) < 5) return;
-
-        if (rightMarquee) suppressPaneContextUntilRef.current = Date.now() + 400;
-
-        const flow = rfRef.current;
-        const xMin = Math.min(startX, endX);
-        const yMin = Math.min(startY, endY);
-        const xMax = Math.max(startX, endX);
-        const yMax = Math.max(startY, endY);
-        const p1 = flow.screenToFlowPosition({ x: xMin, y: yMin });
-        const p2 = flow.screenToFlowPosition({ x: xMax, y: yMax });
-        const rect = {
-          x1: Math.min(p1.x, p2.x),
-          y1: Math.min(p1.y, p2.y),
-          x2: Math.max(p1.x, p2.x),
-          y2: Math.max(p1.y, p2.y),
-        };
-
-        const hits = new Set();
-        for (const n of flow.getNodes()) {
-          if (n.type !== "room" || n.data?.locked) continue;
-          if (flowRectIntersects(rect, getRoomRectFlow(n))) hits.add(n.id);
-        }
-
-        setNodesRef.current((nds) => {
-          const prevSel = new Set(nds.filter((n) => n.type === "room" && n.selected && !n.data?.locked).map((n) => n.id));
-          const nextSel = additive ? new Set([...prevSel, ...hits]) : hits;
-          return nds.map((n) => ({
-            ...n,
-            selected: n.type === "room" && !n.data?.locked ? nextSel.has(n.id) : false,
-          }));
-        });
-      };
-
-      window.addEventListener("pointermove", onMove);
-      window.addEventListener("pointerup", finish);
-      window.addEventListener("pointercancel", finish);
-    };
-
-    root.addEventListener("pointerdown", onPointerDownCapture, true);
-    return () => root.removeEventListener("pointerdown", onPointerDownCapture, true);
-  }, [zoneId]);
+  useMarqueeSelect({
+    containerRef,
+    rfRef,
+    setNodesRef,
+    setMarqueeScreen,
+    suppressPaneContextUntilRef,
+    zoneId,
+  });
 
   const saveLayout = useCallback(async () => {
     const nds = rf.getNodes();
@@ -1814,12 +1595,11 @@ function ZoneEditorInner({
       }
       const prevPositionsDoc = clonePositionsDoc(positionsDocRef.current);
 
-      undoStackRef.current.push({
+      pushUndo({
         type: "clearConnections",
         prevRooms,
         prevPositionsDoc,
       });
-      if (undoStackRef.current.length > UNDO_LIMIT) undoStackRef.current.shift();
 
       for (const slug of slugsToClear) {
         const cur = deepClone(zr[slug]);
@@ -2278,107 +2058,20 @@ function ZoneEditorInner({
           <MiniMap />
         </ReactFlow>
 
-        {/* Z-level floor switcher */}
         {(() => {
           const floorsMap = positionsDoc.floors || {};
           const floorSet = new Set([0, ...Object.values(floorsMap).map(Number).filter(Number.isFinite)]);
           const allFloors = [...floorSet].sort((a, b) => b - a);
           return (
-            <div
-              style={{
-                position: "absolute",
-                left: 10,
-                top: 10,
-                zIndex: 100,
-                display: "flex",
-                flexDirection: "column",
-                gap: 2,
-                background: COLORS.bgPanel,
-                border: `1px solid ${COLORS.border}`,
-                borderRadius: 8,
-                padding: "4px 2px",
-                pointerEvents: "all",
-                boxShadow: `0 2px 8px ${COLORS.bg}88`,
-              }}
-            >
-              <button
-                type="button"
-                title="Go up one floor"
-                onClick={() => setCurrentFloor((f) => f + 1)}
-                style={{ fontSize: 13, lineHeight: 1, padding: "3px 10px", background: "none", border: "none", color: COLORS.info, cursor: "pointer", borderRadius: 5 }}
-              >
-                ▲
-              </button>
-              {allFloors.map((f) => (
-                <button
-                  key={f}
-                  type="button"
-                  title={`Switch to ${floorLabel(f)}`}
-                  onClick={() => setCurrentFloor(f)}
-                  style={{
-                    fontSize: 10,
-                    fontWeight: 700,
-                    fontFamily: "'JetBrains Mono', monospace",
-                    padding: "3px 10px",
-                    background: f === currentFloor ? COLORS.accent : "none",
-                    border: f === currentFloor ? `1px solid ${COLORS.accent}` : "1px solid transparent",
-                    borderRadius: 5,
-                    color: f === currentFloor ? "#fff" : COLORS.textDim,
-                    cursor: "pointer",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {floorLabel(f)}
-                </button>
-              ))}
-              <button
-                type="button"
-                title="Go down one floor"
-                onClick={() => setCurrentFloor((f) => f - 1)}
-                style={{ fontSize: 13, lineHeight: 1, padding: "3px 10px", background: "none", border: "none", color: COLORS.forge, cursor: "pointer", borderRadius: 5 }}
-              >
-                ▼
-              </button>
-            </div>
+            <FloorSwitcher
+              floors={allFloors}
+              currentFloor={currentFloor}
+              onChange={setCurrentFloor}
+              pendingStairLink={pendingStairLink}
+              onCancelStairLink={() => setPendingStairLink(null)}
+            />
           );
         })()}
-
-        {/* Stair link mode banner */}
-        {pendingStairLink ? (
-          <div
-            style={{
-              position: "absolute",
-              top: 10,
-              left: "50%",
-              transform: "translateX(-50%)",
-              zIndex: 200,
-              background: pendingStairLink.ghostDir === "up" ? COLORS.info : COLORS.forge,
-              color: "#fff",
-              padding: "6px 16px",
-              borderRadius: 8,
-              fontSize: 12,
-              fontWeight: 700,
-              fontFamily: "'DM Sans', sans-serif",
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              boxShadow: "0 2px 10px #0009",
-              pointerEvents: "all",
-            }}
-          >
-            <span>
-              {pendingStairLink.ghostDir === "up" ? "↑" : "↓"} Click a room to link {pendingStairLink.ghostDir} from{" "}
-              <b>{pendingStairLink.slug}</b> ({floorLabel(pendingStairLink.ghostFloor)}) — ESC to cancel
-            </span>
-            <button
-              type="button"
-              onClick={() => setPendingStairLink(null)}
-              style={{ background: "none", border: "none", color: "#ffffffcc", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: 0 }}
-            >
-              ✕
-            </button>
-          </div>
-        ) : null}
 
         {marqueeScreen && marqueeScreen.width + marqueeScreen.height > 0 ? (
           <div
@@ -2397,106 +2090,16 @@ function ZoneEditorInner({
           />
         ) : null}
 
-        {connectionDebugLog ? (
-          <div
-            ref={connDebugPanelRef}
-            style={{
-              position: "absolute",
-              ...(connDebugPanelPos
-                ? { left: connDebugPanelPos.left, top: connDebugPanelPos.top, right: "auto", bottom: "auto" }
-                : { right: 12, bottom: 12, left: "auto", top: "auto" }),
-              zIndex: 1000,
-              width: "min(440px, calc(100% - 24px))",
-              maxHeight: 260,
-              display: "flex",
-              flexDirection: "column",
-              background: `${COLORS.bgPanel}f2`,
-              border: `1px solid ${COLORS.info}`,
-              borderRadius: 8,
-              boxShadow: `0 4px 20px ${COLORS.bg}aa`,
-              fontFamily: "'JetBrains Mono', ui-monospace, monospace",
-              fontSize: 10,
-              color: COLORS.text,
-            }}
-          >
-            <div
-              onPointerDown={onConnDebugPanelHeaderPointerDown}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 8,
-                padding: "6px 8px",
-                borderBottom: `1px solid ${COLORS.border}`,
-                flexShrink: 0,
-                cursor: "grab",
-                userSelect: "none",
-              }}
-              title="Drag to reposition (saved) · double-click the title to dock bottom-right again"
-            >
-              <span
-                style={{ color: COLORS.textMuted, flex: 1, minWidth: 0 }}
-                onDoubleClick={(e) => {
-                  e.stopPropagation();
-                  setConnDebugPanelPos(null);
-                  try {
-                    localStorage.removeItem(CONN_DEBUG_PANEL_POS_KEY);
-                  } catch {
-                    /* ignore */
-                  }
-                }}
-              >
-                Connection debug (newest first)
-              </span>
-              <div style={{ display: "flex", gap: 6 }}>
-                <button
-                  type="button"
-                  style={{ ...tbBtn, fontSize: 9, padding: "2px 8px" }}
-                  onClick={() => {
-                    connectionDebugLinesRef.current = [];
-                    setConnectionDebugLines([]);
-                  }}
-                >
-                  Clear
-                </button>
-                <button
-                  type="button"
-                  style={{ ...tbBtn, fontSize: 9, padding: "2px 8px" }}
-                  onClick={() => {
-                    const text = JSON.stringify(connectionDebugLinesRef.current, null, 2);
-                    if (navigator.clipboard?.writeText) {
-                      navigator.clipboard.writeText(text).then(
-                        () => setStatusMsg("Connection log copied to clipboard"),
-                        () => setStatusMsg("Copy failed")
-                      );
-                    } else setStatusMsg("Clipboard not available");
-                  }}
-                >
-                  Copy JSON
-                </button>
-              </div>
-            </div>
-            <div style={{ overflow: "auto", padding: 8, lineHeight: 1.35, flex: 1, minHeight: 0 }}>
-              {connectionDebugLines.length === 0 ? (
-                <span style={{ color: COLORS.textDim }}>
-                  Each drag gets its own <code style={{ color: COLORS.text }}>seq</code> (connectStart → onConnect_fired → onConnect_applied → connectEnd). Multiple seq values
-                  = multiple drags. Same link twice in under 0.75s logs <code style={{ color: COLORS.text }}>onConnect_skipped_duplicate_link</code>. Compare{" "}
-                  <code style={{ color: COLORS.text }}>raw</code> to <code style={{ color: COLORS.text }}>domUnderPointer</code> on connectEnd. Each applied link still writes{" "}
-                  <strong>two</strong> YAML exits (out + return) by design.
-                </span>
-              ) : (
-                connectionDebugLines.map((row, i) => (
-                  <div key={`${row.t}-${row.kind}-${i}`} style={{ marginBottom: 10, wordBreak: "break-word" }}>
-                    <div style={{ color: COLORS.info, marginBottom: 2 }}>
-                      {row.t} · {row.kind}
-                    </div>
-                    <pre style={{ margin: 0, whiteSpace: "pre-wrap", color: COLORS.textMuted }}>{JSON.stringify(row.detail, null, 2)}</pre>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        ) : null}
+        <ConnectionDebugPanel
+          open={connectionDebugLog}
+          entries={connectionDebugLines}
+          onClear={() => {
+            connectionDebugLinesRef.current = [];
+            setConnectionDebugLines([]);
+          }}
+          onStatusMsg={setStatusMsg}
+          containerRef={containerRef}
+        />
 
         {ctx ? (
           <div
