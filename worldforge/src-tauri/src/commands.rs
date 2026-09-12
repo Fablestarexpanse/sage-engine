@@ -23,6 +23,42 @@ fn norm_err(e: impl std::fmt::Display) -> String {
     e.to_string()
 }
 
+/// Reject any path containing a `..` component. The frontend always builds
+/// absolute paths from a user-picked root, so parent traversal is never
+/// legitimate — mirroring the guard `import_bundle` already applies to zip
+/// entries. Not full root confinement (the root lives frontend-side), but it
+/// closes the traversal class for every fs command uniformly.
+fn reject_traversal(path: &str) -> Result<(), String> {
+    let p = Path::new(path);
+    if p.components()
+        .any(|c| matches!(c, std::path::Component::ParentDir))
+    {
+        return Err(format!("path_traversal_rejected: {path}"));
+    }
+    Ok(())
+}
+
+/// Crash-safe write: tempfile in the destination directory, then an atomic
+/// rename. The live server's HotReloader watches these files, so a torn or
+/// zero-length YAML from an in-place truncate-write must never be observable.
+fn atomic_write(p: &Path, bytes: &[u8]) -> Result<(), String> {
+    let parent = p.parent().ok_or("no_parent_dir")?;
+    fs::create_dir_all(parent).map_err(norm_err)?;
+    let file_name = p.file_name().ok_or("no_file_name")?.to_string_lossy();
+    let tmp = parent.join(format!(".{}.tmp-{}", file_name, std::process::id()));
+    let result = (|| -> Result<(), String> {
+        let mut f = fs::File::create(&tmp).map_err(norm_err)?;
+        f.write_all(bytes).map_err(norm_err)?;
+        f.sync_all().map_err(norm_err)?;
+        drop(f);
+        fs::rename(&tmp, p).map_err(norm_err)
+    })();
+    if result.is_err() {
+        let _ = fs::remove_file(&tmp);
+    }
+    result
+}
+
 /// Returns the running executable's path so the frontend can walk up to auto-detect
 /// the project / content root without requiring the user to pick a folder.
 #[tauri::command]
@@ -40,20 +76,19 @@ pub fn get_env_var(name: String) -> Option<String> {
 
 #[tauri::command]
 pub fn read_file(path: String) -> Result<String, String> {
+    reject_traversal(&path)?;
     fs::read_to_string(&path).map_err(norm_err)
 }
 
 #[tauri::command]
 pub fn write_file(path: String, content: String) -> Result<(), String> {
-    let p = Path::new(&path);
-    if let Some(parent) = p.parent() {
-        fs::create_dir_all(parent).map_err(norm_err)?;
-    }
-    fs::write(p, content.as_bytes()).map_err(norm_err)
+    reject_traversal(&path)?;
+    atomic_write(Path::new(&path), content.as_bytes())
 }
 
 #[tauri::command]
 pub fn delete_file(path: String) -> Result<(), String> {
+    reject_traversal(&path)?;
     fs::remove_file(&path).map_err(norm_err)
 }
 
@@ -92,16 +127,20 @@ pub fn path_exists(path: String) -> Result<bool, String> {
 
 #[tauri::command]
 pub fn create_dir(path: String) -> Result<(), String> {
+    reject_traversal(&path)?;
     fs::create_dir_all(&path).map_err(norm_err)
 }
 
 #[tauri::command]
 pub fn remove_dir_all(path: String) -> Result<(), String> {
+    reject_traversal(&path)?;
     fs::remove_dir_all(&path).map_err(norm_err)
 }
 
 #[tauri::command]
 pub fn copy_file(src: String, dest: String) -> Result<(), String> {
+    reject_traversal(&src)?;
+    reject_traversal(&dest)?;
     let d = Path::new(&dest);
     if let Some(parent) = d.parent() {
         fs::create_dir_all(parent).map_err(norm_err)?;
@@ -112,15 +151,13 @@ pub fn copy_file(src: String, dest: String) -> Result<(), String> {
 
 #[tauri::command]
 pub fn write_binary_file(path: String, data: Vec<u8>) -> Result<(), String> {
-    let p = Path::new(&path);
-    if let Some(parent) = p.parent() {
-        fs::create_dir_all(parent).map_err(norm_err)?;
-    }
-    fs::write(p, data).map_err(norm_err)
+    reject_traversal(&path)?;
+    atomic_write(Path::new(&path), &data)
 }
 
 #[tauri::command]
 pub fn read_binary_file(path: String) -> Result<Vec<u8>, String> {
+    reject_traversal(&path)?;
     fs::read(&path).map_err(norm_err)
 }
 

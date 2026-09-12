@@ -13,11 +13,9 @@ describe("oppositeDir", () => {
     expect(oppositeDir("up")).toBe("down");
   });
 
-  it("documents the current fallback for unknown directions", () => {
-    // Known wart (review issue opposite_dir_wrong_fallback): unknown directions
-    // currently collapse to "south". This test pins the behavior so changing
-    // the contract is a deliberate, test-visible act.
-    expect(oppositeDir("portal")).toBe("south");
+  it("returns null for unknown directions instead of inventing one", () => {
+    expect(oppositeDir("portal")).toBeNull();
+    expect(oppositeDir("")).toBeNull();
   });
 });
 

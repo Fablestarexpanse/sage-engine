@@ -1,4 +1,4 @@
-import { createContext, createElement, useCallback, useContext, useMemo, useReducer } from "react";
+import { createContext, createElement, useCallback, useContext, useMemo, useReducer, useRef } from "react";
 import { joinPaths } from "../utils/paths.js";
 import { hasAnyWorldContent } from "../utils/worldScaffold.js";
 import * as fs from "./useFileSystem.js";
@@ -370,15 +370,25 @@ export function ContentProvider({ children }) {
    * Silent incremental refresh — rescans disk without resetting the UI.
    * Safe to call on a timer; no loading overlay shown.
    */
+  // In-flight guard: the 2s live-watch tick must never overlap a slow scan,
+  // and a stale scan must never overwrite a newer one's result.
+  const softRefreshSeq = useRef(0);
+  const softRefreshBusy = useRef(false);
   const softRefresh = useCallback(async (contentRoot) => {
-    if (!contentRoot) return;
+    if (!contentRoot || softRefreshBusy.current) return;
+    softRefreshBusy.current = true;
+    const seq = ++softRefreshSeq.current;
     try {
       const worldRoot = await resolveWorldRoot(contentRoot);
       if (!(await fs.pathExists(worldRoot))) return;
       const payload = await scanWorldContent(contentRoot, worldRoot);
-      dispatch({ type: "SOFT_LOAD_DONE", payload });
+      if (seq === softRefreshSeq.current) {
+        dispatch({ type: "SOFT_LOAD_DONE", payload });
+      }
     } catch {
       // silently swallow — user is watching, don't interrupt with error state
+    } finally {
+      softRefreshBusy.current = false;
     }
   }, []);
 

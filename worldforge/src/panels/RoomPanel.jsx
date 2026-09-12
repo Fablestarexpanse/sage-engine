@@ -97,6 +97,7 @@ export default function RoomPanel({
   }
   const [tab, setTab] = useState("General");
   const [yamlText, setYamlText] = useState("");
+  const [yamlError, setYamlError] = useState("");
   const [colorClipboardHint, setColorClipboardHint] = useState("");
   const [areaPrompt, setAreaPrompt] = useState("");
   const [comfyStatus, setComfyStatus] = useState(null);
@@ -1028,9 +1029,25 @@ export default function RoomPanel({
         {tab === "YAML" && (
           <>
             <textarea style={{ ...inp, minHeight: 280, fontFamily: "monospace", fontSize: 11 }} value={yamlText} onChange={(e) => setYamlText(e.target.value)} />
-            <button type="button" style={btnPrimary} onClick={() => onChangeRoom(yaml.load(yamlText))}>
+            <button
+              type="button"
+              style={btnPrimary}
+              onClick={() => {
+                try {
+                  onChangeRoom(yaml.load(yamlText));
+                  setYamlError("");
+                } catch (e) {
+                  setYamlError(String(e?.message || e));
+                }
+              }}
+            >
               Parse into form
             </button>
+            {yamlError ? (
+              <div style={{ color: COLORS.danger, fontSize: 11, marginTop: 6, whiteSpace: "pre-wrap" }}>
+                YAML parse error: {yamlError}
+              </div>
+            ) : null}
           </>
         )}
       </div>

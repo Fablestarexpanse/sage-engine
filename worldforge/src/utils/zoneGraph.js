@@ -18,7 +18,7 @@ export function oppositeDir(direction) {
       southeast: "northwest",
       up: "down",
       down: "up",
-    }[d] || "south"
+    }[d] ?? null
   );
 }
 

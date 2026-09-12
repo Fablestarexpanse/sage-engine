@@ -523,6 +523,10 @@ function ZoneEditorInner({
       dispatch({ type: "UPDATE_ZONE_ROOM", zoneId, slug: fromSlug, data: fromRoom });
       await fs.writeYaml(joinPaths(worldRoot, "zones", zoneId, "rooms", `${fromSlug}.yaml`), fromRoom);
       const toDir = oppositeDir(fromDir);
+      if (!toDir) {
+        setStatusMsg(`No reverse for direction "${fromDir}" — linked one way only`);
+        return;
+      }
       const toRoom = { ...(zr[zoneId]?.rooms?.[toSlug] || {}) };
       toRoom.exits = { ...(toRoom.exits || {}) };
       toRoom.exits[toDir] = { destination: `${zoneId}:${fromSlug}`, description: "" };
@@ -1090,6 +1094,7 @@ function ZoneEditorInner({
             const tgtSlug = rn.find((x) => x.id === targetId)?.data?.slug;
             if (!srcSlug || !tgtSlug) return;
             const rev = oppositeDir(direction);
+            if (!rev) return; // non-cardinal direction: no symmetric return exit
             const tRoom = { ...(zr[zoneId]?.rooms?.[tgtSlug] || {}) };
             tRoom.exits = { ...(tRoom.exits || {}) };
             if (tRoom.exits[rev]) return;
@@ -1736,7 +1741,7 @@ function ZoneEditorInner({
           return;
         }
         const sDir = (sourceHandle || "north").toLowerCase();
-        const tDir = (targetHandle || oppositeDir(sDir)).toLowerCase();
+        const tDir = (targetHandle || oppositeDir(sDir) || sDir).toLowerCase();
         const srcSlug = src.data.slug;
         const tgtSlug = tgt.data.slug;
         const destForward = `${zoneId}:${tgtSlug}`;
