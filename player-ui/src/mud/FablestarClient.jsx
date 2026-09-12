@@ -227,6 +227,27 @@ export default function FablestarClient({
 
   return (
     <GameCmdContext.Provider value={{ sendCommand, focusProficienciesPanel }}>
+    {!wsConnected && (
+      <div
+        role="alert"
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 9999,
+          padding: "6px 14px",
+          textAlign: "center",
+          background: T.glyph.crimson,
+          color: "#fff",
+          fontFamily: T.font.body,
+          fontSize: 12,
+          letterSpacing: "0.06em",
+        }}
+      >
+        Connection to the station lost — reconnecting…
+      </div>
+    )}
     <div style={{
       flex: 1,
       width: "100%",

@@ -1905,6 +1905,7 @@ export default function App() {
   const [playSession, setPlaySession] = useState(null);
   const [narrativeLines, setNarrativeLines] = useState(() => [...DEFAULT_NARRATIVE]);
   const [wsConnected, setWsConnected] = useState(false);
+  const [wsRetry, setWsRetry] = useState(0); // bumped by onclose to trigger auto-reconnect
   const wsRef = useRef(null);
   const [playerScenePath, setPlayerScenePath] = useState(null);
   const [playerSceneBust, setPlayerSceneBust] = useState(0);
@@ -2156,9 +2157,13 @@ export default function App() {
       ]);
     };
 
+    let retryTimer = null;
     ws.onclose = () => {
       setWsConnected(false);
       wsRef.current = null;
+      // Auto-reconnect: bump wsRetry to re-run this effect. Without it a
+      // server restart left a dead socket silently eating commands.
+      retryTimer = setTimeout(() => setWsRetry((n) => n + 1), 2500);
     };
 
     ws.onerror = () => {
@@ -2166,12 +2171,13 @@ export default function App() {
     };
 
     return () => {
+      if (retryTimer) clearTimeout(retryTimer);
       disconnectWs();
     };
     // Important: do not depend on the full `playSession` object. `character_snapshot` and other
     // updates merge into playSession often; a new object reference would reconnect the socket and
     // the server would emit initial `look` again — duplicate room blocks / "narrative spam".
-  }, [step, playSession?.username, playSession?.characterId, disconnectWs, mergeEchoFromPlayRes]);
+  }, [step, playSession?.username, playSession?.characterId, disconnectWs, mergeEchoFromPlayRes, wsRetry]);
 
   const onSendCommand = useCallback((cmd) => {
     const ws = wsRef.current;

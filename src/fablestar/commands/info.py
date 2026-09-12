@@ -82,4 +82,5 @@ async def help_cmd(session: Session, args: list[str]):
         if cmd is None:
             continue
         doc = cmd.handler.__doc__ or "No description."
-        await session.send(f"{cmd_name.ljust(10)} - {doc.splitlines()[0]}")
+        label = cmd_name if not cmd.aliases else f"{cmd_name} ({', '.join(cmd.aliases)})"
+        await session.send(f"{label.ljust(26)} - {doc.splitlines()[0]}")

@@ -52,12 +52,13 @@ Test suites: server **150** pytest, WorldForge **34** vitest — all green.
       INVENTORY, EFFECTS render live server state (verified in client + ws probe).
       Still fake: MAP / GLYPH LOADOUT / COMMS placeholders
 - [ ] Remove the demo "Corroded Junction" intro block pinned above the real narrative log
-- [ ] Disconnect UX: after a server restart the dead websocket silently swallows
-      commands — needs a "connection lost" banner + auto-reconnect
-- [ ] Command input: rapid submits pool letters into the buffer and a later Enter
-      submits the concatenation ("swsenwseachievements") — clear-on-send / queue sends
-- [ ] `examine` should match room feature names/keywords more leniently (aipub bar
-      features unmatched by "examine bar"); help could list aliases
+- [x] Disconnect UX: "Connection to the station lost — reconnecting…" banner +
+      2.5s auto-reconnect (verified live: kill server → banner, restart → clears)
+- [x] `examine` dead ends now list the room's examinable features (or say nothing
+      rewards a look); help lists aliases ("attack (a, kill, hit)")
+- Command-input letter pooling: could not reproduce with a real keyboard — the
+      "swsenwseachievements" artifact came from automation typing into an
+      unfocused page; CommandInput already clears on send. Watch for it in play
 
 ### Near-term (small)
 - [ ] **README screenshots** — capture `docs/screenshots/player-client.png` and

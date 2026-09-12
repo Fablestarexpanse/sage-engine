@@ -200,4 +200,15 @@ async def examine(session: Session, args: list[str]):
             await session.send(f"\r\n{item.get('description', 'An item you are carrying.')}")
             return
 
-    await session.send(f"You see nothing notable called '{target_name}'.")
+    # Nothing matched — tell the player what IS examinable here instead of a dead end.
+    examinable = [f.name for f in room.features] if room else []
+    if examinable:
+        await session.send(
+            f"You see nothing notable called '{target_name}'. "
+            f"Worth a look: {', '.join(examinable)}."
+        )
+    else:
+        await session.send(
+            f"You see nothing notable called '{target_name}'. "
+            "Nothing here rewards a closer look."
+        )
