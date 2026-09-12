@@ -21,7 +21,9 @@ features:
   search:
     items:
     - power_cell
-    max_finds: 2
+    - scrap_blade
+    - padded_vest
+    max_finds: 3
     respawn_s: 900
     chance: 0.5
 entity_spawns: []

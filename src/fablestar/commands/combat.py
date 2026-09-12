@@ -86,6 +86,18 @@ async def attack(session: Session, args: list[str]):
         player_stats, hybrid_legacy=hybrid
     )
 
+    # Worn gear adds flat bonuses on top of proficiency/stat math.
+    try:
+        from fablestar.items.equipment import equipment_bonuses
+
+        eq_attack, eq_defense = equipment_bonuses(
+            player_stats, app_instance.content_loader.get_item_template
+        )
+        player_attack += eq_attack
+        player_defense_rating += eq_defense
+    except Exception as exc:
+        logger.warning("Equipment bonuses skipped: %s", exc)
+
     async with _entity_lock(target_id):
         # Re-read under the lock: another attacker may have hit (or killed)
         # the target between the room search above and now.

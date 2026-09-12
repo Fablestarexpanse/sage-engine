@@ -79,6 +79,12 @@ Test suites: server **150** pytest, WorldForge **34** vitest — all green.
 - [ ] `content_browser.py` package split (deferred as not-yet-friction)
 
 ### Game content / product (the actual game)
+- [x] Player command surface v1 complete (2026-09-12 audit): use/eat, rest
+      (safe-room heal-over-time), who, tell, emote, equip/unequip with
+      weapon/armor slots feeding combat bonuses; canonical hp/max_hp seeded
+      at bootstrap. Two gear items in the alcove search pool. (8 equip tests)
+- [ ] Glyph runtime (cast/inscribe) — glyph content exists, no engine yet
+- [ ] Party/channels backing for the Comms panel; real map data for Map panel
 - [ ] Flip `proficiency_combat_hybrid = false` once all 12 combat domains have
       leaf coverage, then delete the legacy stat path (pre-1.0 milestone)
 - [ ] Build out real zones/content (starter_zone currently minimal after
