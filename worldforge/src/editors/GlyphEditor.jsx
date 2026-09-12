@@ -3,7 +3,7 @@ import { deepClone } from "../utils/clone.js";
 import yaml from "js-yaml";
 import { joinPaths } from "../utils/paths.js";
 import { useTheme } from "../ThemeContext.jsx";
-import * as fs from "../hooks/useFileSystem.js";
+import * as fs from "../utils/fsBridge.js";
 import TextPromptModal from "../components/TextPromptModal.jsx";
 import { useContent } from "../hooks/useContentStore.js";
 

@@ -11,7 +11,6 @@ describe("runZoneValidation", () => {
     const issues = runZoneValidation(
       [node("a", { entity_spawns: [{ template: "ghost" }] })],
       [],
-      [],
       { zoneId: "z1", entityIds: ["stalker"] }
     );
     expect(issues.some((i) => i.msg.includes('Unknown entity template "ghost"'))).toBe(true);
@@ -20,7 +19,6 @@ describe("runZoneValidation", () => {
   it("accepts known templates and reports loot/prereq problems from ctx", () => {
     const issues = runZoneValidation(
       [node("a", { entity_spawns: [{ template: "stalker" }] })],
-      [],
       [],
       {
         zoneId: "z1",

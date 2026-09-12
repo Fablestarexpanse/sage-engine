@@ -5,11 +5,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const invoke = vi.fn();
 vi.mock("@tauri-apps/api/core", () => ({ invoke: (...args) => invoke(...args) }));
 
-import * as fs from "../useFileSystem.js";
+import * as fs from "../fsBridge.js";
 
 beforeEach(() => invoke.mockReset());
 
-describe("useFileSystem invoke contracts", () => {
+describe("fsBridge invoke contracts", () => {
   it("readYaml parses the file content returned by read_file", async () => {
     invoke.mockResolvedValueOnce("id: z1:a\nname: A\n");
     const doc = await fs.readYaml("/w/zones/z1/rooms/a.yaml");

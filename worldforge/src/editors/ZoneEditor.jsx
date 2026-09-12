@@ -38,7 +38,7 @@ import {
   flowRectIntersects,
   getRoomRectFlow,
 } from "../utils/layoutAlign.js";
-import { layoutGraph } from "../utils/AutoLayout.js";
+import { layoutGraph } from "../utils/autoLayout.js";
 import { runZoneValidation, validationCounts } from "../utils/validation.js";
 import RoomNode from "../nodes/RoomNode.jsx";
 import NoteNode from "../nodes/NoteNode.jsx";
@@ -57,7 +57,7 @@ import {
   stampFolderPath,
 } from "../utils/stampBundle.js";
 import { useTheme } from "../ThemeContext.jsx";
-import * as fs from "../hooks/useFileSystem.js";
+import * as fs from "../utils/fsBridge.js";
 import { useContent } from "../hooks/useContentStore.js";
 import { writeSnapEnabled } from "../hooks/useLocalSettings.js";
 import { deepClone } from "../utils/clone.js";
@@ -716,18 +716,16 @@ function ZoneEditorInner({
           if (!window.confirm(`Replace existing stamp “${stampSlug}”?`)) return;
           await fs.removeDirAll(folder);
         }
-        await saveStampBundle(
-          worldRoot,
-          stampSlug,
+        await saveStampBundle(worldRoot, stampSlug, {
           displayName,
-          zoneId,
+          sourceZoneId: zoneId,
           preserve,
-          draft.roomsBySourceSlug,
-          positionsDoc.positions || {},
-          draft.snapshots,
-          DEFAULT_ROOM_NODE_W,
-          DEFAULT_ROOM_NODE_H
-        );
+          roomsBySourceSlug: draft.roomsBySourceSlug,
+          positionsDocPositions: positionsDoc.positions || {},
+          snapshots: draft.snapshots,
+          wFallback: DEFAULT_ROOM_NODE_W,
+          hFallback: DEFAULT_ROOM_NODE_H,
+        });
         setStatusMsg(`Saved stamp “${displayName}” (${stampSlug})`);
       } catch {
         setStatusMsg("Save stamp failed");
@@ -756,7 +754,11 @@ function ZoneEditorInner({
         const usedSlugs = new Set(Object.keys(roomsLive));
         const stampKey = meta.slug || stampSlug;
         const logicalToNew = buildPlacementSlugMap(logicalKeys, sm, stampKey, usedSlugs);
-        const { outRooms, outPositions, newSlugs } = expandStampForPlacement(zoneId, sm, spd, logicalToNew, flowX, flowY);
+        const { outRooms, outPositions, newSlugs } = expandStampForPlacement(zoneId, sm, spd, {
+          logicalToNewSlug: logicalToNew,
+          offsetX: flowX,
+          offsetY: flowY,
+        });
 
         if (!newSlugs.length) {
           setStatusMsg("Stamp has no rooms to place");
@@ -1211,7 +1213,8 @@ function ZoneEditorInner({
     setNodes([...filteredRn, ...notes]);
     setEdges(filteredEdges);
     setIssues(
-      runZoneValidation(rn, reFlow, externalExits, {
+      runZoneValidation(rn, reFlow, {
+        externalExits,
         zoneId,
         roomsMap,
         entityIds,

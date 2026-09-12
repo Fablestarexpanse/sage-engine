@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import yaml from "js-yaml";
 import { useTheme } from "../ThemeContext.jsx";
 import { joinPaths } from "../utils/paths.js";
-import * as fs from "../hooks/useFileSystem.js";
+import * as fs from "../utils/fsBridge.js";
 
 const TABS = ["General", "Scene", "Exits", "Features", "Hazards", "Entities", "YAML"];
 

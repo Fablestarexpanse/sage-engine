@@ -17,7 +17,7 @@ import { useTheme } from "../ThemeContext.jsx";
 import SystemNode from "../nodes/SystemNode.jsx";
 import ConnectionEdge from "../edges/ConnectionEdge.jsx";
 import SystemPanel from "../panels/SystemPanel.jsx";
-import { layoutGraph } from "../utils/AutoLayout.js";
+import { layoutGraph } from "../utils/autoLayout.js";
 import { useContent } from "../hooks/useContentStore.js";
 
 const nodeTypes = { system: SystemNode };

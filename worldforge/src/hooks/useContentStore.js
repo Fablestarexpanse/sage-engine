@@ -1,7 +1,7 @@
 import { createContext, createElement, useCallback, useContext, useMemo, useReducer, useRef } from "react";
 import { joinPaths } from "../utils/paths.js";
 import { hasAnyWorldContent } from "../utils/worldScaffold.js";
-import * as fs from "./useFileSystem.js";
+import * as fs from "../utils/fsBridge.js";
 
 /**
  * @typedef {Object} ZoneState

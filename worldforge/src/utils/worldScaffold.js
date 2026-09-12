@@ -1,6 +1,6 @@
 import yaml from "js-yaml";
 import { joinPaths } from "./paths.js";
-import * as fs from "../hooks/useFileSystem.js";
+import * as fs from "./fsBridge.js";
 
 async function yamlFilesInDir(dirPath) {
   if (!(await fs.pathExists(dirPath))) return 0;

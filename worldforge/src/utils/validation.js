@@ -21,11 +21,13 @@ import { resolveExitDestination } from "./zoneGraph.js";
 /**
  * @param {import('@xyflow/react').Node[]} nodes
  * @param {import('@xyflow/react').Edge[]} edges
- * @param {ExternalExitRef[]} externalExits
- * @param {ZoneValidationCtx} ctx
+ * @param {ZoneValidationCtx & { externalExits?: ExternalExitRef[] }} [opts] Validation context; `externalExits`
+ *   plus the same fields as {@link ZoneValidationCtx}, matching the options-object convention used by
+ *   `collectItemIssues` in itemValidation.js.
  * @returns {{level: "error"|"warn", msg: string, nodeId?: string}[]}
  */
-export function runZoneValidation(nodes, edges, externalExits = [], ctx = {}) {
+export function runZoneValidation(nodes, edges, opts = {}) {
+  const { externalExits = [], ...ctx } = opts;
   const issues = [];
   const ids = new Set(nodes.map((n) => n.id));
   const connected = new Set();

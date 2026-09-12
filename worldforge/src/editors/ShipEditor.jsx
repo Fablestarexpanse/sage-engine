@@ -15,12 +15,12 @@ import "@xyflow/react/dist/style.css";
 import { joinPaths } from "../utils/paths.js";
 import { parsePositionsDoc, serializePositionsDoc } from "../utils/positionsDoc.js";
 import { buildShipFlow } from "../utils/shipGraph.js";
-import { layoutGraph } from "../utils/AutoLayout.js";
+import { layoutGraph } from "../utils/autoLayout.js";
 import ShipRoomNode from "../nodes/ShipRoomNode.jsx";
 import ExitEdge from "../edges/ExitEdge.jsx";
 import RoomPanel from "../panels/RoomPanel.jsx";
 import { useTheme } from "../ThemeContext.jsx";
-import * as fs from "../hooks/useFileSystem.js";
+import * as fs from "../utils/fsBridge.js";
 import { useContent } from "../hooks/useContentStore.js";
 
 const nodeTypes = { shipRoom: ShipRoomNode };

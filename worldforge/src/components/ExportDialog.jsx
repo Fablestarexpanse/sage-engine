@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { joinPaths } from "../utils/paths.js";
 import { useTheme } from "../ThemeContext.jsx";
-import * as fs from "../hooks/useFileSystem.js";
+import * as fs from "../utils/fsBridge.js";
 import { listStampSlugs } from "../utils/stampBundle.js";
 import { useContent } from "../hooks/useContentStore.js";
 

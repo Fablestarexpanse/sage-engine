@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ContentProvider, useContent } from "./hooks/useContentStore.js";
 import { useLocalSettings, readSnapEnabled } from "./hooks/useLocalSettings.js";
-import * as fs from "./hooks/useFileSystem.js";
+import * as fs from "./utils/fsBridge.js";
 import { createWorldScaffold } from "./utils/worldScaffold.js";
 import { useTheme } from "./ThemeContext.jsx";
 import Sidebar from "./components/Sidebar.jsx";
