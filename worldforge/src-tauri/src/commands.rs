@@ -94,6 +94,7 @@ pub fn delete_file(path: String) -> Result<(), String> {
 
 #[tauri::command]
 pub fn list_dir(path: String) -> Result<Vec<FileEntry>, String> {
+    reject_traversal(&path)?;
     let p = Path::new(&path);
     if !p.is_dir() {
         return Err("not_a_directory".into());
@@ -122,6 +123,7 @@ pub fn list_dir(path: String) -> Result<Vec<FileEntry>, String> {
 
 #[tauri::command]
 pub fn path_exists(path: String) -> Result<bool, String> {
+    reject_traversal(&path)?;
     Ok(Path::new(&path).exists())
 }
 

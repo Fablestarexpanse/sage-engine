@@ -135,12 +135,12 @@ export default function ItemEditor({ worldRoot, selectedId, onSelect }) {
         invalidMessage="Use only letters, numbers, underscore (_), and hyphen (-)."
         onConfirm={(id) => {
           setNewIdOpen(false);
-      const base = { id, name: id, type: "misc", description: "", value: 0, weight: 0, tags: [] };
-      saveItem(worldRoot, id, base).then(() => {
-      dispatch({ type: "ADD_ITEM_ID", id });
-      onSelect(id);
-      }).catch((e) => window.alert(`Create failed: ${e}`));
-
+          const base = { id, name: id, type: "misc", description: "", value: 0, weight: 0, tags: [] };
+          saveItem(worldRoot, id, base)
+            .then(() => {
+              onSelect(id);
+            })
+            .catch((e) => window.alert(`Create failed: ${e}`));
         }}
         onCancel={() => setNewIdOpen(false)}
       />

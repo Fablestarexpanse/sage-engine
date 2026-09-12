@@ -39,7 +39,7 @@ export default function ExportDialog({ worldRoot, contentRoot, zoneIds, systemId
         setStampIds(slugs);
         setSt(Object.fromEntries(slugs.map((id) => [id, true])));
       })
-      .catch(() => {});
+      .catch((e) => setMsg(`Stamp list failed: ${e}`));
     return () => {
       alive = false;
     };

@@ -183,24 +183,24 @@ export default function GlyphEditor({ worldRoot, selectedId, onSelect }) {
         invalidMessage="Use only letters, numbers, underscore (_), and hyphen (-)."
         onConfirm={(id) => {
           setNewIdOpen(false);
-      const base = {
-      id,
-      name: id,
-      category: "combat",
-      tier: 1,
-      body_slot: "forearm",
-      description: "",
-      inscription: "",
-      effect: { type: "damage", magnitude: 0, duration: 0, cooldown: 0 },
-      cost: { energy: 0 },
-      prerequisites: [],
-      tags: [],
-      };
-      saveGlyph(worldRoot, id, base).then(() => {
-      dispatch({ type: "ADD_GLYPH_ID", id });
-      onSelect(id);
-      }).catch((e) => window.alert(`Create failed: ${e}`));
-
+          const base = {
+            id,
+            name: id,
+            category: "combat",
+            tier: 1,
+            body_slot: "forearm",
+            description: "",
+            inscription: "",
+            effect: { type: "damage", magnitude: 0, duration: 0, cooldown: 0 },
+            cost: { energy: 0 },
+            prerequisites: [],
+            tags: [],
+          };
+          saveGlyph(worldRoot, id, base)
+            .then(() => {
+              onSelect(id);
+            })
+            .catch((e) => window.alert(`Create failed: ${e}`));
         }}
         onCancel={() => setNewIdOpen(false)}
       />

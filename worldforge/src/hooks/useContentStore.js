@@ -63,7 +63,7 @@ function sortIds(ids) {
   return [...ids].sort((a, b) => a.localeCompare(b));
 }
 
-function reducer(state, action) {
+export function reducer(state, action) {
   switch (action.type) {
     case "RESET":
       return { ...initialState };
@@ -162,6 +162,7 @@ function reducer(state, action) {
       return {
         ...state,
         entities: { ...state.entities, [id]: data },
+        entityIds: state.entityIds.includes(id) ? state.entityIds : sortIds([...state.entityIds, id]),
       };
     }
     case "DELETE_ENTITY": {
@@ -171,7 +172,11 @@ function reducer(state, action) {
     }
     case "UPDATE_ITEM": {
       const { id, data } = action;
-      return { ...state, items: { ...state.items, [id]: data } };
+      return {
+        ...state,
+        items: { ...state.items, [id]: data },
+        itemIds: state.itemIds.includes(id) ? state.itemIds : sortIds([...state.itemIds, id]),
+      };
     }
     case "DELETE_ITEM": {
       const { id } = action;
@@ -188,7 +193,11 @@ function reducer(state, action) {
     }
     case "UPDATE_GLYPH": {
       const { id, data } = action;
-      return { ...state, glyphs: { ...state.glyphs, [id]: data } };
+      return {
+        ...state,
+        glyphs: { ...state.glyphs, [id]: data },
+        glyphIds: state.glyphIds.includes(id) ? state.glyphIds : sortIds([...state.glyphIds, id]),
+      };
     }
     case "DELETE_GLYPH": {
       const { id } = action;

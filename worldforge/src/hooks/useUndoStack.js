@@ -19,8 +19,20 @@ function clonePositionsDoc(doc) {
  * matching the original per-zone-visit reset.
  *
  * Returns { push(entry), undo(), canUndo() }.
+ * @param {object} opts
+ * @param {string} opts.zoneId
+ * @param {string} opts.worldRoot
+ * @param {Function} opts.dispatch
+ * @param {(worldRoot: string, zoneId: string, slug: string, data: object) => Promise<void>} opts.saveZoneRoom
+ *   Write-then-dispatch room save action from useContentStore; used for the "clearConnections"
+ *   restore so the write always happens before the state update, with failures caught and
+ *   surfaced via `setStatusMsg` instead of throwing to the caller.
+ * @param {string} opts.positionsPath
+ * @param {Function} opts.setPositionsDoc
+ * @param {Function} opts.setStatusMsg
+ * @param {number} [opts.limit]
  */
-export function useUndoStack({ zoneId, worldRoot, dispatch, positionsPath, setPositionsDoc, setStatusMsg, limit = DEFAULT_UNDO_LIMIT }) {
+export function useUndoStack({ zoneId, worldRoot, dispatch, saveZoneRoom, positionsPath, setPositionsDoc, setStatusMsg, limit = DEFAULT_UNDO_LIMIT }) {
   const stackRef = useRef([]);
 
   useEffect(() => {
@@ -67,16 +79,19 @@ export function useUndoStack({ zoneId, worldRoot, dispatch, positionsPath, setPo
       await fs.writeText(positionsPath, serializePositionsDoc(restored));
       setStatusMsg("Undid layout / rotate / map border");
     } else if (entry.type === "clearConnections") {
-      for (const [slug, data] of Object.entries(entry.prevRooms || {})) {
-        dispatch({ type: "UPDATE_ZONE_ROOM", zoneId, slug, data });
-        await fs.writeYaml(joinPaths(worldRoot, "zones", zoneId, "rooms", `${slug}.yaml`), data);
+      try {
+        for (const [slug, data] of Object.entries(entry.prevRooms || {})) {
+          await saveZoneRoom(worldRoot, zoneId, slug, data);
+        }
+        const restored = clonePositionsDoc(entry.prevPositionsDoc);
+        setPositionsDoc(restored);
+        await fs.writeText(positionsPath, serializePositionsDoc(restored));
+        setStatusMsg("Undid clear all connections");
+      } catch (e) {
+        setStatusMsg(`Undo clear connections failed: ${e}`);
       }
-      const restored = clonePositionsDoc(entry.prevPositionsDoc);
-      setPositionsDoc(restored);
-      await fs.writeText(positionsPath, serializePositionsDoc(restored));
-      setStatusMsg("Undid clear all connections");
     }
-  }, [zoneId, worldRoot, dispatch, positionsPath, setPositionsDoc, setStatusMsg]);
+  }, [zoneId, worldRoot, dispatch, saveZoneRoom, positionsPath, setPositionsDoc, setStatusMsg]);
 
   return { push, undo, canUndo };
 }

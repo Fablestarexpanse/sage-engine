@@ -150,20 +150,20 @@ export default function EntityEditor({ worldRoot, selectedId, onSelect, itemIds 
         invalidMessage="Use only letters, numbers, underscore (_), and hyphen (-)."
         onConfirm={(id) => {
           setNewIdOpen(false);
-      const base = {
-      id,
-      name: id,
-      type: "creature",
-      description: { short: "", long: "" },
-      stats: { hp: 10, max_hp: 10, attack: 1, defense: 1 },
-      tags: [],
-      loot: [],
-      };
-      saveEntity(worldRoot, id, base).then(() => {
-      dispatch({ type: "ADD_ENTITY_ID", id });
-      onSelect(id);
-      }).catch((e) => window.alert(`Create failed: ${e}`));
-
+          const base = {
+            id,
+            name: id,
+            type: "creature",
+            description: { short: "", long: "" },
+            stats: { hp: 10, max_hp: 10, attack: 1, defense: 1 },
+            tags: [],
+            loot: [],
+          };
+          saveEntity(worldRoot, id, base)
+            .then(() => {
+              onSelect(id);
+            })
+            .catch((e) => window.alert(`Create failed: ${e}`));
         }}
         onCancel={() => setNewIdOpen(false)}
       />
