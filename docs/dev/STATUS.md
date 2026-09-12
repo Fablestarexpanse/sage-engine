@@ -75,7 +75,9 @@ Epitaph-derived roadmap (design + priorities in `docs/design/EPITAPH_LESSONS.md`
       `achievements` command, kill + unique-room hooks, 3 starter achievements (10 tests)
 - [x] Room chats / ambient events — `ambient:` block on rooms (lines + intervals),
       AmbientManager on tick loop, occupied rooms only, no immediate repeats (7 tests)
-- [ ] Effects framework — timed buffs/debuffs/DoT on players+entities (medium; unlocks hazards/glyphs/bosses)
+- [x] Effects framework — dot/hot/flag effects with merge/expiry/survive-death,
+      EffectsManager tick processing, `effects` command; room hazards now apply
+      DoT on entry with `hazard_resist` proficiency checks (13 tests)
 - [ ] Search/scavenge profiles — `search <feature>` + loot pools + perception check (small-medium)
 - [ ] Faction data model — rep levels, encounter behaviour, teaching, shop stock (medium)
 - [ ] Missions vs quests split — template faction missions + hand-crafted puzzle quests, `questsense` hints (medium, after factions)

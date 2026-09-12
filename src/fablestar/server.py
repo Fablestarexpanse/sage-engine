@@ -22,6 +22,7 @@ from fablestar.core.comfyui_persist import save_comfyui_toml
 from fablestar.core.config import ComfyUIConfig, Config, LLMConfig, load_config
 from fablestar.core.llm_persist import save_llm_toml
 from fablestar.core.tick import TickManager
+from fablestar.effects.manager import EffectsManager
 from fablestar.hot_reload import HotReloader
 from fablestar.llm.client import LLMClient
 from fablestar.llm.prompts import PromptManager
@@ -77,6 +78,7 @@ class FablestarServer:
         self.content_loader = ContentLoader()
         self.spawner = EntitySpawnManager(self)
         self.ambient = AmbientManager(self)
+        self.effects = EffectsManager(self)
         self.hot_reloader = HotReloader(self._on_file_changed)
         self.dispatcher = CommandDispatcher()
         self.nexus = NexusApp(self)
@@ -299,11 +301,13 @@ class FablestarServer:
         registry.load_module_strict("fablestar.commands.items")
         registry.load_module_strict("fablestar.commands.proficiency")
         registry.load_module_strict("fablestar.commands.achievements")
+        registry.load_module_strict("fablestar.commands.effects")
         registry.load_module_strict("fablestar.commands.admin")
 
         # 2. Tick handlers — must be registered before the tick loop starts in step 4
         self.tick_manager.register(self.spawner.on_tick)
         self.tick_manager.register(self.ambient.on_tick)
+        self.tick_manager.register(self.effects.on_tick)
         self.tick_manager.register(self.persistence.on_tick)
 
         # 3. HotReloader — watches content/ and commands/; safe to start any time after step 1
