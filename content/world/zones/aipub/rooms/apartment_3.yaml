@@ -1,0 +1,17 @@
+id: aipub:apartment_3
+zone: aipub
+type: safe
+depth: 1
+description:
+  base: Unit 3 stands empty and available for let. Bare walls, a folded bunk, and
+    a fine layer of dust. A rental terminal by the door blinks READY, waiting for
+    a thumbprint and a deposit.
+exits:
+  north:
+    destination: aipub:hallway_f1
+    description: Door to Unit 3.
+features: []
+entity_spawns: []
+hazards: []
+tags: []
+name: Apartment 3

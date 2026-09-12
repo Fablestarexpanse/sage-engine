@@ -1,0 +1,23 @@
+{
+  "version": 2,
+  "positions": {
+    "entrance": {
+      "x": 400.0,
+      "y": 420.0,
+      "width": 176,
+      "height": 108
+    },
+    "station_street": {
+      "x": 400.0,
+      "y": 300.0,
+      "width": 176,
+      "height": 108
+    }
+  },
+  "notes": [],
+  "muted_edges": [],
+  "floors": {
+    "entrance": 0,
+    "station_street": 0
+  }
+}

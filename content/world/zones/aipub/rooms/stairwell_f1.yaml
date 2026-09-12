@@ -9,7 +9,13 @@ description:
 exits:
   down:
     destination: aipub:stairwell_g
-    description: Worn metal stairs lead up to the residential floor.
+    description: Worn metal stairs descend to the bar below.
+  north:
+    destination: aipub:apartment_1
+    description: Door to Unit 1.
+  east:
+    destination: aipub:hallway_f1
+    description: The residential hallway runs east.
 features: []
 entity_spawns: []
 hazards: []

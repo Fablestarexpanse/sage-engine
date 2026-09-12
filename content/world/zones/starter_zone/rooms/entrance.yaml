@@ -1,0 +1,18 @@
+id: starter_zone:entrance
+zone: starter_zone
+type: hub
+depth: 1
+description:
+  base: A wide arrivals bay at the edge of the station district. Shuttle doors hiss
+    behind you as freshly-woken travellers stumble out under cold white striplights.
+    A flickering holoboard lists local establishments — the AiPub's blue-and-white
+    sign features prominently. The street lies north.
+exits:
+  north:
+    destination: starter_zone:station_street
+    description: The street runs north toward the district.
+features: []
+entity_spawns: []
+hazards: []
+tags: []
+name: Arrival Bay
