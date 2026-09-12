@@ -25,7 +25,8 @@ async def look(session: Session, args: list[str]):
 
     room = app_instance.content_loader.get_room(room_id)
     if room:
-        await session.send(f"\r\n[ {room.id} ]")
+        header = f"{room.name} [ {room.id} ]" if room.name else f"[ {room.id} ]"
+        await session.send(f"\r\n{header}")
 
         # 1. Generate Observations (Facts)
         observation_block = build_room_fact_block(room, {"time_of_day": "Eternal Night"})

@@ -46,6 +46,18 @@ Test suites: server **150** pytest, WorldForge **34** vitest — all green.
 
 ## Needs doing
 
+### Player-UI wiring (from 2026-09-12 live playtest — panels are still mockups)
+- [ ] Wire side panels to server state: LOCATION, VITALS (hp), INVENTORY, EFFECTS —
+      currently hardcoded demo data ("Corroded Junction", 73/100 hp) that contradicts
+      the real game; MAP / GLYPH LOADOUT / COMMS are fully fake placeholders
+- [ ] Remove the demo "Corroded Junction" intro block pinned above the real narrative log
+- [ ] Disconnect UX: after a server restart the dead websocket silently swallows
+      commands — needs a "connection lost" banner + auto-reconnect
+- [ ] Command input: rapid submits pool letters into the buffer and a later Enter
+      submits the concatenation ("swsenwseachievements") — clear-on-send / queue sends
+- [ ] `examine` should match room feature names/keywords more leniently (aipub bar
+      features unmatched by "examine bar"); help could list aliases
+
 ### Near-term (small)
 - [ ] **README screenshots** — capture `docs/screenshots/player-client.png` and
       `worldforge-map-tool.png` (instructions in `docs/screenshots/README.md`)

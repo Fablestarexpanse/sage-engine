@@ -51,6 +51,7 @@ class AmbientModel(BaseModel):
 class RoomModel(BaseModel):
     id: str
     zone: str
+    name: str | None = None  # display name (WorldForge writes it; falls back to the id)
     type: str
     depth: int = 1
     group: str | None = None
