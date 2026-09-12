@@ -94,7 +94,10 @@ Epitaph-derived roadmap (design + priorities in `docs/design/EPITAPH_LESSONS.md`
 - [x] Search/scavenge profiles — `search:` block on features (item pool, shared
       per-window find cap via Redis TTL), `search` command with anomaly_scan
       perception bonus + field gains + `scavenged` counter (7 tests)
-- [ ] Faction data model — rep levels, encounter behaviour, teaching, shop stock (medium)
+- [x] Faction data model v1 — content/factions/*.yaml, per-player rep in stats blob,
+      kill penalties (own faction) + kill rewards (enemies list), standing-crossing
+      announcements, `factions` command; 2 dock factions live (8 tests). Deferred:
+      teaching, shops, encounter behaviour (need NPC AI / shop systems first)
 - [ ] Missions vs quests split — template faction missions + hand-crafted puzzle quests, `questsense` hints (medium, after factions)
 - [ ] Maestro-style event director — player-scored random events, LLM-narrated (medium-large, after effects)
 - [ ] Feature-density check in WorldForge Validate / `validate_zone` (small)

@@ -13,3 +13,4 @@ stats:
   defense: 0
 tags: [mechanical, hostile]
 loot: [power_cell]
+faction: salvage_union

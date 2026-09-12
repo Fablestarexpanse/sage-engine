@@ -1,0 +1,7 @@
+id: dockworkers
+name: Dockworkers' Guild
+description: Cargo handlers who have lost too many toes to feral drones.
+initial_rep: 0
+enemies: [scrap_drone]
+enemy_kill_rep: 4
+tags: [docks, labour]

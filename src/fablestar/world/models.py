@@ -83,6 +83,7 @@ class EntityTemplate(BaseModel):
     )
     tags: set[str] = Field(default_factory=set)
     loot: list[str] = Field(default_factory=list)  # item template IDs it may drop
+    faction: str | None = None  # faction id (content/factions/) that owns this entity
 
 
 class ItemTemplate(BaseModel):
