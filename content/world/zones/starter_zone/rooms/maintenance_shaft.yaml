@@ -1,0 +1,28 @@
+id: starter_zone:maintenance_shaft
+zone: starter_zone
+type: danger
+depth: 2
+description:
+  base: A tight crawlspace of exposed conduit behind the cargo bay. A cracked coolant line paints the
+    walls with frost, and the dosimeter bolted by the hatch ticks in a way that should worry anyone who
+    reads it.
+exits:
+  south:
+    destination: starter_zone:cargo_bay
+    description: A maintenance hatch hangs open, frost curling from the dark behind it.
+features: []
+entity_spawns: []
+hazards:
+- id: coolant_leak
+  type: radiation
+  severity: 1
+  description: The dosimeter by the hatch climbs as invisible heat prickles across your skin.
+tags: []
+name: Maintenance Shaft
+ambient:
+  min_interval: 35
+  max_interval: 90
+  lines:
+  - The dosimeter ticks a little faster, then subsides.
+  - Frost crackles along the cracked coolant line.
+  - A conduit pops and spits a single blue spark into the dark.

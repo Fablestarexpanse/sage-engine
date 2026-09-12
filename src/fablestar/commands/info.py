@@ -35,7 +35,7 @@ async def look(session: Session, args: list[str]):
             prompt = app_instance.prompt_manager.render(
                 "room_description", observation_block=observation_block
             )
-            narration = await app_instance.llm_client.generate(prompt)
+            narration = await app_instance.llm_client.generate_or_raise(prompt)
             clean_narration = validator.sanitize(narration)
             await session.send(clean_narration)
         except Exception as e:

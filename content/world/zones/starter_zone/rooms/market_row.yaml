@@ -1,0 +1,42 @@
+id: starter_zone:market_row
+zone: starter_zone
+type: corridor
+depth: 1
+description:
+  base: A cramped lane of stacked vendor stalls, most abandoned mid-trade. Tarps flap over crates of unsold
+    goods and a rack of second-hand vacuum suits sways gently with the station's hum.
+exits:
+  east:
+    destination: starter_zone:plaza
+    description: Tarp-covered stalls crowd the lane west.
+  north:
+    destination: starter_zone:storage_alcove
+    description: A gap between stalls leads back to a storage alcove.
+features:
+- id: vendor_stalls
+  name: abandoned vendor stalls
+  keywords:
+  - stalls
+  - stall
+  - tarps
+  - goods
+  description: Rows of hastily abandoned stalls. Under the tarps, crates of unsold stock nobody ever came
+    back for.
+  search:
+    items:
+    - ration_pack
+    - power_cell
+    max_finds: 4
+    respawn_s: 600
+    chance: 0.65
+entity_spawns: []
+hazards: []
+tags: []
+name: Market Row
+ambient:
+  min_interval: 45
+  max_interval: 120
+  lines:
+  - A tarp flaps loose, then settles back over its stall.
+  - The rack of vacuum suits sways gently, sleeves lifting like a slow wave.
+  - A price display blinks half a credit lower, haggling with nobody.

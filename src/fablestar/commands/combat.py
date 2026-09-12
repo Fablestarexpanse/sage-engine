@@ -157,7 +157,7 @@ async def attack(session: Session, args: list[str]):
             "combat_narration",
             narration_facts=narration_facts,
         )
-        narration = await app_instance.llm_client.generate(prompt, max_tokens=200)
+        narration = await app_instance.llm_client.generate_or_raise(prompt, max_tokens=200)
     except Exception as e:
         logger.warning(f"Combat narration failed: {e}")
         if entity_dead:

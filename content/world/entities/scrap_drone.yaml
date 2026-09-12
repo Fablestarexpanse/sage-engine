@@ -1,0 +1,15 @@
+id: scrap_drone
+name: feral scrap drone
+type: construct
+description:
+  short: A knee-high salvage drone gone feral.
+  long: A knee-high salvage drone, plating scored and one manipulator arm sharpened
+    by wear into something like a blade. Its maintenance leash expired months ago
+    and it now defends the cargo bay's junk piles as territory.
+stats:
+  hp: 8
+  max_hp: 8
+  attack: 2
+  defense: 0
+tags: [mechanical, hostile]
+loot: [power_cell]

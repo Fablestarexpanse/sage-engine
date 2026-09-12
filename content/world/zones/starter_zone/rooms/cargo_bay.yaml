@@ -1,0 +1,30 @@
+id: starter_zone:cargo_bay
+zone: starter_zone
+type: danger
+depth: 2
+description:
+  base: A cavernous cargo bay lit by failing amber floods. Container stacks form canyons of shadow, and
+    something small and mechanical skitters between them — the bay's scrap drones have gone feral since
+    the last maintenance cycle.
+exits:
+  west:
+    destination: starter_zone:plaza
+    description: Heavy blast doors stand wedged half-open toward the cargo docks.
+  north:
+    destination: starter_zone:maintenance_shaft
+    description: A maintenance hatch hangs open, frost curling from the dark behind it.
+features: []
+entity_spawns:
+- template: scrap_drone
+  chance: 0.5
+  max_count: 2
+hazards: []
+tags: []
+name: Cargo Bay 7
+ambient:
+  min_interval: 40
+  max_interval: 100
+  lines:
+  - Metal skitters over metal somewhere in the container canyons.
+  - An amber floodlight buzzes, dims, and steadies again.
+  - A drone's optics glint from a gap between containers, then vanish.
