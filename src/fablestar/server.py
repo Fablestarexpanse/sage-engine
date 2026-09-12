@@ -35,6 +35,7 @@ from fablestar.state.models import Character
 from fablestar.state.persistence import PersistenceManager
 from fablestar.state.postgres import PostgresState
 from fablestar.state.redis_client import RedisState
+from fablestar.world.ambient import AmbientManager
 from fablestar.world.loader import ContentLoader
 from fablestar.world.spawner import EntitySpawnManager
 
@@ -75,6 +76,7 @@ class FablestarServer:
         self.persistence = PersistenceManager(self)
         self.content_loader = ContentLoader()
         self.spawner = EntitySpawnManager(self)
+        self.ambient = AmbientManager(self)
         self.hot_reloader = HotReloader(self._on_file_changed)
         self.dispatcher = CommandDispatcher()
         self.nexus = NexusApp(self)
@@ -301,6 +303,7 @@ class FablestarServer:
 
         # 2. Tick handlers — must be registered before the tick loop starts in step 4
         self.tick_manager.register(self.spawner.on_tick)
+        self.tick_manager.register(self.ambient.on_tick)
         self.tick_manager.register(self.persistence.on_tick)
 
         # 3. HotReloader — watches content/ and commands/; safe to start any time after step 1

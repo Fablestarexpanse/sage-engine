@@ -14,5 +14,13 @@ exits:
 features: []
 entity_spawns: []
 hazards: []
+ambient:
+  min_interval: 40
+  max_interval: 110
+  lines:
+    - A shuttle door hisses open somewhere behind you, disgorging another knot of bleary travellers.
+    - The holoboard flickers, cycles through three adverts, and settles back on the AiPub's sign.
+    - A maintenance drone whirs past overhead, trailing the smell of ozone.
+    - Cold air washes through the bay as a departure warning chimes in the distance.
 tags: []
 name: Arrival Bay

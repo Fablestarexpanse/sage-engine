@@ -30,6 +30,14 @@ class HazardModel(BaseModel):
     description: str
 
 
+class AmbientModel(BaseModel):
+    """Occasional atmosphere lines shown to players in the room (Epitaph 'room chats')."""
+
+    lines: list[str] = Field(min_length=1)
+    min_interval: float = Field(default=45.0, gt=0)
+    max_interval: float = Field(default=120.0, gt=0)
+
+
 class RoomModel(BaseModel):
     id: str
     zone: str
@@ -41,6 +49,7 @@ class RoomModel(BaseModel):
     features: list[FeatureModel] = Field(default_factory=list)
     entity_spawns: list[EntitySpawnModel] = Field(default_factory=list)
     hazards: list[HazardModel] = Field(default_factory=list)
+    ambient: AmbientModel | None = None
     tags: set[str] = Field(default_factory=set)
 
 
