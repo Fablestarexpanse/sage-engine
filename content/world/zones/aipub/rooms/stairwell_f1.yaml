@@ -1,0 +1,17 @@
+id: aipub:stairwell_f1
+zone: aipub
+type: junction
+depth: 1
+description:
+  base: A cramped landing at the top of the stairs. Scuffed numbered placards mark
+    four apartment doors. The hum of the bar below is muffled but ever-present. A
+    recycling chute sits at the end of the hall.
+exits:
+  down:
+    destination: aipub:stairwell_g
+    description: Worn metal stairs lead up to the residential floor.
+features: []
+entity_spawns: []
+hazards: []
+tags: []
+name: Stairwell — Upper Landing

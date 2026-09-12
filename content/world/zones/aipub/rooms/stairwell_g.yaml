@@ -1,0 +1,23 @@
+id: aipub:stairwell_g
+zone: aipub
+type: corridor
+depth: 1
+description:
+  base: 'A narrow stairwell with scuffed metal treads. Emergency lighting casts everything
+    in amber. A handwritten sign reads: RESIDENTS ONLY — UPPER FLOORS. An iron grate
+    in the floor leads down to the cellar.'
+exits:
+  east:
+    destination: aipub:main_bar
+    description: ''
+  down:
+    destination: aipub:storage_basement
+    description: A heavy iron grate descends to the cellar below.
+  up:
+    destination: aipub:stairwell_f1
+    description: Worn metal stairs lead up to the residential floor.
+features: []
+entity_spawns: []
+hazards: []
+tags: []
+name: Stairwell — Ground Floor

@@ -1,14 +1,3 @@
-galaxy:
-  id: fablestar_galaxy
-  name: The Fablestar Reach
-  systems:
-  - id: sol_prime
-    file: sol_prime.yaml
-  - id: vega_reach
-    file: vega_reach.yaml
-  - id: void_terminus
-    file: void_terminus.yaml
-  - id: nebula1
-    file: nebula1.yaml
-  - id: test
-    file: test.yaml
+﻿id: fablestar_galaxy
+name: Fablestar Galaxy
+systems: []

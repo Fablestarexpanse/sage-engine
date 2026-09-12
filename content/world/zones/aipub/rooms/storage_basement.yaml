@@ -1,0 +1,18 @@
+id: aipub:storage_basement
+zone: aipub
+type: chamber
+depth: 1
+description:
+  base: A cold, low-ceilinged basement beneath the pub. Shelving units groan with
+    crates of synth-spirits, spare gas canisters, and cases of bottled imports from
+    six different systems. A single flickering light strip runs the length of the
+    ceiling. Water stains trace patterns down the walls. Somewhere, something drips.
+exits:
+  up:
+    destination: aipub:stairwell_g
+    description: A heavy iron grate descends to the cellar below.
+features: []
+entity_spawns: []
+hazards: []
+tags: []
+name: Storage Basement

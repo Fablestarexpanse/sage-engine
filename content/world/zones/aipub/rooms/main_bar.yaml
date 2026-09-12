@@ -1,0 +1,25 @@
+id: aipub:main_bar
+zone: aipub
+type: hub
+depth: 1
+description:
+  base: The heart of the AiPub. A long chrome bar stretches across the far wall, lined
+    with stools of worn synthetic leather. Holographic cocktail menus float above
+    the counter. The barkeep — a half-chromed human with a permanent squint — serves
+    drinks with mechanical efficiency. Regulars nurse their glasses and argue about
+    jump-gate politics.
+exits:
+  south:
+    destination: aipub:pub_entrance
+    description: ''
+  east:
+    destination: aipub:bar_back
+    description: ''
+  west:
+    destination: aipub:stairwell_g
+    description: ''
+features: []
+entity_spawns: []
+hazards: []
+tags: []
+name: The Main Bar

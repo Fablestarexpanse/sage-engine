@@ -1,9 +1,0 @@
-id: "resonance_shard"
-name: "Resonance Shard"
-type: "material"
-description: "A sliver of crystallized resonance energy, still faintly warm. The labyrinth hums differently wherever these are found."
-value: 40
-weight: 0.1
-tags:
-  - rare
-  - resonance

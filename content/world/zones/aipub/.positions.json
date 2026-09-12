@@ -1,0 +1,65 @@
+{
+  "version": 2,
+  "positions": {
+    "pub_entrance": {
+      "x": 400.0,
+      "y": 300.0,
+      "width": 176,
+      "height": 108
+    },
+    "main_bar": {
+      "x": 400.0,
+      "y": 170.0,
+      "width": 176,
+      "height": 108
+    },
+    "bar_back": {
+      "x": 620.0,
+      "y": 170.0,
+      "width": 176,
+      "height": 108
+    },
+    "stairwell_g": {
+      "x": 180.0,
+      "y": 170.0,
+      "width": 176,
+      "height": 108
+    },
+    "storage_basement": {
+      "x": 180.0,
+      "y": 170.0,
+      "width": 176,
+      "height": 108
+    },
+    "stairwell_f1": {
+      "x": 180.0,
+      "y": 170.0,
+      "width": 176,
+      "height": 108
+    },
+    "apartment_1": {
+      "x": 180.0,
+      "y": 40.0,
+      "width": 176,
+      "height": 108
+    },
+    "apartment_2": {
+      "x": 400.0,
+      "y": 170.0,
+      "width": 176,
+      "height": 108
+    }
+  },
+  "notes": [],
+  "muted_edges": [],
+  "floors": {
+    "pub_entrance": 0,
+    "main_bar": 0,
+    "bar_back": 0,
+    "stairwell_g": 0,
+    "storage_basement": -1,
+    "stairwell_f1": 1,
+    "apartment_1": 1,
+    "apartment_2": 1
+  }
+}
