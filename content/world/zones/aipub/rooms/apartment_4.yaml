@@ -1,0 +1,17 @@
+id: aipub:apartment_4
+zone: aipub
+type: safe
+depth: 1
+description:
+  base: 'Unit 4 smells faintly of engine grease. The previous tenant left in a hurry:
+    a cracked mug on the counter, a wall calendar three months out of date, and a
+    single magnetic boot nobody has claimed.'
+exits:
+  west:
+    destination: aipub:hallway_f1
+    description: Door to Unit 4 at the end of the hall.
+features: []
+entity_spawns: []
+hazards: []
+tags: []
+name: Apartment 4

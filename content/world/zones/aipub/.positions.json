@@ -45,6 +45,24 @@
     },
     "apartment_2": {
       "x": 400.0,
+      "y": 40.0,
+      "width": 176,
+      "height": 108
+    },
+    "apartment_3": {
+      "x": 400.0,
+      "y": 300.0,
+      "width": 176,
+      "height": 108
+    },
+    "apartment_4": {
+      "x": 620.0,
+      "y": 170.0,
+      "width": 176,
+      "height": 108
+    },
+    "hallway_f1": {
+      "x": 400.0,
       "y": 170.0,
       "width": 176,
       "height": 108
@@ -60,6 +78,9 @@
     "storage_basement": -1,
     "stairwell_f1": 1,
     "apartment_1": 1,
-    "apartment_2": 1
+    "apartment_2": 1,
+    "apartment_3": 1,
+    "apartment_4": 1,
+    "hallway_f1": 1
   }
 }

@@ -7,7 +7,10 @@ description:
     star charts pinned to the walls and a small hydroponic herb rack on the windowsill.
     The bunk folds flat against the wall when not in use. A porthole overlooks the
     street below.
-exits: {}
+exits:
+  south:
+    destination: aipub:stairwell_f1
+    description: Door to Unit 1.
 features: []
 entity_spawns: []
 hazards: []

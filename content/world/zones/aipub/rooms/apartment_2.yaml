@@ -6,7 +6,10 @@ description:
   base: Unit 2 is cluttered with tech — stripped circuit boards, half-assembled comms
     gear, and a pair of salvaged drones hanging from the ceiling like trophies. The
     resident has soundproofed the walls with foam panels, mostly successfully.
-exits: {}
+exits:
+  south:
+    destination: aipub:hallway_f1
+    description: Door to Unit 2.
 features: []
 entity_spawns: []
 hazards: []

@@ -10,6 +10,9 @@ exits:
   north:
     destination: aipub:main_bar
     description: ''
+  west:
+    destination: starter_zone:station_street
+    description: The dockside street runs west toward the arrival bay.
 features: []
 entity_spawns: []
 hazards: []

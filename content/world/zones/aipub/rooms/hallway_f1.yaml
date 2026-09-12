@@ -1,0 +1,26 @@
+id: aipub:hallway_f1
+zone: aipub
+type: corridor
+depth: 1
+description:
+  base: A carpeted hallway running the length of the residential floor. Numbered doors
+    line both sides, each with its own worn welcome mat or lack thereof. A recycling
+    chute is set into the far wall, its hatch scuffed from years of overstuffed bags.
+exits:
+  west:
+    destination: aipub:stairwell_f1
+    description: The residential hallway runs east.
+  north:
+    destination: aipub:apartment_2
+    description: Door to Unit 2.
+  south:
+    destination: aipub:apartment_3
+    description: Door to Unit 3.
+  east:
+    destination: aipub:apartment_4
+    description: Door to Unit 4 at the end of the hall.
+features: []
+entity_spawns: []
+hazards: []
+tags: []
+name: Residential Hallway
