@@ -71,7 +71,8 @@ Test suites: server **150** pytest, WorldForge **34** vitest — all green.
       test-content cleanup)
 
 Epitaph-derived roadmap (design + priorities in `docs/design/EPITAPH_LESSONS.md`):
-- [ ] Achievements system — YAML criteria counters, tiers, Redis counter API (small; do first)
+- [x] Achievements system — YAML criteria counters, tiers, counters in player stats blob;
+      `achievements` command, kill + unique-room hooks, 3 starter achievements (10 tests)
 - [ ] Room chats / ambient events — `ambient:` list on rooms, tick-driven (small)
 - [ ] Effects framework — timed buffs/debuffs/DoT on players+entities (medium; unlocks hazards/glyphs/bosses)
 - [ ] Search/scavenge profiles — `search <feature>` + loot pools + perception check (small-medium)

@@ -1,0 +1,8 @@
+id: pathfinder
+name: Pathfinder
+story: refused to stay where you were put
+level: minor
+criteria:
+  rooms_visited: 10
+category: [exploration]
+instructions: Visit 10 different rooms.

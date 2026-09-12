@@ -41,9 +41,16 @@ def move_to(direction: str):
 
         await try_field_gain_for_player(player_id, "traversal.navigation.pathfinding", chance=0.12)
 
+        # Unique-room exploration counter (best-effort, writes only on first visit).
+        from fablestar.achievements.engine import announcement, record_room_visit_for_player
+
+        granted = await record_room_visit_for_player(player_id, target_room_id)
+
         # 4. Describe new room
         await session.send(f"You move {direction}.")
         await app_instance.dispatcher.dispatch(session, "look")
+        for ach in granted:
+            await session.send(f"\r\n{announcement(ach)}")
 
     return _direction_handler
 

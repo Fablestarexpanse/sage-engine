@@ -121,6 +121,20 @@ async def attack(session: Session, args: list[str]):
     except Exception as exc:
         logger.warning("Combat proficiency gain skipped: %s", exc)
 
+    # Achievement counters: total kills plus per-template kills.
+    newly_granted = []
+    if entity_dead:
+        try:
+            from fablestar.achievements.engine import record_counter
+
+            ach_registry = app_instance.content_loader.get_achievement_registry()
+            newly_granted += record_counter(player_stats, ach_registry, "kills")
+            template_id = target_state.get("template", "")
+            if template_id:
+                newly_granted += record_counter(player_stats, ach_registry, f"kills.{template_id}")
+        except Exception as exc:
+            logger.warning("Achievement counters skipped: %s", exc)
+
     await app_instance.redis.set_player_stats(player_id, player_stats)
 
     # --- LLM narrates the exchange ---
@@ -170,6 +184,12 @@ async def attack(session: Session, args: list[str]):
                 await session.send(f"{entity_name} drops: {', '.join(drop_names)}.")
         else:
             await session.send(f"{entity_name} is dead.")
+
+    if newly_granted:
+        from fablestar.achievements.engine import announcement
+
+        for ach in newly_granted:
+            await session.send(f"\r\n{announcement(ach)}")
 
     if player_stats.get("hp", 1) <= 0:
         await session.send("\r\nYou have been slain. Disconnecting...")

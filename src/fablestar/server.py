@@ -296,6 +296,7 @@ class FablestarServer:
         registry.load_module_strict("fablestar.commands.combat")
         registry.load_module_strict("fablestar.commands.items")
         registry.load_module_strict("fablestar.commands.proficiency")
+        registry.load_module_strict("fablestar.commands.achievements")
         registry.load_module_strict("fablestar.commands.admin")
 
         # 2. Tick handlers — must be registered before the tick loop starts in step 4

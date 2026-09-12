@@ -2,7 +2,7 @@
 
 import logging
 from pathlib import Path
-from typing import Any, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 import yaml
 from pydantic import BaseModel
@@ -10,6 +10,9 @@ from pydantic import BaseModel
 from fablestar.proficiencies.registry import ProficiencyRegistry
 from fablestar.proficiencies.registry_cache import ProficiencyRegistryCache
 from fablestar.world.models import EntityTemplate, ItemTemplate, RoomModel
+
+if TYPE_CHECKING:
+    from fablestar.achievements.registry import AchievementRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -125,6 +128,17 @@ class ContentLoader:
     def get_proficiency_registry(self) -> ProficiencyRegistry:
         """Delegate to the proficiencies package's own registry cache."""
         return self._proficiency_cache.get()
+
+    def get_achievement_registry(self) -> "AchievementRegistry":
+        """Load and cache the achievement registry from content/achievements/."""
+        cache_key = "achievements:registry"
+        if cache_key in self._cache:
+            return self._cache[cache_key]
+        from fablestar.achievements.registry import load_achievements
+
+        registry = load_achievements(self.content_dir)
+        self._cache[cache_key] = registry
+        return registry
 
     def invalidate(self, file_path: Path):
         """Invalidate cache entries associated with a changed file."""

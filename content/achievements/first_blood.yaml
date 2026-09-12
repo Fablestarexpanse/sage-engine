@@ -1,0 +1,8 @@
+id: first_blood
+name: First Blood
+story: put something down for good
+level: minor
+criteria:
+  kills: 1
+category: [combat]
+instructions: Kill any hostile entity.

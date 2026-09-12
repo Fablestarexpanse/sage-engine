@@ -1,0 +1,8 @@
+id: exterminator
+name: Exterminator
+story: made a habit of it
+level: small
+criteria:
+  kills: 25
+category: [combat]
+instructions: Kill 25 hostile entities of any kind.
