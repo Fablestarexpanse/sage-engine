@@ -421,7 +421,6 @@ class FablestarServer:
         from fablestar.proficiencies.state_helpers import (
             ensure_proficiency_block,
             migrate_legacy_stats,
-            total_proficiency_levels,
         )
 
         norm_stats = migrate_legacy_stats(dict(character.stats))
@@ -433,24 +432,63 @@ class FablestarServer:
         await self.redis.set_player_stats(character.name, norm_stats)
         await self.redis.set_player_inventory(character.name, character.inventory)
 
-        try:
-            reg = self.content_loader.get_proficiency_registry()
-            total_lv = total_proficiency_levels(norm_stats, registry=reg)
-        except Exception:
-            total_lv = total_proficiency_levels(norm_stats)
-        from fablestar.network.play_messages import CharacterSnapshotNotice
-
-        snapshot: CharacterSnapshotNotice = {
-            "client_notice": "character_snapshot",
-            "character_name": character.name,
-            "stats": norm_stats,
-            "resonance_levels_total": total_lv,
-        }
-        await session.send(json.dumps(snapshot) + "\r\n")
+        await self.push_character_snapshot(session)
 
         # Initial look
         await self.dispatcher.dispatch(session, "look")
         await session.send_prompt()
+
+    async def push_character_snapshot(self, session: Session) -> None:
+        """Send the live character_snapshot notice that drives the client side panels."""
+        import time as _time
+
+        from fablestar.effects.engine import ensure_effects
+        from fablestar.network.play_messages import CharacterSnapshotNotice
+        from fablestar.proficiencies.state_helpers import total_proficiency_levels
+
+        player_id = session.player_id
+        if not player_id:
+            return
+        try:
+            stats = await self.redis.get_player_stats(player_id)
+            inventory = await self.redis.get_player_inventory(player_id)
+            room_id = await self.redis.get_player_location(player_id)
+            room = self.content_loader.get_room(room_id) if room_id else None
+
+            try:
+                reg = self.content_loader.get_proficiency_registry()
+                total_lv = total_proficiency_levels(stats, registry=reg)
+            except Exception:
+                total_lv = total_proficiency_levels(stats)
+
+            now = _time.time()
+            effects = [
+                {
+                    "name": e.get("name", "?"),
+                    "description": e.get("description", ""),
+                    "debuff": bool(e.get("debuff", True)),
+                    "seconds_left": (
+                        None if e.get("expires_at") is None else max(0, int(e["expires_at"] - now))
+                    ),
+                }
+                for e in ensure_effects(stats)
+            ]
+
+            snapshot: CharacterSnapshotNotice = {
+                "client_notice": "character_snapshot",
+                "character_name": player_id,
+                "stats": stats,
+                "resonance_levels_total": total_lv,
+                "location": {
+                    "id": room_id or "",
+                    "name": room.name if room and room.name else None,
+                },
+                "effects": effects,
+                "inventory": list(inventory),
+            }
+            await session.send(json.dumps(snapshot) + "\r\n")
+        except Exception:
+            logger.debug("character_snapshot push failed for %s", player_id, exc_info=True)
 
     async def run_session_loop(self, session: Session):
         """Main input/output loop for a single session: authenticate → bootstrap → command loop."""
@@ -468,6 +506,8 @@ class FablestarServer:
 
                 if line:
                     await self.dispatcher.dispatch(session, line)
+                    # Keep the client's side panels in sync after every command.
+                    await self.push_character_snapshot(session)
 
                 await session.send_prompt()
 

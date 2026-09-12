@@ -2115,6 +2115,9 @@ export default function App() {
                   characterStats: j.stats && typeof j.stats === "object" ? j.stats : prev.characterStats,
                   resonanceLevelsTotal:
                     typeof j.resonance_levels_total === "number" ? j.resonance_levels_total : prev.resonanceLevelsTotal,
+                  liveLocation: j.location && typeof j.location === "object" ? j.location : prev.liveLocation,
+                  liveEffects: Array.isArray(j.effects) ? j.effects : prev.liveEffects,
+                  liveInventory: Array.isArray(j.inventory) ? j.inventory : prev.liveInventory,
                 }
               : prev
           );
@@ -2289,6 +2292,9 @@ export default function App() {
             isGm: playSession.isGm,
             characterStats: playSession.characterStats ?? null,
             resonanceLevelsTotal: playSession.resonanceLevelsTotal ?? null,
+            liveLocation: playSession.liveLocation ?? null,
+            liveEffects: playSession.liveEffects ?? null,
+            liveInventory: playSession.liveInventory ?? null,
           }}
           onSignOut={onSignOut}
           narrativeLines={narrativeLines}

@@ -47,6 +47,7 @@ class EffectsManager:
             return
         for msg in messages:
             await session.send(f"\r\n{msg}")
+        await self.server.push_character_snapshot(session)
         if int(stats.get("hp", 1)) <= 0:
             await session.send("\r\nYou succumb to your afflictions. Disconnecting...")
             await session.close()
