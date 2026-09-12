@@ -26,6 +26,7 @@ from fablestar.effects.manager import EffectsManager
 from fablestar.hot_reload import HotReloader
 from fablestar.llm.client import LLMClient
 from fablestar.llm.prompts import PromptManager
+from fablestar.maestro.director import MaestroDirector
 from fablestar.network.session import Session, SessionManager
 from fablestar.parser.dispatcher import CommandDispatcher
 from fablestar.services._shared import resolve_play_account
@@ -79,6 +80,7 @@ class FablestarServer:
         self.spawner = EntitySpawnManager(self)
         self.ambient = AmbientManager(self)
         self.effects = EffectsManager(self)
+        self.maestro = MaestroDirector(self)
         self.hot_reloader = HotReloader(self._on_file_changed)
         self.dispatcher = CommandDispatcher()
         self.nexus = NexusApp(self)
@@ -311,6 +313,7 @@ class FablestarServer:
         self.tick_manager.register(self.spawner.on_tick)
         self.tick_manager.register(self.ambient.on_tick)
         self.tick_manager.register(self.effects.on_tick)
+        self.tick_manager.register(self.maestro.on_tick)
         self.tick_manager.register(self.persistence.on_tick)
 
         # 3. HotReloader — watches content/ and commands/; safe to start any time after step 1

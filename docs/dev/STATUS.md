@@ -104,7 +104,11 @@ Epitaph-derived roadmap (design + priorities in `docs/design/EPITAPH_LESSONS.md`
       counter + Contractor achievement; `missions` command (10 tests).
       Hand-crafted puzzle quests + `questsense`: deliberately NOT planned for
       now (owner call 2026-09-12) — missions cover advancement; revisit post-1.0
-- [ ] Maestro-style event director — player-scored random events, LLM-narrated (medium-large, after effects)
+- [x] Maestro event director — 30s consideration windows, per-player cooldowns,
+      roulette over module interests with heavy do-nothing weight; modules:
+      ambush (spawn-capable room + healthy player), mercy (supplies when hurt),
+      dread (atmosphere). Live-verified ambush + dread firings (7 tests).
+      LLM-narrated variants: later, modules are the hook point
 - [ ] Feature-density check in WorldForge Validate / `validate_zone` (small)
 - [ ] UX niceties parked from the audit: redo, delete-key, bulk multi-select
       actions, keyboard-shortcut discoverability
