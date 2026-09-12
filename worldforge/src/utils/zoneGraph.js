@@ -75,7 +75,8 @@ export function buildZoneFlow(zoneId, roomsMap, positionsDoc, opts = {}) {
     const locked = Boolean(pos.locked);
     const rot = Number(pos.rotation);
     const rotation = Number.isFinite(rot) ? rot : 0;
-    const label = data.name || slug;
+    const parseError = Boolean(data._parseError);
+    const label = parseError ? `⚠ ${slug}` : data.name || slug;
     const isPlaceholder = String(data.name || "").trim() === "?";
 
     /** Directions with an exit linked to another room in this zone (in-zone graph edge). */
@@ -114,6 +115,7 @@ export function buildZoneFlow(zoneId, roomsMap, positionsDoc, opts = {}) {
         isPlaceholder,
         layoutBorderColor: borderColor,
         rotation,
+        parseError,
       },
     });
     i += 1;

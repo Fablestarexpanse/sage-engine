@@ -57,7 +57,7 @@ export default function GlyphEditor({ worldRoot, selectedId, onSelect }) {
     }),
     [COLORS]
   );
-  const { glyphs, glyphIds, dispatch } = useContent();
+  const { glyphs, glyphIds, dispatch, saveGlyph } = useContent();
   const [draft, setDraft] = useState(null);
   const [dirty, setDirty] = useState(false);
   const [newIdOpen, setNewIdOpen] = useState(false);
@@ -76,8 +76,12 @@ export default function GlyphEditor({ worldRoot, selectedId, onSelect }) {
 
   const save = async () => {
     if (!selectedId || !draft) return;
-    await fs.writeYaml(joinPaths(worldRoot, "glyphs", `${selectedId}.yaml`), draft);
-    dispatch({ type: "UPDATE_GLYPH", id: selectedId, data: draft });
+    try {
+      await saveGlyph(worldRoot, selectedId, draft);
+    } catch (e) {
+      window.alert(`Save failed: ${e}`);
+      return;
+    }
     setDirty(false);
   };
 
@@ -192,11 +196,10 @@ export default function GlyphEditor({ worldRoot, selectedId, onSelect }) {
       prerequisites: [],
       tags: [],
       };
-      fs.writeYaml(joinPaths(worldRoot, "glyphs", `${id}.yaml`), base).then(() => {
-      dispatch({ type: "UPDATE_GLYPH", id, data: base });
+      saveGlyph(worldRoot, id, base).then(() => {
       dispatch({ type: "ADD_GLYPH_ID", id });
       onSelect(id);
-      });
+      }).catch((e) => window.alert(`Create failed: ${e}`));
 
         }}
         onCancel={() => setNewIdOpen(false)}

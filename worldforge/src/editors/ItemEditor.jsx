@@ -53,7 +53,7 @@ export default function ItemEditor({ worldRoot, selectedId, onSelect }) {
     }),
     [COLORS]
   );
-  const { items, itemIds, dispatch } = useContent();
+  const { items, itemIds, dispatch, saveItem } = useContent();
   const [draft, setDraft] = useState(null);
   const [dirty, setDirty] = useState(false);
   const [newIdOpen, setNewIdOpen] = useState(false);
@@ -72,8 +72,12 @@ export default function ItemEditor({ worldRoot, selectedId, onSelect }) {
 
   const save = async () => {
     if (!selectedId || !draft) return;
-    await fs.writeYaml(joinPaths(worldRoot, "items", `${selectedId}.yaml`), draft);
-    dispatch({ type: "UPDATE_ITEM", id: selectedId, data: draft });
+    try {
+      await saveItem(worldRoot, selectedId, draft);
+    } catch (e) {
+      window.alert(`Save failed: ${e}`);
+      return;
+    }
     setDirty(false);
   };
 
@@ -132,11 +136,10 @@ export default function ItemEditor({ worldRoot, selectedId, onSelect }) {
         onConfirm={(id) => {
           setNewIdOpen(false);
       const base = { id, name: id, type: "misc", description: "", value: 0, weight: 0, tags: [] };
-      fs.writeYaml(joinPaths(worldRoot, "items", `${id}.yaml`), base).then(() => {
-      dispatch({ type: "UPDATE_ITEM", id, data: base });
+      saveItem(worldRoot, id, base).then(() => {
       dispatch({ type: "ADD_ITEM_ID", id });
       onSelect(id);
-      });
+      }).catch((e) => window.alert(`Create failed: ${e}`));
 
         }}
         onCancel={() => setNewIdOpen(false)}

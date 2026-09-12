@@ -53,7 +53,7 @@ export default function EntityEditor({ worldRoot, selectedId, onSelect, itemIds 
     }),
     [COLORS]
   );
-  const { entities, entityIds, dispatch } = useContent();
+  const { entities, entityIds, dispatch, saveEntity } = useContent();
   const [draft, setDraft] = useState(null);
   const [dirty, setDirty] = useState(false);
   const [newIdOpen, setNewIdOpen] = useState(false);
@@ -72,9 +72,12 @@ export default function EntityEditor({ worldRoot, selectedId, onSelect, itemIds 
 
   const save = async () => {
     if (!selectedId || !draft) return;
-    const path = joinPaths(worldRoot, "entities", `${selectedId}.yaml`);
-    await fs.writeYaml(path, draft);
-    dispatch({ type: "UPDATE_ENTITY", id: selectedId, data: draft });
+    try {
+      await saveEntity(worldRoot, selectedId, draft);
+    } catch (e) {
+      window.alert(`Save failed: ${e}`);
+      return;
+    }
     setDirty(false);
   };
 
@@ -156,11 +159,10 @@ export default function EntityEditor({ worldRoot, selectedId, onSelect, itemIds 
       tags: [],
       loot: [],
       };
-      fs.writeYaml(joinPaths(worldRoot, "entities", `${id}.yaml`), base).then(() => {
-      dispatch({ type: "UPDATE_ENTITY", id, data: base });
+      saveEntity(worldRoot, id, base).then(() => {
       dispatch({ type: "ADD_ENTITY_ID", id });
       onSelect(id);
-      });
+      }).catch((e) => window.alert(`Create failed: ${e}`));
 
         }}
         onCancel={() => setNewIdOpen(false)}

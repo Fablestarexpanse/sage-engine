@@ -42,9 +42,8 @@ function Inner({ shipId, worldRoot, onShipId }) {
   );
   const sel = useMemo(() => ({ ...tb, minWidth: 140 }), [tb]);
   const rf = useReactFlow();
-  const { ships, shipIds, dispatch } = useContent();
+  const { ships, shipIds, dispatch, saveShipDoc } = useContent();
   const layoutPath = useMemo(() => joinPaths(worldRoot, "ships", `${shipId}.layout.json`), [worldRoot, shipId]);
-  const shipPath = useMemo(() => joinPaths(worldRoot, "ships", `${shipId}.yaml`), [worldRoot, shipId]);
 
   const [posMap, setPosMap] = useState({});
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -96,8 +95,7 @@ function Inner({ shipId, worldRoot, onShipId }) {
   }, [selectedLocal, shipDoc, dirty]);
 
   const saveShip = async (doc) => {
-    await fs.writeYaml(shipPath, doc);
-    dispatch({ type: "UPDATE_SHIP_DOC", id: shipId, doc });
+    await saveShipDoc(worldRoot, shipId, doc);
   };
 
   const saveLayout = async () => {

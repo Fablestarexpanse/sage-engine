@@ -262,7 +262,7 @@ function ZoneEditorInner({
   const connDebugPanelRef = useRef(null);
   const [connDebugPanelPos, setConnDebugPanelPos] = useState(() => readConnDebugPanelPos());
   const suppressPaneContextUntilRef = useRef(0);
-  const { zones, zoneIds, dispatch, entities, entityIds, items, itemIds, glyphs, glyphIds } = useContent();
+  const { zones, zoneIds, dispatch, entities, entityIds, items, itemIds, glyphs, glyphIds, saveZoneRoom } = useContent();
 
   const [positionsDoc, setPositionsDoc] = useState(() => parsePositionsDoc(null));
   const [groups, setGroups] = useState([]);
@@ -412,8 +412,7 @@ function ZoneEditorInner({
    */
   const finalizeNewRoom = useCallback(
     async (slug, data, { floor, position } = {}) => {
-      await fs.writeYaml(joinPaths(worldRoot, "zones", zoneId, "rooms", `${slug}.yaml`), data);
-      dispatch({ type: "UPDATE_ZONE_ROOM", zoneId, slug, data });
+      await saveZoneRoom(worldRoot, zoneId, slug, data);
       const prev = positionsDocRef.current;
       const next = {
         ...prev,
@@ -430,7 +429,7 @@ function ZoneEditorInner({
       setPositionsDoc(next);
       await fs.writeText(positionsPath, serializePositionsDoc(next));
     },
-    [zoneId, worldRoot, dispatch, positionsPath]
+    [zoneId, worldRoot, saveZoneRoom, positionsPath]
   );
 
   const submitRoomSlug = useCallback(
@@ -483,6 +482,20 @@ function ZoneEditorInner({
     undoStackRef.current = [];
   }, [zoneId]);
 
+  /** Announce, once per zone visit, any rooms whose YAML failed to parse (see roomsMap). */
+  const parseErrorAnnouncedForZoneRef = useRef(null);
+  useEffect(() => {
+    if (!zoneId) return;
+    if (parseErrorAnnouncedForZoneRef.current === zoneId) return;
+    const badSlugs = Object.entries(roomsMap)
+      .filter(([, data]) => data?._parseError)
+      .map(([slug]) => slug);
+    if (badSlugs.length) {
+      setStatusMsg(`Parse error in room YAML: ${badSlugs.join(", ")} — fix the file(s) on disk, then reload.`);
+      parseErrorAnnouncedForZoneRef.current = zoneId;
+    }
+  }, [zoneId, roomsMap]);
+
   const applyUndo = useCallback(async () => {
     const stack = undoStackRef.current;
     if (!stack.length) {
@@ -530,8 +543,7 @@ function ZoneEditorInner({
       const fromRoom = { ...(zr[zoneId]?.rooms?.[fromSlug] || {}) };
       fromRoom.exits = { ...(fromRoom.exits || {}) };
       fromRoom.exits[fromDir] = { destination: `${zoneId}:${toSlug}`, description: "" };
-      dispatch({ type: "UPDATE_ZONE_ROOM", zoneId, slug: fromSlug, data: fromRoom });
-      await fs.writeYaml(joinPaths(worldRoot, "zones", zoneId, "rooms", `${fromSlug}.yaml`), fromRoom);
+      await saveZoneRoom(worldRoot, zoneId, fromSlug, fromRoom);
       const toDir = oppositeDir(fromDir);
       if (!toDir) {
         setStatusMsg(`No reverse for direction "${fromDir}" — linked one way only`);
@@ -540,11 +552,10 @@ function ZoneEditorInner({
       const toRoom = { ...(zr[zoneId]?.rooms?.[toSlug] || {}) };
       toRoom.exits = { ...(toRoom.exits || {}) };
       toRoom.exits[toDir] = { destination: `${zoneId}:${fromSlug}`, description: "" };
-      dispatch({ type: "UPDATE_ZONE_ROOM", zoneId, slug: toSlug, data: toRoom });
-      await fs.writeYaml(joinPaths(worldRoot, "zones", zoneId, "rooms", `${toSlug}.yaml`), toRoom);
+      await saveZoneRoom(worldRoot, zoneId, toSlug, toRoom);
       setStatusMsg(`Linked ${fromSlug} ↕ ${toSlug}`);
     },
-    [zoneId, worldRoot, dispatch]
+    [zoneId, worldRoot, saveZoneRoom]
   );
 
   const duplicateSelectedRooms = useCallback(async () => {
@@ -939,15 +950,14 @@ function ZoneEditorInner({
         cur.exits[dir] = { destination: "", description: "" };
       }
       try {
-        await fs.writeYaml(joinPaths(worldRoot, "zones", zoneId, "rooms", `${slug}.yaml`), cur);
+        await saveZoneRoom(worldRoot, zoneId, slug, cur);
       } catch (e) {
         setStatusMsg(`Save failed: ${e}`);
         return null;
       }
-      dispatch({ type: "UPDATE_ZONE_ROOM", zoneId, slug, data: cur });
       return cur;
     },
-    [zoneId, worldRoot, dispatch]
+    [zoneId, worldRoot, saveZoneRoom]
   );
 
   const rebuildGraph = useCallback(() => {
@@ -1885,12 +1895,11 @@ function ZoneEditorInner({
 
   const saveRoomFile = async (slug, data) => {
     try {
-      await fs.writeYaml(joinPaths(worldRoot, "zones", zoneId, "rooms", `${slug}.yaml`), data);
+      await saveZoneRoom(worldRoot, zoneId, slug, data);
     } catch (e) {
       setStatusMsg(`Save failed: ${e}`);
       return;
     }
-    dispatch({ type: "UPDATE_ZONE_ROOM", zoneId, slug, data });
     setPanelDirty(false);
   };
 
