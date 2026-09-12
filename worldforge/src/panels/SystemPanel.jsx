@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { deepClone } from "../utils/clone.js";
 import yaml from "js-yaml";
 import { useTheme } from "../ThemeContext.jsx";
 
@@ -37,7 +38,7 @@ export default function SystemPanel({ rawDoc, onChangeDoc, onSave, onRevert, dir
   const [yamlText, setYamlText] = useState("");
 
   const setField = (path, val) => {
-    const next = JSON.parse(JSON.stringify(rawDoc || { system: {} }));
+    const next = deepClone(rawDoc || { system: {} });
     const sys = next.system || (next.system = {});
     if (path === "name") sys.name = val;
     if (path === "faction") sys.faction = val;

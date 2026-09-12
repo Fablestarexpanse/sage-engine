@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ContentProvider, useContent } from "./hooks/useContentStore.js";
 import { useLocalSettings, readSnapEnabled } from "./hooks/useLocalSettings.js";
-import * as fs from "./hooks/useFileSystem.js";
+import * as fs from "./utils/fsBridge.js";
 import { createWorldScaffold } from "./utils/worldScaffold.js";
 import { useTheme } from "./ThemeContext.jsx";
 import Sidebar from "./components/Sidebar.jsx";
@@ -115,6 +115,10 @@ function SettingsPanel({ onClose, settings }) {
         <label style={{ ...sl, display: "flex", alignItems: "center", gap: 8 }}>
           <input type="checkbox" checked={settings.connectionDebugLog} onChange={(e) => settings.setConnectionDebugLog(e.target.checked)} />
           Log map connections (debug — console + zone panel)
+        </label>
+        <label style={{ ...sl, display: "flex", alignItems: "center", gap: 8 }}>
+          <input type="checkbox" checked={settings.showDevTools} onChange={(e) => settings.setShowDevTools(e.target.checked)} />
+          Show developer tools (destructive zone-clear button)
         </label>
         <label style={sl}>Default room type</label>
         <input style={si} value={settings.defaultRoomType} onChange={(e) => settings.setDefaultRoomType(e.target.value)} />
@@ -238,6 +242,8 @@ function Shell() {
     glyphIds,
     setContentRoot,
     loadAll,
+    softRefresh,
+    deleteZone,
     dismissPendingScaffold,
   } = useContent();
   const settings = useLocalSettings();
@@ -254,6 +260,14 @@ function Shell() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [snapEnabled, setSnapEnabled] = useState(readSnapEnabled);
   const [scaffoldBusy, setScaffoldBusy] = useState(false);
+  const [watching, setWatching] = useState(false);
+
+  // Live-watch: poll disk every 2 s and silently merge any changes
+  useEffect(() => {
+    if (!watching || !contentRoot) return;
+    const id = setInterval(() => softRefresh(contentRoot), 2000);
+    return () => clearInterval(id);
+  }, [watching, contentRoot, softRefresh]);
 
   useEffect(() => {
     if (contentRoot && worldRoot && !pendingScaffold) {
@@ -303,8 +317,55 @@ function Shell() {
   }, [setContentRoot]);
 
   useEffect(() => {
-    const saved = localStorage.getItem(LS_ROOT);
-    if (saved) fs.pathExists(saved).then((ex) => ex && setContentRoot(saved));
+    async function boot() {
+      // 1. Honour saved path from last session
+      const saved = localStorage.getItem(LS_ROOT);
+      if (saved && (await fs.pathExists(saved))) {
+        await setContentRoot(saved);
+        return;
+      }
+
+      // 2. Honour WORLDFORGE_ROOT env var (same one the MCP server uses)
+      const envRoot = await fs.getEnvVar("WORLDFORGE_ROOT");
+      if (envRoot && (await fs.pathExists(envRoot))) {
+        // env var points to content/world directly — use its parent as contentRoot
+        // setContentRoot calls loadAll which calls resolveWorldRoot, so any level works
+        await setContentRoot(envRoot);
+        return;
+      }
+
+      // 3. Walk up from the exe to auto-detect the project root
+      //    Dev layout:  worldforge/target/debug/worldforge.exe  → go up 3 levels
+      //    Prod layout: resources/worldforge.exe                → go up 1 level
+      try {
+        const exePath = await fs.getExePath();
+        const sep = exePath.includes("\\") ? "\\" : "/";
+        const parts = exePath.split(sep).filter(Boolean);
+        // Try going up 1–6 levels from the exe
+        for (let up = 1; up <= 6; up++) {
+          if (parts.length - up < 1) break;
+          const candidate = (exePath.startsWith("\\\\") ? "\\\\" : (sep === "\\" ? "" : "/"))
+            + parts.slice(0, parts.length - up).join(sep);
+          // Check for zones/ or content/world/zones/ inside this candidate
+          const direct = candidate + sep + "zones";
+          const nested = candidate + sep + "content" + sep + "world" + sep + "zones";
+          const worldNested = candidate + sep + "world" + sep + "zones";
+          if (
+            (await fs.pathExists(direct)) ||
+            (await fs.pathExists(nested)) ||
+            (await fs.pathExists(worldNested))
+          ) {
+            await setContentRoot(candidate);
+            return;
+          }
+        }
+      } catch {
+        // exe path unavailable — fall through to folder picker
+      }
+
+      // 4. Nothing found — show the folder picker (original behaviour)
+    }
+    boot();
   }, [setContentRoot]);
 
   if (!contentRoot && !loading && pendingScaffold) {
@@ -358,6 +419,7 @@ function Shell() {
     <div style={{ display: "flex", height: "100vh", background: COLORS.bg, color: COLORS.text, overflow: "hidden" }}>
       <Sidebar
         contentRoot={contentRoot}
+        worldRoot={worldRoot}
         onChangeRoot={openFolder}
         activeEditor={activeEditor}
         onEditor={setActiveEditor}
@@ -384,6 +446,13 @@ function Shell() {
         nexusLive={nexusLive}
         onOpenSettings={() => setSettingsOpen(true)}
         onOpenExport={() => setExportOpen(true)}
+        onRefresh={() => loadAll(contentRoot)}
+        watching={watching}
+        onToggleWatch={() => setWatching((w) => !w)}
+        onDeleteZone={async (id) => {
+          await deleteZone(id, worldRoot);
+          if (selectedZone === id) setSelectedZone(zoneIds.filter((z) => z !== id)[0] ?? null);
+        }}
       />
       <div style={{ flex: 1, minWidth: 0, position: "relative" }}>
         {activeEditor === "zone" ? (
@@ -400,6 +469,8 @@ function Shell() {
             nexusUrl={settings.nexusUrl}
             nexusToken={settings.nexusToken}
             defaultRoomType={settings.defaultRoomType}
+            autoSaveNavigate={settings.autoSaveNavigate}
+            showDevTools={settings.showDevTools}
           />
         ) : null}
         {activeEditor === "galaxy" ? <GalaxyEditor worldRoot={worldRoot} /> : null}

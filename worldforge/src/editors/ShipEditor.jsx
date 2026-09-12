@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
+import { deepClone } from "../utils/clone.js";
 import {
   ReactFlow,
   Background,
@@ -14,12 +15,12 @@ import "@xyflow/react/dist/style.css";
 import { joinPaths } from "../utils/paths.js";
 import { parsePositionsDoc, serializePositionsDoc } from "../utils/positionsDoc.js";
 import { buildShipFlow } from "../utils/shipGraph.js";
-import { layoutGraph } from "../utils/AutoLayout.js";
+import { layoutGraph } from "../utils/autoLayout.js";
 import ShipRoomNode from "../nodes/ShipRoomNode.jsx";
 import ExitEdge from "../edges/ExitEdge.jsx";
 import RoomPanel from "../panels/RoomPanel.jsx";
 import { useTheme } from "../ThemeContext.jsx";
-import * as fs from "../hooks/useFileSystem.js";
+import * as fs from "../utils/fsBridge.js";
 import { useContent } from "../hooks/useContentStore.js";
 
 const nodeTypes = { shipRoom: ShipRoomNode };
@@ -41,9 +42,8 @@ function Inner({ shipId, worldRoot, onShipId }) {
   );
   const sel = useMemo(() => ({ ...tb, minWidth: 140 }), [tb]);
   const rf = useReactFlow();
-  const { ships, shipIds, dispatch } = useContent();
+  const { ships, shipIds, dispatch, saveShipDoc } = useContent();
   const layoutPath = useMemo(() => joinPaths(worldRoot, "ships", `${shipId}.layout.json`), [worldRoot, shipId]);
-  const shipPath = useMemo(() => joinPaths(worldRoot, "ships", `${shipId}.yaml`), [worldRoot, shipId]);
 
   const [posMap, setPosMap] = useState({});
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -81,17 +81,21 @@ function Inner({ shipId, worldRoot, onShipId }) {
     rebuild();
   }, [rebuild]);
 
+  // Reset the draft when selection changes; on live-watch store refreshes,
+  // never clobber in-progress (dirty) edits.
+  const lastSelectedRef = useRef(null);
   useEffect(() => {
-    if (selectedLocal) {
-      const r = (shipDoc.ship?.rooms || []).find((x) => x.id === selectedLocal);
-      setDraft(r ? JSON.parse(JSON.stringify(r)) : { id: selectedLocal, name: selectedLocal, type: "corridor", description: { base: "" }, exits: {} });
-      setDirty(false);
-    }
-  }, [selectedLocal, shipDoc]);
+    if (!selectedLocal) return;
+    const switched = lastSelectedRef.current !== selectedLocal;
+    lastSelectedRef.current = selectedLocal;
+    if (!switched && dirty) return;
+    const r = (shipDoc.ship?.rooms || []).find((x) => x.id === selectedLocal);
+    setDraft(r ? deepClone(r) : { id: selectedLocal, name: selectedLocal, type: "corridor", description: { base: "" }, exits: {} });
+    setDirty(false);
+  }, [selectedLocal, shipDoc, dirty]);
 
   const saveShip = async (doc) => {
-    await fs.writeYaml(shipPath, doc);
-    dispatch({ type: "UPDATE_SHIP_DOC", id: shipId, doc });
+    await saveShipDoc(worldRoot, shipId, doc);
   };
 
   const saveLayout = async () => {
@@ -178,7 +182,7 @@ function Inner({ shipId, worldRoot, onShipId }) {
               const entry = { ...draft, id: selectedLocal };
               if (idx >= 0) rooms[idx] = entry;
               else rooms.push(entry);
-              const next = JSON.parse(JSON.stringify(shipDoc));
+              const next = deepClone(shipDoc);
               next.ship = next.ship || {};
               next.ship.rooms = rooms;
               await saveShip(next);
@@ -186,7 +190,7 @@ function Inner({ shipId, worldRoot, onShipId }) {
             }}
             onRevert={() => {
               const r = (shipDoc.ship?.rooms || []).find((x) => x.id === selectedLocal);
-              setDraft(r ? JSON.parse(JSON.stringify(r)) : null);
+              setDraft(r ? deepClone(r) : null);
               setDirty(false);
             }}
             dirty={dirty}

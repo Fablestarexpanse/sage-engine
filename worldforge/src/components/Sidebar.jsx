@@ -1,5 +1,61 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useTheme } from "../ThemeContext.jsx";
+
+function ListItem({ item, canDelete, onDelete, COLORS }) {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <div
+      style={{ position: "relative", marginBottom: 2 }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <button
+        type="button"
+        onClick={item.onClick}
+        style={{
+          display: "block",
+          width: "100%",
+          textAlign: "left",
+          padding: "6px 28px 6px 8px",
+          borderRadius: 6,
+          border: "none",
+          background: item.active ? COLORS.bgHover : "transparent",
+          color: COLORS.text,
+          fontSize: 12,
+          cursor: "pointer",
+        }}
+      >
+        {item.label}
+      </button>
+      {canDelete && hovered && (
+        <button
+          type="button"
+          title={`Delete ${item.id}`}
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          style={{
+            position: "absolute",
+            right: 4,
+            top: "50%",
+            transform: "translateY(-50%)",
+            padding: "2px 5px",
+            borderRadius: 4,
+            border: "none",
+            background: "transparent",
+            color: COLORS.danger,
+            cursor: "pointer",
+            fontSize: 13,
+            lineHeight: 1,
+            opacity: 0.7,
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
+          onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.7")}
+        >
+          ✕
+        </button>
+      )}
+    </div>
+  );
+}
 
 const navBtn = {
   textAlign: "left",
@@ -20,6 +76,7 @@ const EDITORS = [
 
 export default function Sidebar({
   contentRoot,
+  worldRoot,
   onChangeRoot,
   activeEditor,
   onEditor,
@@ -46,6 +103,10 @@ export default function Sidebar({
   nexusLive,
   onOpenSettings,
   onOpenExport,
+  onRefresh,
+  watching,
+  onToggleWatch,
+  onDeleteZone,
 }) {
   const { colors: COLORS } = useTheme();
   const smallBtn = useMemo(
@@ -60,7 +121,7 @@ export default function Sidebar({
     }),
     [COLORS]
   );
-  const shortRoot = contentRoot ? (contentRoot.length > 36 ? "…" + contentRoot.slice(-34) : contentRoot) : "";
+  const shortRoot = (p) => (!p ? "" : p.length > 36 ? "…" + p.slice(-34) : p);
 
   const treeItems = () => {
     if (activeEditor === "zone")
@@ -99,9 +160,21 @@ export default function Sidebar({
           </svg>
           <span style={{ fontWeight: 700, fontSize: 15, color: COLORS.text, fontFamily: "'Space Grotesk', sans-serif" }}>Fablestar WorldForger</span>
         </div>
-        {contentRoot ? (
+        {worldRoot ? (
+          <div style={{ marginBottom: 6 }}>
+            <div style={{ fontSize: 9, color: COLORS.textDim, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 2 }}>
+              World root
+            </div>
+            <div
+              title={worldRoot}
+              style={{ fontSize: 10, color: COLORS.accent, wordBreak: "break-all", fontFamily: "monospace", lineHeight: 1.4 }}
+            >
+              {shortRoot(worldRoot)}
+            </div>
+          </div>
+        ) : contentRoot ? (
           <div style={{ fontSize: 10, color: COLORS.textDim, wordBreak: "break-all", marginBottom: 6 }} title={contentRoot}>
-            {shortRoot}
+            {shortRoot(contentRoot)}
           </div>
         ) : null}
         <button type="button" onClick={onChangeRoot} style={smallBtn}>
@@ -127,14 +200,14 @@ export default function Sidebar({
         ))}
       </div>
 
-      <div style={{ padding: "8px 10px" }}>
+      <div style={{ padding: "8px 10px", display: "flex", gap: 6, alignItems: "center" }}>
         <input
           placeholder="Search…"
           value={search}
           onChange={(e) => onSearch(e.target.value)}
           style={{
-            width: "100%",
-            boxSizing: "border-box",
+            flex: 1,
+            minWidth: 0,
             padding: "6px 8px",
             borderRadius: 6,
             border: `1px solid ${COLORS.border}`,
@@ -143,30 +216,62 @@ export default function Sidebar({
             fontSize: 12,
           }}
         />
+        {onRefresh && (
+          <button
+            type="button"
+            title="Refresh content (picks up zones created externally)"
+            onClick={onRefresh}
+            style={{
+              padding: "5px 7px",
+              borderRadius: 6,
+              border: `1px solid ${COLORS.border}`,
+              background: COLORS.bgCard,
+              color: COLORS.textMuted,
+              cursor: "pointer",
+              fontSize: 14,
+              lineHeight: 1,
+              flexShrink: 0,
+            }}
+          >
+            ↺
+          </button>
+        )}
+        {onToggleWatch && (
+          <button
+            type="button"
+            title={watching ? "Stop live watching (currently polling every 2 s)" : "Live watch — auto-refresh as files change on disk"}
+            onClick={onToggleWatch}
+            style={{
+              padding: "5px 7px",
+              borderRadius: 6,
+              border: `1px solid ${watching ? COLORS.accent : COLORS.border}`,
+              background: watching ? `${COLORS.accent}22` : COLORS.bgCard,
+              color: watching ? COLORS.accent : COLORS.textMuted,
+              cursor: "pointer",
+              fontSize: 13,
+              lineHeight: 1,
+              flexShrink: 0,
+              transition: "all 0.15s",
+            }}
+          >
+            {watching ? "⏹" : "👁"}
+          </button>
+        )}
       </div>
 
       <div style={{ flex: 1, overflow: "auto", padding: "4px 8px 8px" }}>
         {filtered.map((t) => (
-          <button
+          <ListItem
             key={t.id}
-            type="button"
-            onClick={t.onClick}
-            style={{
-              display: "block",
-              width: "100%",
-              textAlign: "left",
-              padding: "6px 8px",
-              marginBottom: 2,
-              borderRadius: 6,
-              border: "none",
-              background: t.active ? COLORS.bgHover : "transparent",
-              color: COLORS.text,
-              fontSize: 12,
-              cursor: "pointer",
+            item={t}
+            canDelete={activeEditor === "zone" && !!onDeleteZone}
+            onDelete={() => {
+              if (window.confirm(`Delete zone "${t.id}" and all its rooms? This cannot be undone.`)) {
+                onDeleteZone(t.id);
+              }
             }}
-          >
-            {t.label}
-          </button>
+            COLORS={COLORS}
+          />
         ))}
       </div>
 

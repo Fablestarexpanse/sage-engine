@@ -1,6 +1,6 @@
 import yaml from "js-yaml";
 import { joinPaths } from "./paths.js";
-import * as fs from "../hooks/useFileSystem.js";
+import * as fs from "./fsBridge.js";
 
 async function yamlFilesInDir(dirPath) {
   if (!(await fs.pathExists(dirPath))) return 0;
@@ -43,10 +43,19 @@ const MINIMAL_GALAXY = {
 
 const STARTER_ZONE = "starter_zone";
 
+/** Resolve the world root from whatever root the caller has, without double-appending.
+ * Historical bug: blindly appending "content/world" to a picked folder that already
+ * WAS content/world produced a nested content/world/content/world tree. */
+function resolveScaffoldWorldRoot(root) {
+  const norm = String(root || "").replace(/\\/g, "/").replace(/\/+$/, "");
+  if (norm.endsWith("/content/world")) return root;
+  if (norm.endsWith("/content")) return joinPaths(root, "world");
+  return joinPaths(root, "content", "world");
+}
+
 /** Create content/world layout + minimal galaxy + starter zone (skips files that already exist). */
 export async function createWorldScaffold(contentRoot) {
-  const contentDir = joinPaths(contentRoot, "content");
-  const worldRoot = joinPaths(contentDir, "world");
+  const worldRoot = resolveScaffoldWorldRoot(contentRoot);
 
   await fs.createDir(worldRoot);
   await fs.createDir(joinPaths(worldRoot, "zones"));

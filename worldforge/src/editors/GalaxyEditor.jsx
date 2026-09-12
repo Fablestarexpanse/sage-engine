@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
+import { deepClone } from "../utils/clone.js";
 import {
   ReactFlow,
   Background,
@@ -12,13 +13,11 @@ import {
   BackgroundVariant,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { joinPaths } from "../utils/paths.js";
 import { useTheme } from "../ThemeContext.jsx";
 import SystemNode from "../nodes/SystemNode.jsx";
 import ConnectionEdge from "../edges/ConnectionEdge.jsx";
 import SystemPanel from "../panels/SystemPanel.jsx";
-import { layoutGraph } from "../utils/AutoLayout.js";
-import * as fs from "../hooks/useFileSystem.js";
+import { layoutGraph } from "../utils/autoLayout.js";
 import { useContent } from "../hooks/useContentStore.js";
 
 const nodeTypes = { system: SystemNode };
@@ -39,7 +38,7 @@ function Inner({ worldRoot }) {
     [COLORS]
   );
   const rf = useReactFlow();
-  const { systems, systemIds, galaxy, dispatch } = useContent();
+  const { systems, systemIds, galaxy, dispatch, saveSystem: saveSystemAction, saveGalaxy: saveGalaxyAction } = useContent();
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedId, setSelectedId] = useState(null);
@@ -87,23 +86,35 @@ function Inner({ worldRoot }) {
     rebuild();
   }, [rebuild]);
 
+  // Reset the draft when selection changes; on live-watch store refreshes,
+  // never clobber in-progress (dirty) edits.
+  const lastSelectedRef = useRef(null);
   useEffect(() => {
-    if (selectedId && systems[selectedId]) {
-      setDraft(JSON.parse(JSON.stringify(systems[selectedId])));
-      setDirty(false);
-    }
-  }, [selectedId, systems]);
+    if (!selectedId || !systems[selectedId]) return;
+    const switched = lastSelectedRef.current !== selectedId;
+    lastSelectedRef.current = selectedId;
+    if (!switched && dirty) return;
+    setDraft(deepClone(systems[selectedId]));
+    setDirty(false);
+  }, [selectedId, systems, dirty]);
 
   const saveSystem = async () => {
     if (!selectedId || !draft) return;
-    const path = joinPaths(worldRoot, "systems", `${selectedId}.yaml`);
-    await fs.writeYaml(path, draft);
-    dispatch({ type: "UPDATE_SYSTEM", id: selectedId, data: draft });
+    try {
+      await saveSystemAction(worldRoot, selectedId, draft);
+    } catch (e) {
+      window.alert(`Save failed: ${e}`);
+      return;
+    }
     setDirty(false);
   };
 
   const saveGalaxy = async () => {
-    await fs.writeYaml(joinPaths(worldRoot, "galaxy.yaml"), galaxy);
+    try {
+      await saveGalaxyAction(worldRoot, galaxy);
+    } catch (e) {
+      window.alert(`Save failed: ${e}`);
+    }
   };
 
   return (
@@ -150,7 +161,7 @@ function Inner({ worldRoot }) {
             }}
             onSave={saveSystem}
             onRevert={() => {
-              setDraft(JSON.parse(JSON.stringify(systems[selectedId])));
+              setDraft(deepClone(systems[selectedId]));
               setDirty(false);
             }}
             dirty={dirty}

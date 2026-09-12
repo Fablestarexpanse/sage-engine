@@ -10,12 +10,17 @@ export function resolveItemIconDiskPath(worldRoot, icon) {
 }
 
 /**
+ * Validation-collector convention: every collector in this module (async, fs injected
+ * for testability) and `runZoneValidation` in validation.js (sync, no fs) take their
+ * identifying arguments positionally and everything else — context plus any optional
+ * knobs — as a single trailing options object. Keep new collectors consistent with this.
+ *
  * @param {object} opts
  * @param {string} opts.worldRoot
  * @param {Record<string, object>} opts.items
  * @param {Record<string, object>} opts.entities
  * @param {string[]} opts.itemIds
- * @param {typeof import("../hooks/useFileSystem.js")} opts.fs
+ * @param {typeof import("./fsBridge.js")} opts.fs
  * @returns {Promise<{ level: string, msg: string, itemId?: string }[]>}
  */
 export async function collectItemIssues({ worldRoot, items, entities, itemIds, fs }) {

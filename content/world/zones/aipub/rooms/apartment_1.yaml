@@ -1,0 +1,15 @@
+id: aipub:apartment_1
+zone: aipub
+type: safe
+depth: 1
+description:
+  base: A compact but liveable studio apartment. Unit 1 has been personalised with
+    star charts pinned to the walls and a small hydroponic herb rack on the windowsill.
+    The bunk folds flat against the wall when not in use. A porthole overlooks the
+    street below.
+exits: {}
+features: []
+entity_spawns: []
+hazards: []
+tags: []
+name: Apartment 1

@@ -1,4 +1,4 @@
-const DOC_KEYS = new Set(["version", "positions", "notes", "reference_image", "muted_edges"]);
+const DOC_KEYS = new Set(["version", "positions", "notes", "reference_image", "muted_edges", "floors"]);
 
 export function parsePositionsDoc(raw) {
   if (!raw || typeof raw !== "object") {
@@ -7,6 +7,7 @@ export function parsePositionsDoc(raw) {
       positions: {},
       notes: [],
       muted_edges: [],
+      floors: {},
       reference_image: null,
     };
   }
@@ -16,6 +17,7 @@ export function parsePositionsDoc(raw) {
       positions: { ...raw.positions },
       notes: Array.isArray(raw.notes) ? [...raw.notes] : [],
       muted_edges: Array.isArray(raw.muted_edges) ? [...raw.muted_edges] : [],
+      floors: raw.floors && typeof raw.floors === "object" ? { ...raw.floors } : {},
       reference_image: raw.reference_image && typeof raw.reference_image === "object" ? { ...raw.reference_image } : null,
     };
   }
@@ -31,6 +33,7 @@ export function parsePositionsDoc(raw) {
     positions,
     notes: [],
     muted_edges: [],
+    floors: {},
     reference_image: null,
   };
 }
@@ -41,6 +44,7 @@ export function serializePositionsDoc(doc) {
     positions: doc.positions || {},
     notes: doc.notes || [],
     muted_edges: doc.muted_edges || [],
+    floors: doc.floors || {},
   };
   if (doc.reference_image && typeof doc.reference_image === "object") {
     out.reference_image = doc.reference_image;

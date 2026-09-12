@@ -1,7 +1,8 @@
 import { joinPaths } from "./paths.js";
+import { deepClone } from "./clone.js";
 import { parsePositionsDoc, serializePositionsDoc } from "./positionsDoc.js";
 import { DEFAULT_ROOM_NODE_H, DEFAULT_ROOM_NODE_W } from "./zoneGraph.js";
-import * as fs from "../hooks/useFileSystem.js";
+import * as fs from "./fsBridge.js";
 
 /** Synthetic zone id stored in stamp room YAML for preview + internal exit resolution. */
 export const STAMP_ZONE_ID = "__stamp__";
@@ -75,7 +76,7 @@ function remapExitDestination(dest, sourceZoneId, slugToLogical) {
  * @param {StampPreserveFlags} preserve
  */
 export function buildStampRoomYaml(sourceRoom, sourceZoneId, logicalKey, slugToLogical, preserve) {
-  const copy = JSON.parse(JSON.stringify(sourceRoom || {}));
+  const copy = deepClone(sourceRoom || {});
   copy.id = `${STAMP_ZONE_ID}:${logicalKey}`;
   copy.zone = STAMP_ZONE_ID;
   copy.slug = logicalKey;
@@ -121,14 +122,15 @@ export function buildStampRoomYaml(sourceRoom, sourceZoneId, logicalKey, slugToL
 
 /**
  * @param {Record<string, object>} positionsDocPositions
- * @param {string[]} sourceSlugs
- * @param {Record<string, string>} slugToLogical
  * @param {Array<{ slug: string, position: {x,y}, style: object }>} snapshots
- * @param {StampPreserveFlags} preserve
- * @param {typeof DEFAULT_ROOM_NODE_W} wFallback
- * @param {typeof DEFAULT_ROOM_NODE_H} hFallback
+ * @param {object} opts
+ * @param {Record<string, string>} opts.slugToLogical
+ * @param {StampPreserveFlags} opts.preserve
+ * @param {typeof DEFAULT_ROOM_NODE_W} opts.wFallback
+ * @param {typeof DEFAULT_ROOM_NODE_H} opts.hFallback
  */
-export function buildNormalizedStampPositions(positionsDocPositions, snapshots, slugToLogical, preserve, wFallback, hFallback) {
+export function buildNormalizedStampPositions(positionsDocPositions, snapshots, opts) {
+  const { slugToLogical, preserve, wFallback, hFallback } = opts;
   const xs = [];
   const ys = [];
   for (const snap of snapshots) {
@@ -168,27 +170,18 @@ export function buildNormalizedStampPositions(positionsDocPositions, snapshots, 
 /**
  * @param {string} worldRoot
  * @param {string} stampSlug filesystem-safe
- * @param {string} displayName
- * @param {string} sourceZoneId
- * @param {StampPreserveFlags} preserve
- * @param {Record<string, object>} roomsBySourceSlug slug -> yaml from zone
- * @param {Record<string, object>} positionsDocPositions
- * @param {Array<{ slug: string, position: {x:number,y:number}, style: object }>} snapshots
- * @param {typeof DEFAULT_ROOM_NODE_W} wFallback
- * @param {typeof DEFAULT_ROOM_NODE_H} hFallback
+ * @param {object} opts
+ * @param {string} opts.displayName
+ * @param {string} opts.sourceZoneId
+ * @param {StampPreserveFlags} opts.preserve
+ * @param {Record<string, object>} opts.roomsBySourceSlug slug -> yaml from zone
+ * @param {Record<string, object>} opts.positionsDocPositions
+ * @param {Array<{ slug: string, position: {x:number,y:number}, style: object }>} opts.snapshots
+ * @param {typeof DEFAULT_ROOM_NODE_W} opts.wFallback
+ * @param {typeof DEFAULT_ROOM_NODE_H} opts.hFallback
  */
-export async function saveStampBundle(
-  worldRoot,
-  stampSlug,
-  displayName,
-  sourceZoneId,
-  preserve,
-  roomsBySourceSlug,
-  positionsDocPositions,
-  snapshots,
-  wFallback,
-  hFallback
-) {
+export async function saveStampBundle(worldRoot, stampSlug, opts) {
+  const { displayName, sourceZoneId, preserve, roomsBySourceSlug, positionsDocPositions, snapshots, wFallback, hFallback } = opts;
   const slugs = snapshots.map((s) => s.slug).filter(Boolean);
   const { logicalKeys, slugToLogical } = buildLogicalSlugMap(slugs);
 
@@ -206,7 +199,7 @@ export async function saveStampBundle(
     await fs.writeYaml(joinPaths(roomsDir, `${lk}.yaml`), yamlDoc);
   }
 
-  const { positions } = buildNormalizedStampPositions(positionsDocPositions, snapshots, slugToLogical, preserve, wFallback, hFallback);
+  const { positions } = buildNormalizedStampPositions(positionsDocPositions, snapshots, { slugToLogical, preserve, wFallback, hFallback });
   const layoutDoc = { version: 2, positions, notes: [], muted_edges: [] };
   await fs.writeText(joinPaths(dir, "layout.json"), serializePositionsDoc(layoutDoc));
 
@@ -296,11 +289,13 @@ export function allocStampPlaceSlug(base, used) {
  * @param {string} targetZoneId
  * @param {Record<string, object>} stampRoomsMap logicalKey -> yaml
  * @param {ReturnType<typeof parsePositionsDoc>} stampPositionsDoc
- * @param {Record<string, string>} logicalToNewSlug
- * @param {number} offsetX
- * @param {number} offsetY
+ * @param {object} opts
+ * @param {Record<string, string>} opts.logicalToNewSlug
+ * @param {number} opts.offsetX
+ * @param {number} opts.offsetY
  */
-export function expandStampForPlacement(targetZoneId, stampRoomsMap, stampPositionsDoc, logicalToNewSlug, offsetX, offsetY) {
+export function expandStampForPlacement(targetZoneId, stampRoomsMap, stampPositionsDoc, opts) {
+  const { logicalToNewSlug, offsetX, offsetY } = opts;
   /** @type {string[]} */
   const newSlugs = [];
 
@@ -314,7 +309,7 @@ export function expandStampForPlacement(targetZoneId, stampRoomsMap, stampPositi
   for (const [lk, yamlIn] of Object.entries(stampRoomsMap)) {
     const newSlug = logicalToNewSlug[lk];
     if (!newSlug) continue;
-    const y = JSON.parse(JSON.stringify(yamlIn || {}));
+    const y = deepClone(yamlIn || {});
     y.id = `${targetZoneId}:${newSlug}`;
     y.zone = targetZoneId;
     delete y.slug;

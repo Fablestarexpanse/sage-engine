@@ -1,0 +1,17 @@
+id: aipub:pub_entrance
+zone: aipub
+type: hub
+depth: 1
+description:
+  base: The entrance to the AiPub. A battered neon sign flickers blue and white above
+    a heavy pressure-sealed door. The hum of conversation and the smell of synth-ale
+    drift out from inside.
+exits:
+  north:
+    destination: aipub:main_bar
+    description: ''
+features: []
+entity_spawns: []
+hazards: []
+tags: []
+name: AiPub — Front Door

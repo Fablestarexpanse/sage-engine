@@ -16,7 +16,7 @@ const EXIT_CORNER_LABEL = { northwest: "NW", northeast: "NE", southwest: "SW", s
  * @param {'edge' | 'corner' | 'stairs-up' | 'stairs-down'} variant
  * @param {{ left: number, top: number, position: import('@xyflow/react').Position }} [canvasPlacement] map/workspace-aligned position (parent = unrotated node box)
  */
-function DoorPort({ position, canvasPlacement, id, style = {}, linked, unlinked, variant = "edge" }) {
+function DoorPort({ position, canvasPlacement, id, style = {}, linked, unlinked, variant = "edge", onContextMenu }) {
   const { colors: COLORS } = useTheme();
   const doorBorder = unlinked ? COLORS.warning : linked ? COLORS.success : COLORS.borderActive;
   const doorBg = unlinked ? `${COLORS.warning}44` : linked ? `${COLORS.success}33` : COLORS.bgPanel;
@@ -126,7 +126,7 @@ function DoorPort({ position, canvasPlacement, id, style = {}, linked, unlinked,
     ) : null;
 
   return (
-    <Handle type="source" position={flowPos} id={id} style={base} title={tip}>
+    <Handle type="source" position={flowPos} id={id} style={base} title={tip} onContextMenu={onContextMenu}>
       {mark}
     </Handle>
   );
@@ -150,18 +150,19 @@ export default memo(function RoomNode({ data, selected }) {
     }),
     [COLORS]
   );
-  const tc = ROOM_TYPE_COLORS[data.roomType] || ROOM_TYPE_COLORS["?"];
-  const gc = data.groupColor;
+  const typeColor = ROOM_TYPE_COLORS[data.roomType] || ROOM_TYPE_COLORS["?"];
+  const groupColor = data.groupColor;
   const isPh = data.isPlaceholder;
   const locked = data.locked;
-  const showGroupStripe = Boolean(gc);
+  const showGroupStripe = Boolean(groupColor);
   const borderStyle = isPh ? "dashed" : "solid";
-  const opacity = isPh ? 0.6 : 1;
+  const isGhost = Boolean(data.ghost);
+  const opacity = isGhost ? 0.35 : isPh ? 0.6 : 1;
   const customEdge = typeof data.layoutBorderColor === "string" ? data.layoutBorderColor : null;
-  const edgeStroke = customEdge || (selected ? tc : COLORS.border);
-  const glow = customEdge || tc;
+  const edgeStroke = customEdge || (selected ? typeColor : COLORS.border);
+  const glow = customEdge || typeColor;
 
-  const tb = data.toolbar || {};
+  const toolbarActions = data.toolbar || {};
   const unlinked = Array.isArray(data.unlinkedExitDirs) ? data.unlinkedExitDirs : [];
   const linked = Array.isArray(data.linkedExitDirs) ? data.linkedExitDirs : [];
 
@@ -189,7 +190,7 @@ export default memo(function RoomNode({ data, selected }) {
     (s) => s.nodes.filter((n) => n.type === "room" && n.selected).length > 1
   );
 
-  const lay = useMemo(() => {
+  const layout = useMemo(() => {
     const W = dims.w;
     const H = dims.h;
     return {
@@ -229,7 +230,7 @@ export default memo(function RoomNode({ data, selected }) {
           boxSizing: "border-box",
           borderRadius: 10,
           border: `2px ${borderStyle} ${edgeStroke}`,
-          background: selected ? `${tc}0d` : COLORS.bgCard,
+          background: selected ? `${typeColor}0d` : COLORS.bgCard,
           boxShadow: selected ? `0 0 0 2px ${glow}55` : "none",
           overflow: "visible",
           transform: `translate(-50%, -50%)${rotationDeg ? ` rotate(${rotationDeg}deg)` : ""}`,
@@ -263,7 +264,7 @@ export default memo(function RoomNode({ data, selected }) {
               top: 0,
               bottom: 0,
               width: 3,
-              background: gc,
+              background: groupColor,
               opacity: 0.95,
               borderRadius: "10px 0 0 10px",
             }}
@@ -276,7 +277,7 @@ export default memo(function RoomNode({ data, selected }) {
               top: 0,
               bottom: 0,
               width: 3,
-              background: tc,
+              background: typeColor,
               opacity: 0.85,
               borderRadius: "10px 0 0 10px",
             }}
@@ -297,46 +298,46 @@ export default memo(function RoomNode({ data, selected }) {
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap", justifyContent: "center" }}>
-            <button type="button" title="Add exit north" style={btnStyle} onClick={() => tb.onQuickExit?.("north")}>
+            <button type="button" title="Add exit north" style={btnStyle} onClick={() => toolbarActions.onQuickExit?.("north")}>
               ↑N
             </button>
-            <button type="button" title="Add exit south" style={btnStyle} onClick={() => tb.onQuickExit?.("south")}>
+            <button type="button" title="Add exit south" style={btnStyle} onClick={() => toolbarActions.onQuickExit?.("south")}>
               ↓S
             </button>
-            <button type="button" title="Add exit east" style={btnStyle} onClick={() => tb.onQuickExit?.("east")}>
+            <button type="button" title="Add exit east" style={btnStyle} onClick={() => toolbarActions.onQuickExit?.("east")}>
               →E
             </button>
-            <button type="button" title="Add exit west" style={btnStyle} onClick={() => tb.onQuickExit?.("west")}>
+            <button type="button" title="Add exit west" style={btnStyle} onClick={() => toolbarActions.onQuickExit?.("west")}>
               ←W
             </button>
-            <button type="button" title="Add exit up" style={btnStyle} onClick={() => tb.onQuickExit?.("up")}>
+            <button type="button" title="Add exit up" style={btnStyle} onClick={() => toolbarActions.onQuickExit?.("up")}>
               U
             </button>
-            <button type="button" title="Add exit down" style={btnStyle} onClick={() => tb.onQuickExit?.("down")}>
+            <button type="button" title="Add exit down" style={btnStyle} onClick={() => toolbarActions.onQuickExit?.("down")}>
               Dn
             </button>
             <div style={{ width: 1, alignSelf: "stretch", background: COLORS.border, margin: "0 2px" }} />
-            <button type="button" title="Duplicate room" style={btnStyle} onClick={() => tb.onDuplicate?.()}>
+            <button type="button" title="Duplicate room" style={btnStyle} onClick={() => toolbarActions.onDuplicate?.()}>
               ⧉
             </button>
-            <button type="button" title="AI describe" style={btnStyle} onClick={() => tb.onAiDescribe?.()}>
+            <button type="button" title="AI describe" style={btnStyle} onClick={() => toolbarActions.onAiDescribe?.()}>
               ✨
             </button>
-            <button type="button" title="Delete room" style={{ ...btnStyle, color: COLORS.danger }} onClick={() => tb.onDelete?.()}>
+            <button type="button" title="Delete room" style={{ ...btnStyle, color: COLORS.danger }} onClick={() => toolbarActions.onDelete?.()}>
               🗑
             </button>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap", justifyContent: "center" }}>
-            <button type="button" title="Add exit northwest" style={btnStyle} onClick={() => tb.onQuickExit?.("northwest")}>
+            <button type="button" title="Add exit northwest" style={btnStyle} onClick={() => toolbarActions.onQuickExit?.("northwest")}>
               NW
             </button>
-            <button type="button" title="Add exit northeast" style={btnStyle} onClick={() => tb.onQuickExit?.("northeast")}>
+            <button type="button" title="Add exit northeast" style={btnStyle} onClick={() => toolbarActions.onQuickExit?.("northeast")}>
               NE
             </button>
-            <button type="button" title="Add exit southwest" style={btnStyle} onClick={() => tb.onQuickExit?.("southwest")}>
+            <button type="button" title="Add exit southwest" style={btnStyle} onClick={() => toolbarActions.onQuickExit?.("southwest")}>
               SW
             </button>
-            <button type="button" title="Add exit southeast" style={btnStyle} onClick={() => tb.onQuickExit?.("southeast")}>
+            <button type="button" title="Add exit southeast" style={btnStyle} onClick={() => toolbarActions.onQuickExit?.("southeast")}>
               SE
             </button>
           </div>
@@ -416,9 +417,9 @@ export default memo(function RoomNode({ data, selected }) {
                 letterSpacing: "0.06em",
                 padding: "2px 7px",
                 borderRadius: 4,
-                background: `${tc}22`,
-                color: tc,
-                border: `1px solid ${tc}55`,
+                background: `${typeColor}22`,
+                color: typeColor,
+                border: `1px solid ${typeColor}55`,
                 fontFamily: "'JetBrains Mono', monospace",
                 fontWeight: 600,
               }}
@@ -472,16 +473,100 @@ export default memo(function RoomNode({ data, selected }) {
       </div>
       </div>
 
-      <DoorPort canvasPlacement={lay.north} position={Position.Top} id="north" linked={linked.includes("north")} unlinked={unlinked.includes("north")} />
-      <DoorPort canvasPlacement={lay.south} position={Position.Bottom} id="south" linked={linked.includes("south")} unlinked={unlinked.includes("south")} />
-      <DoorPort canvasPlacement={lay.west} position={Position.Left} id="west" linked={linked.includes("west")} unlinked={unlinked.includes("west")} />
-      <DoorPort canvasPlacement={lay.east} position={Position.Right} id="east" linked={linked.includes("east")} unlinked={unlinked.includes("east")} />
-      <DoorPort canvasPlacement={lay.nw} variant="corner" position={Position.Top} id="northwest" linked={linked.includes("northwest")} unlinked={unlinked.includes("northwest")} />
-      <DoorPort canvasPlacement={lay.ne} variant="corner" position={Position.Top} id="northeast" linked={linked.includes("northeast")} unlinked={unlinked.includes("northeast")} />
-      <DoorPort canvasPlacement={lay.sw} variant="corner" position={Position.Bottom} id="southwest" linked={linked.includes("southwest")} unlinked={unlinked.includes("southwest")} />
-      <DoorPort canvasPlacement={lay.se} variant="corner" position={Position.Bottom} id="southeast" linked={linked.includes("southeast")} unlinked={unlinked.includes("southeast")} />
-      <DoorPort canvasPlacement={lay.up} variant="stairs-up" position={Position.Top} id="up" linked={linked.includes("up")} unlinked={unlinked.includes("up")} />
-      <DoorPort canvasPlacement={lay.down} variant="stairs-down" position={Position.Bottom} id="down" linked={linked.includes("down")} unlinked={unlinked.includes("down")} />
+      {isGhost ? (
+        <div
+          style={{
+            position: "absolute",
+            left: "50%",
+            top: "50%",
+            width: "100%",
+            height: "100%",
+            boxSizing: "border-box",
+            borderRadius: 10,
+            transform: `translate(-50%, -50%)${rotationDeg ? ` rotate(${rotationDeg}deg)` : ""}`,
+            transformOrigin: "center center",
+            background: "rgba(10,12,28,0.55)",
+            border: `2px dashed ${data.ghostDir === "up" ? COLORS.info : COLORS.forge}88`,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 5,
+            cursor: "pointer",
+            zIndex: 10,
+            pointerEvents: "all",
+          }}
+        >
+          <span
+            style={{
+              padding: "2px 8px",
+              borderRadius: 6,
+              background: data.ghostDir === "up" ? `${COLORS.info}cc` : `${COLORS.forge}cc`,
+              color: "#fff",
+              fontSize: 11,
+              fontWeight: 700,
+              fontFamily: "'JetBrains Mono', monospace",
+              letterSpacing: 0.5,
+              pointerEvents: "none",
+            }}
+          >
+            {data.ghostDir === "up"
+              ? `↑ ${data.ghostFloor === 0 ? "Ground" : data.ghostFloor > 0 ? `F${data.ghostFloor}` : `B${Math.abs(data.ghostFloor)}`}`
+              : `↓ ${data.ghostFloor === 0 ? "Ground" : data.ghostFloor > 0 ? `F${data.ghostFloor}` : `B${Math.abs(data.ghostFloor)}`}`}
+          </span>
+          <div style={{ display: "flex", gap: 4 }}>
+            {!data.ghostLinked && (
+              <button
+                type="button"
+                title="Link this stair to a room on the current floor"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => { e.stopPropagation(); data.toolbar?.onStartLink?.(); }}
+                style={{
+                  fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 4, cursor: "pointer",
+                  background: data.ghostDir === "up" ? `${COLORS.info}33` : `${COLORS.forge}33`,
+                  border: `1px solid ${data.ghostDir === "up" ? COLORS.info : COLORS.forge}`,
+                  color: "#fff",
+                }}
+              >
+                ⤢ Link
+              </button>
+            )}
+            <button
+              type="button"
+              title={data.ghostLinked ? "Unlink stair exit" : "Remove stair exit"}
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => { e.stopPropagation(); data.toolbar?.onToggleExit?.(); }}
+              style={{
+                fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 4, cursor: "pointer",
+                background: `${COLORS.danger}22`,
+                border: `1px solid ${COLORS.danger}66`,
+                color: COLORS.danger,
+              }}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      <DoorPort canvasPlacement={layout.north} position={Position.Top} id="north" linked={linked.includes("north")} unlinked={unlinked.includes("north")} />
+      <DoorPort canvasPlacement={layout.south} position={Position.Bottom} id="south" linked={linked.includes("south")} unlinked={unlinked.includes("south")} />
+      <DoorPort canvasPlacement={layout.west} position={Position.Left} id="west" linked={linked.includes("west")} unlinked={unlinked.includes("west")} />
+      <DoorPort canvasPlacement={layout.east} position={Position.Right} id="east" linked={linked.includes("east")} unlinked={unlinked.includes("east")} />
+      <DoorPort canvasPlacement={layout.nw} variant="corner" position={Position.Top} id="northwest" linked={linked.includes("northwest")} unlinked={unlinked.includes("northwest")} />
+      <DoorPort canvasPlacement={layout.ne} variant="corner" position={Position.Top} id="northeast" linked={linked.includes("northeast")} unlinked={unlinked.includes("northeast")} />
+      <DoorPort canvasPlacement={layout.sw} variant="corner" position={Position.Bottom} id="southwest" linked={linked.includes("southwest")} unlinked={unlinked.includes("southwest")} />
+      <DoorPort canvasPlacement={layout.se} variant="corner" position={Position.Bottom} id="southeast" linked={linked.includes("southeast")} unlinked={unlinked.includes("southeast")} />
+      <DoorPort
+        canvasPlacement={layout.up} variant="stairs-up" position={Position.Top} id="up"
+        linked={linked.includes("up")} unlinked={unlinked.includes("up")}
+        onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); toolbarActions.onToggleStair?.("up"); }}
+      />
+      <DoorPort
+        canvasPlacement={layout.down} variant="stairs-down" position={Position.Bottom} id="down"
+        linked={linked.includes("down")} unlinked={unlinked.includes("down")}
+        onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); toolbarActions.onToggleStair?.("down"); }}
+      />
     </div>
   );
 });

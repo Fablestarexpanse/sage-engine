@@ -444,13 +444,17 @@ def _read_positions(zone_id: str) -> dict:
         return {"version": 2, "positions": {}, "notes": [], "muted_edges": [], "floors": {}}
     raw = json.loads(p.read_text(encoding="utf-8"))
     if raw.get("version") == 2:
-        return {
+        doc = {
             "version": 2,
             "positions": dict(raw.get("positions") or {}),
             "notes": list(raw.get("notes") or []),
             "muted_edges": list(raw.get("muted_edges") or []),
             "floors": dict(raw.get("floors") or {}),
         }
+        # Preserve app-only metadata so an MCP round-trip never strips it.
+        if raw.get("reference_image") is not None:
+            doc["reference_image"] = raw.get("reference_image")
+        return doc
     # Legacy v1 — inline positions
     return {
         "version": 2,
@@ -543,43 +547,36 @@ _UPPER_FLOOR_KEYWORDS = (
 )
 
 
-def _validate_floor_for_slug(slug: str, floor: int) -> None:
+def _warn_basement_floor(slug: str, floor: int) -> str | None:
     """
-    HARD ERROR if a room slug strongly implies a non-ground floor but floor=0 was given.
-    Forces the caller to pass the correct floor value at creation time so basement/upper
-    rooms never end up on the ground canvas.
+    Soft warning when a room slug strongly implies a non-ground floor but floor=0
+    was given. The room is still created (per the tool docstring's promise) — the
+    caller is told to fix it with set_room_floor.
     """
     if floor != 0:
-        return  # any non-zero floor is fine; we trust the caller
+        return None  # any non-zero floor is fine; we trust the caller
     slug_lower = slug.lower()
 
     for kw in _BASEMENT_KEYWORDS:
         if kw in slug_lower:
-            raise ValueError(
-                f"FLOOR MISMATCH: slug '{slug}' contains '{kw}' which implies a "
-                f"below-ground room, but floor=0 (ground) was passed. "
-                f"Below-ground rooms MUST use a negative floor value:\n"
-                f"  • First basement / sub-level   → floor=-1\n"
-                f"  • Second basement              → floor=-2\n"
-                f"  • Third basement / deep vault  → floor=-3\n"
-                f"Fix: pass floor=-1 (or correct depth) to create_room. "
-                f"Remember: floor=-2 connects to floor=-1, NOT directly to floor=0 — "
-                f"build basements one level at a time, anchored to the floor above."
+            return (
+                f"WARNING - FLOOR MISMATCH: slug '{slug}' contains '{kw}' which implies a "
+                f"below-ground room, but floor=0 (ground) was used. Below-ground rooms "
+                f"should use a negative floor (first basement -> -1, second -> -2). "
+                f"Fix with set_room_floor. Remember: floor=-2 connects to floor=-1, not "
+                f"directly to floor=0 - build basements one level at a time."
             )
 
     for kw in _UPPER_FLOOR_KEYWORDS:
         if kw in slug_lower:
-            raise ValueError(
-                f"FLOOR MISMATCH: slug '{slug}' contains '{kw}' which implies an "
-                f"above-ground room, but floor=0 (ground) was passed. "
-                f"Upper rooms MUST use a positive floor value:\n"
-                f"  • First floor up    → floor=1\n"
-                f"  • Second floor up   → floor=2\n"
-                f"  • Third floor up    → floor=3\n"
-                f"Fix: pass floor=1 (or correct height) to create_room. "
-                f"Remember: floor=2 connects to floor=1, NOT directly to floor=0 — "
-                f"build upper floors one level at a time, anchored to the floor below."
+            return (
+                f"WARNING - FLOOR MISMATCH: slug '{slug}' contains '{kw}' which implies an "
+                f"above-ground room, but floor=0 (ground) was used. Upper rooms should use "
+                f"a positive floor (first floor up -> 1, second -> 2). Fix with "
+                f"set_room_floor. Remember: floor=2 connects to floor=1, not directly to "
+                f"floor=0 - build upper floors one level at a time."
             )
+    return None
 
 
 def _check_orphan_room(zone_id: str, slug: str) -> str:

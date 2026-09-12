@@ -18,6 +18,13 @@ A sci-fi MUD engine built for rapid iteration: deterministic Python game logic, 
 
 ## What's new
 
+### 2026-09 — Score target reached + WorldForge health pass
+
+- **Server strict health score 85.6/100** (desloppify target 85) — four fix rounds off a 20-dimension review panel: explicit LLM failure contract (`LLMGenerationError`), per-entity combat locking, atomic writes across every content writer, optimistic-concurrency guard extended to room deletes, staff-route auth dependencies, config/security modules consolidated under `core/`.
+- **Test suite 104 → 150** — first coverage for the admin HTTP layer (auth middleware, permissions, 409 conflict guards, moderation endpoints), the Redis→Postgres durability write, staff lockout guards, the credit economy, and combat narration fallbacks.
+- **Admin console audit fixes** — navigation consolidated into a Content Library, live error banners with auto-recovery, real spawn/despawn wiring.
+- **WorldForge health pass** — its own desloppify baseline (79.7), full audit (`docs/dev/WORLDFORGE_AUDIT.md`), the MCP `create_room` crash and reference-image loss fixed, the nested `content/world` scaffold bug closed, live-watch no longer clobbers unsaved edits, and a new vitest suite (27 tests).
+
 ### 2026-07 — Code health overhaul (`desloppify/code-health`)
 
 - **Play session tokens** — login now issues a JWT; the client stops re-sending the password on every action and on the game WebSocket.

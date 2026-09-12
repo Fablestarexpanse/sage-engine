@@ -15,6 +15,8 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            commands::get_exe_path,
+            commands::get_env_var,
             commands::read_file,
             commands::write_file,
             commands::delete_file,

@@ -1,12 +1,33 @@
 import { resolveExitDestination } from "./zoneGraph.js";
 
 /**
+ * @typedef {Object} ZoneValidationCtx
+ * @property {string} [zoneId] Zone being validated (used to label cross-zone exits).
+ * @property {string[]} [entityIds] Known entity template ids — spawns referencing others error.
+ * @property {string[]} [itemIds] Known item ids — loot referencing others errors.
+ * @property {string[]} [glyphIds] Known glyph ids — prerequisites referencing others error.
+ * @property {Object<string, string[]>} [entityLoot] Map of entity id → loot item ids.
+ * @property {Object<string, {prerequisites?: string[]}>} [glyphs] Glyph docs keyed by id.
+ * @property {string[]} [allRoomIds] Every room id across zones (for cross-zone exit checks).
+ */
+
+/**
+ * @typedef {Object} ExternalExitRef
+ * @property {string} from Source room id.
+ * @property {string} direction Exit direction.
+ * @property {string} destination Target room id (usually in another zone).
+ */
+
+/**
  * @param {import('@xyflow/react').Node[]} nodes
  * @param {import('@xyflow/react').Edge[]} edges
- * @param {any[]} externalExits
- * @param {object} ctx
+ * @param {ZoneValidationCtx & { externalExits?: ExternalExitRef[] }} [opts] Validation context; `externalExits`
+ *   plus the same fields as {@link ZoneValidationCtx}, matching the options-object convention used by
+ *   `collectItemIssues` in itemValidation.js.
+ * @returns {{level: "error"|"warn", msg: string, nodeId?: string}[]}
  */
-export function runZoneValidation(nodes, edges, externalExits = [], ctx = {}) {
+export function runZoneValidation(nodes, edges, opts = {}) {
+  const { externalExits = [], ...ctx } = opts;
   const issues = [];
   const ids = new Set(nodes.map((n) => n.id));
   const connected = new Set();

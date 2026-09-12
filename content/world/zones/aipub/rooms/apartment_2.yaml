@@ -1,0 +1,14 @@
+id: aipub:apartment_2
+zone: aipub
+type: safe
+depth: 1
+description:
+  base: Unit 2 is cluttered with tech — stripped circuit boards, half-assembled comms
+    gear, and a pair of salvaged drones hanging from the ceiling like trophies. The
+    resident has soundproofed the walls with foam panels, mostly successfully.
+exits: {}
+features: []
+entity_spawns: []
+hazards: []
+tags: []
+name: Apartment 2

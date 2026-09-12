@@ -1,0 +1,17 @@
+id: aipub:bar_back
+zone: aipub
+type: chamber
+depth: 1
+description:
+  base: Behind the main bar, rows of unlabelled bottles line magnetic shelving. Kegs
+    of imported brew are stacked against one wall. A battered terminal tracks inventory.
+    The smell of cleaning fluid and old spills lingers here.
+exits:
+  west:
+    destination: aipub:main_bar
+    description: ''
+features: []
+entity_spawns: []
+hazards: []
+tags: []
+name: Back Bar & Stock Room
