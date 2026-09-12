@@ -1,8 +1,8 @@
 # NEXT
 
-Active phase: **none** — M1 (code quality foundation) is complete.
+Active phase: **none** — M1 complete; both desloppify health targets met
+(server 85.6, WorldForge 85.9, merged through PR #3).
 
-Recent state: strict desloppify score 85.6 on the server (target met),
-WorldForge at 79.7 with a deferred fix batch blocked on in-progress editor
-work (see `docs/dev/WORLDFORGE_AUDIT.md`). Define the next milestone under
-`docs/dev/milestones/` and point this file at its first phase.
+Current one-page state, done-list, and backlog: `docs/dev/STATUS.md`.
+Define the next milestone under `docs/dev/milestones/` and point this file
+at its first phase.
