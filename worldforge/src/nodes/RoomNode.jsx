@@ -135,6 +135,14 @@ function DoorPort({ position, canvasPlacement, id, style = {}, linked, unlinked,
 /** Inset so door ports (≈18px) + 3px stripe never sit over text/tags */
 const CONTENT_INSET = { top: 22, right: 22, bottom: 22, left: 26 };
 
+/** Destination slug for a chevron badge tooltip — strips the "zone:" prefix if present. */
+function destSlugLabel(ex) {
+  const dest = String(ex?.destination || "").trim();
+  if (!dest) return "(unset)";
+  const idx = dest.indexOf(":");
+  return idx >= 0 ? dest.slice(idx + 1) : dest;
+}
+
 export default memo(function RoomNode({ data, selected }) {
   const { colors: COLORS, roomTypeColors: ROOM_TYPE_COLORS } = useTheme();
   const btnStyle = useMemo(
@@ -165,6 +173,9 @@ export default memo(function RoomNode({ data, selected }) {
   const toolbarActions = data.toolbar || {};
   const unlinked = Array.isArray(data.unlinkedExitDirs) ? data.unlinkedExitDirs : [];
   const linked = Array.isArray(data.linkedExitDirs) ? data.linkedExitDirs : [];
+  const hasAlignTargets = Array.isArray(data.alignTargets) && data.alignTargets.length > 0;
+  const upExit = data.raw?.exits?.up;
+  const downExit = data.raw?.exits?.down;
 
   const rot = Number(data.rotation);
   const rotationDeg = Number.isFinite(rot) ? rot : 0;
@@ -341,6 +352,34 @@ export default memo(function RoomNode({ data, selected }) {
               SE
             </button>
           </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap", justifyContent: "center" }}>
+            <button
+              type="button"
+              title="Create (or jump to) a room one floor above, linked by up/down exits"
+              style={btnStyle}
+              onClick={() => toolbarActions.onAddVertical?.("up")}
+            >
+              ▲ Add above
+            </button>
+            <button
+              type="button"
+              title="Create (or jump to) a room one floor below, linked by up/down exits"
+              style={btnStyle}
+              onClick={() => toolbarActions.onAddVertical?.("down")}
+            >
+              ▼ Add below
+            </button>
+            {hasAlignTargets ? (
+              <button
+                type="button"
+                title="Snap linked up/down counterpart(s) to this room's position"
+                style={btnStyle}
+                onClick={() => toolbarActions.onAlignCounterparts?.()}
+              >
+                ⇕ Align
+              </button>
+            ) : null}
+          </div>
         </div>
       </NodeToolbar>
 
@@ -356,6 +395,73 @@ export default memo(function RoomNode({ data, selected }) {
           title="Locked"
         >
           🔒
+        </div>
+      ) : null}
+
+      {!isGhost && (upExit || downExit) ? (
+        <div
+          style={{
+            position: "absolute",
+            right: 3,
+            top: 3,
+            zIndex: 9,
+            display: "flex",
+            flexDirection: "column",
+            gap: 2,
+          }}
+        >
+          {upExit ? (
+            <button
+              type="button"
+              title={`Go up to ${destSlugLabel(upExit)}`}
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                toolbarActions.onGoVertical?.("up");
+              }}
+              style={{
+                width: 15,
+                height: 15,
+                padding: 0,
+                lineHeight: 1,
+                fontSize: 9,
+                fontWeight: 800,
+                borderRadius: 4,
+                cursor: "pointer",
+                border: `1px solid ${COLORS.info}`,
+                background: `${COLORS.info}2a`,
+                color: COLORS.info,
+              }}
+            >
+              ▲
+            </button>
+          ) : null}
+          {downExit ? (
+            <button
+              type="button"
+              title={`Go down to ${destSlugLabel(downExit)}`}
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                toolbarActions.onGoVertical?.("down");
+              }}
+              style={{
+                width: 15,
+                height: 15,
+                padding: 0,
+                lineHeight: 1,
+                fontSize: 9,
+                fontWeight: 800,
+                borderRadius: 4,
+                cursor: "pointer",
+                border: `1px solid ${COLORS.forge}`,
+                background: `${COLORS.forge}2a`,
+                color: COLORS.forge,
+              }}
+            >
+              ▼
+            </button>
+          ) : null}
         </div>
       ) : null}
 

@@ -45,7 +45,7 @@ import ExitEdge from "../edges/ExitEdge.jsx";
 import RoomPanel from "../panels/RoomPanel.jsx";
 import ValidationPanel from "../components/ValidationPanel.jsx";
 import ConnectionDebugPanel from "../components/ConnectionDebugPanel.jsx";
-import FloorSwitcher from "../components/FloorSwitcher.jsx";
+import FloorSwitcher, { floorLabel } from "../components/FloorSwitcher.jsx";
 import TextPromptModal from "../components/TextPromptModal.jsx";
 import GroupFormModal from "../components/GroupFormModal.jsx";
 import SaveStampModal, { stampSlugFromDisplayName } from "../components/SaveStampModal.jsx";
@@ -108,6 +108,19 @@ function buildDuplicateRoomYaml(sourceRoom, zoneId, newSlug, fromSlug) {
   const baseLabel = rawName && rawName !== "?" ? rawName : String(fromSlug || newSlug).replace(/_/g, " ");
   copy.name = `${baseLabel} (copy)`;
   return copy;
+}
+
+/**
+ * Suggested slug for a stair-linked room one floor above/below `slug`: strips any existing
+ * floor suffix (`_f<N>`, `_b<N>`, `_g`) then appends the suffix for `targetFloor`
+ * (`_f<N>` above ground, `_b<N>` below ground, `_g` on ground). Used to pre-fill the
+ * "Add above"/"Add below" stair tool's slug prompt — the user can still rename it.
+ */
+function computeStairSlug(slug, targetFloor) {
+  const base = String(slug || "").replace(/_(?:f\d+|b\d+|g)$/i, "");
+  if (targetFloor > 0) return `${base}_f${targetFloor}`;
+  if (targetFloor < 0) return `${base}_b${Math.abs(targetFloor)}`;
+  return `${base}_g`;
 }
 
 /**
@@ -271,6 +284,7 @@ function ZoneEditorInner({
 
   const positionsDocRef = useRef(positionsDoc);
   positionsDocRef.current = positionsDoc;
+  const guardPanelSwitchRef = useRef(async () => true);
   saveStampDraftRef.current = saveStampDraft;
   const duplicateBusyRef = useRef(false);
   const stampPlaceBusyRef = useRef(false);
@@ -348,6 +362,50 @@ function ZoneEditorInner({
     return m;
   }, [entities, entityIds]);
 
+  /** Snap `destSlug`'s canvas position to `sourceSlug`'s (source wins) — used to keep a stair pair aligned. */
+  const snapVerticalPosition = useCallback(
+    (sourceSlug, destSlug) => {
+      setPositionsDoc((prev) => {
+        const srcPos = prev.positions?.[sourceSlug];
+        if (!srcPos) return prev;
+        const prevDestPos = { ...(prev.positions?.[destSlug] || {}) };
+        if (prevDestPos.x === srcPos.x && prevDestPos.y === srcPos.y) return prev;
+        const next = {
+          ...prev,
+          positions: {
+            ...prev.positions,
+            [destSlug]: { ...prevDestPos, x: srcPos.x, y: srcPos.y },
+          },
+        };
+        fs.writeText(positionsPath, serializePositionsDoc(next)).catch((e) => setStatusMsg(`Positions save failed: ${e}`));
+        return next;
+      });
+    },
+    [positionsPath]
+  );
+
+  const linkStairs = useCallback(
+    async (fromSlug, fromDir, toSlug) => {
+      const zr = zonesRef.current;
+      const fromRoom = { ...(zr[zoneId]?.rooms?.[fromSlug] || {}) };
+      fromRoom.exits = { ...(fromRoom.exits || {}) };
+      fromRoom.exits[fromDir] = { destination: `${zoneId}:${toSlug}`, description: "" };
+      await saveZoneRoom(worldRoot, zoneId, fromSlug, fromRoom);
+      const toDir = oppositeDir(fromDir);
+      if (!toDir) {
+        setStatusMsg(`No reverse for direction "${fromDir}" — linked one way only`);
+        return;
+      }
+      const toRoom = { ...(zr[zoneId]?.rooms?.[toSlug] || {}) };
+      toRoom.exits = { ...(toRoom.exits || {}) };
+      toRoom.exits[toDir] = { destination: `${zoneId}:${fromSlug}`, description: "" };
+      await saveZoneRoom(worldRoot, zoneId, toSlug, toRoom);
+      snapVerticalPosition(fromSlug, toSlug);
+      setStatusMsg(`Linked ${fromSlug} ↕ ${toSlug}`);
+    },
+    [zoneId, worldRoot, saveZoneRoom, snapVerticalPosition]
+  );
+
   /**
    * Write a newly-created room's YAML, dispatch it into state, and record its floor (and,
    * for a room placed at a specific canvas point, its position) in the positions doc — the
@@ -405,11 +463,25 @@ function ZoneEditorInner({
           await finalizeNewRoom(slug, copy, { floor: fromFloor });
           break;
         }
+        case "stair": {
+          // "Add above/below": create the new room on m.targetFloor at the source room's
+          // x/y, then write the up/down exit pair via linkStairs (write-first, same as the
+          // ghost stair-link flow) and jump the view to it.
+          const base = buildBaseRoomYaml({ zoneId, slug, type: defaultRoomType });
+          await finalizeNewRoom(slug, base, { floor: m.targetFloor, position: m.position });
+          await linkStairs(m.fromSlug, m.dir, slug);
+          setCurrentFloor(m.targetFloor);
+          setSelectedSlug(slug);
+          setPanelDraft(zonesRef.current[zoneId]?.rooms?.[slug] || base);
+          setPanelDirty(false);
+          setStatusMsg(`Added room ${m.dir === "up" ? "above" : "below"}: ${slug}`);
+          break;
+        }
         default:
           break;
       }
     },
-    [zoneId, defaultRoomType, currentFloor, finalizeNewRoom]
+    [zoneId, defaultRoomType, currentFloor, finalizeNewRoom, linkStairs]
   );
 
   const onRoomSlugModalConfirm = useCallback(
@@ -435,27 +507,6 @@ function ZoneEditorInner({
       parseErrorAnnouncedForZoneRef.current = zoneId;
     }
   }, [zoneId, roomsMap]);
-
-  const linkStairs = useCallback(
-    async (fromSlug, fromDir, toSlug) => {
-      const zr = zonesRef.current;
-      const fromRoom = { ...(zr[zoneId]?.rooms?.[fromSlug] || {}) };
-      fromRoom.exits = { ...(fromRoom.exits || {}) };
-      fromRoom.exits[fromDir] = { destination: `${zoneId}:${toSlug}`, description: "" };
-      await saveZoneRoom(worldRoot, zoneId, fromSlug, fromRoom);
-      const toDir = oppositeDir(fromDir);
-      if (!toDir) {
-        setStatusMsg(`No reverse for direction "${fromDir}" — linked one way only`);
-        return;
-      }
-      const toRoom = { ...(zr[zoneId]?.rooms?.[toSlug] || {}) };
-      toRoom.exits = { ...(toRoom.exits || {}) };
-      toRoom.exits[toDir] = { destination: `${zoneId}:${fromSlug}`, description: "" };
-      await saveZoneRoom(worldRoot, zoneId, toSlug, toRoom);
-      setStatusMsg(`Linked ${fromSlug} ↕ ${toSlug}`);
-    },
-    [zoneId, worldRoot, saveZoneRoom]
-  );
 
   const duplicateSelectedRooms = useCallback(async () => {
     if (duplicateBusyRef.current) {
@@ -957,7 +1008,96 @@ function ZoneEditorInner({
           await fs.deleteFile(joinPaths(worldRoot, "zones", zoneId, "rooms", `${n.data.slug}.yaml`));
           dispatch({ type: "DELETE_ZONE_ROOM", zoneId, slug: n.data.slug });
         },
+        /** "Add above"/"Add below" stair tool: jump to an existing link, else prompt for a new room's slug. */
+        onAddVertical: async (dir) => {
+          const slug = n.data.slug;
+          const myFloor = (doc.floors || {})[slug] ?? 0;
+          const targetFloor = dir === "up" ? myFloor + 1 : myFloor - 1;
+          const room = zr[zoneId]?.rooms?.[slug] || {};
+          const exits = room.exits && typeof room.exits === "object" ? room.exits : {};
+          const existingDest = String(exits[dir]?.destination || "").trim();
+          if (existingDest) {
+            const destSlug = existingDest.includes(":")
+              ? existingDest.startsWith(`${zoneId}:`) ? existingDest.slice(zoneId.length + 1) : null
+              : existingDest;
+            if (destSlug && roomsMap[destSlug]) {
+              if (!(await guardPanelSwitchRef.current(destSlug))) return;
+              const destFloor = (doc.floors || {})[destSlug] ?? targetFloor;
+              setCurrentFloor(destFloor);
+              setSelectedSlug(destSlug);
+              setPanelDraft(zr[zoneId]?.rooms?.[destSlug] || null);
+              setPanelDirty(false);
+              setStatusMsg(`Already linked — jumped to ${destSlug}`);
+              return;
+            }
+          }
+          const srcPos = doc.positions?.[slug] || {};
+          setRoomSlugModal({
+            mode: "stair",
+            defaultSlug: computeStairSlug(slug, targetFloor),
+            fromSlug: slug,
+            dir,
+            targetFloor,
+            position: { x: Number(srcPos.x) || 0, y: Number(srcPos.y) || 0 },
+          });
+        },
+        /** Chevron badge click: jump the view + selection to the up/down exit's destination room. */
+        onGoVertical: async (dir) => {
+          const slug = n.data.slug;
+          const room = zr[zoneId]?.rooms?.[slug] || {};
+          const exits = room.exits && typeof room.exits === "object" ? room.exits : {};
+          const dest = String(exits[dir]?.destination || "").trim();
+          if (!dest) return;
+          const destSlug = dest.includes(":")
+            ? dest.startsWith(`${zoneId}:`) ? dest.slice(zoneId.length + 1) : null
+            : dest;
+          if (!destSlug || !roomsMap[destSlug]) {
+            setStatusMsg(`Cannot jump — destination "${dest}" not found`);
+            return;
+          }
+          if (!(await guardPanelSwitchRef.current(destSlug))) return;
+          const myFloor = (doc.floors || {})[slug] ?? 0;
+          const targetFloor = (doc.floors || {})[destSlug] ?? (dir === "up" ? myFloor + 1 : myFloor - 1);
+          setCurrentFloor(targetFloor);
+          setSelectedSlug(destSlug);
+          setPanelDraft(zr[zoneId]?.rooms?.[destSlug] || null);
+          setPanelDirty(false);
+          window.setTimeout(() => {
+            const node = rfRef.current.getNodes().find((x) => x.data?.slug === destSlug && !x.data?.ghost);
+            if (node) rfRef.current.fitView({ nodes: [node], padding: 0.6 });
+          }, 60);
+        },
+        /** "⇕ Align" toolbar button: snap this room's up/down counterpart(s) to its x/y. */
+        onAlignCounterparts: () => {
+          const slug = n.data.slug;
+          const targets = n.data.alignTargets || [];
+          if (!targets.length) return;
+          for (const destSlug of targets) snapVerticalPosition(slug, destSlug);
+          setStatusMsg(targets.length > 1 ? `Aligned ${targets.length} counterparts` : `Aligned with ${targets[0]}`);
+        },
       };
+      // Up/down counterparts whose x/y differs from this room's by more than 4px — drives
+      // the toolbar's "⇕ Align" button (see RoomNode).
+      const alignTargets = [];
+      {
+        const room = zr[zoneId]?.rooms?.[n.data.slug] || {};
+        const exits = room.exits && typeof room.exits === "object" ? room.exits : {};
+        for (const dir of ["up", "down"]) {
+          const dest = String(exits[dir]?.destination || "").trim();
+          if (!dest) continue;
+          const destSlug = dest.includes(":")
+            ? dest.startsWith(`${zoneId}:`) ? dest.slice(zoneId.length + 1) : null
+            : dest;
+          if (!destSlug || !roomsMap[destSlug]) continue;
+          const srcPos = doc.positions?.[n.data.slug];
+          const dstPos = doc.positions?.[destSlug];
+          if (!srcPos || !dstPos) continue;
+          const dx = Math.abs((Number(srcPos.x) || 0) - (Number(dstPos.x) || 0));
+          const dy = Math.abs((Number(srcPos.y) || 0) - (Number(dstPos.y) || 0));
+          if (dx > 4 || dy > 4) alignTargets.push(destSlug);
+        }
+      }
+      n.data.alignTargets = alignTargets;
       const locked = Boolean(doc.positions?.[n.data.slug]?.locked);
       n.data.locked = locked;
       n.draggable = !locked;
@@ -1061,6 +1201,9 @@ function ZoneEditorInner({
       }
     }
     // Also ghost explicit up/down destinations of current-floor rooms not already covered.
+    // Pairs collected here (visible room -> its ghosted up/down destination) become the
+    // dashed "ghost link" edges added below.
+    const ghostLinkPairs = [];
     for (const slug of currentFloorSlugs) {
       const room = roomsMap[slug] || {};
       const exits = room.exits && typeof room.exits === "object" ? room.exits : {};
@@ -1071,11 +1214,13 @@ function ZoneEditorInner({
         const tgtSlug = dest.includes(":")
           ? dest.startsWith(`${zoneId}:`) ? dest.slice(zoneId.length + 1) : null
           : dest;
-        if (!tgtSlug || !roomsMap[tgtSlug] || ghostData[tgtSlug]) continue;
+        if (!tgtSlug || !roomsMap[tgtSlug]) continue;
         const tgtFloor = floorsMap[tgtSlug] ?? 0;
-        if (tgtFloor !== currentFloor) {
+        if (tgtFloor === currentFloor) continue;
+        if (!ghostData[tgtSlug]) {
           ghostData[tgtSlug] = { ghostFloor: tgtFloor, ghostDir: dir.toLowerCase(), ghostLinked: true };
         }
+        ghostLinkPairs.push({ sourceSlug: slug, targetSlug: tgtSlug, dir: dir.toLowerCase() });
       }
     }
     const visibleNodeIds = new Set();
@@ -1112,8 +1257,35 @@ function ZoneEditorInner({
     });
     const filteredEdges = reFlow.filter((e) => visibleNodeIds.has(e.source) && visibleNodeIds.has(e.target));
 
+    // Dashed "ghost link" edges: a visible room's up/down exit whose destination is rendered
+    // as a ghost node on this floor. Non-interactive (not selectable/deletable via the normal
+    // edge menu — the ghost node's own toolbar handles unlink).
+    const ghostDashedEdges = ghostLinkPairs
+      .map(({ sourceSlug, targetSlug, dir }) => {
+        const sourceId = String(roomsMap[sourceSlug]?.id || `${zoneId}:${sourceSlug}`);
+        const targetId = String(roomsMap[targetSlug]?.id || `${zoneId}:${targetSlug}`);
+        if (!visibleNodeIds.has(sourceId) || !visibleNodeIds.has(targetId)) return null;
+        const dashColor = dir === "up" ? COLORS.info : COLORS.forge;
+        return {
+          id: `ghostlink|${sourceId}|${dir}|${targetId}`,
+          source: sourceId,
+          target: targetId,
+          sourceHandle: dir,
+          targetHandle: dir === "up" ? "down" : "up",
+          type: "default",
+          selectable: false,
+          focusable: false,
+          style: { strokeDasharray: "5 4", stroke: dashColor, strokeWidth: 2 },
+          label: dir === "up" ? "▲" : "▼",
+          labelStyle: { fill: dashColor, fontWeight: 700 },
+          labelBgStyle: { fill: COLORS.bgPanel, fillOpacity: 0.85 },
+          markerEnd: { type: MarkerType.ArrowClosed, color: dashColor, width: 14, height: 14 },
+        };
+      })
+      .filter(Boolean);
+
     setNodes([...filteredRn, ...notes]);
-    setEdges(filteredEdges);
+    setEdges([...filteredEdges, ...ghostDashedEdges]);
     setIssues(
       runZoneValidation(rn, reFlow, {
         externalExits,
@@ -1153,6 +1325,7 @@ function ZoneEditorInner({
     COLORS,
     currentFloor,
     linkStairs,
+    snapVerticalPosition,
   ]);
 
   useEffect(() => {
@@ -1538,6 +1711,9 @@ function ZoneEditorInner({
         curT.exits = { ...(curT.exits || {}) };
         curT.exits[tDir] = { destination: destBack, description: String(curT.exits[tDir]?.description || "") };
         await saveZoneRoom(worldRoot, zoneId, tgtSlug, curT);
+        if (sDir === "up" || sDir === "down" || tDir === "up" || tDir === "down") {
+          snapVerticalPosition(srcSlug, tgtSlug);
+        }
         setStatusMsg(`Linked ${sDir} → ${tgtSlug} (${tDir} back)`);
         lastConnectDedupeRef.current = {
           sig,
@@ -1560,7 +1736,7 @@ function ZoneEditorInner({
         connectBusyRef.current = false;
       }
     },
-    [rf, zoneId, zones, worldRoot, saveZoneRoom, connectionDebugLog, pushConnectionDebug]
+    [rf, zoneId, zones, worldRoot, saveZoneRoom, connectionDebugLog, pushConnectionDebug, snapVerticalPosition]
   );
 
   const clearAllZoneConnections = useCallback(async () => {
@@ -1705,6 +1881,10 @@ function ZoneEditorInner({
     }
     return window.confirm(`Discard unsaved changes to ${targetLabel || selectedSlug}?`);
   };
+  // rebuildGraph's toolbar closures (onAddVertical/onGoVertical) are memoized and can outlive
+  // the render that created guardPanelSwitch (a plain const, redefined every render) — go
+  // through a ref so they always call the latest one instead of a stale panelDirty/selectedSlug.
+  guardPanelSwitchRef.current = guardPanelSwitch;
 
   const { err: errC, warn: warnC } = validationCounts(issues);
 
@@ -2268,7 +2448,9 @@ function ZoneEditorInner({
               ? "Placeholder room"
               : roomSlugModal?.mode === "addHere"
                 ? "Add room here"
-                : "Duplicate room"
+                : roomSlugModal?.mode === "stair"
+                  ? roomSlugModal?.dir === "up" ? "Add room above" : "Add room below"
+                  : "Duplicate room"
         }
         hint={
           roomSlugModal?.mode === "add"
@@ -2277,11 +2459,19 @@ function ZoneEditorInner({
               ? 'Creates a tentative room (display name "?") for layout planning.'
               : roomSlugModal?.mode === "addHere"
                 ? "The new room is placed where you right-clicked on the canvas."
-                : "Copies this room's YAML except exits. Choose a new unique slug."
+                : roomSlugModal?.mode === "stair"
+                  ? `Creates a room on ${floorLabel(roomSlugModal?.targetFloor ?? 0)}, directly ${roomSlugModal?.dir === "up" ? "above" : "below"} "${roomSlugModal?.fromSlug}", and links ${roomSlugModal?.dir === "up" ? "up/down" : "down/up"} exits between them.`
+                  : "Copies this room's YAML except exits. Choose a new unique slug."
         }
         initialValue={roomSlugModal?.defaultSlug ?? ""}
         confirmLabel={
-          roomSlugModal?.mode === "duplicate" ? "Duplicate" : roomSlugModal?.mode === "placeholder" ? "Create" : "Add room"
+          roomSlugModal?.mode === "duplicate"
+            ? "Duplicate"
+            : roomSlugModal?.mode === "placeholder"
+              ? "Create"
+              : roomSlugModal?.mode === "stair"
+                ? "Create & link"
+                : "Add room"
         }
         validate={SLUG_OK}
         invalidMessage="Use only letters, numbers, underscore (_), and hyphen (-)."
