@@ -116,6 +116,10 @@ function SettingsPanel({ onClose, settings }) {
           <input type="checkbox" checked={settings.connectionDebugLog} onChange={(e) => settings.setConnectionDebugLog(e.target.checked)} />
           Log map connections (debug — console + zone panel)
         </label>
+        <label style={{ ...sl, display: "flex", alignItems: "center", gap: 8 }}>
+          <input type="checkbox" checked={settings.showDevTools} onChange={(e) => settings.setShowDevTools(e.target.checked)} />
+          Show developer tools (destructive zone-clear button)
+        </label>
         <label style={sl}>Default room type</label>
         <input style={si} value={settings.defaultRoomType} onChange={(e) => settings.setDefaultRoomType(e.target.value)} />
         <label style={sl}>Snap grid W × H</label>
@@ -465,6 +469,8 @@ function Shell() {
             nexusUrl={settings.nexusUrl}
             nexusToken={settings.nexusToken}
             defaultRoomType={settings.defaultRoomType}
+            autoSaveNavigate={settings.autoSaveNavigate}
+            showDevTools={settings.showDevTools}
           />
         ) : null}
         {activeEditor === "galaxy" ? <GalaxyEditor worldRoot={worldRoot} /> : null}

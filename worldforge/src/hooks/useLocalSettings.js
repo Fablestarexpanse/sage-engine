@@ -22,6 +22,7 @@ export function useLocalSettings() {
   const [snapGridW, setSnapGridW] = useState(() => read("worldforge_snap_w", 220));
   const [snapGridH, setSnapGridH] = useState(() => read("worldforge_snap_h", 140));
   const [connectionDebugLog, setConnectionDebugLog] = useState(() => read("worldforge_connection_debug", false));
+  const [showDevTools, setShowDevTools] = useState(() => read("worldforge_show_dev_tools", false));
 
   useEffect(() => {
     localStorage.setItem("worldforge_nexus_url", nexusUrl);
@@ -50,6 +51,9 @@ export function useLocalSettings() {
   useEffect(() => {
     localStorage.setItem("worldforge_connection_debug", String(connectionDebugLog));
   }, [connectionDebugLog]);
+  useEffect(() => {
+    localStorage.setItem("worldforge_show_dev_tools", String(showDevTools));
+  }, [showDevTools]);
 
   return {
     nexusUrl,
@@ -70,6 +74,8 @@ export function useLocalSettings() {
     setSnapGridH,
     connectionDebugLog,
     setConnectionDebugLog,
+    showDevTools,
+    setShowDevTools,
   };
 }
 

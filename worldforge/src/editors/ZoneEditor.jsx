@@ -60,6 +60,7 @@ import { useTheme } from "../ThemeContext.jsx";
 import * as fs from "../hooks/useFileSystem.js";
 import { useContent } from "../hooks/useContentStore.js";
 import { writeSnapEnabled } from "../hooks/useLocalSettings.js";
+import { deepClone } from "../utils/clone.js";
 
 const nodeTypes = { room: RoomNode, note: NoteNode };
 const edgeTypes = { exit: ExitEdge };
@@ -91,7 +92,7 @@ function readConnDebugPanelPos() {
 }
 
 function clonePositionsDoc(doc) {
-  return JSON.parse(JSON.stringify(doc ?? parsePositionsDoc(null)));
+  return deepClone(doc ?? parsePositionsDoc(null));
 }
 
 function normalizeRotationDeg(d) {
@@ -100,9 +101,27 @@ function normalizeRotationDeg(d) {
   return ((n % 360) + 360) % 360;
 }
 
+/** Base room YAML shared by the add/placeholder/addHere room-creation modes. */
+function buildBaseRoomYaml({ zoneId, slug, type, description, name }) {
+  const base = {
+    id: `${zoneId}:${slug}`,
+    zone: zoneId,
+    type: type || "chamber",
+    depth: 1,
+    description: { base: description ?? "" },
+    exits: {},
+    features: [],
+    entity_spawns: [],
+    hazards: [],
+    tags: [],
+  };
+  if (name) base.name = name;
+  return base;
+}
+
 /** Deep clone room YAML for a duplicate: no exits/links, new id/zone/slug/name. */
 function buildDuplicateRoomYaml(sourceRoom, zoneId, newSlug, fromSlug) {
-  const copy = JSON.parse(JSON.stringify(sourceRoom || {}));
+  const copy = deepClone(sourceRoom || {});
   copy.exits = {};
   copy.id = `${zoneId}:${newSlug}`;
   copy.zone = zoneId;
@@ -141,6 +160,36 @@ function readNodeBox(style, wFallback, hFallback) {
   };
 }
 
+/**
+ * Snapshot selected, unlocked room nodes for an operation that needs each room's live YAML
+ * plus its on-screen layout (duplicate, save-stamp): dedupes by slug, and reports slugs that
+ * have no node data or no loaded room YAML so the caller can surface a "nothing to X" message.
+ */
+function snapshotSelectedRoomsForOp(flow, roomsLive) {
+  const selectedNodes = flow.getNodes().filter((n) => n.type === "room" && n.selected && !n.data?.locked);
+  const sourceBySlug = new Map();
+  const missingSlugs = [];
+  const snapshots = [];
+  for (const n of selectedNodes) {
+    const slug = n.data?.slug;
+    const { position, style } = snapshotRoomNodeLayout(flow, n);
+    if (!slug) {
+      missingSlugs.push("(unnamed node)");
+      continue;
+    }
+    const raw = roomsLive[slug];
+    if (!raw) {
+      missingSlugs.push(slug);
+      continue;
+    }
+    if (!sourceBySlug.has(slug)) {
+      sourceBySlug.set(slug, deepClone(raw));
+      snapshots.push({ slug, roomId: n.id, position, style });
+    }
+  }
+  return { selectedNodes, sourceBySlug, missingSlugs, snapshots };
+}
+
 /** DOM handle under pointer at release (compare to React Flow’s chosen target handle). */
 function pickHandleUnderPointer(ev) {
   if (!ev || typeof ev.clientX !== "number" || typeof document.elementFromPoint !== "function") return null;
@@ -168,6 +217,8 @@ function ZoneEditorInner({
   nexusUrl,
   nexusToken,
   defaultRoomType,
+  autoSaveNavigate = false,
+  showDevTools = false,
 }) {
   const { colors: COLORS, colorScheme } = useTheme();
   const tbBtn = useMemo(
@@ -353,110 +404,69 @@ function ZoneEditorInner({
     return m;
   }, [entities, entityIds]);
 
+  /**
+   * Write a newly-created room's YAML, dispatch it into state, and record its floor (and,
+   * for a room placed at a specific canvas point, its position) in the positions doc — the
+   * write-then-dispatch order shared by the add/placeholder/addHere/duplicate room-creation
+   * modes in submitRoomSlug.
+   */
+  const finalizeNewRoom = useCallback(
+    async (slug, data, { floor, position } = {}) => {
+      await fs.writeYaml(joinPaths(worldRoot, "zones", zoneId, "rooms", `${slug}.yaml`), data);
+      dispatch({ type: "UPDATE_ZONE_ROOM", zoneId, slug, data });
+      const prev = positionsDocRef.current;
+      const next = {
+        ...prev,
+        ...(position
+          ? {
+              positions: {
+                ...prev.positions,
+                [slug]: { x: position.x, y: position.y, width: DEFAULT_ROOM_NODE_W, height: DEFAULT_ROOM_NODE_H },
+              },
+            }
+          : {}),
+        floors: { ...(prev.floors || {}), [slug]: floor },
+      };
+      setPositionsDoc(next);
+      await fs.writeText(positionsPath, serializePositionsDoc(next));
+    },
+    [zoneId, worldRoot, dispatch, positionsPath]
+  );
+
   const submitRoomSlug = useCallback(
     async (m, slug) => {
       if (!SLUG_OK(slug)) return;
       const zr = zonesRef.current;
       switch (m.mode) {
         case "add": {
-          const base = {
-            id: `${zoneId}:${slug}`,
-            zone: zoneId,
-            type: defaultRoomType || "chamber",
-            depth: 1,
-            description: { base: "" },
-            exits: {},
-            features: [],
-            entity_spawns: [],
-            hazards: [],
-            tags: [],
-          };
-          await fs.writeYaml(joinPaths(worldRoot, "zones", zoneId, "rooms", `${slug}.yaml`), base);
-          dispatch({ type: "UPDATE_ZONE_ROOM", zoneId, slug, data: base });
-          {
-            const prev = positionsDocRef.current;
-            const next = { ...prev, floors: { ...(prev.floors || {}), [slug]: currentFloor } };
-            setPositionsDoc(next);
-            await fs.writeText(positionsPath, serializePositionsDoc(next));
-          }
+          const base = buildBaseRoomYaml({ zoneId, slug, type: defaultRoomType });
+          await finalizeNewRoom(slug, base, { floor: currentFloor });
           break;
         }
         case "placeholder": {
-          const base = {
-            id: `${zoneId}:${slug}`,
-            zone: zoneId,
-            name: "?",
-            type: "chamber",
-            depth: 1,
-            description: { base: "" },
-            exits: {},
-            features: [],
-            entity_spawns: [],
-            hazards: [],
-            tags: [],
-          };
-          await fs.writeYaml(joinPaths(worldRoot, "zones", zoneId, "rooms", `${slug}.yaml`), base);
-          dispatch({ type: "UPDATE_ZONE_ROOM", zoneId, slug, data: base });
-          {
-            const prev = positionsDocRef.current;
-            const next = { ...prev, floors: { ...(prev.floors || {}), [slug]: currentFloor } };
-            setPositionsDoc(next);
-            await fs.writeText(positionsPath, serializePositionsDoc(next));
-          }
+          const base = buildBaseRoomYaml({ zoneId, slug, type: "chamber", name: "?" });
+          await finalizeNewRoom(slug, base, { floor: currentFloor });
           break;
         }
         case "addHere": {
-          const p = m.flowPos;
-          const base = {
-            id: `${zoneId}:${slug}`,
-            zone: zoneId,
-            type: defaultRoomType || "chamber",
-            depth: 1,
-            description: { base: "New room" },
-            exits: {},
-            features: [],
-            entity_spawns: [],
-            hazards: [],
-            tags: [],
-          };
-          await fs.writeYaml(joinPaths(worldRoot, "zones", zoneId, "rooms", `${slug}.yaml`), base);
-          dispatch({ type: "UPDATE_ZONE_ROOM", zoneId, slug, data: base });
-          {
-            const prev = positionsDocRef.current;
-            const next = {
-              ...prev,
-              positions: {
-                ...prev.positions,
-                [slug]: { x: p.x, y: p.y, width: DEFAULT_ROOM_NODE_W, height: DEFAULT_ROOM_NODE_H },
-              },
-              floors: { ...(prev.floors || {}), [slug]: currentFloor },
-            };
-            setPositionsDoc(next);
-            await fs.writeText(positionsPath, serializePositionsDoc(next));
-          }
+          const base = buildBaseRoomYaml({ zoneId, slug, type: defaultRoomType, description: "New room" });
+          await finalizeNewRoom(slug, base, { floor: currentFloor, position: m.flowPos });
           break;
         }
         case "duplicate": {
           const from = m.fromSlug;
           const src = zr[zoneId]?.rooms?.[from] || {};
           const copy = buildDuplicateRoomYaml(src, zoneId, slug, from);
-          await fs.writeYaml(joinPaths(worldRoot, "zones", zoneId, "rooms", `${slug}.yaml`), copy);
-          dispatch({ type: "UPDATE_ZONE_ROOM", zoneId, slug, data: copy });
-          {
-            // Inherit source room's floor so duplicate lands on the same level
-            const prev = positionsDocRef.current;
-            const fromFloor = (prev.floors || {})[from] ?? currentFloor;
-            const next = { ...prev, floors: { ...(prev.floors || {}), [slug]: fromFloor } };
-            setPositionsDoc(next);
-            await fs.writeText(positionsPath, serializePositionsDoc(next));
-          }
+          // Inherit source room's floor so duplicate lands on the same level
+          const fromFloor = (positionsDocRef.current.floors || {})[from] ?? currentFloor;
+          await finalizeNewRoom(slug, copy, { floor: fromFloor });
           break;
         }
         default:
           break;
       }
     },
-    [zoneId, worldRoot, dispatch, defaultRoomType, currentFloor, positionsPath]
+    [zoneId, defaultRoomType, currentFloor, finalizeNewRoom]
   );
 
   const onRoomSlugModalConfirm = useCallback(
@@ -464,7 +474,7 @@ function ZoneEditorInner({
       const m = roomSlugModal;
       setRoomSlugModal(null);
       if (!m) return;
-      submitRoomSlug(m, slug).catch(() => {});
+      submitRoomSlug(m, slug).catch((e) => setStatusMsg(`Save failed: ${e}`));
     },
     [roomSlugModal, submitRoomSlug]
   );
@@ -544,38 +554,11 @@ function ZoneEditorInner({
     }
 
     const flow = rfRef.current;
-    const selectedNodes = flow.getNodes().filter((n) => n.type === "room" && n.selected && !n.data?.locked);
+    const roomsLive = zonesRef.current[zoneId]?.rooms || {};
+    const { selectedNodes, sourceBySlug, missingSlugs, snapshots: selSnapshot } = snapshotSelectedRoomsForOp(flow, roomsLive);
     if (!selectedNodes.length) {
       setStatusMsg("Select unlocked rooms to duplicate");
       return;
-    }
-
-    const roomsLive = zonesRef.current[zoneId]?.rooms || {};
-    const selSnapshot = selectedNodes.map((n) => {
-      const { position, style } = snapshotRoomNodeLayout(flow, n);
-      return {
-        slug: n.data?.slug,
-        roomId: n.id,
-        position,
-        style,
-      };
-    });
-
-    const sourceBySlug = new Map();
-    const missingSlugs = [];
-    for (const row of selSnapshot) {
-      if (!row.slug) {
-        missingSlugs.push("(unnamed node)");
-        continue;
-      }
-      const raw = roomsLive[row.slug];
-      if (!raw) {
-        missingSlugs.push(row.slug);
-        continue;
-      }
-      if (!sourceBySlug.has(row.slug)) {
-        sourceBySlug.set(row.slug, JSON.parse(JSON.stringify(raw)));
-      }
     }
 
     if (!sourceBySlug.size) {
@@ -643,7 +626,7 @@ function ZoneEditorInner({
             };
           }
           const next = { ...prev, positions };
-          fs.writeText(positionsPath, serializePositionsDoc(next)).catch(() => {});
+          fs.writeText(positionsPath, serializePositionsDoc(next)).catch((e) => setStatusMsg(`Positions save failed: ${e}`));
           return next;
         });
       });
@@ -680,44 +663,14 @@ function ZoneEditorInner({
 
   const beginSaveStamp = useCallback(() => {
     const flow = rfRef.current;
-    const selectedNodes = flow.getNodes().filter((n) => n.type === "room" && n.selected && !n.data?.locked);
+    const roomsLive = zonesRef.current[zoneId]?.rooms || {};
+    const { selectedNodes, sourceBySlug, missingSlugs, snapshots } = snapshotSelectedRoomsForOp(flow, roomsLive);
     if (!selectedNodes.length) {
       setStatusMsg("Select unlocked rooms to save as a stamp");
       return;
     }
 
-    const roomsLive = zonesRef.current[zoneId]?.rooms || {};
-    const selSnapshot = selectedNodes.map((n) => {
-      const { position, style } = snapshotRoomNodeLayout(flow, n);
-      return {
-        slug: n.data?.slug,
-        position,
-        style,
-      };
-    });
-
-    const sourceBySlug = {};
-    const missingSlugs = [];
-    const seen = new Set();
-    const snapshots = [];
-    for (const row of selSnapshot) {
-      if (!row.slug) {
-        missingSlugs.push("(unnamed node)");
-        continue;
-      }
-      const raw = roomsLive[row.slug];
-      if (!raw) {
-        missingSlugs.push(row.slug);
-        continue;
-      }
-      if (!seen.has(row.slug)) {
-        seen.add(row.slug);
-        sourceBySlug[row.slug] = JSON.parse(JSON.stringify(raw));
-        snapshots.push({ slug: row.slug, position: row.position, style: row.style });
-      }
-    }
-
-    if (!Object.keys(sourceBySlug).length) {
+    if (!sourceBySlug.size) {
       setStatusMsg(
         missingSlugs.length
           ? `No room YAML loaded for: ${missingSlugs.slice(0, 6).join(", ")}${missingSlugs.length > 6 ? "…" : ""}`
@@ -729,7 +682,7 @@ function ZoneEditorInner({
     const first = snapshots[0]?.slug || "stamp";
     setSaveStampDraft({
       snapshots,
-      roomsBySourceSlug: sourceBySlug,
+      roomsBySourceSlug: Object.fromEntries(sourceBySlug),
       defaultDisplayName: `${String(first).replace(/_/g, " ")} stamp`,
     });
     setSaveStampOpen(true);
@@ -814,7 +767,7 @@ function ZoneEditorInner({
           setPositionsDoc((prev) => {
             const positions = { ...prev.positions, ...outPositions };
             const next = { ...prev, positions };
-            fs.writeText(positionsPath, serializePositionsDoc(next)).catch(() => {});
+            fs.writeText(positionsPath, serializePositionsDoc(next)).catch((e) => setStatusMsg(`Positions save failed: ${e}`));
             return next;
           });
         });
@@ -911,6 +864,17 @@ function ZoneEditorInner({
     applyUndo,
   ]);
 
+  /** Warn on tab/window close while the room panel has unsaved edits. */
+  useEffect(() => {
+    if (!panelDirty) return;
+    const onBeforeUnload = (e) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [panelDirty]);
+
   /** Remove exit on edge.source and any exit on edge.target that points back (mutual in-zone link). */
   const removeLinkedExitPair = useCallback(
     async (edge) => {
@@ -926,14 +890,14 @@ function ZoneEditorInner({
       if (!srcSlug) return;
       const zr = zonesRef.current[zoneId]?.rooms || {};
 
-      const curS = JSON.parse(JSON.stringify(zr[srcSlug] || {}));
+      const curS = deepClone(zr[srcSlug] || {});
       curS.exits = { ...(curS.exits || {}) };
       delete curS.exits[direction];
       dispatch({ type: "UPDATE_ZONE_ROOM", zoneId, slug: srcSlug, data: curS });
       await fs.writeYaml(joinPaths(worldRoot, "zones", zoneId, "rooms", `${srcSlug}.yaml`), curS);
 
       if (!tgtSlug) return;
-      const curT = JSON.parse(JSON.stringify(zr[tgtSlug] || {}));
+      const curT = deepClone(zr[tgtSlug] || {});
       curT.exits = { ...(curT.exits || {}) };
       let changed = false;
       for (const dir of Object.keys({ ...curT.exits })) {
@@ -948,6 +912,40 @@ function ZoneEditorInner({
         dispatch({ type: "UPDATE_ZONE_ROOM", zoneId, slug: tgtSlug, data: curT });
         await fs.writeYaml(joinPaths(worldRoot, "zones", zoneId, "rooms", `${tgtSlug}.yaml`), curT);
       }
+    },
+    [zoneId, worldRoot, dispatch]
+  );
+
+  /**
+   * Shared quick-exit toggle used by the room toolbar's quick-exit button, its stair button,
+   * and the ghost-node up/down toggle: removes the exit (confirming first if it has a
+   * destination) or adds a blank one. Writes the room YAML before dispatching the state
+   * update; returns the updated room data on success, or null if the user cancelled the
+   * confirm or the write failed (in which case a "Save failed" status is shown and no
+   * optimistic state change is applied).
+   */
+  const toggleExit = useCallback(
+    async (slug, dir) => {
+      const zr = zonesRef.current;
+      const cur = { ...(zr[zoneId]?.rooms?.[slug] || {}) };
+      cur.exits = { ...(cur.exits || {}) };
+      if (cur.exits[dir]) {
+        const dest = String(cur.exits[dir]?.destination || "").trim();
+        if (dest && !window.confirm(`Remove ${dir} exit from ${slug}?\nThis will clear its link to "${dest}".`)) {
+          return null;
+        }
+        delete cur.exits[dir];
+      } else {
+        cur.exits[dir] = { destination: "", description: "" };
+      }
+      try {
+        await fs.writeYaml(joinPaths(worldRoot, "zones", zoneId, "rooms", `${slug}.yaml`), cur);
+      } catch (e) {
+        setStatusMsg(`Save failed: ${e}`);
+        return null;
+      }
+      dispatch({ type: "UPDATE_ZONE_ROOM", zoneId, slug, data: cur });
+      return cur;
     },
     [zoneId, worldRoot, dispatch]
   );
@@ -1001,45 +999,21 @@ function ZoneEditorInner({
       n.data.zoneId = zoneId;
       n.data.showRoomId = showYamlIds;
       n.data.toolbar = {
-        onQuickExit: (dir) => {
+        onQuickExit: async (dir) => {
           const slug = n.data.slug;
-          const cur = { ...(zr[zoneId]?.rooms?.[slug] || {}) };
-          cur.exits = { ...(cur.exits || {}) };
-          if (cur.exits[dir]) {
-            const dest = String(cur.exits[dir]?.destination || "").trim();
-            if (dest && !window.confirm(`Remove ${dir} exit from ${slug}?\nThis will clear its link to "${dest}".`)) return;
-            delete cur.exits[dir];
-            dispatch({ type: "UPDATE_ZONE_ROOM", zoneId, slug, data: cur });
-            fs.writeYaml(joinPaths(worldRoot, "zones", zoneId, "rooms", `${slug}.yaml`), cur).catch(() => {});
-            setSelectedSlug(slug);
-            setPanelDraft(cur);
-            setStatusMsg(`Removed ${dir} exit`);
-            return;
-          }
-          cur.exits[dir] = { destination: "", description: "" };
-          dispatch({ type: "UPDATE_ZONE_ROOM", zoneId, slug, data: cur });
-          fs.writeYaml(joinPaths(worldRoot, "zones", zoneId, "rooms", `${slug}.yaml`), cur).catch(() => {});
+          const cur = await toggleExit(slug, dir);
+          if (!cur) return;
           setSelectedSlug(slug);
           setPanelDraft(cur);
-          setStatusMsg("Set destination in Exits tab");
+          setStatusMsg(cur.exits[dir] ? "Set destination in Exits tab" : `Removed ${dir} exit`);
         },
-        onToggleStair: (dir) => {
+        onToggleStair: async (dir) => {
           const slug = n.data.slug;
-          const cur = { ...(zr[zoneId]?.rooms?.[slug] || {}) };
-          cur.exits = { ...(cur.exits || {}) };
-          if (cur.exits[dir]) {
-            const dest = String(cur.exits[dir]?.destination || "").trim();
-            if (dest && !window.confirm(`Remove ${dir} exit from ${slug}?\nThis will clear its link to "${dest}".`)) return;
-            delete cur.exits[dir];
-            setStatusMsg(`Removed ${dir} exit`);
-          } else {
-            cur.exits[dir] = { destination: "", description: "" };
-            setStatusMsg(`Added ${dir} exit — set destination in Exits tab`);
-          }
-          dispatch({ type: "UPDATE_ZONE_ROOM", zoneId, slug, data: cur });
-          fs.writeYaml(joinPaths(worldRoot, "zones", zoneId, "rooms", `${slug}.yaml`), cur).catch(() => {});
+          const cur = await toggleExit(slug, dir);
+          if (!cur) return;
           setSelectedSlug(slug);
           setPanelDraft(cur);
+          setStatusMsg(cur.exits[dir] ? `Added ${dir} exit — set destination in Exits tab` : `Removed ${dir} exit`);
         },
         onDuplicate: () => {
           setRoomSlugModal({
@@ -1212,17 +1186,8 @@ function ZoneEditorInner({
               onStartLink: () => setPendingStairLink({ slug, ghostFloor: gd.ghostFloor, ghostDir: gd.ghostDir }),
               onToggleExit: async () => {
                 const dir = gd.ghostDir;
-                const cur = { ...(zr[zoneId]?.rooms?.[slug] || {}) };
-                cur.exits = { ...(cur.exits || {}) };
-                if (cur.exits[dir]) {
-                  const dest = String(cur.exits[dir]?.destination || "").trim();
-                  if (dest && !window.confirm(`Remove ${dir} exit from "${slug}"?\nThis will clear its link to "${dest}".`)) return;
-                  delete cur.exits[dir];
-                } else {
-                  cur.exits[dir] = { destination: "", description: "" };
-                }
-                dispatch({ type: "UPDATE_ZONE_ROOM", zoneId, slug, data: cur });
-                await fs.writeYaml(joinPaths(worldRoot, "zones", zoneId, "rooms", `${slug}.yaml`), cur);
+                const cur = await toggleExit(slug, dir);
+                if (!cur) return;
                 setStatusMsg(`${cur.exits[dir] ? "Added" : "Removed"} ${dir} exit on ${slug}`);
               },
             },
@@ -1268,6 +1233,7 @@ function ZoneEditorInner({
     setNodes,
     setEdges,
     removeLinkedExitPair,
+    toggleExit,
     COLORS,
     currentFloor,
     linkStairs,
@@ -1312,7 +1278,7 @@ function ZoneEditorInner({
           else prevPos[k] = v;
         }
         const nextDoc = { ...prev, positions: { ...prev.positions, [slug]: prevPos } };
-        fs.writeText(positionsPath, serializePositionsDoc(nextDoc)).catch(() => {});
+        fs.writeText(positionsPath, serializePositionsDoc(nextDoc)).catch((e) => setStatusMsg(`Positions save failed: ${e}`));
         return nextDoc;
       });
     },
@@ -1345,7 +1311,7 @@ function ZoneEditorInner({
           positions[slug] = prevPos;
         }
         const nextDoc = { ...prev, positions };
-        fs.writeText(positionsPath, serializePositionsDoc(nextDoc)).catch(() => {});
+        fs.writeText(positionsPath, serializePositionsDoc(nextDoc)).catch((e) => setStatusMsg(`Positions save failed: ${e}`));
         return nextDoc;
       });
       if (slugs.length > 1) setStatusMsg(`Map border → ${slugs.length} rooms`);
@@ -1456,7 +1422,7 @@ function ZoneEditorInner({
           positions[g.slug] = prevPos;
         }
         const nextDoc = { ...prev, positions };
-        fs.writeText(positionsPath, serializePositionsDoc(nextDoc)).catch(() => {});
+        fs.writeText(positionsPath, serializePositionsDoc(nextDoc)).catch((e) => setStatusMsg(`Positions save failed: ${e}`));
         return nextDoc;
       });
 
@@ -1490,7 +1456,7 @@ function ZoneEditorInner({
         positions[slug] = prevPos;
       }
       const nextDoc = { ...prev, positions };
-      fs.writeText(positionsPath, serializePositionsDoc(nextDoc)).catch(() => {});
+      fs.writeText(positionsPath, serializePositionsDoc(nextDoc)).catch((e) => setStatusMsg(`Positions save failed: ${e}`));
       return nextDoc;
     });
     setStatusMsg("Rotation reset");
@@ -1831,7 +1797,7 @@ function ZoneEditorInner({
     try {
       const prevRooms = {};
       for (const slug of slugsToClear) {
-        prevRooms[slug] = JSON.parse(JSON.stringify(zr[slug]));
+        prevRooms[slug] = deepClone(zr[slug]);
       }
       const prevPositionsDoc = clonePositionsDoc(positionsDocRef.current);
 
@@ -1843,7 +1809,7 @@ function ZoneEditorInner({
       if (undoStackRef.current.length > UNDO_LIMIT) undoStackRef.current.shift();
 
       for (const slug of slugsToClear) {
-        const cur = JSON.parse(JSON.stringify(zr[slug]));
+        const cur = deepClone(zr[slug]);
         cur.exits = {};
         dispatch({ type: "UPDATE_ZONE_ROOM", zoneId, slug, data: cur });
         await fs.writeYaml(joinPaths(worldRoot, "zones", zoneId, "rooms", `${slug}.yaml`), cur);
@@ -1851,7 +1817,7 @@ function ZoneEditorInner({
 
       setPositionsDoc((prev) => {
         const nextDoc = { ...prev, muted_edges: [] };
-        fs.writeText(positionsPath, serializePositionsDoc(nextDoc)).catch(() => {});
+        fs.writeText(positionsPath, serializePositionsDoc(nextDoc)).catch((e) => setStatusMsg(`Positions save failed: ${e}`));
         return nextDoc;
       });
 
@@ -1863,8 +1829,8 @@ function ZoneEditorInner({
     }
   }, [zoneId, worldRoot, dispatch, positionsPath]);
 
-  /** Temporary dev tool: delete every room file in the zone (not undoable). */
-  const clearAllZoneRoomsTemp = useCallback(async () => {
+  /** Dev tool (hidden unless Settings → "Show developer tools" is on): delete every room file in the zone (not undoable). */
+  const clearAllZoneRooms = useCallback(async () => {
     if (clearAllRoomsBusyRef.current) return;
     if (!worldRoot || !zoneId) return;
     const zr = zonesRef.current[zoneId]?.rooms || {};
@@ -1874,7 +1840,7 @@ function ZoneEditorInner({
       return;
     }
     const msg =
-      `TEMP — Delete ALL ${slugs.length} room(s) in zone “${zoneId}”?\n\n` +
+      `Delete ALL ${slugs.length} room(s) in zone “${zoneId}”?\n\n` +
       `This permanently removes every rooms/*.yaml file in this zone, clears room positions on the map, and clears muted edges. Canvas notes are kept.\n\n` +
       `This is NOT undone by Ctrl+Z. OK to continue.`;
     if (!window.confirm(msg)) return;
@@ -1900,9 +1866,9 @@ function ZoneEditorInner({
       setSelectedSlug(null);
       setPanelDraft(null);
       setPanelDirty(false);
-      setStatusMsg(`TEMP: deleted all ${slugs.length} room(s) in ${zoneId}`);
+      setStatusMsg(`Deleted all ${slugs.length} room(s) in ${zoneId}`);
     } catch {
-      setStatusMsg("TEMP clear all rooms failed");
+      setStatusMsg("Clear all rooms failed");
     } finally {
       clearAllRoomsBusyRef.current = false;
     }
@@ -1918,9 +1884,28 @@ function ZoneEditorInner({
   );
 
   const saveRoomFile = async (slug, data) => {
-    await fs.writeYaml(joinPaths(worldRoot, "zones", zoneId, "rooms", `${slug}.yaml`), data);
+    try {
+      await fs.writeYaml(joinPaths(worldRoot, "zones", zoneId, "rooms", `${slug}.yaml`), data);
+    } catch (e) {
+      setStatusMsg(`Save failed: ${e}`);
+      return;
+    }
     dispatch({ type: "UPDATE_ZONE_ROOM", zoneId, slug, data });
     setPanelDirty(false);
+  };
+
+  /**
+   * Guard a navigation that would discard the open room panel's unsaved edits (switching
+   * selected room, switching zone). When autoSaveNavigate is on, saves the current draft
+   * instead of prompting. Returns true when the caller should proceed with the switch.
+   */
+  const guardPanelSwitch = async (targetLabel) => {
+    if (!panelDirty) return true;
+    if (autoSaveNavigate) {
+      if (selectedSlug && panelDraft) await saveRoomFile(selectedSlug, panelDraft);
+      return true;
+    }
+    return window.confirm(`Discard unsaved changes to ${targetLabel || selectedSlug}?`);
   };
 
   const { err: errC, warn: warnC } = validationCounts(issues);
@@ -1944,7 +1929,11 @@ function ZoneEditorInner({
       >
         <select
           value={zoneId}
-          onChange={(e) => onZoneId(e.target.value)}
+          onChange={async (e) => {
+            const nextZone = e.target.value;
+            if (!(await guardPanelSwitch(`zone "${zoneId}"`))) return;
+            onZoneId(nextZone);
+          }}
           style={{ padding: 6, background: COLORS.bgInput, color: COLORS.text, border: `1px solid ${COLORS.border}`, borderRadius: 6 }}
         >
           {zoneIds.map((z) => (
@@ -2031,20 +2020,22 @@ function ZoneEditorInner({
         >
           Clear all connections
         </button>
-        <button
-          type="button"
-          style={{
-            ...tbBtn,
-            color: COLORS.danger,
-            borderColor: COLORS.danger,
-            background: `${COLORS.danger}22`,
-            fontWeight: 700,
-          }}
-          title="TEMP: deletes every room YAML in this zone and clears room positions (not undoable). Keeps canvas notes."
-          onClick={() => clearAllZoneRoomsTemp().catch(() => setStatusMsg("TEMP clear all rooms failed"))}
-        >
-          TEMP: Clear all rooms
-        </button>
+        {showDevTools ? (
+          <button
+            type="button"
+            style={{
+              ...tbBtn,
+              color: COLORS.danger,
+              borderColor: COLORS.danger,
+              background: `${COLORS.danger}22`,
+              fontWeight: 700,
+            }}
+            title="Dev tool: deletes every room YAML in this zone and clears room positions (not undoable). Keeps canvas notes."
+            onClick={() => clearAllZoneRooms().catch((e) => setStatusMsg(`Clear all rooms failed: ${e}`))}
+          >
+            Clear all rooms
+          </button>
+        ) : null}
         <span style={{ fontSize: 11, color: COLORS.textDim }}>{statusMsg}</span>
         {arrangeableSelectionCount >= 1 ? (
           <div
@@ -2215,11 +2206,13 @@ function ZoneEditorInner({
           onSelectionChange={({ nodes: sel }) => {
             setArrangeableSelectionCount(sel.filter((n) => n.type === "room" && !n.data?.locked).length);
           }}
-          onNodeClick={(_, n) => {
+          onNodeClick={async (_, n) => {
             if (n.type === "room") {
               if (pendingStairLink) {
                 if (!n.data?.ghost) {
-                  linkStairs(pendingStairLink.slug, pendingStairLink.ghostDir, n.data.slug).catch(() => {});
+                  linkStairs(pendingStairLink.slug, pendingStairLink.ghostDir, n.data.slug).catch((e) =>
+                    setStatusMsg(`Save failed: ${e}`)
+                  );
                   setPendingStairLink(null);
                 } else {
                   setPendingStairLink(null);
@@ -2229,6 +2222,8 @@ function ZoneEditorInner({
               }
               if (n.data?.ghost) { setCurrentFloor(n.data.ghostFloor); return; }
               const slug = n.data.slug;
+              if (slug === selectedSlug) return;
+              if (!(await guardPanelSwitch(slug))) return;
               setSelectedSlug(slug);
               setPanelDraft(zones[zoneId]?.rooms?.[slug] || null);
               setPanelDirty(false);
@@ -2679,8 +2674,13 @@ function ZoneEditorInner({
         onConfirm={async ({ id, name, color }) => {
           setGroupModalOpen(false);
           const next = [...(groups || []), { id, name, color }];
+          try {
+            await fs.writeYaml(groupsPath, next);
+          } catch (e) {
+            setStatusMsg(`Save failed: ${e}`);
+            return;
+          }
           setGroups(next);
-          await fs.writeYaml(groupsPath, next);
         }}
       />
 
