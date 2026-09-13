@@ -1,7 +1,7 @@
 # Phase 03: Invariant ratchet
 
 **Milestone:** M2 — SAGE engine decoupling
-**Status:** todo
+**Status:** done
 **Depends on:** phase-01
 **Estimated diff:** ~450 lines
 **Tags:** language=python, kind=feature, size=m
@@ -80,10 +80,10 @@ as Phase 3 moves Fablestar out.
 
 ## Acceptance criteria
 
-- [ ] `python scripts/sage_invariants.py check` exits 0 on the committed tree.
-- [ ] Adding the word `Conduit` to any engine `.py` file makes `check` exit 1 naming that file.
-- [ ] `python -m pytest tests/test_sage_invariants.py` passes.
-- [ ] The four gates pass; `ruff check scripts/sage_invariants.py` passes.
+- [x] `python scripts/sage_invariants.py check` exits 0 on the committed tree.
+- [x] Adding the word `Conduit` to any engine `.py` file makes `check` exit 1 naming that file.
+- [x] `python -m pytest tests/test_sage_invariants.py` passes.
+- [x] The four gates pass; `ruff check scripts/sage_invariants.py` passes.
 
 ## Test plan
 
@@ -123,3 +123,40 @@ as Phase 3 moves Fablestar out.
 ## Update Log
 
 <!-- entries appended below this line -->
+
+### Update — 2026-09-13 14:10 (complete)
+
+**Summary:** Executed by the architect directly. Built as specified, with two refinements found
+by checking real output: (1) the brief's ordinary-English terms (`Resolve`, `Presence`,
+`Reflex`, `Pixel`) produced false positives in docstrings, comments and identifiers like
+`adminPresenceWsUrl`, so they count only inside string literals (as contracts Part E already
+said); (2) the file list comes from `git ls-files --cached --others --exclude-standard` so
+ignored generated files can't skew local counts vs CI.
+
+**Commands:** ruff check/format clean (incl. `scripts/sage_invariants.py`); compileall ok;
+`pytest -q` 358 passed, 5 skipped.
+
+**End-to-end verification:**
+
+```
+python scripts/sage_invariants.py check
+  current {'denylist': 2885, 'player_literals': 177} / baseline {'denylist': 2885, 'player_literals': 177}   exit 0
+append "# Conduit" to src/fablestar/app.py; check
+  FAIL denylist: src/fablestar/app.py has 2, baseline allows 1   exit 1
+revert; check   exit 0
+report (top): fablestar 740, glyph 470, acu 299, rsv 230, digi 205, rfx 194, conduit 139, frt 137
+boundary tests mutation-checked: _is_boundary -> True makes 3 tests fail
+```
+
+**Files changed:** `scripts/sage_invariants.py`, `scripts/sage_denylist.toml`,
+`scripts/sage_invariants_baseline.json`, `tests/test_sage_invariants.py`,
+`.github/workflows/ci.yml` (python job step), `CLAUDE.md` (Testing).
+
+**Commits:** `81b00ac` ci: SAGE invariant ratchet…; `67fc92e` ci(invariants): scan only tracked…
+
+### Review — 2026-09-13 (architect)
+
+**Verdict:** accepted. **Bounces:** 0. First CI run with the ratchet step (`81b00ac`): `python`
+and `worldforge` success on Linux, so Windows-generated baseline counts match CI.
+**Notes:** `glyph` hits are dominated by the React theme token `T.glyph.*` (a palette name, not
+the mechanic); it is still Fablestar vocabulary and gets renamed when clients move in 2b.
