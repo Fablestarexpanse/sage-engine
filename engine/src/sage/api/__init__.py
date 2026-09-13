@@ -6,6 +6,7 @@ may change without notice; an import-boundary check enforces this once plugins e
 
 from sage.core.events import (
     CommandExecuted,
+    CountersChanged,
     EntityKilled,
     Event,
     PlayerDied,
@@ -20,6 +21,7 @@ from sage.world.death import Respawn
 
 __all__ = [
     "CommandExecuted",
+    "CountersChanged",
     "EntityKilled",
     "Event",
     "PlayerDied",

@@ -72,14 +72,9 @@ async def missions(session: Session, args: list[str]):
         messages, new_inventory = try_complete_collect(stats, registry, inventory)
         if new_inventory is not None:
             await app_instance.redis.set_player_inventory(player_id, new_inventory)
-            try:
-                from sage.achievements.engine import announcement, record_counter
+            from sage.world.counters import count
 
-                ach_registry = app_instance.content_loader.get_achievement_registry()
-                for ach in record_counter(stats, ach_registry, "missions_completed"):
-                    messages.append(announcement(ach))
-            except Exception as exc:
-                logger.warning("Mission achievement counter skipped: %s", exc)
+            messages += await count(app_instance, player_id, stats, "missions_completed")
             await app_instance.redis.set_player_stats(player_id, stats)
         await session.send("\r\n".join(messages))
         return

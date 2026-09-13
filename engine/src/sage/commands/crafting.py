@@ -151,15 +151,9 @@ async def craft(session: Session, args: list[str]):
     new_inv.extend(made)
     await app_instance.redis.set_player_inventory(player_id, new_inv)
 
-    granted = []
-    try:
-        from sage.achievements.engine import record_counter
+    from sage.world.counters import count
 
-        registry = app_instance.content_loader.get_achievement_registry()
-        granted += record_counter(stats, registry, "crafted")
-        granted += record_counter(stats, registry, f"crafted.{tmpl.id}")
-    except Exception:
-        logger.debug("craft counter skipped", exc_info=True)
+    counter_lines = await count(app_instance, player_id, stats, "crafted", f"crafted.{tmpl.id}")
     await app_instance.redis.set_player_stats(player_id, stats)
     await _fabrication_gain(
         player_id, CRAFT_GAIN_LEAVES.get(tmpl.type, "fabrication.materials.composites")
@@ -170,10 +164,8 @@ async def craft(session: Session, args: list[str]):
     log_event("craft", actor=player_id, item=tmpl.id, count=len(made))
     count_note = f" x{len(made)}" if len(made) > 1 else ""
     await session.send(f"You assemble: {tmpl.name}{count_note}.")
-    from sage.achievements.engine import announcement
-
-    for ach in granted:
-        await session.send(announcement(ach))
+    for line in counter_lines:
+        await session.send(line)
 
 
 @command("deconstruct", aliases=["dismantle", "breakdown"])
@@ -224,14 +216,9 @@ async def deconstruct(session: Session, args: list[str]):
         made_names.append(f"{n}x {part.name}")
     await app_instance.redis.set_player_inventory(player_id, new_inv)
 
-    granted = []
-    try:
-        from sage.achievements.engine import record_counter
+    from sage.world.counters import count
 
-        registry = app_instance.content_loader.get_achievement_registry()
-        granted += record_counter(stats, registry, "deconstructed")
-    except Exception:
-        logger.debug("deconstruct counter skipped", exc_info=True)
+    counter_lines = await count(app_instance, player_id, stats, "deconstructed")
     await app_instance.redis.set_player_stats(player_id, stats)
     await _fabrication_gain(player_id, DECONSTRUCT_LEAF)
 
@@ -239,7 +226,5 @@ async def deconstruct(session: Session, args: list[str]):
 
     log_event("deconstruct", actor=player_id, item=tmpl.id)
     await session.send(f"You strip the {tmpl.name} down to: {', '.join(made_names)}.")
-    from sage.achievements.engine import announcement
-
-    for ach in granted:
-        await session.send(announcement(ach))
+    for line in counter_lines:
+        await session.send(line)

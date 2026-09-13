@@ -147,12 +147,9 @@ async def _rent_locked(session: Session, player_id: str, room_id: str, lodging) 
     stats["digi"] = digi - lodging.price
     stats["home_room"] = target
     stats["home_until"] = int(until)
-    try:
-        from sage.achievements.engine import record_counter
+    from sage.world.counters import count
 
-        record_counter(stats, app_instance.content_loader.get_achievement_registry(), "rent_paid")
-    except Exception:
-        logger.debug("rent counter skipped", exc_info=True)
+    rent_lines = await count(app_instance, player_id, stats, "rent_paid")
     await redis.client.hset(RENTALS_KEY, target, json.dumps({"tenant": player_id, "until": until}))
     await redis.set_player_stats(player_id, stats)
 
@@ -167,3 +164,5 @@ async def _rent_locked(session: Session, player_id: str, room_id: str, lodging) 
         f"The keeper {verb} {slug} — {lodging.lease_minutes} minutes for {lodging.price} Digi "
         f"({stats['digi']} left)."
     )
+    for line in rent_lines:
+        await session.send(line)

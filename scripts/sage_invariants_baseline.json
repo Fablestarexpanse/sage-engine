@@ -1,7 +1,7 @@
 {
   "totals": {
     "denylist": 2186,
-    "player_literals": 169
+    "player_literals": 167
   },
   "denylist": {
     "engine/alembic/versions/b3c4d5e6f7a8_account_echo_credits.py": 5,
@@ -114,7 +114,6 @@
   },
   "player_literals": {
     "engine/src/sage/admin/routes/admin_ops.py": 1,
-    "engine/src/sage/commands/achievements.py": 2,
     "engine/src/sage/commands/admin.py": 1,
     "engine/src/sage/commands/combat.py": 15,
     "engine/src/sage/commands/communication.py": 17,

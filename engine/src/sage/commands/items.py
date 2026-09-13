@@ -133,15 +133,11 @@ async def use(session: Session, args: list[str]):
     before = int(stats.get("hp", 0))
     stats["hp"] = min(max_hp, before + heal)
     # Usage tracking: totals + per-template, so "most used item" is answerable.
-    newly_granted = []
-    try:
-        from sage.achievements.engine import record_counter
+    from sage.world.counters import count
 
-        registry = app_instance.content_loader.get_achievement_registry()
-        newly_granted += record_counter(stats, registry, "items_used")
-        newly_granted += record_counter(stats, registry, f"items_used.{template.id}")
-    except Exception:
-        pass
+    counter_lines = await count(
+        app_instance, player_id, stats, "items_used", f"items_used.{template.id}"
+    )
     await app_instance.redis.set_player_stats(player_id, stats)
     await app_instance.redis.set_player_inventory(
         player_id, [it for it in inv if it.get("id") != item.get("id")]
@@ -150,10 +146,8 @@ async def use(session: Session, args: list[str]):
     await session.send(
         f"You consume the {item.get('name', 'item')} (+{gained} hp, {stats['hp']}/{max_hp})."
     )
-    for ach in newly_granted:
-        from sage.achievements.engine import announcement
-
-        await session.send(announcement(ach))
+    for line in counter_lines:
+        await session.send(line)
 
 
 @command("take", aliases=["get", "pick"])

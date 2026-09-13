@@ -96,6 +96,12 @@ class _State:
                 f"plugin {self._api.id} uses state block {name!r} it did not register"
             )
 
+    async def snapshot(self, player_id: str) -> dict[str, Any]:
+        """A read-only copy of the character's whole stats blob (engine counters included)."""
+        import copy
+
+        return copy.deepcopy(await self._api._host.redis.get_player_stats(player_id))
+
     async def get(self, player_id: str, name: str) -> Any:
         self._check(name)
         stats = await self._api._host.redis.get_player_stats(player_id)

@@ -352,12 +352,9 @@ class AgentManager:
                 if bill
                 else "died and woke in the clinic; too broke to bill",
             )
-            try:
-                from sage.achievements.engine import record_counter
+            from sage.world.counters import count
 
-                record_counter(stats, server.content_loader.get_achievement_registry(), "deaths")
-            except Exception:
-                logger.debug("death counter skipped", exc_info=True)
+            await count(server, name, stats, "deaths")
             respawn_room = server.world.respawn_room
             if server.content_loader.get_room(respawn_room) is None:
                 respawn_room = state.persona.spawn_room
@@ -532,16 +529,9 @@ class AgentManager:
                 fx2.on_goal_done(stats, state.persona)
                 if state.goal_label:
                     fx2.remember(stats, f"finished: {state.goal_label}")
-                try:
-                    from sage.achievements.engine import record_counter
+                from sage.world.counters import count
 
-                    record_counter(
-                        stats,
-                        server.content_loader.get_achievement_registry(),
-                        "goals_completed",
-                    )
-                except Exception:
-                    logger.debug("goal counter skipped", exc_info=True)
+                await count(server, name, stats, "goals_completed")
                 state.goal_label = None
                 await server.redis.set_player_stats(name, stats)
         if reason == "wander":

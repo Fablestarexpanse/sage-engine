@@ -103,19 +103,11 @@ def _is_owner(shop, actor: str) -> bool:
     return persona is not None and persona.name == actor
 
 
-async def _record_trade(stats, kind: str) -> list:
+async def _record_trade(player_id: str, stats, kind: str) -> list[str]:
     from sage.app import app_instance
+    from sage.world.counters import count
 
-    granted = []
-    try:
-        from sage.achievements.engine import record_counter
-
-        registry = app_instance.content_loader.get_achievement_registry()
-        granted += record_counter(stats, registry, "trades")
-        granted += record_counter(stats, registry, kind)
-    except Exception:
-        logger.debug("trade counter skipped", exc_info=True)
-    return granted
+    return await count(app_instance, player_id, stats, "trades", kind)
 
 
 @command("browse", aliases=["shop", "wares"])
@@ -220,7 +212,7 @@ async def buy(session: Session, args: list[str]):
 
     entry_price = price
     stats["digi"] = _wallet(stats) - price
-    granted = await _record_trade(stats, "purchases")
+    trade_lines = await _record_trade(player_id, stats, "purchases")
     inv = await app_instance.redis.get_player_inventory(player_id)
     inv.append(
         {
@@ -249,10 +241,8 @@ async def buy(session: Session, args: list[str]):
     await session.send(
         f"You buy the {template.name} for {entry_price} Digi ({stats['digi']} left)."
     )
-    from sage.achievements.engine import announcement
-
-    for ach in granted:
-        await session.send(announcement(ach))
+    for line in trade_lines:
+        await session.send(line)
 
 
 @command("sell")
@@ -326,7 +316,7 @@ async def sell(session: Session, args: list[str]):
         total += price
         sold_ids.add(it.get("id"))
         sold_names.append(it.get("name", template.id))
-        await _record_trade(stats, "sales")
+        await _record_trade(player_id, stats, "sales")
         await _ledger(shop_room_id, "purchase", player_id, it.get("name", template.id), price)
         await _keeper_till(shop, player_id, -price)
         if not overstocked:

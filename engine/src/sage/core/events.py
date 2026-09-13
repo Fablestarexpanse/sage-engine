@@ -65,6 +65,16 @@ class PlayerDied(Event):
 
 
 @dataclass
+class CountersChanged(Event):
+    """Counters on a character's stats blob just moved; subscribers may add player lines."""
+
+    player_id: str
+    counters: list[str]
+    stats: dict[str, Any] = field(default_factory=dict)
+    messages: list[str] = field(default_factory=list)
+
+
+@dataclass
 class SessionStarted(Event):
     player_id: str
 

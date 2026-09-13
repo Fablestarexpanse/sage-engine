@@ -1,0 +1,15 @@
+# Achievements: grant named milestones when counters reach thresholds.
+# Definitions live in the world's content/achievements/*.yaml.
+[plugin]
+id = "achievements"
+name = "Achievements"
+version = "1.0.0"
+engine = ">=0.2,<0.3"
+entry = "sage_plugin_achievements.main:setup"
+first_party = true
+
+[touches]
+commands = ["achievements"]
+events_subscribe = ["CountersChanged"]
+state_blocks = ["achievements"]
+lexicon_prefix = "achievements."

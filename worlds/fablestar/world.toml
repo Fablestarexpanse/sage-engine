@@ -20,7 +20,8 @@ exit_dirs = ["north", "south", "east", "west", "up", "down",
 equipment_slots = ["weapon", "armor"]
 
 [plugins]
-# Populated as Fablestar systems become plugins (stage 2c loader, Phase 3 migration).
+# Fablestar systems move here from the engine during SAGE Phase 3.
+achievements = "^1"
 
 [params]
 # Tidegate clinic bills up to 10 Digi on respawn; half health on waking.

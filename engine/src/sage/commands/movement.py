@@ -109,9 +109,9 @@ def move_to(direction: str):
         )
 
         # Unique-room exploration counter (best-effort, writes only on first visit).
-        from sage.achievements.engine import announcement, record_room_visit_for_player
+        from sage.world.counters import visit_for_player
 
-        granted = await record_room_visit_for_player(player_id, target_room_id)
+        visit_lines = await visit_for_player(app_instance, player_id, target_room_id)
 
         # Room hazards roll against the player on entry (best-effort).
         hazard_messages: list[str] = []
@@ -133,8 +133,8 @@ def move_to(direction: str):
         await app_instance.dispatcher.dispatch(session, "look")
         for msg in hazard_messages:
             await session.send(f"\r\n{msg}")
-        for ach in granted:
-            await session.send(f"\r\n{announcement(ach)}")
+        for line in visit_lines:
+            await session.send(f"\r\n{line}")
 
     return _direction_handler
 

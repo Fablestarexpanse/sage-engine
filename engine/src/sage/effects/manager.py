@@ -43,12 +43,12 @@ class EffectsManager:
             return  # nothing fired, nothing expired — skip the write
         session = self.server.session_manager.get_session_by_player(player_id)
         died = was_alive and int(stats.get("hp", 1)) <= 0
-        granted = []
+        counter_lines: list[str] = []
         if died:
             from sage.effects.death import record_player_death
 
             room_id = await self.server.redis.get_player_location(player_id)
-            granted = await record_player_death(
+            counter_lines = await record_player_death(
                 self.server, session, player_id, stats, room_id, "affliction"
             )
         await self.server.redis.set_player_stats(player_id, stats)
@@ -57,11 +57,8 @@ class EffectsManager:
             return
         for msg in messages:
             await session.send(f"\r\n{msg}")
-        if granted:
-            from sage.achievements.engine import announcement
-
-            for ach in granted:
-                await session.send(f"\r\n{announcement(ach)}")
+        for line in counter_lines:
+            await session.send(f"\r\n{line}")
         await self.server.push_character_snapshot(session)
         if int(stats.get("hp", 1)) <= 0:
             await session.end("died", "\r\nYou succumb to your afflictions. Disconnecting...")

@@ -30,13 +30,6 @@ async def record_player_death(
         await heat(server.redis, "deaths", room_id)
     if is_agent:
         return []
-    from sage.achievements.engine import COUNTERS_KEY, record_counter
+    from sage.world.counters import count
 
-    try:
-        registry = server.content_loader.get_achievement_registry()
-    except Exception:
-        logger.debug("achievement registry unavailable; counting death only", exc_info=True)
-        counters = stats.setdefault(COUNTERS_KEY, {})
-        counters["deaths"] = int(counters.get("deaths", 0)) + 1
-        return []
-    return record_counter(stats, registry, "deaths")
+    return await count(server, player_id, stats, "deaths")

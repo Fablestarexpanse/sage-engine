@@ -26,8 +26,8 @@ ROOT = Path(__file__).resolve().parents[1]
 DENYLIST_FILE = ROOT / "scripts" / "sage_denylist.toml"
 BASELINE_FILE = ROOT / "scripts" / "sage_invariants_baseline.json"
 
-# Engine code (NOTICE) plus repository tooling that ships beside it.
-ENGINE_PATHS = ["engine", "scripts"]
+# Engine code (NOTICE), first-party plugins (reusable across worlds) and repository tooling.
+ENGINE_PATHS = ["engine", "plugins", "scripts"]
 EXTENSIONS = {
     ".py",
     ".js",

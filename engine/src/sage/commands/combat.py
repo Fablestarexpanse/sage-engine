@@ -172,12 +172,12 @@ async def attack(session: Session, args: list[str]):
         )
         await heat(app_instance.redis, "kills", room_id)
         await heat(app_instance.redis, f"kills_by:{player_id}", target_state.get("template", "?"))
-    # Achievement counters: total kills plus per-template kills.
-    newly_granted = []
+    # Counter lines (e.g. achievements unlocked) gathered from subscribers.
+    counter_lines: list[str] = []
     if player_stats.get("hp", 1) <= 0:
         from sage.effects.death import record_player_death
 
-        newly_granted += await record_player_death(
+        counter_lines += await record_player_death(
             app_instance,
             session,
             player_id,
@@ -187,16 +187,16 @@ async def attack(session: Session, args: list[str]):
         )
     faction_messages: list[str] = []
     if entity_dead:
-        try:
-            from sage.achievements.engine import record_counter
+        from sage.world.counters import count
 
-            ach_registry = app_instance.content_loader.get_achievement_registry()
-            newly_granted += record_counter(player_stats, ach_registry, "kills")
-            template_id = target_state.get("template", "")
-            if template_id:
-                newly_granted += record_counter(player_stats, ach_registry, f"kills.{template_id}")
-        except Exception as exc:
-            logger.warning("Achievement counters skipped: %s", exc)
+        template_id = target_state.get("template", "")
+        counter_lines += await count(
+            app_instance,
+            player_id,
+            player_stats,
+            "kills",
+            f"kills.{template_id}" if template_id else "",
+        )
 
         # Faction reputation consequences of the kill.
         try:
@@ -213,8 +213,8 @@ async def attack(session: Session, args: list[str]):
 
         # Active kill-mission progress (completion pays out immediately).
         try:
-            from sage.achievements.engine import record_counter
             from sage.factions.missions import record_kill
+            from sage.world.counters import count
 
             fac_registry = app_instance.content_loader.get_faction_registry()
             mission_msgs, completed = record_kill(
@@ -222,8 +222,9 @@ async def attack(session: Session, args: list[str]):
             )
             faction_messages += mission_msgs
             if completed:
-                ach_registry = app_instance.content_loader.get_achievement_registry()
-                newly_granted += record_counter(player_stats, ach_registry, "missions_completed")
+                counter_lines += await count(
+                    app_instance, player_id, player_stats, "missions_completed"
+                )
         except Exception as exc:
             logger.warning("Mission progress skipped: %s", exc)
 
@@ -313,11 +314,8 @@ async def attack(session: Session, args: list[str]):
     for msg in faction_messages:
         await session.send(f"\r\n{msg}")
 
-    if newly_granted:
-        from sage.achievements.engine import announcement
-
-        for ach in newly_granted:
-            await session.send(f"\r\n{announcement(ach)}")
+    for line in counter_lines:
+        await session.send(f"\r\n{line}")
 
     if player_stats.get("hp", 1) <= 0:
         await session.end("died", "\r\nYou have been slain. Disconnecting...")

@@ -110,15 +110,8 @@ async def search(session: Session, args: list[str]):
     await app_instance.redis.incr_search_finds(room_id, feature.id, profile.respawn_s)
     await session.send(f"Tucked away in the {feature.name}, you find: {template.name}.")
 
-    # Achievement counter (best-effort; re-reads stats to include any field gain).
-    try:
-        from sage.achievements.engine import announcement, record_counter
+    # Counter (re-reads stats so any field gain above is kept).
+    from sage.world.counters import count_for_player
 
-        stats = await app_instance.redis.get_player_stats(player_id)
-        registry = app_instance.content_loader.get_achievement_registry()
-        granted = record_counter(stats, registry, "scavenged")
-        await app_instance.redis.set_player_stats(player_id, stats)
-        for ach in granted:
-            await session.send(f"\r\n{announcement(ach)}")
-    except Exception as exc:
-        logger.warning("Scavenge achievement counter skipped: %s", exc)
+    for line in await count_for_player(app_instance, player_id, "scavenged"):
+        await session.send(f"\r\n{line}")

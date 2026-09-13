@@ -355,7 +355,6 @@ class SageServer:
         registry.load_module_strict("sage.commands.combat")
         registry.load_module_strict("sage.commands.items")
         registry.load_module_strict("sage.commands.proficiency")
-        registry.load_module_strict("sage.commands.achievements")
         registry.load_module_strict("sage.commands.effects")
         registry.load_module_strict("sage.commands.search")
         registry.load_module_strict("sage.commands.factions")

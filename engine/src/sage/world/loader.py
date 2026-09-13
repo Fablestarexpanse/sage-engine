@@ -12,7 +12,6 @@ from sage.proficiencies.registry_cache import ProficiencyRegistryCache
 from sage.world.models import EntityTemplate, ItemTemplate, RoomModel
 
 if TYPE_CHECKING:
-    from sage.achievements.registry import AchievementRegistry
     from sage.agents.registry import AgentRegistry
     from sage.factions.registry import FactionRegistry
 
@@ -137,17 +136,6 @@ class ContentLoader:
     def get_proficiency_registry(self) -> ProficiencyRegistry:
         """Delegate to the proficiencies package's own registry cache."""
         return self._proficiency_cache.get()
-
-    def get_achievement_registry(self) -> "AchievementRegistry":
-        """Load and cache the achievement registry from content/achievements/."""
-        cache_key = "achievements:registry"
-        if cache_key in self._cache:
-            return self._cache[cache_key]
-        from sage.achievements.registry import load_achievements
-
-        registry = load_achievements(self.content_dir)
-        self._cache[cache_key] = registry
-        return registry
 
     def get_agent_registry(self) -> "AgentRegistry":
         """Load and cache agent personas from content/agents/."""

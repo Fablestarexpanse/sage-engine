@@ -5,7 +5,7 @@ from pathlib import Path
 
 import yaml
 
-from sage.achievements.models import AchievementModel
+from .models import AchievementModel
 
 logger = logging.getLogger(__name__)
 
