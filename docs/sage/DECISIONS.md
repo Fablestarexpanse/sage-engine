@@ -1,11 +1,10 @@
 # SAGE decoupling — decision log
 
-NEXT: Stage 2a in PR #7. 2b on sage/stage-2b. Stage 2c on sage/stage-2c: phases 05 world packages,
-06 lexicon, 07 events/resolvers/tick jobs, 08 plugin loader, 09 Rivermoot + levels plugin + per-world
-live smoke DONE (brief's success test met: second world plays on unchanged engine). Remaining 2c:
-plugin-owned migrations (alembic branches, uninstall), world_overrides + Nexus lexicon/MOTD editing,
-import-boundary check (invariant 1). Then Phase 3. Ratchet 2186/169.
-Review page: https://claude.ai/code/artifact/2d488113-1ca9-4f45-b993-ac0253e0670c
+NEXT: Stage 2a in PR #7; 2b on sage/stage-2b; stage 2c DONE on sage/stage-2c (phases 05-12: world
+packages, lexicon, events/resolvers, plugin loader, Rivermoot + per-world smoke, plugin migrations +
+uninstall, live lexicon editing in Nexus, import boundary). Next: Phase 3 — migrate Fablestar system by
+system into plugins (order in PHASE1_CONTRACTS.md D.G item 4), game playable at every commit.
+Local dev DB is at n7o8p9q0r1s2. Ratchet 2186/169. Review page: https://claude.ai/code/artifact/2d488113-1ca9-4f45-b993-ac0253e0670c
 
 Append-only. One entry per ruling or decision, newest last. Owner rulings are binding; architect
 decisions are proposals until the Phase 1 review approves them.
