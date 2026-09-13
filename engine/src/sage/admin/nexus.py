@@ -51,7 +51,6 @@ from sage.admin.routes.forge import build_forge_router
 from sage.admin.routes.lexicon import build_lexicon_router
 from sage.admin.routes.llm_comfyui import build_llm_comfyui_router
 from sage.admin.routes.play import build_play_router
-from sage.admin.routes.shops import build_shops_router
 from sage.admin.routes.world import build_world_router
 
 logger = logging.getLogger(__name__)
@@ -151,7 +150,6 @@ class NexusApp:
         self.app.include_router(build_forge_router(self.server))
         self.app.include_router(build_llm_comfyui_router(self.server))
         self.app.include_router(build_agents_router(self.server))
-        self.app.include_router(build_shops_router(self.server))
         self.app.include_router(build_lexicon_router(self.server))
 
         # Presence + log WebSockets live here — they use NexusApp connection state.

@@ -133,6 +133,10 @@ class _State:
             raise PluginError(f"plugin {self._api.id} changed stats it does not own: {stray}")
         await redis.set_player_stats(player_id, stats)
 
+    async def location(self, player_id: str) -> str | None:
+        """The room a character is in (None when not in the world)."""
+        return await self._api._host.redis.get_player_location(player_id)
+
     async def get(self, player_id: str, name: str) -> Any:
         self._check(name)
         stats = await self._api._host.redis.get_player_stats(player_id)
@@ -276,6 +280,64 @@ class _Http:
         self._api._cleanup.append(unmount)
 
 
+class _Redis:
+    """Plugin-owned Redis keys. Every key must be "<prefix>:..." for a declared redis_prefixes."""
+
+    COMMANDS = frozenset(
+        {
+            "get",
+            "set",
+            "delete",
+            "getdel",
+            "incrby",
+            "expire",
+            "hget",
+            "hset",
+            "hdel",
+            "hgetall",
+            "hincrby",
+            "lpush",
+            "ltrim",
+            "lrange",
+        }
+    )
+
+    def __init__(self, api: PluginAPI):
+        self._api = api
+
+    def _check(self, key: str) -> None:
+        prefixes = self._api._record.manifest.touches.redis_prefixes
+        if not any(key.startswith(f"{p}:") for p in prefixes):
+            raise PluginError(
+                f"plugin {self._api.id} used Redis key {key!r} outside its redis_prefixes {prefixes}"
+            )
+
+    def __getattr__(self, command: str) -> Callable[..., Any]:
+        if command not in self.COMMANDS:
+            raise AttributeError(f"plugin Redis surface has no command {command!r}")
+
+        async def call(key: str, *args: Any, **kwargs: Any) -> Any:
+            self._check(key)
+            return await getattr(self._api._host.redis.client, command)(key, *args, **kwargs)
+
+        return call
+
+
+class _Telemetry:
+    def __init__(self, api: PluginAPI):
+        self._api = api
+
+    def event(self, kind: str, /, **fields: Any) -> None:
+        from sage.telemetry import log_event
+
+        log_event(kind, **fields)
+
+    async def heat(self, map_name: str, key: str, by: int = 1) -> None:
+        from sage.telemetry import heat
+
+        await heat(self._api._host.redis, map_name, key, by)
+
+
 class PluginAPI:
     def __init__(self, host: Any, record: Any):
         self._host = host
@@ -293,6 +355,8 @@ class PluginAPI:
         self.inventory = _Inventory(self)
         self.content = _Content(self)
         self.http = _Http(self)
+        self.redis = _Redis(self)
+        self.telemetry = _Telemetry(self)
 
     @property
     def world(self) -> Any:
@@ -303,7 +367,7 @@ class PluginAPI:
         """The engine wallet over this world's currencies (sage.world.wallet.Wallet)."""
         from sage.world.wallet import Wallet
 
-        return Wallet(self._host.world)
+        return Wallet(self._host.world, self._host.redis)
 
     def param(self, key: str, default: Any = None) -> Any:
         """A world param namespaced to this plugin: "<plugin id>.<key>"."""

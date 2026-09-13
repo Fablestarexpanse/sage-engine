@@ -22,10 +22,72 @@ def fake_wallet(key: str = "coin", starting: int = 100) -> Wallet:
     return Wallet(world)
 
 
+class FakeRedisClient:
+    """The raw-client commands plugins and engine services use (strings, hashes, lists)."""
+
+    def __init__(self) -> None:
+        self.strings: dict[str, str] = {}
+        self.hashes: dict[str, dict[str, str]] = {}
+        self.lists: dict[str, list[str]] = {}
+
+    async def get(self, key):
+        return self.strings.get(key)
+
+    async def set(self, key, value, **_):
+        self.strings[key] = str(value)
+
+    async def delete(self, *keys):
+        for key in keys:
+            self.strings.pop(key, None)
+            self.hashes.pop(key, None)
+            self.lists.pop(key, None)
+
+    async def getdel(self, key):
+        return self.strings.pop(key, None)
+
+    async def incrby(self, key, amount=1):
+        value = int(self.strings.get(key, 0)) + int(amount)
+        self.strings[key] = str(value)
+        return value
+
+    async def expire(self, key, seconds):
+        return True
+
+    async def hget(self, key, field):
+        return self.hashes.get(key, {}).get(field)
+
+    async def hset(self, key, field, value):
+        self.hashes.setdefault(key, {})[field] = value
+
+    async def hdel(self, key, *fields):
+        for field in fields:
+            self.hashes.get(key, {}).pop(field, None)
+
+    async def hgetall(self, key):
+        return dict(self.hashes.get(key, {}))
+
+    async def hincrby(self, key, field, amount=1):
+        bucket = self.hashes.setdefault(key, {})
+        bucket[field] = str(int(bucket.get(field, 0)) + int(amount))
+        return int(bucket[field])
+
+    async def lpush(self, key, *values):
+        self.lists.setdefault(key, [])[:0] = list(reversed(values))
+        return len(self.lists[key])
+
+    async def ltrim(self, key, start, end):
+        self.lists[key] = self.lists.get(key, [])[start : end + 1]
+
+    async def lrange(self, key, start, end):
+        items = self.lists.get(key, [])
+        return items[start:] if end == -1 else items[start : end + 1]
+
+
 class FakeRedis:
     """Dict-backed drop-in for the RedisState methods game code uses."""
 
     def __init__(self) -> None:
+        self.client = FakeRedisClient()
         self.locations: dict[str, str] = {}
         self.stats: dict[str, dict[str, Any]] = {}
         self.inventories: dict[str, list[Any]] = {}

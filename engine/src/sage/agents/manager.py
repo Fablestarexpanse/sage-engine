@@ -328,12 +328,10 @@ class AgentManager:
         # Bank money other sessions owe this agent (shop takings). Written to an
         # atomic counter by the payer so concurrent ticks can't overwrite it.
         try:
-            pending = await server.redis.client.getdel(f"digi_pending:{name}")
-            if pending:
-                stats["digi"] = max(0, int(stats.get("digi", 0) or 0) + int(pending))
+            if await server.wallet.bank_pending(name, stats):
                 await server.redis.set_player_stats(name, stats)
         except Exception:
-            logger.debug("pending digi merge failed for %s", name, exc_info=True)
+            logger.debug("pending wallet merge failed for %s", name, exc_info=True)
 
         # Death: wake in the medbay at half health, like a player relogging
         # at 0 hp — no immortal corpses wandering the halls.
@@ -459,7 +457,9 @@ class AgentManager:
             next_routine_direction=self._routine_direction(state, room_id),
             wander_ready=now >= state.next_wander_at,
             in_buying_shop=bool(
-                room.shop is not None and room.shop.buys and room.shop.owner != state.persona.id
+                (shop := self._shop_at(room_id)) is not None
+                and shop.buys
+                and shop.owner != state.persona.name
             ),
             sellable_count=sellable_count,
             floor_valuables=floor_valuables,
@@ -608,14 +608,21 @@ class AgentManager:
         zone = state.persona.spawn_zone()
         return sorted(r.split(":")[-1] for r in self._exits_map(zone))
 
-    def _factions(self):
-        """The factions plugin's service, or None when the world doesn't enable it.
+    def _service(self, name: str):
+        """A plugin's service, or None when the world doesn't enable that plugin.
 
-        Transitional: engine code reads a plugin service by name until agents are a plugin
-        themselves (phase-3 plan) and declare the dependency.
+        Transitional: engine code reads plugin services by name until agents are a plugin
+        themselves (phase-3 plan) and declare the dependencies.
         """
-        entry = getattr(getattr(self.server, "plugins", None), "services", {}).get("factions")
+        entry = getattr(getattr(self.server, "plugins", None), "services", {}).get(name)
         return entry[1] if entry else None
+
+    def _factions(self):
+        return self._service("factions")
+
+    def _shop_at(self, room_id: str | None):
+        shops = self._service("shop")
+        return shops.at(room_id) if shops else None
 
     async def _lodging_choice(self, digi: int) -> str | None:
         """Desk room with a free (or lapsed) bed this agent can afford, cheapest first."""
@@ -693,7 +700,7 @@ class AgentManager:
         # 3. Pack nearly full of loot: go sell it (7 of 8 agents sat at the cap).
         sellable = sum(1 for it in inventory if int(it.get("value", 0) or 0) > 0)
         if len(inventory) >= INVENTORY_SOFT_CAP and sellable:
-            buyer = self._shop_finder(zone, buying=True, exclude_owner=state.persona.id)()
+            buyer = self._shop_finder(zone, buying=True, exclude_owner=state.persona.name)()
             if buyer:
                 g = go("sell a full pack", buyer, ["sell all"])
                 if g:
@@ -815,8 +822,7 @@ class AgentManager:
         def find_buyer() -> str | None:
             best = None
             for room_id in self._exits_map(zone):
-                room = self.server.content_loader.get_room(room_id)
-                shop = room.shop if room else None
+                shop = self._shop_at(room_id)
                 if shop is None or not shop.buys:
                     continue
                 if exclude_owner and shop.owner == exclude_owner:
@@ -829,10 +835,10 @@ class AgentManager:
             item = (item or "").lower()
             best = None
             for room_id in self._exits_map(zone):
-                room = self.server.content_loader.get_room(room_id)
-                if room is None or room.shop is None:
+                shop = self._shop_at(room_id)
+                if shop is None:
                     continue
-                for entry in room.shop.sells:
+                for entry in shop.sells:
                     tmpl = self.server.content_loader.get_item_template(entry.template)
                     hay = f"{entry.template} {tmpl.name if tmpl else ''}".lower()
                     if item in hay and (best is None or entry.price < best[0]):

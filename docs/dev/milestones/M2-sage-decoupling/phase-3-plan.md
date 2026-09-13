@@ -25,7 +25,7 @@ by owner G.4 ("every mechanic is a first-party plugin").
 | 3.2 | Wallet service over world currencies (`sage.world.wallet`, `api.wallet`); shop, lodging, mission pay, respawn bill, new-character balance use it | done |
 | 3.3 | Factions + missions → `plugins/factions` (subscribe to `EntityKilled`); `PluginAPI` gains `counters`, `inventory`, `content.cached`, `state.edit` | done |
 | 3.4 | Engine seams shop/lodging need: content schema extensions (catalog #7, `api.content.extend`) and plugin admin HTTP routes (#9, `api.http.admin_router`) | done |
-| 3.5 | Shop and lodging → `plugins/shop`, `plugins/lodging` | next |
+| 3.5 | Shop → `plugins/shop` (done: `api.redis`, `api.telemetry`, `api.state.location`, `wallet.pay_later`); lodging → `plugins/lodging` (next) | in progress |
 | 3.6 | Crafting and search → `plugins/crafting`, `plugins/search` | todo |
 | 3.7 | Maestro → `plugins/maestro` | todo |
 | 3.8 | Effects API in engine; hazards → `plugins/hazards` | todo |
@@ -69,3 +69,10 @@ by owner G.4 ("every mechanic is a first-party plugin").
   manifest may only be `"/plugins/<id>/*"`; teardown unmounts. The contract's `play_router` is not
   built until a plugin needs a player-facing HTTP route (prefer-delete / two-world ceiling). Tool
   ids stay the fixed Nexus set until declarative admin panels (3.13) let plugins add nav entries.
+- **3.5 shop.** Shop keepers are **character names** in room YAML (`owner: Aldo Vex`), not agent
+  persona ids, so the shop plugin needs no agent registry: takings go through
+  `wallet.pay_later(owner)` (atomic `wallet_pending:<name>`, banked by the payee's side — today the
+  agent tick). The hot-state key was renamed from `digi_pending:`; takings in flight during a
+  deploy (seconds) are lost. Admin Shops page now reads `/plugins/shop/admin/shops` and shows the
+  world's currency name. `wallet` aliases come from `shop.wallet_aliases` (Fablestar: digi, money).
+  Plugin Redis keys must use declared `redis_prefixes`; engine prefixes are reserved.

@@ -27,8 +27,15 @@ SUPPORTED_TOUCHES = (
     "services",
     "content_extensions",
     "routes",
+    "redis_prefixes",
     "lexicon_prefix",
 )
+
+# Redis key prefixes the engine uses; plugins may not declare them.
+ENGINE_REDIS_PREFIXES = frozenset(
+    {"player", "room", "combat", "entity", "item", "search", "heat", "wallet_pending", "session"}
+)
+REDIS_PREFIX_RE = re.compile(r"^[a-z][a-z0-9_]{1,31}$")
 
 
 class PluginError(RuntimeError):
@@ -141,6 +148,15 @@ class PluginManifest(BaseModel):
         for route in self.touches.routes:
             if route != allowed:
                 raise ValueError(f"routes may only declare {allowed!r} (got {route!r})")
+        return self
+
+    @model_validator(mode="after")
+    def _redis_prefixes(self) -> PluginManifest:
+        for prefix in self.touches.redis_prefixes:
+            if not REDIS_PREFIX_RE.match(prefix):
+                raise ValueError(f"redis prefix {prefix!r} must match {REDIS_PREFIX_RE.pattern}")
+            if prefix in ENGINE_REDIS_PREFIXES:
+                raise ValueError(f"redis prefix {prefix!r} is reserved for the engine")
         return self
 
     @model_validator(mode="after")

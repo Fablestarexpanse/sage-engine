@@ -469,3 +469,38 @@ def test_plugin_routes_must_be_declared_under_their_own_prefix(tmp_path, host_fo
     write_plugin(bad, "ledgers", LEDGER, touches='routes = ["/admin/*"]')
     with pytest.raises(PluginError, match="may only declare"):
         read_manifest(bad / "ledgers")
+
+
+COUNTER = """
+from sage.api import PluginAPI
+
+
+def setup(api: PluginAPI) -> None:
+    async def poke(session, args):
+        await api.redis.incrby(args[0], 1)
+
+    api.commands.register("poke", poke)
+"""
+
+
+def test_plugin_redis_keys_stay_inside_declared_prefixes(tmp_path, host_for):
+    from tests.fakes import StubSession
+
+    write_plugin(
+        tmp_path / "plugins",
+        "pokes",
+        COUNTER,
+        touches='commands = ["poke"]\nredis_prefixes = ["pokes"]',
+    )
+    host = host_for({"pokes": "^1"})
+    host.load()
+    handler = host.registry.get("poke").handler
+    asyncio.run(handler(StubSession("hero"), ["pokes:hero"]))
+    assert host.redis.client.strings["pokes:hero"] == "1"
+    with pytest.raises(PluginError, match="outside its redis_prefixes"):
+        asyncio.run(handler(StubSession("hero"), ["player:hero:stats"]))
+
+    reserved = tmp_path / "reserved"
+    write_plugin(reserved, "pokes", COUNTER, touches='redis_prefixes = ["player"]')
+    with pytest.raises(PluginError, match="reserved for the engine"):
+        read_manifest(reserved / "pokes")

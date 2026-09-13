@@ -183,7 +183,7 @@ def seal(record: PluginRecord) -> None:
         if kind == "lexicon_prefix":
             continue
         unused = sorted(set(getattr(touches, kind)) - record.registered.get(kind, set()))
-        if unused and kind != "events_publish":
+        if unused and kind not in ("events_publish", "redis_prefixes"):
             logger.warning(
                 "Plugin %s declares %s %s but never registered them", record.id, kind, unused
             )

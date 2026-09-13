@@ -97,7 +97,7 @@ class SageServer:
         self.db = PostgresState(self.config.database)
         self.persistence = PersistenceManager(self)
         # In-world money in the world's currencies (sage.world.wallet).
-        self.wallet = Wallet(self.world)
+        self.wallet = Wallet(self.world, self.redis)
         self.content_loader = ContentLoader(self.world.content_dir)
         content_browser.set_content_root(self.world.content_dir)
         self.spawner = EntitySpawnManager(self)
@@ -362,7 +362,6 @@ class SageServer:
         registry.load_module_strict("sage.commands.proficiency")
         registry.load_module_strict("sage.commands.effects")
         registry.load_module_strict("sage.commands.search")
-        registry.load_module_strict("sage.commands.shop")
         registry.load_module_strict("sage.commands.rent")
         registry.load_module_strict("sage.commands.crafting")
         registry.load_module_strict("sage.commands.admin")

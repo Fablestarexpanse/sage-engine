@@ -48,28 +48,6 @@ class AmbientModel(BaseModel):
     max_interval: float = Field(default=120.0, gt=0)
 
 
-class ShopStockModel(BaseModel):
-    template: str
-    price: int = Field(gt=0)
-
-
-class ShopModel(BaseModel):
-    """A room that trades: fixed sell stock, and optionally buys items for a
-    fraction of their template value."""
-
-    name: str = "the shop"
-    sells: list[ShopStockModel] = Field(default_factory=list)
-    buys: bool = False
-    buy_rate: float = Field(default=0.5, gt=0, le=1.0)
-    # Goods a buying shop takes in go onto a secondhand shelf and resell at
-    # template value * resale_rate (never below the buy price + 1).
-    resale_rate: float = Field(default=1.0, gt=0)
-    # Max secondhand units per item type; the shop stops buying that item when full.
-    stock_cap: int = Field(default=20, ge=0)
-    # Agent persona id of the shopkeeper, when an agent runs this shop.
-    owner: str = ""
-
-
 class LodgingModel(BaseModel):
     """A rent desk: this room lets the listed rooms on timed leases."""
 
@@ -95,7 +73,6 @@ class RoomModel(BaseModel):
     entity_spawns: list[EntitySpawnModel] = Field(default_factory=list)
     hazards: list[HazardModel] = Field(default_factory=list)
     ambient: AmbientModel | None = None
-    shop: ShopModel | None = None
     lodging: LodgingModel | None = None
     tags: set[str] = Field(default_factory=set)
 

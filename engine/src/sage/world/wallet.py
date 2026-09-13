@@ -22,9 +22,13 @@ class WalletError(ValueError):
     """A wallet call named a currency the world does not declare, or a negative amount."""
 
 
+PENDING_PREFIX = "wallet_pending"
+
+
 class Wallet:
-    def __init__(self, world: Any):
+    def __init__(self, world: Any, redis: Any = None):
         self._world = world
+        self._redis = redis
 
     def _currency(self, key: str | None) -> Any:
         currencies = list(getattr(self._world, "currencies", []) or [])
@@ -76,6 +80,22 @@ class Wallet:
             return False
         self.set(stats, have - int(amount), key)
         return True
+
+    async def pay_later(self, character: str, amount: int) -> None:
+        """Owe a character primary currency (negative: they owe). Banked by bank_pending.
+
+        An atomic counter, so a payer never races the payee's own stats writes (a shopkeeper
+        whose tick is saving its stats while a customer pays it).
+        """
+        await self._redis.client.incrby(f"{PENDING_PREFIX}:{character}", int(amount))
+
+    async def bank_pending(self, character: str, stats: dict[str, Any]) -> int:
+        """Move everything owed to character into stats (never below zero); returns the delta."""
+        raw = await self._redis.client.getdel(f"{PENDING_PREFIX}:{character}")
+        delta = int(raw or 0)
+        if delta and self.enabled:
+            self.set(stats, self.balance(stats) + delta)
+        return delta
 
     def take_up_to(self, stats: dict[str, Any], amount: int, key: str | None = None) -> int:
         """Take as much of amount as the character has (bills); returns what was taken."""
