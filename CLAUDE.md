@@ -2,7 +2,7 @@
 
 > **SAGE decoupling in progress (2026-09-13).** This codebase is being split into a
 > world-agnostic engine (SAGE), world packages (Fablestar is the first) and plugins. The brief
-> `docs/sage/BRIEF.md`, the rulings log `docs/sage/DECISIONS.md` and, once approved,
+> `docs/sage/BRIEF.md`, the rulings log `docs/sage/DECISIONS.md` and the approved (2026-09-13)
 > `docs/sage/PHASE1_CONTRACTS.md` take precedence over this file. This file still describes the
 > pre-split shape, where Fablestar mechanics (Conduit, Digi, Tidegate rooms) sit inside the
 > engine — do not add new world-specific code to the engine on the strength of it. Current
