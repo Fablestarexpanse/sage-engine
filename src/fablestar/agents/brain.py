@@ -78,8 +78,44 @@ def voice_prompt(state: "AgentState", feelings_word: str, speaker: str, message:
 class AgentBrain:
     def __init__(self, server: "FablestarServer"):
         self.server = server
-        self.llm = LLMClient(server.config.agents_llm)
+        self.llm = self._build_client(server.config.agents_llm)
         self._last_voice_at: dict[str, float] = {}
+
+    @staticmethod
+    def _build_client(config):
+        if (config.primary_backend or "").lower().strip() == "embedded":
+            from fablestar.agents.embedded_llm import EmbeddedLLM
+
+            return EmbeddedLLM(config)
+        return LLMClient(config)
+
+    def reconfigure(self, config) -> None:
+        """Apply new brain settings live (admin panel save)."""
+        self.server.config.agents_llm = config
+        current_embedded = type(self.llm).__name__ == "EmbeddedLLM"
+        want_embedded = (config.primary_backend or "").lower().strip() == "embedded"
+        if current_embedded != want_embedded:
+            self.llm = self._build_client(config)
+        elif want_embedded:
+            self.llm.reconfigure(config)
+        else:
+            self.llm.reconfigure(config)
+
+    def status(self) -> dict:
+        cfg = self.server.config.agents_llm
+        base = {
+            "enabled": bool(cfg.enabled),
+            "backend": cfg.primary_backend,
+            "chat_model": cfg.chat_model,
+            "lm_studio_url": cfg.lm_studio_url,
+            "ollama_url": cfg.ollama_url,
+            "model_path": cfg.model_path,
+            "temperature": cfg.temperature,
+            "timeout_seconds": cfg.timeout_seconds,
+        }
+        if hasattr(self.llm, "status"):
+            base["embedded"] = self.llm.status()
+        return base
 
     @property
     def enabled(self) -> bool:

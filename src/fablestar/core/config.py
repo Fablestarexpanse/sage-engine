@@ -101,9 +101,17 @@ class LLMConfig(BaseModel):
 
 
 class AgentsLLMConfig(LLMConfig):
-    """Separate endpoint for agent brains so thinking never competes with narration."""
+    """Agent-brain LLM: an external endpoint OR an in-process GGUF model.
+
+    primary_backend accepts "lm_studio" / "ollama" (OpenAI-compatible HTTP)
+    or "embedded" (llama-cpp-python loads model_path inside the server).
+    """
 
     enabled: bool = False
+    # GGUF file for the embedded backend, e.g. "models/qwen2.5-3b-instruct-q4_k_m.gguf".
+    model_path: str = ""
+    # Embedded context window; small models + short prompts keep this modest.
+    embedded_ctx: int = 4096
 
 
 class Config(BaseModel):

@@ -38,6 +38,18 @@ class PersonaBody(BaseModel):
     yaml_text: str
 
 
+class BrainSettingsBody(BaseModel):
+    enabled: bool | None = None
+    primary_backend: str | None = None  # lm_studio | ollama | embedded
+    lm_studio_url: str | None = None
+    ollama_url: str | None = None
+    chat_model: str | None = None
+    model_path: str | None = None
+    embedded_ctx: int | None = None
+    temperature: float | None = None
+    timeout_seconds: float | None = None
+
+
 def build_agents_router(server: "FablestarServer") -> APIRouter:
     router = APIRouter()
 
@@ -71,6 +83,61 @@ def build_agents_router(server: "FablestarServer") -> APIRouter:
         if state is None:
             raise HTTPException(status_code=404, detail="agent_not_found")
         return state
+
+    @router.get("/admin/agents-llm")
+    async def brain_settings_get(
+        _ctx: Annotated[AdminContext, Depends(require_tool("agents"))],
+    ):
+        return manager._m.brain.status()
+
+    @router.put("/admin/agents-llm")
+    async def brain_settings_put(
+        body: BrainSettingsBody,
+        _ctx: Annotated[AdminContext, Depends(require_tool("agents"))],
+    ):
+        from fablestar.core.agents_llm_persist import save_agents_llm_toml
+        from fablestar.core.config import AgentsLLMConfig
+
+        current = server.config.agents_llm.model_dump()
+        patch = body.model_dump(exclude_unset=True, exclude_none=True)
+        if "primary_backend" in patch and patch["primary_backend"] not in (
+            "lm_studio",
+            "ollama",
+            "embedded",
+        ):
+            raise HTTPException(status_code=400, detail="unknown_backend")
+        current.update(patch)
+        try:
+            new_cfg = AgentsLLMConfig(**current)
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=f"invalid_settings: {exc}") from exc
+        save_agents_llm_toml(new_cfg)
+        manager._m.brain.reconfigure(new_cfg)
+        return manager._m.brain.status()
+
+    @router.post("/admin/agents-llm/test")
+    async def brain_settings_test(
+        _ctx: Annotated[AdminContext, Depends(require_tool("agents"))],
+    ):
+        """One-shot generation to prove the configured brain answers."""
+        from fablestar.llm.client import LLMGenerationError
+
+        brain = manager._m.brain
+        started = time.time()
+        try:
+            reply = await brain.llm.generate_or_raise(
+                "Say exactly one short in-character line as a weary space-station "
+                "dockworker greeting a stranger.",
+                system_prompt="Output only the spoken line.",
+                max_tokens=60,
+            )
+            return {
+                "ok": True,
+                "reply": reply[:300],
+                "latency_s": round(time.time() - started, 2),
+            }
+        except LLMGenerationError as exc:
+            return {"ok": False, "error": str(exc), "latency_s": round(time.time() - started, 2)}
 
     @router.get("/admin/agents")
     async def agents_list(

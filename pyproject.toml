@@ -27,6 +27,8 @@ dependencies = [
 
 [project.optional-dependencies]
 worldforge = ["mcp>=1.0.0"]
+# In-process GGUF agent brains (admin Agents panel "embedded" backend).
+agents-embedded = ["llama-cpp-python>=0.3.0"]
 
 [project.scripts]
 fablestar = "fablestar.__main__:main"
