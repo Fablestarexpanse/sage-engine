@@ -14,6 +14,7 @@ from __future__ import annotations
 import ast
 import json
 import re
+import subprocess
 import sys
 import tomllib
 from collections import Counter
@@ -161,7 +162,23 @@ def count_player_literals(source: str) -> int:
     return total
 
 
+def _tracked_files(root: Path) -> set[str] | None:
+    """Tracked plus new not-ignored files: ignored build output never skews counts vs CI."""
+    try:
+        out = subprocess.run(
+            ["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
+            cwd=root,
+            capture_output=True,
+            check=True,
+            text=True,
+        ).stdout
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    return {p for p in out.split("\0") if p}
+
+
 def iter_engine_files(root: Path = ROOT) -> Iterator[tuple[str, Path]]:
+    tracked = _tracked_files(root)
     for top in ENGINE_PATHS:
         base = root / top
         if not base.exists():
@@ -172,7 +189,7 @@ def iter_engine_files(root: Path = ROOT) -> Iterator[tuple[str, Path]]:
             rel = path.relative_to(root).as_posix()
             if SKIP_DIRS.intersection(path.relative_to(root).parts) or rel in SKIP_FILES:
                 continue
-            if path.name in SKIP_FILES:
+            if path.name in SKIP_FILES or (tracked is not None and rel not in tracked):
                 continue
             yield rel, path
 
