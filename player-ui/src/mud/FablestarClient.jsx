@@ -198,7 +198,7 @@ export default function FablestarClient({
         effects={session?.liveEffects ?? null}
       />
     ) },
-    { id: "map", title: "Map — Sector 7", icon: "🗺", accent: T.glyph.cyan, minW: 220, minH: 160, content: <MiniMap/> },
+    { id: "map", title: "Map", icon: "🗺", accent: T.glyph.cyan, minW: 220, minH: 160, content: <MiniMap map={session?.liveMap ?? null}/> },
     { id: "glyphs", title: "Glyph Loadout", icon: "✦", accent: T.glyph.violet, minW: 320, minH: 70, content: <GlyphBar/> },
     { id: "inventory", title: "Inventory", icon: "◻", accent: T.glyph.amber, minW: 200, minH: 180, content: <InventoryPanel onContextMenu={openCtx} items={session?.liveInventory ?? null}/> },
     { id: "social", title: "Comms", icon: "💬", accent: T.glyph.cyan, minW: 220, minH: 140, badge: (notifications.tells||0)+(notifications.guild||0), content: <SocialPanel unreadCounts={notifications}/> },
@@ -223,7 +223,7 @@ export default function FablestarClient({
     { id: "keybinds", title: "Keybinds", icon: "⌨", accent: T.text.muted, minW: 240, minH: 280, content: <KeybindManager/> },
     { id: "triggers", title: "Triggers", icon: "⚡", accent: T.glyph.amber, minW: 260, minH: 260, content: <TriggerBuilder/> },
     { id: "quickactions", title: "Quick Actions", icon: "▶", accent: T.glyph.cyan, minW: 200, minH: 60, content: <QuickActions/> },
-  ], [narrativeLines, openCtx, sendCommand, focusProficienciesPanel, notifications, session?.characterName, session?.username, session?.portraitImageUrl, session?.digiBalance, session?.pvpEnabled, session?.reputation, session?.characterStats, session?.resonanceLevelsTotal, session?.liveEffects, session?.liveInventory, sceneImageUrl, sceneGenerating, sceneRoomLabel, sceneDownloadBaseName, sceneGen, conduitLocation, gameCurrencyDisplayName, narrativeBackdropUrl, narrativeBackdropSource, openSceneGallerySignal]);
+  ], [narrativeLines, openCtx, sendCommand, focusProficienciesPanel, notifications, session?.characterName, session?.username, session?.portraitImageUrl, session?.digiBalance, session?.pvpEnabled, session?.reputation, session?.characterStats, session?.resonanceLevelsTotal, session?.liveEffects, session?.liveInventory, session?.liveMap, sceneImageUrl, sceneGenerating, sceneRoomLabel, sceneDownloadBaseName, sceneGen, conduitLocation, gameCurrencyDisplayName, narrativeBackdropUrl, narrativeBackdropSource, openSceneGallerySignal]);
 
   return (
     <GameCmdContext.Provider value={{ sendCommand, focusProficienciesPanel }}>

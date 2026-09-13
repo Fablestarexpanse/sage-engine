@@ -506,6 +506,16 @@ class FablestarServer:
                 for e in ensure_effects(stats)
             ]
 
+            # Visited tracking for the client map (list-as-set in the stats blob).
+            visited = stats.get("visited_rooms")
+            if not isinstance(visited, list):
+                visited = []
+            if room_id and room_id not in visited:
+                visited.append(room_id)
+                del visited[:-300]
+                stats["visited_rooms"] = visited
+                await self.redis.set_player_stats(player_id, stats)
+
             snapshot: CharacterSnapshotNotice = {
                 "client_notice": "character_snapshot",
                 "character_name": player_id,
@@ -517,10 +527,68 @@ class FablestarServer:
                 },
                 "effects": effects,
                 "inventory": list(inventory),
+                "map": self._zone_map(room_id, set(visited)) if room_id else None,
             }
             await session.send(json.dumps(snapshot) + "\r\n")
         except Exception:
             logger.debug("character_snapshot push failed for %s", player_id, exc_info=True)
+
+    def _zone_map(self, current_room_id: str, visited: set[str]) -> dict | None:
+        """
+        Zone map for the client MAP panel: rooms with editor x/y positions plus
+        internal exit edges. Geometry is cached per zone (cleared with the
+        content cache on hot reload); the per-player visited flags are applied
+        per call.
+        """
+        try:
+            zone, _, _ = current_room_id.partition(":")
+            if not zone:
+                return None
+            cache_key = f"client_map:{zone}"
+            cached = self.content_loader._cache.get(cache_key)
+            if cached is None:
+                import json as _json
+                from pathlib import Path
+
+                rooms_dir = Path("content/world/zones") / zone / "rooms"
+                if not rooms_dir.is_dir():
+                    return None
+                positions = {}
+                pos_path = rooms_dir.parent / ".positions.json"
+                if pos_path.is_file():
+                    doc = _json.loads(pos_path.read_text(encoding="utf-8"))
+                    positions = doc.get("positions", {}) or {}
+                rooms = []
+                edges: set[tuple[str, str]] = set()
+                for f in sorted(rooms_dir.glob("*.yaml")):
+                    rid = f"{zone}:{f.stem}"
+                    room = self.content_loader.get_room(rid)
+                    if room is None:
+                        continue
+                    pos = positions.get(f.stem, {})
+                    rooms.append(
+                        {
+                            "id": rid,
+                            "name": room.name or f.stem,
+                            "x": float(pos.get("x", 0.0)),
+                            "y": float(pos.get("y", 0.0)),
+                        }
+                    )
+                    for ex in room.exits.values():
+                        dest = ex.destination
+                        if dest.startswith(f"{zone}:"):
+                            edges.add(tuple(sorted((rid, dest))))
+                cached = {"zone": zone, "rooms": rooms, "edges": sorted(edges)}
+                self.content_loader._cache[cache_key] = cached
+            return {
+                "zone": cached["zone"],
+                "current": current_room_id,
+                "rooms": [{**r, "visited": r["id"] in visited} for r in cached["rooms"]],
+                "edges": [list(e) for e in cached["edges"]],
+            }
+        except Exception:
+            logger.debug("zone map build failed for %s", current_room_id, exc_info=True)
+            return None
 
     async def run_session_loop(self, session: Session):
         """Main input/output loop for a single session: authenticate → bootstrap → command loop."""

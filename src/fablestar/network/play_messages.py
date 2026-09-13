@@ -54,6 +54,9 @@ class CharacterSnapshotNotice(TypedDict, total=False):
     effects: list[dict[str, Any]]
     # InventoryItem dicts: [{"id", "template", "name", "description", "value"}]
     inventory: list[dict[str, Any]]
+    # Zone map for the MAP panel: {"zone", "current", "rooms": [{"id", "name",
+    # "x", "y", "visited"}], "edges": [[room_id, room_id], ...]} — or None.
+    map: dict[str, Any] | None
 
 
 class CharacterPayload(TypedDict):

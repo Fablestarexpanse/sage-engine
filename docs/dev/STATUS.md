@@ -127,7 +127,9 @@ Test suites: server **150** pytest, WorldForge **34** vitest — all green.
       weapon/armor slots feeding combat bonuses; canonical hp/max_hp seeded
       at bootstrap. Two gear items in the alcove search pool. (8 equip tests)
 - [ ] Glyph runtime (cast/inscribe) — glyph content exists, no engine yet
-- [ ] Party/channels backing for the Comms panel; real map data for Map panel
+- [ ] Party/channels backing for the Comms panel (Map panel now real: zone
+      rooms/edges from editor positions in character_snapshot.map, visited
+      tracking in stats, current-room marker follows moves — verified live)
 - [ ] Flip `proficiency_combat_hybrid = false` once all 12 combat domains have
       leaf coverage, then delete the legacy stat path (pre-1.0 milestone)
 - [ ] Build out real zones/content (starter_zone currently minimal after
@@ -159,7 +161,8 @@ Epitaph-derived roadmap (design + priorities in `docs/design/EPITAPH_LESSONS.md`
       ambush (spawn-capable room + healthy player), mercy (supplies when hurt),
       dread (atmosphere). Live-verified ambush + dread firings (7 tests).
       LLM-narrated variants: later, modules are the hook point
-- [ ] Feature-density check in WorldForge Validate / `validate_zone` (small)
+- [x] Feature-density check: in app Validate (validation.js) and the
+      validate_zone MCP tool
 - [ ] UX niceties parked from the audit: redo, delete-key, bulk multi-select
       actions, keyboard-shortcut discoverability
 

@@ -2119,6 +2119,7 @@ export default function App() {
                   liveLocation: j.location && typeof j.location === "object" ? j.location : prev.liveLocation,
                   liveEffects: Array.isArray(j.effects) ? j.effects : prev.liveEffects,
                   liveInventory: Array.isArray(j.inventory) ? j.inventory : prev.liveInventory,
+                  liveMap: j.map && typeof j.map === "object" ? j.map : prev.liveMap,
                 }
               : prev
           );
@@ -2301,6 +2302,7 @@ export default function App() {
             liveLocation: playSession.liveLocation ?? null,
             liveEffects: playSession.liveEffects ?? null,
             liveInventory: playSession.liveInventory ?? null,
+            liveMap: playSession.liveMap ?? null,
           }}
           onSignOut={onSignOut}
           narrativeLines={narrativeLines}
