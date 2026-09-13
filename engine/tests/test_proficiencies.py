@@ -25,7 +25,7 @@ from sage.proficiencies.state_helpers import (
 )
 from sage.proficiencies.validation import validate_leaf_definitions
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]  # repository root
 
 
 class TestBuiltinCatalog(unittest.TestCase):

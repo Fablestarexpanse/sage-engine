@@ -1,10 +1,10 @@
 [project]
 name = "sage-engine"
 version = "0.2.0"
-description = "Vibe-coded MUD platform with LLM integration and hot-reload."
+description = "SAGE - Synthetic Agent Game Engine: deterministic text-world engine with optional LLM narration."
 readme = "README.md"
 requires-python = ">=3.11"
-license = {file = "engine/LICENSE"}  # FSL-1.1-ALv2; scope in NOTICE
+license = {file = "LICENSE"}  # FSL-1.1-ALv2; scope in ../NOTICE
 dependencies = [
     "redis[hiredis]>=5.0.0",
     "asyncpg>=0.29.0",
@@ -40,11 +40,6 @@ fablestar = "sage.__main__:main"
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
-
-[tool.pytest.ini_options]
-markers = [
-    "live: needs real Postgres and Redis; runs only when SAGE_LIVE_TESTS=1",
-]
 
 [tool.ruff]
 line-length = 100

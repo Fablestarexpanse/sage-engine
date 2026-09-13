@@ -148,7 +148,7 @@ def python_license(meta) -> str | None:
     return " OR ".join(names) if names else None
 
 
-def collect_python(lock: Path = ROOT / "requirements.lock") -> list[Dependency]:
+def collect_python(lock: Path = ROOT / "engine" / "requirements.lock") -> list[Dependency]:
     deps = []
     for line in lock.read_text(encoding="utf-8").splitlines():
         match = re.match(r"^([A-Za-z0-9_.\-]+)==([^\s;]+)", line)

@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "sage_invariants.py"
+SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "sage_invariants.py"
 
 
 @pytest.fixture(scope="module")

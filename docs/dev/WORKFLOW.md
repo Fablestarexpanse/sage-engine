@@ -251,13 +251,13 @@ now, anything surprising. No need to log every micro-step.>
 **Commands:**
 
 ```
-python -m ruff format src tests
+python -m ruff format engine/src engine/tests
 <paste output>
 
-python -m compileall -q src tests 2>&1 | tail -20
+python -m compileall -q engine/src engine/tests 2>&1 | tail -20
 <paste tail output>
 
-python -m ruff check src tests 2>&1 | tail -20
+python -m ruff check engine/src engine/tests 2>&1 | tail -20
 <paste tail output>
 
 python -m pytest 2>&1 | tail -30
@@ -625,8 +625,8 @@ features like find-references or compiler-suggested-fixes) shell out to
 **per-language toolchains** the executor host must actually have. They split into
 two tiers, and the tiers answer "fail open or fail hard?" differently:
 
-- **Tier 0 — the `python -m compileall -q src tests` / `python -m pytest` / `python -m ruff check src tests` /
-  `python -m ruff format src tests` toolchain.** Language-agnostic, user-configured, and
+- **Tier 0 — the `python -m compileall -q engine/src engine/tests` / `python -m pytest` / `python -m ruff check engine/src engine/tests` /
+  `python -m ruff format engine/src engine/tests` toolchain.** Language-agnostic, user-configured, and
   **already a hard requirement**: a phase cannot reach `done` without build/test
   passing (STANDARDS §1). **This is how the project supports *any* language** —
   point the command set at the language's tools and the loop + DoD gates work,

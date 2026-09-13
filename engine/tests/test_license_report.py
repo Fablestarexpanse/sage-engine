@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "license_report.py"
+SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "license_report.py"
 
 
 @pytest.fixture(scope="module")

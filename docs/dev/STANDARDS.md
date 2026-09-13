@@ -14,9 +14,9 @@ output by checking a finite list, not by re-reading the whole architecture doc.
 >
 > | Placeholder | Meaning |
 > |---|---|
-> | `python -m ruff format src tests` | Format command (writing form; the post-write hook keeps files clean, so the final run is idempotent) |
-> | `python -m compileall -q src tests` | Build command |
-> | `python -m ruff check src tests` | Lint/static-analysis command |
+> | `python -m ruff format engine/src engine/tests` | Format command (writing form; the post-write hook keeps files clean, so the final run is idempotent) |
+> | `python -m compileall -q engine/src engine/tests` | Build command |
+> | `python -m ruff check engine/src engine/tests` | Lint/static-analysis command |
 > | `python -m pytest` | Test command |
 
 ---
@@ -35,9 +35,9 @@ the phase's Update Log — never silently mark a phase done.
       a unit-test fake — and the actual output is quoted in the completion
       Update Log entry under "End-to-end verification." A green `python -m pytest`
       run that exercises a temp-directory-scoped fake is **not** by itself sufficient.
-- [ ] `python -m compileall -q src tests` succeeds with **zero new warnings**.
-- [ ] `python -m ruff check src tests` passes.
-- [ ] `python -m ruff format src tests` passes.
+- [ ] `python -m compileall -q engine/src engine/tests` succeeds with **zero new warnings**.
+- [ ] `python -m ruff check engine/src engine/tests` passes.
+- [ ] `python -m ruff format engine/src engine/tests` passes.
 - [ ] `python -m pytest` passes (existing + new tests).
 - [ ] New code is covered by tests per the rules in §3.
 - [ ] No `TODO` / `FIXME` / `XXX` left in code, unless the phase doc explicitly
@@ -189,9 +189,9 @@ Run these locally before reporting a phase done. Output of the full sequence
 goes into the phase's Update Log.
 
 ```bash
-python -m ruff format src tests
-python -m compileall -q src tests 2>&1 | tail -20
-python -m ruff check src tests 2>&1 | tail -20
+python -m ruff format engine/src engine/tests
+python -m compileall -q engine/src engine/tests 2>&1 | tail -20
+python -m ruff check engine/src engine/tests 2>&1 | tail -20
 python -m pytest 2>&1 | tail -30
 ```
 

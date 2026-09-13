@@ -299,7 +299,7 @@ function AuthLanding() {
             <strong style={{ color: T.text.primary }}>player</strong> / <code style={{ fontSize: 10 }}>test</code>.
             <br />
             Optional:{" "}
-            <code style={{ fontSize: 10, color: T.text.secondary }}>python scripts/ensure_test_user.py</code> →{" "}
+            <code style={{ fontSize: 10, color: T.text.secondary }}>python engine/scripts/ensure_test_user.py</code> →{" "}
             <strong style={{ color: T.text.primary }}>test</strong> / test, <strong style={{ color: T.text.primary }}>demo</strong> / demo.
           </p>
         )}
@@ -446,7 +446,7 @@ function AuthSignInForm({ onLoggedIn }) {
           >
             Try <strong>staff</strong> / <code style={{ fontSize: 9 }}>test</code> or <strong>player</strong> /{" "}
             <code style={{ fontSize: 9 }}>test</code> (created by Nexus dev_mode). If those fail, run{" "}
-            <code style={{ fontSize: 9 }}>python scripts/ensure_test_user.py</code> then use <strong>test</strong> / test or{" "}
+            <code style={{ fontSize: 9 }}>python engine/scripts/ensure_test_user.py</code> then use <strong>test</strong> / test or{" "}
             <strong>demo</strong> / demo.
           </p>
         )}

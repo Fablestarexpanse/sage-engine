@@ -8,7 +8,8 @@ from typing import Any
 
 from sage.world.models import EntityTemplate, ItemTemplate, RoomModel
 
-ROOT = Path(__file__).resolve().parents[1]
+# Repository root (world content lives at <root>/content during the SAGE transition).
+ROOT = Path(__file__).resolve().parents[2]
 
 
 class FakeRedis:

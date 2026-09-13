@@ -1,0 +1,2 @@
+# Repository-level tooling (scripts/) uses the engine's lint and format settings.
+extend = "engine/pyproject.toml"

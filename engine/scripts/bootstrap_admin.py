@@ -2,7 +2,7 @@
 Create the first head admin account (run once after migrations).
 
 Usage:
-  python scripts/bootstrap_admin.py --username admin --password secret
+  python engine/scripts/bootstrap_admin.py --username admin --password secret
 
 Requires PostgreSQL and admin_staff table (alembic upgrade head).
 """

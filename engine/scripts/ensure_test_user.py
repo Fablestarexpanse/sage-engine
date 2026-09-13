@@ -7,11 +7,11 @@ Default seeds (no arguments):
 
 Custom account (e.g. after a fresh DB wiped your user):
 
-  python scripts/ensure_test_user.py Ronan your-new-password
+  python engine/scripts/ensure_test_user.py Ronan your-new-password
 
 Creates the account if missing, or resets the password if it already exists.
 
-Run from repo root:  python scripts/ensure_test_user.py
+Run from repo root:  python engine/scripts/ensure_test_user.py
 Requires PYTHONPATH=src (or pip install -e .).
 """
 from __future__ import annotations
@@ -96,15 +96,15 @@ async def main() -> None:
     else:
         print(
             "Usage:\n"
-            "  python scripts/ensure_test_user.py\n"
+            "  python engine/scripts/ensure_test_user.py\n"
             "      → create/update test+test and demo+demo\n"
-            "  python scripts/ensure_test_user.py <username> <password>\n"
+            "  python engine/scripts/ensure_test_user.py <username> <password>\n"
             "      → create or reset that play account",
             file=sys.stderr,
         )
         sys.exit(2)
 
-    config = load_config(str(_ROOT / "config"))
+    config = load_config(str(_ROOT.parent / "config"))
     db = PostgresState(config.database)
     starting_echo = int(config.comfyui.starting_echo_credits)
     starting_digi = int(config.server.starting_digi_balance)

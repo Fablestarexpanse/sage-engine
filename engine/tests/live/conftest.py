@@ -22,7 +22,8 @@ from alembic.config import Config as AlembicConfig
 from sage.core.config import Config, DatabaseConfig, load_config
 from sage.state.redis_client import RedisState
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+ENGINE_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = ENGINE_ROOT.parent
 LIVE_REDIS_DB = 15
 
 
@@ -86,8 +87,8 @@ def live_database(live_config: Config) -> Iterator[str]:
 
 @pytest.fixture(scope="session")
 def alembic_cfg(live_database: str) -> AlembicConfig:
-    cfg = AlembicConfig(str(REPO_ROOT / "alembic.ini"))
-    cfg.set_main_option("script_location", str(REPO_ROOT / "alembic"))
+    cfg = AlembicConfig(str(ENGINE_ROOT / "alembic.ini"))
+    cfg.set_main_option("script_location", str(ENGINE_ROOT / "alembic"))
     return cfg
 
 

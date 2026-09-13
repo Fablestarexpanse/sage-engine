@@ -60,7 +60,7 @@ Prerequisites: **Python 3.11+**, **Node.js LTS**, **Docker** (for Redis + Postgr
 
 ```bash
 # 1. Install the server and UI dependencies
-pip install -e .
+pip install -e "./engine[dev]"
 (cd admin-ui && npm install)
 (cd player-ui && npm install)
 
@@ -70,7 +70,7 @@ cp config/database.example.toml config/database.toml
 
 # 3. Start backing services and run migrations
 docker compose up -d redis postgres
-python -m alembic upgrade head
+python -m alembic -c engine/alembic.ini upgrade head
 
 # 4. Start the game server (Nexus, port 8001)
 python -m sage
@@ -106,20 +106,19 @@ Key `server.toml` settings:
 - `admin_jwt_secret` — required when auth is on; generate with `python -c "import secrets; print(secrets.token_hex(32))"`.
 - Optional extras: `llm.toml` (LM Studio / Ollama), `comfyui.toml` (art generation), `redis.toml`.
 
-To create the first head admin: `python scripts/bootstrap_admin.py --username youradmin --password 'a-strong-password'`. Head admins manage additional staff, tool access, and zone permissions from **Team & access** in the admin UI.
+To create the first head admin: `python engine/scripts/bootstrap_admin.py --username youradmin --password 'a-strong-password'`. Head admins manage additional staff, tool access, and zone permissions from **Team & access** in the admin UI.
 
 Do not expose Nexus directly to the public internet — put it behind a reverse proxy with TLS.
 
 ## Project layout
 
 ```
-src/sage/     Python server — services, admin routers, commands, world loader
+engine/        SAGE engine: src/sage (server), tests, alembic, pyproject
 content/world/     Game content (YAML) — zones, rooms, entities, items; hot-reloaded
 admin-ui/          React admin console
 player-ui/         React player client
 worldforge/        Tauri desktop map editor
 prompts/           Jinja2 templates for LLM narration and forge generation
-tests/             Hermetic pytest suite (no live services required)
 ```
 
 Developer documentation lives in [`CLAUDE.md`](CLAUDE.md) (architecture guide) and [`docs/`](docs/).
