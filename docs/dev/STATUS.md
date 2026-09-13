@@ -64,10 +64,14 @@ Test suites: server **150** pytest, WorldForge **34** vitest — all green.
 ### Near-term (small)
 - [ ] **README screenshots** — capture `docs/screenshots/player-client.png` and
       `worldforge-map-tool.png` (instructions in `docs/screenshots/README.md`)
-- [ ] worldforge-mcp `zone.yaml` shape alignment with the app scaffold
-      (neither currently satisfies `ZoneModel`'s required `description`)
-- [ ] `validate_zone` MCP tool (port the app's Validate-panel checks so
-      LLM-drafted zones catch bad entity/item/glyph references)
+- [x] worldforge-mcp `zone.yaml` shape alignment: create_zone always writes
+      id/name/description/depth_range (ZoneModel shape); app scaffold's
+      starter zone.yaml gains the same fields
+- [x] `validate_zone` MCP tool: ports the app Validate panel to Python —
+      descriptions, broken/self/asymmetric exits (one_way honoured),
+      orphans/disconnected, depth jumps, unknown entity templates, loot→item
+      refs, glyph prerequisites, feature density. Verified: starter_zone
+      clean (density 1.50), aipub flags 2 broken exits to deleted rooms
 
 ### Next structural tasks (each is one focused session)
 - [ ] WorldForge `rebuildGraph` split (~289 lines, five responsibilities —
