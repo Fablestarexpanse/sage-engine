@@ -60,3 +60,54 @@ jobs:
       - name: Test
         working-directory: worldforge
         run: npm test
+
+  live:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: sage
+          POSTGRES_PASSWORD: sage-ci
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U sage"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      # Throwaway service-container credentials, not secrets.
+      SAGE_LIVE_TESTS: "1"
+      FABLESTAR_DATABASE__HOST: localhost
+      FABLESTAR_DATABASE__USER: sage
+      FABLESTAR_DATABASE__PASSWORD: sage-ci
+      FABLESTAR_REDIS__HOST: localhost
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            requirements.lock
+            pyproject.toml
+
+      - name: Install dependencies
+        run: |
+          python -m pip install -r requirements.lock
+          python -m pip install -e ".[dev]"
+
+      - name: Live tests (Postgres + Redis)
+        run: python -m pytest -q -m live

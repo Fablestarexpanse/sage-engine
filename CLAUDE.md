@@ -347,6 +347,13 @@ Tests cover config loading, command dispatch, proficiency math, admin auth, and 
 
 **Two tiers (owner ruling 2026-09-13, `docs/dev/STANDARDS.md` §3.5):** the default suite is hermetic — `python -m pytest` passes with no services, using in-memory fakes in `tests/fakes.py`. A live tier (`@pytest.mark.live`, run with `SAGE_LIVE_TESTS=1` against Docker Postgres/Redis, required in CI) covers migrations, persistence, plugin install/uninstall and world smoke tests. Never test migrations or persistence against fakes alone — mocked tests have masked real migration failures in the past.
 
+```bash
+docker compose up -d redis postgres
+SAGE_LIVE_TESTS=1 python -m pytest -m live
+```
+
+Live tests create and drop their own `sage_live_*` database and use Redis db 15, so they never touch the dev database. `tests/live/test_migrations.py::test_models_match_migrations` fails when the ORM models and migrations disagree — fix the model or add a migration, never weaken the test.
+
 ---
 
 ## Key patterns to follow
