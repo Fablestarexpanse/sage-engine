@@ -512,6 +512,8 @@ class FablestarServer:
 
         # Initial look
         await self.dispatcher.dispatch(session, "look")
+        if not norm_stats.get("visited_rooms"):
+            await session.send("\r\nNew here? Type 'help' to see what you can do.")
         await session.send_prompt()
 
     async def push_character_snapshot(self, session: Session) -> None:

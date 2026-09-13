@@ -27,6 +27,9 @@ class TeleportBody(BaseModel):
     room_id: str
 
 
+NON_NEGATIVE_STATS = frozenset({"digi", "hp", "max_hp", "xp", "level", "hunger"})
+
+
 class GiveBody(BaseModel):
     item_template: str | None = None
     count: int = 1
@@ -400,6 +403,8 @@ def build_agents_router(server: "FablestarServer") -> APIRouter:
             await server.redis.set_player_inventory(name, inv)
             return {"status": "ok", "granted": template.id, "count": max(1, body.count)}
         if body.stat and body.value is not None:
+            if body.stat in NON_NEGATIVE_STATS and body.value < 0:
+                raise HTTPException(status_code=400, detail="value_must_be_non_negative")
             stats = await server.redis.get_player_stats(name)
             stats[body.stat] = body.value
             await server.redis.set_player_stats(name, stats)

@@ -323,6 +323,16 @@ async def flee(session: Session, args: list[str]):
     if not room_id:
         return
 
+    threats = False
+    for eid in await app_instance.redis.get_room_entities(room_id):
+        state = await app_instance.redis.get_entity_state(eid)
+        if state and state.get("alive", True):
+            threats = True
+            break
+    if not threats:
+        await session.send("There's nothing here to flee from.")
+        return
+
     room = app_instance.content_loader.get_room(room_id)
     if not room or not room.exits:
         await session.send("There is nowhere to flee!")
