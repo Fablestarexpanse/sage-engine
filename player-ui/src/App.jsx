@@ -1899,12 +1899,21 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
   );
 }
 
+const MAX_NARRATIVE_LINES = 1500;
+
 export default function App() {
   const [step, setStep] = useState("login");
   const [auth, setAuth] = useState(null);
   const passwordRef = useRef("");
   const [playSession, setPlaySession] = useState(null);
-  const [narrativeLines, setNarrativeLines] = useState(() => [...DEFAULT_NARRATIVE]);
+  const [narrativeLines, setNarrativeLinesRaw] = useState(() => [...DEFAULT_NARRATIVE]);
+  // The log is append-only for hours of play; keep the DOM bounded.
+  const setNarrativeLines = useCallback((update) => {
+    setNarrativeLinesRaw((prev) => {
+      const next = typeof update === "function" ? update(prev) : update;
+      return next.length > MAX_NARRATIVE_LINES ? next.slice(-MAX_NARRATIVE_LINES) : next;
+    });
+  }, []);
   const [wsConnected, setWsConnected] = useState(false);
   const [wsRetry, setWsRetry] = useState(0); // bumped by onclose to trigger auto-reconnect
   const wsRef = useRef(null);
