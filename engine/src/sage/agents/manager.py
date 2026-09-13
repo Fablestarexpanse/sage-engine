@@ -32,7 +32,6 @@ logger = logging.getLogger(__name__)
 
 AGENT_TICK_INTERVAL = 8  # 4 Hz tick → body decisions every 2 s (staggered)
 CLINIC_BILL_DIGI = 10  # respawn cost, deducted down to zero (matches player bill)
-LEASE_SWEEP_INTERVAL = 240  # ~60s: lapse expired rent leases
 INVENTORY_SOFT_CAP = 12  # go sell before the 14-item loot cap
 CONTRACT_TRIP_LIMIT = 6  # hunting trips with zero progress before giving up
 IDLE_INTENT_CHANCE = 0.02  # per tick, when no human is present (~1 plan per ~100s)
@@ -286,13 +285,6 @@ class AgentManager:
     async def on_tick(self, tick_count: int):
         if not self._spawned:
             await self.spawn_all()
-        if tick_count % LEASE_SWEEP_INTERVAL == 0:
-            try:
-                from sage.commands.rent import expire_leases
-
-                await expire_leases(self.server.redis)
-            except Exception:
-                logger.debug("lease sweep failed", exc_info=True)
         if tick_count % AGENT_TICK_INTERVAL != 0:
             return
 
@@ -626,19 +618,23 @@ class AgentManager:
 
     async def _lodging_choice(self, digi: int) -> str | None:
         """Desk room with a free (or lapsed) bed this agent can afford, cheapest first."""
-        from sage.commands.rent import free_rooms, read_rentals
-
+        lodgings = self._service("lodging")
+        if lodgings is None:
+            return None
         now = time.time()
         try:
-            rentals = await read_rentals(self.server.redis)
+            rentals = await lodgings.rentals()
         except Exception:
             return None
         options = []
         for zone in {s.persona.spawn_zone() for s in self.agents.values()}:
             for rid in self._exits_map(zone):
-                room = self.server.content_loader.get_room(rid)
-                lodging = room.lodging if room else None
-                if lodging and digi >= lodging.price + 10 and free_rooms(lodging, rentals, now):
+                lodging = lodgings.at(rid)
+                if (
+                    lodging
+                    and digi >= lodging.price + 10
+                    and lodgings.free_rooms(lodging, rentals, now)
+                ):
                     options.append((lodging.price, rid))
         return min(options)[1] if options else None
 
@@ -792,11 +788,8 @@ class AgentManager:
         return tmpl.name if tmpl else template_id.replace("_", " ")
 
     def _desk_for(self, zone: str, rented_room: str) -> str | None:
-        for rid in self._exits_map(zone):
-            room = self.server.content_loader.get_room(rid)
-            if room and room.lodging and rented_room in room.lodging.rooms:
-                return rid
-        return None
+        lodgings = self._service("lodging")
+        return lodgings.desk_for(list(self._exits_map(zone)), rented_room) if lodgings else None
 
     def _search_room_finder(self, zone: str):
         """item template -> a room whose search profiles can yield it."""

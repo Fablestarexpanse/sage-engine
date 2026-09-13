@@ -1,9 +1,9 @@
 # SAGE decoupling — decision log
 
 NEXT: Phase 3 on sage/phase-3 (plan: docs/dev/milestones/M2-sage-decoupling/phase-3-plan.md).
-3.1 achievements, 3.2 wallet, 3.3 factions, 3.4 content extensions + plugin admin routes, 3.5a shop
-plugin: DONE. Next: 3.5b lodging -> plugins/lodging (rent command, lease sweep tick job, service for
-agents' lodging choice/desk lookup). Dev DB at n7o8p9q0r1s2. Ratchet 2128/143.
+3.1 achievements, 3.2 wallet, 3.3 factions, 3.4 content extensions + plugin admin routes, 3.5 shop and
+lodging plugins: DONE. Next: 3.6 crafting and search -> plugins (search blocks live on room features:
+needs an extension on features or a room-level block). Dev DB at n7o8p9q0r1s2. Ratchet 2125/137.
 Open owner questions: Rivermoot license; PRs for sage/stage-2b and sage/stage-2c.
 Review page: https://claude.ai/code/artifact/2d488113-1ca9-4f45-b993-ac0253e0670c
 

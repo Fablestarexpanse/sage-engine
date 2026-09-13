@@ -24,6 +24,7 @@ equipment_slots = ["weapon", "armor"]
 achievements = "^1"
 factions = "^1"
 shop = "^1"
+lodging = "^1"
 
 [params]
 # Tidegate clinic bills up to 10 Digi on respawn; half health on waking.

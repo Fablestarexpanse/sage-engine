@@ -3,6 +3,9 @@
 who:
   empty: "The station is silent. Nobody is connected."
 
+lodging:
+  no_desk: "Nobody lets rooms here. Try the AIpub bar or the Tidewater Bunkhouse."
+
 currency:
   digi: {name: Digi}
 

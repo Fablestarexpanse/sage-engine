@@ -48,15 +48,6 @@ class AmbientModel(BaseModel):
     max_interval: float = Field(default=120.0, gt=0)
 
 
-class LodgingModel(BaseModel):
-    """A rent desk: this room lets the listed rooms on timed leases."""
-
-    name: str = "the lodging"
-    rooms: list[str] = Field(min_length=1)  # full room ids
-    price: int = Field(default=15, gt=0)
-    lease_minutes: int = Field(default=80, gt=0)
-
-
 class RoomModel(BaseModel):
     # Unknown fields are kept: plugins claim them as content extensions (sage.world.extensions).
     model_config = ConfigDict(extra="allow")
@@ -73,7 +64,6 @@ class RoomModel(BaseModel):
     entity_spawns: list[EntitySpawnModel] = Field(default_factory=list)
     hazards: list[HazardModel] = Field(default_factory=list)
     ambient: AmbientModel | None = None
-    lodging: LodgingModel | None = None
     tags: set[str] = Field(default_factory=set)
 
 

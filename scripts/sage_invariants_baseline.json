@@ -1,7 +1,7 @@
 {
   "totals": {
-    "denylist": 2128,
-    "player_literals": 143
+    "denylist": 2125,
+    "player_literals": 137
   },
   "denylist": {
     "engine/alembic/versions/b3c4d5e6f7a8_account_echo_credits.py": 5,
@@ -48,7 +48,6 @@
     "engine/src/sage/bootstrap.py": 2,
     "engine/src/sage/commands/movement.py": 1,
     "engine/src/sage/commands/proficiency.py": 41,
-    "engine/src/sage/commands/rent.py": 3,
     "engine/src/sage/commands/search.py": 2,
     "engine/src/sage/core/comfyui_persist.py": 4,
     "engine/src/sage/core/config.py": 10,
@@ -118,7 +117,6 @@
     "engine/src/sage/commands/items.py": 28,
     "engine/src/sage/commands/movement.py": 7,
     "engine/src/sage/commands/proficiency.py": 6,
-    "engine/src/sage/commands/rent.py": 6,
     "engine/src/sage/commands/search.py": 10,
     "engine/src/sage/effects/manager.py": 3,
     "engine/src/sage/maestro/modules.py": 3,

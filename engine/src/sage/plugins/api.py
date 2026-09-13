@@ -281,7 +281,7 @@ class _Http:
 
 
 class _Redis:
-    """Plugin-owned Redis keys. Every key must be "<prefix>:..." for a declared redis_prefixes."""
+    """Plugin-owned Redis keys: "<prefix>" or "<prefix>:..." for a declared redis_prefixes."""
 
     COMMANDS = frozenset(
         {
@@ -307,7 +307,7 @@ class _Redis:
 
     def _check(self, key: str) -> None:
         prefixes = self._api._record.manifest.touches.redis_prefixes
-        if not any(key.startswith(f"{p}:") for p in prefixes):
+        if not any(key == p or key.startswith(f"{p}:") for p in prefixes):
             raise PluginError(
                 f"plugin {self._api.id} used Redis key {key!r} outside its redis_prefixes {prefixes}"
             )
