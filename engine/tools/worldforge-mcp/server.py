@@ -370,9 +370,17 @@ VALID_ROOM_TYPES = {
 def _world_root() -> Path:
     raw = os.environ.get("WORLDFORGE_ROOT", "content/world")
     p = Path(raw)
-    if not p.is_absolute():
-        p = (Path(__file__).parent.parent / raw).resolve()
-    return p
+    if p.is_absolute():
+        return p
+    # Relative roots resolve against the working directory when it has them (the usual
+    # launch from the repository root), else against the nearest ancestor of this file that
+    # contains them, so the tool keeps working wherever it sits in the repo.
+    if (Path.cwd() / raw).exists():
+        return (Path.cwd() / raw).resolve()
+    for ancestor in Path(__file__).resolve().parents:
+        if (ancestor / raw).exists():
+            return (ancestor / raw).resolve()
+    return (Path.cwd() / raw).resolve()
 
 
 def _zones_dir() -> Path:

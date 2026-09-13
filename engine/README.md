@@ -11,7 +11,9 @@ Layout (stage 2b of `docs/sage/PHASE1_CONTRACTS.md` Part A):
 - `alembic/`, `alembic.ini` — core migrations (`python -m alembic -c engine/alembic.ini upgrade head`)
 - `scripts/` — admin bootstrap scripts
 - `pyproject.toml`, `requirements.lock` — packaging (`pip install -e "./engine[dev]"`)
+- `clients/admin-ui`, `clients/player-ui` — Nexus console and player client (Vite)
+- `tools/worldforge` (Tauri world editor), `tools/worldforge-mcp` (MCP map tools)
 
 During the transition the engine still reads world content from `<repo>/content`,
 deployment config from `<repo>/config` and prompts from `<repo>/prompts`, so run it from the
-repository root. The React clients and WorldForge move under `engine/` in the next 2b step.
+repository root. 

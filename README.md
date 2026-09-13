@@ -61,8 +61,8 @@ Prerequisites: **Python 3.11+**, **Node.js LTS**, **Docker** (for Redis + Postgr
 ```bash
 # 1. Install the server and UI dependencies
 pip install -e "./engine[dev]"
-(cd admin-ui && npm install)
-(cd player-ui && npm install)
+(cd engine/clients/admin-ui && npm install)
+(cd engine/clients/player-ui && npm install)
 
 # 2. Create live config from the examples (gitignored)
 cp config/server.example.toml config/server.toml
@@ -80,10 +80,10 @@ Then start the UIs in separate terminals:
 
 ```bash
 # Player client → http://localhost:5173
-cd player-ui && VITE_NEXUS_PORT=8001 npm run dev -- --port 5173 --host
+cd engine/clients/player-ui && VITE_NEXUS_PORT=8001 npm run dev -- --port 5173 --host
 
 # Admin console → http://localhost:5174
-cd admin-ui && VITE_API_BASE=http://localhost:8001 VITE_WS_BASE=ws://localhost:8001 npm run dev -- --port 5174 --host
+cd engine/clients/admin-ui && VITE_API_BASE=http://localhost:8001 VITE_WS_BASE=ws://localhost:8001 npm run dev -- --port 5174 --host
 ```
 
 On PowerShell, set the env vars first (`$env:VITE_NEXUS_PORT="8001"`) and then run `npm run dev`.
@@ -94,7 +94,7 @@ On PowerShell, set the env vars first (`$env:VITE_NEXUS_PORT="8001"`) and then r
 | Player UI | `http://localhost:5173` |
 | Admin UI | `http://localhost:5174` |
 
-**WorldForge** (map editor): `cd worldforge && npm install && npm run tauri dev` — requires the [Tauri prerequisites](https://tauri.app/start/prerequisites/) (Rust toolchain).
+**WorldForge** (map editor): `cd engine/tools/worldforge && npm install && npm run tauri dev` — requires the [Tauri prerequisites](https://tauri.app/start/prerequisites/) (Rust toolchain).
 
 ## Configuration
 
@@ -115,9 +115,9 @@ Do not expose Nexus directly to the public internet — put it behind a reverse 
 ```
 engine/        SAGE engine: src/sage (server), tests, alembic, pyproject
 content/world/     Game content (YAML) — zones, rooms, entities, items; hot-reloaded
-admin-ui/          React admin console
-player-ui/         React player client
-worldforge/        Tauri desktop map editor
+engine/clients/admin-ui/          React admin console
+engine/clients/player-ui/         React player client
+engine/tools/worldforge/        Tauri desktop map editor
 prompts/           Jinja2 templates for LLM narration and forge generation
 ```
 

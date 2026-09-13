@@ -42,10 +42,10 @@ engine/src/sage/        SAGE engine Python package (Nexus server)
   state/                Redis (hot state), Postgres (persistent), ORM models
   world/                ContentLoader, world Pydantic models, EntitySpawnManager
 
-admin-ui/               React admin console (Vite, port 5174)
-player-ui/              React player client (Vite, port 5173)
-worldforge/             Tauri desktop WorldForge editor
-worldforge-mcp/         MCP server exposing map-building tools (mcp__worldforge__*)
+engine/clients/admin-ui/               React admin console (Vite, port 5174)
+engine/clients/player-ui/              React player client (Vite, port 5173)
+engine/tools/worldforge/             Tauri desktop WorldForge editor
+engine/tools/worldforge-mcp/         MCP server exposing map-building tools (mcp__worldforge__*)
 content/world/          Game content (YAML, tracked in git; changes hot-reload)
   galaxy.yaml           Galaxy stub (no runtime loader; admin builder only)
   entities/             Entity templates (NPC/mob definitions)
@@ -291,11 +291,11 @@ python engine/scripts/bootstrap_admin.py --username admin --password 'your-passw
 python -m sage
 
 # 5. Start admin UI (new terminal)
-cd admin-ui
+cd engine/clients/admin-ui
 VITE_API_BASE=http://localhost:8001 VITE_WS_BASE=ws://localhost:8001 npm run dev -- --port 5174 --host
 
 # 6. Start player UI (new terminal)
-cd player-ui
+cd engine/clients/player-ui
 VITE_NEXUS_PORT=8001 npm run dev -- --port 5173 --host
 ```
 
@@ -307,17 +307,17 @@ Default ports: Nexus 8001, player UI 5173, admin UI 5174, Postgres 5432, Redis 6
 
 ## WorldForge content editor
 
-WorldForge is a Tauri desktop app (`worldforge/`) for visually editing zones and rooms. It exports content directly into `content/world/`. Stamps (reusable room groups) are saved to `content/world/stamps/`.
+WorldForge is a Tauri desktop app (`engine/tools/worldforge/`) for visually editing zones and rooms. It exports content directly into `content/world/`. Stamps (reusable room groups) are saved to `content/world/stamps/`.
 
 **Resolved (kept for history):** WorldForge historically wrote exports to a nested `content/world/content/world/` path due to a root path misconfiguration. If you see a `content/world/content/` subtree appear after a WorldForge export, the room YAMLs must be moved to `content/world/zones/{zone_id}/rooms/` and the duplicate tree removed. This was corrected manually; check the WorldForge content root setting if it recurs.
 
 ### How WorldForge saves (and the conflict risk)
 
-WorldForge does **not** save through the Nexus HTTP API. Its `saveRoomFile()` (`worldforge/src/editors/ZoneEditor.jsx`) calls the Tauri `write_file` command (`worldforge/src-tauri/src/commands.rs`) and writes room YAML **directly to disk**; the server's `HotReloader` then notices the file change and invalidates the content cache. The admin-ui World Builder, by contrast, writes through Nexus (`PUT/POST/DELETE /content/zones/{zone}/rooms/*` in `admin/routes/content.py`).
+WorldForge does **not** save through the Nexus HTTP API. Its `saveRoomFile()` (`engine/tools/worldforge/src/editors/ZoneEditor.jsx`) calls the Tauri `write_file` command (`engine/tools/worldforge/src-tauri/src/commands.rs`) and writes room YAML **directly to disk**; the server's `HotReloader` then notices the file change and invalidates the content cache. The admin-ui World Builder, by contrast, writes through Nexus (`PUT/POST/DELETE /content/zones/{zone}/rooms/*` in `admin/routes/content.py`).
 
 Because these two paths are unsynchronized, running both editors on the same zone risks last-write-wins clobbering. The `/content/*` room-write routes accept an optional `expected_mtime` (returned by the room-read endpoints) and reject with **409 `content_modified`** when the file changed on disk since it was loaded — the admin-ui builder sends it; direct WorldForge disk writes bypass this guard entirely, so avoid editing the same zone in both tools at once.
 
-There is a **third writer**: `worldforge-mcp/server.py` (the MCP server behind the `mcp__worldforge__*` tools) also reads and writes room YAML and `.positions.json` directly to disk (`_read_room`/`_write_room`/`_write_positions`), with no `expected_mtime` guard — same accepted last-write-wins risk as the Tauri app. Treat any two of the three writers (admin-ui Builder, WorldForge Tauri app, worldforge-mcp tools) editing the same zone concurrently as unsafe.
+There is a **third writer**: `engine/tools/worldforge-mcp/server.py` (the MCP server behind the `mcp__worldforge__*` tools) also reads and writes room YAML and `.positions.json` directly to disk (`_read_room`/`_write_room`/`_write_positions`), with no `expected_mtime` guard — same accepted last-write-wins risk as the Tauri app. Treat any two of the three writers (admin-ui Builder, WorldForge Tauri app, worldforge-mcp tools) editing the same zone concurrently as unsafe.
 
 Related Nexus endpoints (available for HTTP write-through, e.g. the forge chat deploy flow):
 

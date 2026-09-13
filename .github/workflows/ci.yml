@@ -57,14 +57,14 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: worldforge/package-lock.json
+          cache-dependency-path: engine/tools/worldforge/package-lock.json
 
       - name: Install dependencies
-        working-directory: worldforge
+        working-directory: engine/tools/worldforge
         run: npm ci
 
       - name: Test
-        working-directory: worldforge
+        working-directory: engine/tools/worldforge
         run: npm test
 
   live:

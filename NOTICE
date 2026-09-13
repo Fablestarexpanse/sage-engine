@@ -19,12 +19,9 @@ The repository is being reorganised into engine/ and worlds/fablestar/ (see
 docs/sage/). Until that move is complete, the components live at these paths:
 
 SAGE engine - FSL-1.1-ALv2 (engine/LICENSE):
-  engine/               engine source, migrations, tests, packaging
-  admin-ui/             Nexus admin console
-  player-ui/            player client
-  worldforge/           WorldForge editor
-  worldforge-mcp/       WorldForge MCP tools
-  scripts/              repository tooling
+  engine/                        engine source, migrations, tests, packaging,
+                                 clients (engine/clients/) and tools (engine/tools/)
+  scripts/                       repository tooling
 
 Fablestar Expanse - proprietary, all rights reserved, no license granted:
   content/              all world content (zones, rooms, entities, items,
@@ -43,4 +40,4 @@ names, lore, setting text, branding, logos and artwork anywhere in the
 repository.
 
 Third-party components keep their own licenses (for example, elkjs under
-EPL-2.0 in admin-ui/ and worldforge/).
+EPL-2.0 in engine/clients/admin-ui/ and engine/tools/worldforge/).

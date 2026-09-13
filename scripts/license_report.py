@@ -25,8 +25,8 @@ from importlib import metadata
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-NPM_APPS = ("admin-ui", "player-ui", "worldforge")
-CARGO_MANIFEST = ROOT / "worldforge" / "src-tauri" / "Cargo.toml"
+NPM_APPS = ("engine/clients/admin-ui", "engine/clients/player-ui", "engine/tools/worldforge")
+CARGO_MANIFEST = ROOT / "engine" / "tools" / "worldforge" / "src-tauri" / "Cargo.toml"
 ALLOWLIST = ROOT / "scripts" / "license_allowlist.toml"
 
 RANK = {"permissive": 0, "weak": 1, "unknown": 2, "strong": 3}

@@ -335,14 +335,15 @@ function Shell() {
       }
 
       // 3. Walk up from the exe to auto-detect the project root
-      //    Dev layout:  worldforge/target/debug/worldforge.exe  → go up 3 levels
+      //    Dev layout:  engine/tools/worldforge/src-tauri/target/debug/worldforge.exe
+      //                 → repository root is 7 levels up
       //    Prod layout: resources/worldforge.exe                → go up 1 level
       try {
         const exePath = await fs.getExePath();
         const sep = exePath.includes("\\") ? "\\" : "/";
         const parts = exePath.split(sep).filter(Boolean);
-        // Try going up 1–6 levels from the exe
-        for (let up = 1; up <= 6; up++) {
+        // Try going up 1–8 levels from the exe
+        for (let up = 1; up <= 8; up++) {
           if (parts.length - up < 1) break;
           const candidate = (exePath.startsWith("\\\\") ? "\\\\" : (sep === "\\" ? "" : "/"))
             + parts.slice(0, parts.length - up).join(sep);
