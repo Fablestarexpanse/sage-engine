@@ -255,11 +255,27 @@ async def drop(session: Session, args: list[str]):
     await session.send(f"You drop the {found_item.get('name', 'item')}.")
 
 
-@command("examine", aliases=["ex", "look at", "inspect"])
+_DIRECTION_ALIASES = {
+    "n": "north",
+    "s": "south",
+    "e": "east",
+    "w": "west",
+    "u": "up",
+    "d": "down",
+    "ne": "northeast",
+    "nw": "northwest",
+    "se": "southeast",
+    "sw": "southwest",
+}
+
+
+@command("examine", aliases=["ex", "inspect"])
 async def examine(session: Session, args: list[str]):
-    """Examine something in the room. Usage: examine <target>"""
+    """Examine something in the room, an exit, or someone here. Usage: examine <target>"""
     from fablestar.app import app_instance
 
+    while args and args[0] in ("at", "in", "the"):
+        args = args[1:]
     if not args:
         await session.send("Examine what?")
         return
@@ -283,6 +299,36 @@ async def examine(session: Session, args: list[str]):
             ):
                 await session.send(f"\r\n{feature.description}")
                 return
+
+    # 1b. Exits by direction
+    if room:
+        direction = _DIRECTION_ALIASES.get(target_name, target_name)
+        exit_meta = room.exits.get(direction)
+        if exit_meta is not None:
+            text = (getattr(exit_meta, "description", "") or "").strip()
+            await session.send(f"\r\n{text or f'The way {direction} is open.'}")
+            return
+
+    # 1c. Other players and agents here
+    for other in sorted(await app_instance.redis.get_room_players(room_id)):
+        if other == player_id or not other.lower().startswith(target_name):
+            continue
+        ostats = await app_instance.redis.get_player_stats(other)
+        hp, max_hp = int(ostats.get("hp", 0) or 0), int(ostats.get("max_hp", 0) or 0)
+        frac = hp / max_hp if max_hp else 1.0
+        condition = (
+            "looks unhurt"
+            if frac >= 0.9
+            else "has a few scrapes"
+            if frac >= 0.6
+            else "is badly hurt"
+            if frac >= 0.3
+            else "is barely standing"
+        )
+        weapon = ((ostats.get("equipment") or {}).get("weapon") or {}).get("name")
+        carried = f", carrying {weapon}" if weapon else ""
+        await session.send(f"\r\n{other} {condition}{carried}.")
+        return
 
     # 2. Check live entities
     entity_ids = await app_instance.redis.get_room_entities(room_id)

@@ -95,3 +95,45 @@ def test_flood_is_throttled_once():
     slow = [m for m in session.sent if m.startswith("Slow down")]
     assert len(unknown) <= RATE_BURST + 1
     assert len(slow) == 1
+
+
+def test_look_with_target_examines_and_movement_announces():
+    import fablestar.commands.items
+    import fablestar.commands.movement  # noqa: F401
+    from fablestar.world.models import RoomModel
+
+    server, mover, watcher = _server_with_two_players()
+    server.content_loader.rooms = {
+        "z:a": RoomModel(
+            id="z:a",
+            zone="z",
+            type="chamber",
+            name="A",
+            exits={"north": {"destination": "z:b", "description": "A ramp climbs north."}},
+        ),
+        "z:b": RoomModel(
+            id="z:b",
+            zone="z",
+            type="chamber",
+            name="B",
+            exits={"south": {"destination": "z:a", "description": "Back down."}},
+        ),
+    }
+    saved = app_module.app_instance
+    app_module.app_instance = server  # type: ignore[assignment]
+    try:
+
+        async def run():
+            await server.redis.set_player_location("Qa Tester", "z:a")
+            await server.redis.set_player_location("Qa Watcher", "z:a")
+            await server.dispatcher.dispatch(mover, "look north")
+            await server.dispatcher.dispatch(mover, "look at qa watcher")
+            await server.dispatcher.dispatch(mover, "north")
+
+        asyncio.run(run())
+    finally:
+        app_module.app_instance = saved
+    said = "\n".join(mover.sent)
+    assert "A ramp climbs north." in said
+    assert "Qa Watcher looks unhurt." in said
+    assert "Qa Tester leaves north." in watcher.sent

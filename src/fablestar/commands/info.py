@@ -18,6 +18,14 @@ async def look(session: Session, args: list[str]):
     if not session.player_id:
         await session.send("Not authenticated.")
         return
+    if args:
+        from fablestar.commands.items import examine
+
+        await examine(session, args)
+        return
+    # Movement's auto-look sets this False on familiar ground; typed looks narrate.
+    narrate = getattr(session, "look_narrate", True)
+    session.look_narrate = True
     room_id = await app_instance.redis.get_player_location(session.player_id)
     if not room_id:
         await session.send("You are lost in the void.")
@@ -33,7 +41,10 @@ async def look(session: Session, args: list[str]):
         # late line can't masquerade as the response to the next command.
         await session.send(room.description.get("base", ""))
 
-        observation_block = build_room_fact_block(room, {"time_of_day": "Eternal Night"})
+        from fablestar.world.clock import day_phase
+
+        observation_block = build_room_fact_block(room, {"time_of_day": day_phase()})
+        viewer = session.player_id
 
         async def _narrate():
             try:
@@ -42,16 +53,26 @@ async def look(session: Session, args: list[str]):
                 )
                 narration = await app_instance.llm_client.generate_or_raise(prompt)
                 clean = validator.sanitize(narration)
+                # A scene of a room the player already left reads as a lie.
+                if await app_instance.redis.get_player_location(viewer) != room_id:
+                    return
                 if clean and clean.strip():
                     await session.send(f"\r\nThe scene: {clean.strip()}")
             except Exception as e:
                 logger.debug("Room narration skipped: %s", e)
+            finally:
+                session.scene_narration_pending = False
 
-        # Agents parse facts, not prose — their constant looks would flood
-        # the narration backend (and stall ticks on the embedded model).
-        if not getattr(session, "is_agent", False):
+        # Agents parse facts, not prose; their constant looks would flood the
+        # narration backend. One pending scene per player: extras are dropped.
+        if (
+            narrate
+            and not getattr(session, "is_agent", False)
+            and not getattr(session, "scene_narration_pending", False)
+        ):
             import asyncio as _asyncio
 
+            session.scene_narration_pending = True
             _asyncio.get_running_loop().create_task(_narrate())
 
         if room.exits:
@@ -106,11 +127,17 @@ async def map_cmd(session: Session, args: list[str]):
         await session.send("No chart exists for this place.")
         return
     lines = [f"--- {data['zone']} ---"]
+    unexplored = 0
     for r in sorted(data["rooms"], key=lambda x: x["name"]):
-        marker = "@" if r["id"] == data["current"] else ("*" if r["visited"] else "?")
-        name = r["name"] if r["visited"] or r["id"] == data["current"] else "unexplored"
-        lines.append(f"  [{marker}] {name}")
-    lines.append("@ you are here · * explored · ? unexplored")
+        if r["id"] == data["current"]:
+            lines.append(f"  [@] {r['name']}")
+        elif r["visited"]:
+            lines.append(f"  [*] {r['name']}")
+        else:
+            unexplored += 1
+    if unexplored:
+        lines.append(f"  ...and {unexplored} places you haven't found yet.")
+    lines.append("@ you are here · * explored")
     await session.send("\r\n".join(lines))
 
 

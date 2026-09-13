@@ -8,6 +8,35 @@ from fablestar.network.session import Session
 logger = logging.getLogger(__name__)
 
 
+OPPOSITE = {
+    "north": "south",
+    "south": "north",
+    "east": "west",
+    "west": "east",
+    "up": "below",
+    "down": "above",
+    "northeast": "southwest",
+    "southwest": "northeast",
+    "northwest": "southeast",
+    "southeast": "northwest",
+}
+
+
+async def _announce(app_instance, room_id: str, mover: str, line: str) -> None:
+    """Tell everyone else in a room that someone came or went."""
+    for other in await app_instance.redis.get_room_players(room_id):
+        if other == mover:
+            continue
+        target = app_instance.session_manager.get_session_by_player(other)
+        # Agents already see occupants in every look; movement chatter would
+        # crowd conversation out of their short perception window.
+        if target is not None and not getattr(target, "is_agent", False):
+            try:
+                await target.send(line)
+            except Exception:
+                logger.debug("movement announce failed for %s", other, exc_info=True)
+
+
 def move_to(direction: str):
     """Helper to create a movement command for a specific direction."""
 
@@ -37,8 +66,16 @@ def move_to(direction: str):
         exit_meta = room.exits[direction]
         target_room_id = exit_meta.destination
 
-        # 3. Update location
+        # 3. Update location, telling both rooms
+        await _announce(app_instance, room_id, player_id, f"{player_id} leaves {direction}.")
         await app_instance.redis.set_player_location(player_id, target_room_id)
+        arrival = OPPOSITE.get(direction)
+        await _announce(
+            app_instance,
+            target_room_id,
+            player_id,
+            f"{player_id} arrives from the {arrival}." if arrival else f"{player_id} arrives.",
+        )
 
         # Traversal gain rewards exploring, not pacing: a first visit teaches a
         # lot; familiar ground teaches less the better you already are. (Flat
@@ -81,6 +118,7 @@ def move_to(direction: str):
 
         # 4. Describe new room
         await session.send(f"You move {direction}.")
+        session.look_narrate = first_visit
         await app_instance.dispatcher.dispatch(session, "look")
         for msg in hazard_messages:
             await session.send(f"\r\n{msg}")
