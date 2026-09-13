@@ -25,6 +25,40 @@ async def _chat_notice(target: Session, channel: str, sender: str, text: str, se
     await target.send(json.dumps(notice) + "\r\n")
 
 
+def _free_text(session: Session, args: list[str]) -> str:
+    """The player's words with their original case (the tokenizer lowercases args)."""
+    raw = getattr(session, "raw_args", None)
+    return raw.strip() if raw else " ".join(args)
+
+
+def resolve_tell_target(words: list[str], online: list[str], sender: str):
+    """Split 'tell' words into (target, message) against online names.
+
+    Longest exact name wins, then a unique name prefix. Returns
+    (target, message, None) on success or (None, None, reason) where reason is
+    'self', 'nobody' or a list of ambiguous names.
+    """
+    others = [n for n in online if n != sender]
+    most = min(len(words) - 1, 5)
+    for k in range(most, 0, -1):
+        cand = " ".join(words[:k]).lower()
+        exact = [n for n in others if n.lower() == cand]
+        if exact:
+            return exact[0], " ".join(words[k:]), None
+        if cand == sender.lower():
+            return None, None, "self"
+    for k in range(most, 0, -1):
+        cand = " ".join(words[:k]).lower()
+        hits = [n for n in others if n.lower().startswith(cand)]
+        if len(hits) == 1:
+            return hits[0], " ".join(words[k:]), None
+        if len(hits) > 1:
+            return None, None, sorted(hits)
+    if words and sender.lower().startswith(words[0].lower()):
+        return None, None, "self"
+    return None, None, "nobody"
+
+
 @command("say")
 async def say(session: Session, args: list[str]):
     """Speak to everyone in your current room."""
@@ -36,7 +70,7 @@ async def say(session: Session, args: list[str]):
         await session.send("Not authenticated.")
         return
 
-    message = " ".join(args)
+    message = _free_text(session, args)
     from fablestar.app import app_instance
 
     room_id = await app_instance.redis.get_player_location(session.player_id)
@@ -77,7 +111,7 @@ async def emote(session: Session, args: list[str]):
     if not room_id:
         await session.send("There is nobody here to see it.")
         return
-    line = f"{session.player_id} {' '.join(args)}"
+    line = f"{session.player_id} {_free_text(session, args)}"
     await session.send(line)
     for target_pid in await app_instance.redis.get_room_players(room_id):
         if target_pid != session.player_id:
@@ -98,26 +132,25 @@ async def tell(session: Session, args: list[str]):
 
     from fablestar.app import app_instance
 
-    needle = args[0].lower()
-    target_pid = next(
-        (
-            pid
-            for pid in app_instance.session_manager.player_to_session
-            if pid.lower() == needle or pid.lower().startswith(needle)
-        ),
-        None,
-    )
-    if target_pid is None:
-        await session.send(f"No one called '{args[0]}' is online.")
-        return
-    if target_pid == session.player_id:
+    words = _free_text(session, args).split()
+    online = list(app_instance.session_manager.player_to_session)
+    target_pid, message, reason = resolve_tell_target(words, online, session.player_id)
+    if reason == "self":
         await session.send("You mutter to yourself. It doesn't help.")
+        return
+    if isinstance(reason, list):
+        await session.send(f"Which one? {', '.join(reason)}")
+        return
+    if target_pid is None:
+        await session.send(f"No one called '{words[0]}' is online.")
+        return
+    if not message:
+        await session.send(f"Tell {target_pid} what?")
         return
     target_session = app_instance.session_manager.get_session_by_player(target_pid)
     if target_session is None:
         await session.send(f"No one called '{args[0]}' is online.")
         return
-    message = " ".join(args[1:])
     await session.send(f'You tell {target_pid}: "{message}"')
     await target_session.send(f'{session.player_id} tells you: "{message}"')
     await _chat_notice(session, "tell", f"→ {target_pid}", message, self_line=True)
