@@ -1,0 +1,17 @@
+id: test_isle:bunk_east
+zone: test_isle
+type: safe
+depth: 1
+description:
+  base: A sleeping nook against the seaward wall, where the planks sweat salt on cold
+    nights. Someone left a dried gullwing strip under the pillow as either a gift
+    or a warning.
+exits:
+  west:
+    destination: test_isle:bunkhouse
+    description: ''
+features: []
+entity_spawns: []
+hazards: []
+tags: []
+name: Seaward Bunk

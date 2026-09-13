@@ -1,0 +1,17 @@
+id: test_isle:bunk_loft
+zone: test_isle
+type: safe
+depth: 1
+description:
+  base: A low loft under the roof beams, with a hammock strung between two of them
+    and a porthole window facing the harbor. Rain on the shingles like fingers drumming.
+    You have to duck to stand.
+exits:
+  down:
+    destination: test_isle:bunkhouse
+    description: A ladder worn smooth by tired hands.
+features: []
+entity_spawns: []
+hazards: []
+tags: []
+name: Bunkhouse Loft

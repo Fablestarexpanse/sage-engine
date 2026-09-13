@@ -3,8 +3,9 @@ zone: test_isle
 type: chamber
 depth: 1
 description:
-  base: A crooked line of shacks leaning shoulder to shoulder along the waterfront, nets drying between
-    them like grey laundry. Fisherfolk mend gear on their stoops and trade weather lies.
+  base: A crooked line of shacks leaning shoulder to shoulder along the waterfront,
+    nets drying between them like grey laundry. Fisherfolk mend gear on their stoops
+    and trade weather lies.
 exits:
   west:
     destination: test_isle:harbor_docks
@@ -12,13 +13,18 @@ exits:
   east:
     destination: test_isle:fishing_pier
     description: ''
+  south:
+    destination: test_isle:bunkhouse
+    description: 'A lantern-lit door under a sign: TIDEWATER BUNKHOUSE — BEDS BY THE
+      NIGHT.'
 features:
 - id: drying_nets
   name: drying nets
   keywords:
   - nets
   - net
-  description: Nets strung shack to shack, beaded with scale-glitter. Odd things come up in nets.
+  description: Nets strung shack to shack, beaded with scale-glitter. Odd things come
+    up in nets.
   search:
     items:
     - ration_pack

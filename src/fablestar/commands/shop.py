@@ -56,8 +56,8 @@ async def _keeper_till(shop, actor: str, delta: int) -> None:
     """Move shop money through the keeper's own wallet when an agent owns it.
 
     delta > 0: the shop took money in (a sale); delta < 0: it paid out.
-    Payouts floor at zero — the house covers a broke keeper rather than
-    blocking trade. Skipped when the keeper trades at their own counter.
+    Goes through an atomic Redis counter (digi_pending:<name>) that the agent
+    banks on its next tick, so concurrent agent ticks can't lose takings.
     """
     from fablestar.app import app_instance
 
@@ -67,11 +67,20 @@ async def _keeper_till(shop, actor: str, delta: int) -> None:
         persona = app_instance.content_loader.get_agent_registry().get(shop.owner)
         if persona is None or persona.name == actor:
             return
-        stats = await app_instance.redis.get_player_stats(persona.name)
-        stats["digi"] = max(0, int(stats.get("digi", 0) or 0) + delta)
-        await app_instance.redis.set_player_stats(persona.name, stats)
+        await app_instance.redis.client.incrby(f"digi_pending:{persona.name}", int(delta))
     except Exception:
         logger.debug("keeper till skipped", exc_info=True)
+
+
+def _is_owner(shop, actor: str) -> bool:
+    """Keepers can't trade at their own counter — it minted free money overnight."""
+    from fablestar.app import app_instance
+
+    owner = getattr(shop, "owner", "")
+    if not owner:
+        return False
+    persona = app_instance.content_loader.get_agent_registry().get(owner)
+    return persona is not None and persona.name == actor
 
 
 async def _record_trade(stats, kind: str) -> list:
@@ -132,6 +141,9 @@ async def buy(session: Session, args: list[str]):
     if shop is None or not shop.sells:
         await session.send("Nobody here is selling anything.")
         return
+    if _is_owner(shop, player_id):
+        await session.send("It's your own stock. Taking it off the shelf isn't buying.")
+        return
 
     wanted = " ".join(args).lower()
     entry = None
@@ -174,7 +186,12 @@ async def buy(session: Session, args: list[str]):
     from fablestar.telemetry import heat, log_event
 
     log_event(
-        "trade", kind="buy", actor=player_id, item=template.id, price=entry.price, room=shop_room_id
+        "trade",
+        direction="buy",
+        actor=player_id,
+        item=template.id,
+        price=entry.price,
+        room=shop_room_id,
     )
     await heat(app_instance.redis, "trades", shop_room_id)
     await _keeper_till(shop, player_id, entry.price)
@@ -201,6 +218,9 @@ async def sell(session: Session, args: list[str]):
     shop, shop_room_id = await _shop_here(player_id)
     if shop is None or not shop.buys:
         await session.send("Nobody here is buying.")
+        return
+    if _is_owner(shop, player_id):
+        await session.send("You can't sell to your own till. Take it to another buyer.")
         return
 
     inv = await app_instance.redis.get_player_inventory(player_id)
@@ -251,7 +271,12 @@ async def sell(session: Session, args: list[str]):
     from fablestar.telemetry import heat, log_event
 
     log_event(
-        "trade", kind="sell", actor=player_id, items=len(to_sell), total=total, room=shop_room_id
+        "trade",
+        direction="sell",
+        actor=player_id,
+        items=len(to_sell),
+        total=total,
+        room=shop_room_id,
     )
     await heat(app_instance.redis, "trades", shop_room_id)
     summary = ", ".join(sold_names[:4]) + ("…" if len(sold_names) > 4 else "")

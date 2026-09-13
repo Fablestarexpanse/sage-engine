@@ -125,9 +125,12 @@ def intent_prompt(
         f"Rooms you know: {rooms}.\n"
         "Shops: the pawn_shop buys salvage; the general_store sells food; "
         "scavenging the wilds finds sellable goods.\n"
+        "Goals and their targets: wander_to -> a room from the list above; "
+        "hunt -> a creature (razor crab, rust hound, scrap drone); "
+        "buy -> an item (ration, stout, charge cell); rest/scavenge/sell/idle -> empty.\n"
         "Decide what to do next. Answer with ONLY one JSON object, no prose:\n"
         '{"goal": "wander_to|hunt|rest|talk|scavenge|sell|buy|idle", '
-        '"target": "<room slug, entity, item, or empty>", '
+        '"target": "<see targets above>", '
         '"why": "<few words>", "say": "<one spoken line or empty>"}'
     )
 

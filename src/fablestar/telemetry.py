@@ -19,6 +19,13 @@ logger = logging.getLogger(__name__)
 LOG_DIR = Path("logs")
 
 _handles: dict[str, object] = {}
+# Tests must never write into the live soak log (set by tests/conftest.py).
+_disabled = False
+
+
+def disable() -> None:
+    global _disabled
+    _disabled = True
 
 
 def _handle():
@@ -43,13 +50,19 @@ def _handle():
     return fh
 
 
-def log_event(kind: str, **fields) -> None:
-    """One JSONL line: {"t": epoch, "kind": ..., **fields}. Never raises."""
+def log_event(kind: str, /, **fields) -> None:
+    """One JSONL line: {"t": epoch, "kind": ..., **fields}. Never raises.
+
+    `kind` is positional-only so a field that happens to be called "kind"
+    can't collide at call time (that crashed buy/sell for a whole night).
+    """
+    if _disabled:
+        return
     try:
         fh = _handle()
         if fh is None:
             return
-        record = {"t": round(time.time(), 2), "kind": kind, **fields}
+        record = {**fields, "t": round(time.time(), 2), "kind": kind}
         fh.write(json.dumps(record, ensure_ascii=False, default=str) + "\n")
     except Exception:
         logger.debug("telemetry write failed", exc_info=True)
@@ -57,6 +70,8 @@ def log_event(kind: str, **fields) -> None:
 
 async def heat(redis, map_name: str, key: str, by: int = 1) -> None:
     """Increment a heatmap cell: hash heat:<map_name>[key] += by. Never raises."""
+    if _disabled:
+        return
     try:
         await redis.client.hincrby(f"heat:{map_name}", key, by)
     except Exception:

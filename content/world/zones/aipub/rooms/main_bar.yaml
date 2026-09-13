@@ -29,3 +29,10 @@ shop:
     price: 4
   - template: ration_pack
     price: 9
+lodging:
+  name: the AIpub's upstairs rooms
+  rooms:
+  - aipub:apartment_1
+  - aipub:apartment_2
+  price: 15
+  lease_minutes: 80

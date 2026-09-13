@@ -40,10 +40,25 @@ def move_to(direction: str):
         # 3. Update location
         await app_instance.redis.set_player_location(player_id, target_room_id)
 
-        # Passive traversal gain (low chance per move to avoid spam).
+        # Traversal gain rewards exploring, not pacing: a first visit teaches a
+        # lot; familiar ground teaches less the better you already are. (Flat
+        # 12% per step gave agents 66-153 pathfinding levels overnight.)
         from fablestar.proficiencies.field_gain import try_field_gain_for_player
 
-        await try_field_gain_for_player(player_id, "traversal.navigation.pathfinding", chance=0.12)
+        try:
+            mover_stats = await app_instance.redis.get_player_stats(player_id)
+            first_visit = target_room_id not in (mover_stats.get("visited_rooms") or [])
+            path_lvl = int(
+                ((mover_stats.get("conduit") or {}).get("proficiencies") or {})
+                .get("traversal.navigation.pathfinding", {})
+                .get("level", 0)
+            )
+        except Exception:
+            first_visit, path_lvl = False, 0
+        gain_chance = 0.6 if first_visit else 0.04 / (1 + path_lvl / 5)
+        await try_field_gain_for_player(
+            player_id, "traversal.navigation.pathfinding", chance=gain_chance
+        )
 
         # Unique-room exploration counter (best-effort, writes only on first visit).
         from fablestar.achievements.engine import announcement, record_room_visit_for_player

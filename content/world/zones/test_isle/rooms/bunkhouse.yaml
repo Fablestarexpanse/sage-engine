@@ -1,0 +1,39 @@
+id: test_isle:bunkhouse
+zone: test_isle
+type: safe
+depth: 1
+description:
+  base: A long timber hall that smells of pipe smoke, wet wool, and fish that got away. A ledger on a
+    stand by the door lists who sleeps where and until when; the keeper collects in advance and holds
+    no opinions. Curtained bunks open off the hall south, east, and southwest, and a ladder climbs to
+    the loft.
+exits:
+  north:
+    destination: test_isle:fisherman_row
+    description: 'A lantern-lit door under a sign: TIDEWATER BUNKHOUSE — BEDS BY THE NIGHT.'
+  south:
+    destination: test_isle:bunk_north
+    description: ''
+  east:
+    destination: test_isle:bunk_east
+    description: ''
+  southwest:
+    destination: test_isle:bunk_west
+    description: ''
+  up:
+    destination: test_isle:bunk_loft
+    description: A ladder worn smooth by tired hands.
+features: []
+entity_spawns: []
+hazards: []
+tags: []
+name: Tidewater Bunkhouse
+lodging:
+  name: the Tidewater Bunkhouse
+  rooms:
+  - test_isle:bunk_north
+  - test_isle:bunk_east
+  - test_isle:bunk_west
+  - test_isle:bunk_loft
+  price: 8
+  lease_minutes: 60

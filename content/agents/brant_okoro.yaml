@@ -12,7 +12,7 @@ hard_facts:
   - "faction: dockworkers"
   - "walks with a limp"
 routine: [harbor_docks, ferry_landing, harbor_docks, warehouse, harbor_docks, south_road, town_plaza, south_road]
-gear: {armor: padded_vest}
+gear: {}
 stats: {hp: 80, max_hp: 80}
 attributes: {FRT: 14, RFX: 8, ACU: 9, RSV: 13, PRS: 10}
 digi: 35

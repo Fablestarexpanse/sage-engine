@@ -156,6 +156,36 @@
       "y": -440.0,
       "width": 176,
       "height": 108
+    },
+    "bunkhouse": {
+      "x": 620.0,
+      "y": 600.0,
+      "width": 176,
+      "height": 108
+    },
+    "bunk_north": {
+      "x": 620.0,
+      "y": 730.0,
+      "width": 176,
+      "height": 108
+    },
+    "bunk_east": {
+      "x": 840.0,
+      "y": 600.0,
+      "width": 176,
+      "height": 108
+    },
+    "bunk_west": {
+      "x": 400.0,
+      "y": 730.0,
+      "width": 176,
+      "height": 108
+    },
+    "bunk_loft": {
+      "x": 620.0,
+      "y": 600.0,
+      "width": 176,
+      "height": 108
     }
   },
   "notes": [],
@@ -186,6 +216,11 @@
     "scrap_beach": 0,
     "cliff_path": 0,
     "old_lighthouse": 0,
-    "lighthouse_lamp": 1
+    "lighthouse_lamp": 1,
+    "bunkhouse": 0,
+    "bunk_north": 0,
+    "bunk_east": 0,
+    "bunk_west": 0,
+    "bunk_loft": 1
   }
 }
