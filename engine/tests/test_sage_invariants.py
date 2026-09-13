@@ -111,3 +111,35 @@ def test_world_terms_from_packages(inv, tmp_path):
     )
     (world / "currencies.yaml").write_text("- key: silver\n  starting: 5\n", encoding="utf-8")
     assert inv.world_terms(tmp_path) == ["might", "silver"]
+
+
+def test_engine_may_not_import_world_or_plugin_code(inv):
+    source = "import sage_worlds.fablestar\nfrom sage_plugins.shop import main\nimport sage.core\n"
+    found = inv.engine_import_violations("engine/src/sage/x.py", source)
+    assert len(found) == 2 and all("must not import" in f for f in found)
+
+
+def test_engine_dynamic_imports_only_in_the_loader(inv):
+    source = "import importlib, sys\nimportlib.import_module(name)\nsys.path.insert(0, p)\n"
+    assert len(inv.engine_import_violations("engine/src/sage/x.py", source)) == 2
+    assert inv.engine_import_violations("engine/src/sage/plugins/loader.py", source) == []
+
+
+def test_plugins_may_import_only_the_api(inv):
+    source = (
+        "from sage.api import EntityKilled\n"
+        "import sage.api\n"
+        "from sage import api\n"
+        "from sage.core.events import EventBus\n"
+        "from sage import lexicon\n"
+        "import yaml\n"
+    )
+    found = inv.plugin_import_violations("plugins/x/main.py", source)
+    assert [f.split(" imports ")[1].split(" ")[0] for f in found] == [
+        "sage.core.events",
+        "sage.lexicon",
+    ]
+
+
+def test_repository_respects_the_boundary(inv):
+    assert inv.boundary_violations() == []

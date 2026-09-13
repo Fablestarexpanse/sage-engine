@@ -38,7 +38,7 @@ written on demand, only after the Phase 1 contracts are approved.
 | 1 | Contracts | done — approved 2026-09-13 |
 | 2a | CI and ratchets | done — CI jobs python, worldforge, live, licenses |
 | 2b | Mechanical move and rename to `engine/`, package `sage` | done — branch `sage/stage-2b`, 4 commits, CI green |
-| 2c | Seams, plugin loader, lexicon, skeleton second world | in progress — phases 05–09 done |
+| 2c | Seams, plugin loader, lexicon, skeleton second world | done — phases 05–12, CI green |
 | 3 | Migrate Fablestar system by system | blocked on 2 |
 | 4 | Second reference world, full size | blocked on 3 |
 | 5 | Tooling | decisions made (D.E); work after 2c |
@@ -68,6 +68,6 @@ Expanded on demand; later stages get phase docs when 2a lands.
 | 07 | Event bus, resolver slots, tick jobs ([phase-07-events-resolvers.md](phase-07-events-resolvers.md)) | done |
 | 08 | Plugin loader and sage.api ([phase-08-plugin-loader.md](phase-08-plugin-loader.md)) | done |
 | 09 | Rivermoot + levels plugin + per-world live smoke ([phase-09-second-world.md](phase-09-second-world.md)) | done |
-| 10 | Plugin-owned migrations and uninstall | todo |
-| 11 | world_overrides table + Nexus lexicon/MOTD editing | todo |
-| 12 | Import-boundary check (invariant 1) | todo |
+| 10 | Plugin-owned migrations and uninstall ([phase-10-plugin-migrations.md](phase-10-plugin-migrations.md)) | done |
+| 11 | Live lexicon editing from Nexus ([phase-11-lexicon-overrides.md](phase-11-lexicon-overrides.md)) | done |
+| 12 | Import-boundary check ([phase-12-import-boundary.md](phase-12-import-boundary.md)) | done |
