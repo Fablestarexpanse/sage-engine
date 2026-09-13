@@ -27,8 +27,8 @@ by owner G.4 ("every mechanic is a first-party plugin").
 | 3.4 | Engine seams shop/lodging need: content schema extensions (catalog #7, `api.content.extend`) and plugin admin HTTP routes (#9, `api.http.admin_router`) | done |
 | 3.5 | Shop → `plugins/shop` (done: `api.redis`, `api.telemetry`, `api.state.location`, `wallet.pay_later`); lodging → `plugins/lodging` (rent, `lease_sweep` tick job, service for agents) | done |
 | 3.6 | Crafting and search → `plugins/crafting`, `plugins/search`; engine progression slots (`progression.skill_used/skill_level`, catalog #3) and `feature` content extensions | done |
-| 3.7 | Maestro → `plugins/maestro` | next |
-| 3.8 | Effects API in engine; hazards → `plugins/hazards` | todo |
+| 3.7 | Maestro → `plugins/maestro` (`api.sessions`, `api.entities`, `api.items`, `api.lexicon_keys`) | done |
+| 3.8 | Effects API in engine; hazards → `plugins/hazards` | next |
 | 3.9 | Agents → `plugins/agents` (owner ruling); agent wallet reads (`stats["digi"]`, clinic bill, pending takings) move onto `api.wallet`, and the transitional `AgentManager._factions()` service lookup becomes a declared `depends` on `factions` | todo |
 | 3.10 | Conduit (proficiencies, FRT..PRS, combat resolver, chargen) → `worlds/fablestar/plugins/conduit` | todo |
 | 3.11 | Combat, equipment, ambient, effects → first-party plugins (owner G.4) | todo |
@@ -85,3 +85,6 @@ by owner G.4 ("every mechanic is a first-party plugin").
 - Item `recipe`/`yields`/`scraps` and feature `search` are plugin extensions now; the engine's
   ItemTemplate and FeatureModel no longer define them. `search:{room}:{feature}:finds` keys are the
   search plugin's (`search` is no longer a reserved engine Redis prefix).
+- **3.7 maestro.** Flavour text is lexicon: generic defaults in the plugin, Fablestar's station
+  lines in its world lexicon. Dread lines are every `maestro.dread.<n>` key, so a world adds lines
+  without code. The mercy item is a world param (`maestro.mercy_item`); unset disables mercy.

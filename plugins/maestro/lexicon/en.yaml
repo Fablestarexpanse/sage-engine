@@ -1,0 +1,8 @@
+maestro:
+  ambush: "\r\nMovement in the shadows — {name} lunges into the open!"
+  ambush_unnamed: "something hostile"
+  mercy: "\r\nTucked out of sight, something catches your eye: {item}. Someone's stash, once."
+  # Dread lines: any maestro.dread.<n> key is a candidate; worlds add or reword them.
+  dread:
+    "1": "\r\nSomewhere far off, something heavy falls, then goes quiet."
+    "2": "\r\nFor a moment you are sure something is keeping pace with you."

@@ -27,6 +27,7 @@ shop = "^1"
 lodging = "^1"
 search = "^1"
 crafting = "^1"
+maestro = "^1"
 
 [params]
 # Tidegate clinic bills up to 10 Digi on respawn; half health on waking.
@@ -38,6 +39,7 @@ crafting = "^1"
 "crafting.skills" = { weapon = "fabrication.weaponsmithing.energy_weapons", armor = "fabrication.armorcraft.plating", ammo = "fabrication.devices.utility_tools" }
 "crafting.default_skill" = "fabrication.materials.composites"
 "crafting.deconstruct_skill" = "fabrication.salvage.disassembly"
+"maestro.mercy_item" = "ration_pack"
 
 [transition]
 # Content and prompts still live at the repository root until Phase 3 moves them in here.

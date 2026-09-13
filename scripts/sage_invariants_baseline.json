@@ -1,7 +1,7 @@
 {
   "totals": {
     "denylist": 2123,
-    "player_literals": 117
+    "player_literals": 114
   },
   "denylist": {
     "engine/alembic/versions/b3c4d5e6f7a8_account_echo_credits.py": 5,
@@ -116,7 +116,6 @@
     "engine/src/sage/commands/movement.py": 7,
     "engine/src/sage/commands/proficiency.py": 6,
     "engine/src/sage/effects/manager.py": 3,
-    "engine/src/sage/maestro/modules.py": 3,
     "engine/src/sage/network/session.py": 2,
     "engine/src/sage/server.py": 8,
     "engine/src/sage/world/ambient.py": 1,

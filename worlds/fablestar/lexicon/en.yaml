@@ -13,3 +13,11 @@ death:
   wake: "\r\nYou wake on a diagnostic bed, patched together and aching. The dispensary arm gives you an encouraging whir.{bill}"
   bill: " The clinic took {amount} {currency} for the trouble."
   no_bill: " You were too broke to bill; they patched you anyway."
+
+maestro:
+  mercy: "\r\nTucked behind a panel, something catches your eye: {item}. Someone's stash, once."
+  dread:
+    "1": "\r\nSomewhere far below, metal shrieks against metal, then goes quiet."
+    "2": "\r\nThe lights dim for half a heartbeat. Nothing admits to it."
+    "3": "\r\nA pressure door cycles in the distance — no one scheduled that."
+    "4": "\r\nFor a moment you are sure something in the walls is keeping pace with you."

@@ -361,6 +361,67 @@ class _Progression:
         return int(self._api._host.resolvers.get(SKILL_LEVEL)(stats, skill))
 
 
+class _Sessions:
+    """Who is connected, and pushing their client state."""
+
+    def __init__(self, api: PluginAPI):
+        self._api = api
+
+    def online(self) -> list[str]:
+        return list(self._api._host.server.session_manager.player_to_session)
+
+    def get(self, player_id: str) -> Any:
+        return self._api._host.server.session_manager.get_session_by_player(player_id)
+
+    async def push_snapshot(self, session: Any) -> None:
+        push = getattr(self._api._host.server, "push_character_snapshot", None)
+        if push is not None:
+            await push(session)
+
+
+class _Entities:
+    """Live entities (mobs, NPCs) in rooms."""
+
+    def __init__(self, api: PluginAPI):
+        self._api = api
+
+    async def count_in_room(self, room_id: str, template_id: str) -> int:
+        return await self._api._host.server.spawner.count_template_in_room(room_id, template_id)
+
+    async def spawn(self, room_id: str, template_id: str) -> str | None:
+        return await self._api._host.server.spawner.spawn_entity(room_id, template_id)
+
+    async def state(self, entity_id: str) -> dict[str, Any] | None:
+        return await self._api._host.redis.get_entity_state(entity_id)
+
+
+class _Items:
+    """Items lying in rooms."""
+
+    def __init__(self, api: PluginAPI):
+        self._api = api
+
+    async def place(self, room_id: str, template_id: str) -> dict[str, Any] | None:
+        """Mint one item from a template onto a room's floor; None for an unknown template."""
+        import uuid
+
+        template = self._api._host.content.get_item_template(template_id)
+        if template is None:
+            return None
+        item_id = f"{template.id}_{uuid.uuid4().hex[:8]}"
+        item = {
+            "id": item_id,
+            "template": template.id,
+            "name": template.name,
+            "description": template.description,
+            "value": template.value,
+        }
+        redis = self._api._host.redis
+        await redis.set_item_state(item_id, item)
+        await redis.add_item_to_room(item_id, room_id)
+        return item
+
+
 class PluginAPI:
     def __init__(self, host: Any, record: Any):
         self._host = host
@@ -381,6 +442,9 @@ class PluginAPI:
         self.redis = _Redis(self)
         self.telemetry = _Telemetry(self)
         self.progression = _Progression(self)
+        self.sessions = _Sessions(self)
+        self.entities = _Entities(self)
+        self.items = _Items(self)
 
     @property
     def world(self) -> Any:
@@ -399,6 +463,10 @@ class PluginAPI:
 
     def t(self, key: str, **variables: Any) -> str:
         return lexicon.t(key, **variables)
+
+    def lexicon_keys(self, prefix: str) -> list[str]:
+        """Every resolvable key under prefix, sorted — lets worlds add numbered lines."""
+        return sorted(k for k in lexicon.active().keys() if k.startswith(prefix))
 
     def withdraw(self) -> None:
         """Undo every registration (setup failure or teardown)."""

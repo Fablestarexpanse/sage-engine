@@ -30,7 +30,6 @@ from sage.effects.manager import EffectsManager
 from sage.hot_reload import HotReloader
 from sage.llm.client import LLMClient
 from sage.llm.prompts import PromptManager
-from sage.maestro.director import MaestroDirector
 from sage.network.session import Session, SessionManager
 from sage.parser.dispatcher import CommandDispatcher
 from sage.plugins import PluginHost
@@ -103,7 +102,6 @@ class SageServer:
         self.spawner = EntitySpawnManager(self)
         self.ambient = AmbientManager(self)
         self.effects = EffectsManager(self)
-        self.maestro = MaestroDirector(self)
         self.agent_manager = AgentManager(self)
         self.hot_reloader = HotReloader(self._on_file_changed)
         self.dispatcher = CommandDispatcher(events=self.events)
@@ -115,6 +113,7 @@ class SageServer:
             tick_manager=self.tick_manager,
             redis=self.redis,
             content=self.content_loader,
+            server=self,
             plugins_root=self.project_root / "plugins",
             trusted_roots=[self.project_root / "plugins", self.project_root / "worlds"],
         )
@@ -371,7 +370,6 @@ class SageServer:
         self.tick_manager.register(self.spawner.on_tick)
         self.tick_manager.register(self.ambient.on_tick)
         self.tick_manager.register(self.effects.on_tick)
-        self.tick_manager.register(self.maestro.on_tick)
         self.tick_manager.register(self.agent_manager.on_tick)
         self.tick_manager.register(self.persistence.on_tick)
 
