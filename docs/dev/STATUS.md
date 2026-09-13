@@ -79,8 +79,10 @@ Test suites: server **150** pytest, WorldForge **34** vitest — all green.
 - [ ] WorldForge jsdom/React-Flow test harness for ZoneEditor component tests
 - [ ] Server proficiencies typing pass (`dict[str, Any]` → TypedDicts) — wants
       mypy installed first
-- [ ] admin-ui `App.jsx` extraction (~3.4k lines → per-page components,
-      following the existing PlayerAccountsTab pattern)
+- [x] admin-ui `App.jsx` extraction: 3426 → 451 lines. adminCommon.jsx
+      (constants, ws helpers, icons, UI atoms, usePolledList) + src/pages/
+      {AiForge,Dashboard,Players,ContentLibrary,Server,Operations,StaffTeam}Page.
+      Build clean, every page click-verified live
 - [ ] `content_browser.py` package split (deferred as not-yet-friction)
 
 ### Agent NPCs (headless players — plan: .claude/plans, 2026-09-12)
