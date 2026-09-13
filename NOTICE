@@ -9,6 +9,10 @@ This repository contains two distinct components under different terms:
 - worlds/fablestar/ (Fablestar Expanse) is proprietary. All rights reserved.
   No license is granted to this content.
 
+- worlds/rivermoot/ (Rivermoot) is the second reference world used to test the
+  engine. Its license has not been decided yet; until it is, all rights are
+  reserved.
+
 Copyright 2026 Brian M. Taylor.
 
 

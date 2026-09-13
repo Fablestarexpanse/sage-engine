@@ -1,0 +1,8 @@
+attributes:
+  - {key: mgt, label: stat.mgt.name, short: stat.mgt.short, min: 1, max: 6, default: 2}
+  - {key: wts, label: stat.wts.name, short: stat.wts.short, min: 1, max: 6, default: 2}
+  - {key: nrv, label: stat.nrv.name, short: stat.nrv.short, min: 1, max: 6, default: 2}
+vitals:
+  - {key: hp, label: vital.hp.name, default_max: 12}
+chargen:
+  attribute_points: 8

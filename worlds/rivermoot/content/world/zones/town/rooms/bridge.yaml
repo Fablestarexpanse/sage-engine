@@ -1,0 +1,19 @@
+id: town:bridge
+zone: town
+name: Old Bridge
+type: street
+depth: 1
+description:
+  base: A humped stone bridge spans the brown, quick river. Carts rattle over worn cobbles and a
+    toll-keeper's empty booth leans against the parapet.
+exits:
+  north:
+    destination: town:market
+    description: The market square, loud with haggling.
+features:
+  - id: toll_booth
+    name: empty toll booth
+    keywords: [booth, toll]
+    description: The shutters are nailed open. Nobody has collected a toll in years.
+entity_spawns: []
+tags: [outdoor]

@@ -4,8 +4,8 @@ websocket_port = 8001
 max_connections = 100
 tick_rate = 0.25
 
-# World package to run, a directory under worlds_dir. Optional when only one world exists.
-# world = "fablestar"
+# World package to run, a directory under worlds_dir. Required when worlds_dir holds several.
+world = "fablestar"
 # worlds_dir = "worlds"
 
 # Set to true only for local development. Seeds staff/test and player/test accounts.

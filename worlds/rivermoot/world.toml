@@ -1,0 +1,27 @@
+# Rivermoot — the second SAGE reference world (docs/sage/BRIEF.md section 6).
+# Deliberately unlike Fablestar: low-fantasy river town, three attributes, one currency,
+# simple levels instead of a proficiency tree, no agents, no AI images. It exists to prove the
+# engine's seams, not to be a product.
+
+[world]
+id = "rivermoot"
+name = "Rivermoot"
+version = "0.1.0"
+engine = ">=0.2,<0.3"
+locale = "en"
+
+[start]
+room = "town:bridge"
+respawn = "town:shrine"
+
+[content]
+room_types = ["street", "square", "shrine"]
+exit_dirs = ["north", "south", "east", "west"]
+equipment_slots = ["hand", "body"]
+
+[plugins]
+levels = "^1"
+
+[params]
+"levels.xp_per_kill" = 5
+"levels.xp_per_level" = 10
