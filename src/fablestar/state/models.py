@@ -115,6 +115,21 @@ class Character(Base):
     account: Mapped["Account"] = relationship(back_populates="characters")
 
 
+class AgentState(Base):
+    """Durable state for agent NPCs — keyed by persona id, seeded from YAML."""
+
+    __tablename__ = "agent_state"
+
+    id: Mapped[str] = mapped_column(String(100), primary_key=True)  # persona id
+    name: Mapped[str] = mapped_column(String(100), index=True)
+    room_id: Mapped[str] = mapped_column(String(255))
+    stats: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    inventory: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+
 class AdminStaff(Base):
     """Console staff (head admin, admin, GM) with optional tool/zone restrictions."""
 

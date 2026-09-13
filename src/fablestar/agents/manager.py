@@ -85,35 +85,53 @@ class AgentManager:
         sm.sessions[session.id] = session
         sm.player_to_session[persona.name] = session.id
 
-        stats: dict[str, Any] = dict(persona.stats)
-        stats.setdefault("max_hp", stats.get("hp", 60))
-        stats.setdefault("hp", stats["max_hp"])
-        stats["is_agent"] = True
+        # Durable state wins over the persona seed (memories/feelings/gear
+        # survive server restarts); admin restart deletes the row first.
+        row = await self._load_row(persona.id)
+        if row is not None:
+            stats = dict(row["stats"])
+            stats["is_agent"] = True
+            inventory = list(row["inventory"])
+            room_id = row["room_id"]
+            if self.server.content_loader.get_room(room_id) is None:
+                room_id = persona.spawn_room
+        else:
+            stats = dict(persona.stats)
+            stats.setdefault("max_hp", stats.get("hp", 60))
+            stats.setdefault("hp", stats["max_hp"])
+            stats["is_agent"] = True
 
-        inventory: list[dict[str, Any]] = []
-        # Equip persona gear (slot -> template id) through the equipment engine.
-        from fablestar.items.equipment import equip_item
+            inventory = []
+            # Equip persona gear (slot -> template id) through the equipment engine.
+            from fablestar.items.equipment import equip_item
 
-        for template_id in persona.gear.values():
-            template = self.server.content_loader.get_item_template(template_id)
-            if template is None:
-                logger.warning("Agent %s gear %r unknown", persona.id, template_id)
-                continue
-            item = {
-                "id": f"{template.id}_{uuid.uuid4().hex[:8]}",
-                "template": template.id,
-                "name": template.name,
-                "description": template.description,
-                "value": template.value,
-            }
-            _, inventory = equip_item(stats, [*inventory, item], item, template)
+            for template_id in persona.gear.values():
+                template = self.server.content_loader.get_item_template(template_id)
+                if template is None:
+                    logger.warning("Agent %s gear %r unknown", persona.id, template_id)
+                    continue
+                item = {
+                    "id": f"{template.id}_{uuid.uuid4().hex[:8]}",
+                    "template": template.id,
+                    "name": template.name,
+                    "description": template.description,
+                    "value": template.value,
+                }
+                _, inventory = equip_item(stats, [*inventory, item], item, template)
+            room_id = persona.spawn_room
 
         await self.server.redis.set_player_stats(persona.name, stats)
         await self.server.redis.set_player_inventory(persona.name, inventory)
-        await self.server.redis.set_player_location(persona.name, persona.spawn_room)
+        await self.server.redis.set_player_location(persona.name, room_id)
 
         self.agents[persona.id] = AgentState(persona, session)
-        logger.info("Agent spawned: %s (%s) in %s", persona.name, persona.id, persona.spawn_room)
+        logger.info(
+            "Agent spawned: %s (%s) in %s%s",
+            persona.name,
+            persona.id,
+            room_id,
+            " [restored]" if row is not None else "",
+        )
 
     async def despawn(self, agent_id: str):
         state = self.agents.pop(agent_id, None)
@@ -129,12 +147,84 @@ class AgentManager:
         logger.info("Agent despawned: %s", name)
 
     async def restart(self, agent_id: str):
-        """Despawn and respawn from the (possibly edited) persona on disk."""
+        """Reset: drop durable state and respawn fresh from the persona on disk."""
         await self.despawn(agent_id)
+        await self._delete_row(agent_id)
         registry = self.server.content_loader.get_agent_registry()
         persona = registry.get(agent_id)
         if persona and persona.enabled:
             await self.spawn(persona)
+
+    # ------------------------------------------------------------------
+    # Durability (agent_state table; flushed on the persistence cadence)
+    # ------------------------------------------------------------------
+
+    async def _load_row(self, persona_id: str) -> dict[str, Any] | None:
+        try:
+            from sqlalchemy import select
+
+            from fablestar.state.models import AgentState as AgentStateRow
+
+            async with self.server.db.session_factory() as db:
+                result = await db.execute(
+                    select(AgentStateRow).where(AgentStateRow.id == persona_id)
+                )
+                row = result.scalar_one_or_none()
+                if row is None:
+                    return None
+                return {
+                    "stats": dict(row.stats or {}),
+                    "inventory": list(row.inventory or []),
+                    "room_id": row.room_id,
+                }
+        except Exception:
+            logger.exception("Agent state load failed for %s", persona_id)
+            return None
+
+    async def _delete_row(self, persona_id: str) -> None:
+        try:
+            from sqlalchemy import delete
+
+            from fablestar.state.models import AgentState as AgentStateRow
+
+            async with self.server.db.session_factory() as db:
+                async with db.begin():
+                    await db.execute(delete(AgentStateRow).where(AgentStateRow.id == persona_id))
+        except Exception:
+            logger.exception("Agent state delete failed for %s", persona_id)
+
+    async def flush_all(self) -> None:
+        """Upsert every live agent's Redis state into agent_state (persistence cadence)."""
+        if not self.agents:
+            return
+        try:
+            from datetime import datetime
+
+            from sqlalchemy import select
+
+            from fablestar.state.models import AgentState as AgentStateRow
+
+            async with self.server.db.session_factory() as db:
+                async with db.begin():
+                    for state in self.agents.values():
+                        name = state.persona.name
+                        room_id = await self.server.redis.get_player_location(name)
+                        stats = await self.server.redis.get_player_stats(name)
+                        inventory = await self.server.redis.get_player_inventory(name)
+                        result = await db.execute(
+                            select(AgentStateRow).where(AgentStateRow.id == state.persona.id)
+                        )
+                        row = result.scalar_one_or_none()
+                        if row is None:
+                            row = AgentStateRow(id=state.persona.id, name=name)
+                            db.add(row)
+                        row.name = name
+                        row.room_id = room_id or state.persona.spawn_room
+                        row.stats = stats
+                        row.inventory = list(inventory)
+                        row.updated_at = datetime.utcnow()
+        except Exception:
+            logger.exception("Agent state flush failed")
 
     # ------------------------------------------------------------------
     # Tick

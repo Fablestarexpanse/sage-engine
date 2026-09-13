@@ -91,9 +91,12 @@ Test suites: server **150** pytest, WorldForge **34** vitest — all green.
       Positive path awaits a real local model in config/agents_llm.toml
 - [ ] M4 intent: wake queue → JSON goals compiled to Body scripts; memory ring
       into prompts (needs the brain endpoint running to tune)
+- [x] Durability: agent_state table (Alembic k4l5m6n7o8p9), flushed on the
+      60s persistence cadence; spawn restores stats/inventory/room, admin
+      Restart = reset-to-persona (row deleted). Verified: [restored] spawns
+      at drifted rooms after server restart
 - Phase 2 (explicitly later): pgvector memories + reflection, bonds→long goals,
-      trading, LOD scheduler for dozens+, world chronicle feed, PG agent_state
-      durability (agents currently reset to persona on server restart)
+      trading, LOD scheduler for dozens+, world chronicle feed
 
 ### Game content / product (the actual game)
 - [x] Player command surface v1 complete (2026-09-12 audit): use/eat, rest
