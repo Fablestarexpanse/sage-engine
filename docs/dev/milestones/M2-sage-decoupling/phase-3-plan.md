@@ -93,3 +93,10 @@ by owner G.4 ("every mechanic is a first-party plugin").
 - **3.8 hazards.** `RoomEntered` now carries `messages` and is published after arrival bookkeeping,
   so subscriber lines show after the room description. Effects are an engine service key for
   `state.edit`. Resist uses the world's `hazards.resist_skill` through the progression slots.
+- **3.9 agents, open question (one-way door).** Agents persist in the engine table `agent_state`.
+  A plugin may only own `plg_agents_*` tables, so either (a) the agents plugin gets
+  `plg_agents_state` with a backfill-then-drop migration of `agent_state`, or (b) the engine
+  persists accountless characters (agents become `characters` rows with no account) and the plugin
+  owns no table. Asked the owner before building. Also to move with agents: Fablestar-specific life
+  goals (food item, clinic bill, evening pub room, pub small-talk prompt) become world params and
+  AI slots; persona attributes go through a chargen seed slot instead of writing Conduit blocks.
