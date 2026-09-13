@@ -23,7 +23,9 @@ SYSTEMS_DIR = Path("content/world/systems")
 SHIPS_DIR = Path("content/world/ships")
 GALAXY_FILE = Path("content/world/galaxy.yaml")
 POSITIONS_FILENAME = ".positions.json"
-_POSITIONS_DOC_KEYS = frozenset({"version", "positions", "notes", "reference_image", "muted_edges"})
+_POSITIONS_DOC_KEYS = frozenset(
+    {"version", "positions", "notes", "reference_image", "muted_edges", "floors"}
+)
 
 
 def _is_safe_segment(segment: str) -> bool:
@@ -417,11 +419,19 @@ def save_zone_positions(zone_id: str, positions: dict[str, Any]) -> str:
     if not isinstance(muted, list):
         muted = []
     ref_img = existing.get("reference_image")
+    # Keep keys this builder doesn't edit (WorldForge/MCP `floors`, future fields): dropping
+    # them on save silently erased multi-floor layouts.
+    extras: dict[str, Any] = {}
+    if existing.get("version") == 2:
+        extras = {k: v for k, v in existing.items() if k not in _POSITIONS_DOC_KEYS}
+        if isinstance(existing.get("floors"), dict):
+            extras["floors"] = existing["floors"]
     out_doc: dict[str, Any] = {
         "version": 2,
         "positions": pos_merged,
         "notes": notes,
         "muted_edges": muted,
+        **extras,
     }
     if isinstance(ref_img, dict):
         out_doc["reference_image"] = ref_img
