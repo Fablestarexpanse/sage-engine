@@ -132,6 +132,48 @@ function BrainPanel() {
   );
 }
 
+function ProgressChart({ progress }) {
+  const { colors: COLORS } = useAdminTheme();
+  const pts = Array.isArray(progress) ? progress : [];
+  if (pts.length < 2) {
+    return (
+      <div style={{ fontSize: 10, color: COLORS.textMuted }}>
+        Progression chart appears after a few minutes of play (sampled every ~60s).
+      </div>
+    );
+  }
+  const W = 320;
+  const H = 70;
+  const series = [
+    { key: "levels", color: COLORS.accent, label: "levels" },
+    { key: "kills", color: COLORS.danger, label: "kills" },
+    { key: "goals", color: COLORS.success, label: "goals" },
+    { key: "rooms", color: COLORS.info, label: "rooms" },
+  ];
+  const t0 = pts[0].t;
+  const t1 = pts[pts.length - 1].t || t0 + 1;
+  const x = (t) => ((t - t0) / Math.max(1, t1 - t0)) * (W - 8) + 4;
+  const line = (key) => {
+    const maxV = Math.max(1, ...pts.map((p) => Number(p[key]) || 0));
+    return pts.map((p, i) => `${i ? "L" : "M"}${x(p.t).toFixed(1)},${(H - 6 - ((Number(p[key]) || 0) / maxV) * (H - 14)).toFixed(1)}`).join(" ");
+  };
+  const last = pts[pts.length - 1];
+  const spanMin = Math.max(1, Math.round((t1 - t0) / 60));
+  return (
+    <div>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: H, background: COLORS.bgInput, borderRadius: 6 }}>
+        {series.map((s) => <path key={s.key} d={line(s.key)} fill="none" stroke={s.color} strokeWidth="1.5" />)}
+      </svg>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", fontSize: 10, color: COLORS.textMuted, marginTop: 3 }}>
+        <span>last {spanMin}m</span>
+        {series.map((s) => (
+          <span key={s.key}><span style={{ color: s.color }}>■</span> {s.label} {last[s.key] ?? 0}</span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function StatBoard() {
   const { colors: COLORS } = useAdminTheme();
   const [board, setBoard] = useState(null);
@@ -416,6 +458,10 @@ export default function AgentsTab() {
                   {(detail.perceptions ?? []).slice(-8).join("\n") || "—"}
                 </div>
               </div>
+            </div>
+            <div style={{ marginTop: 10 }}>
+              <div style={{ fontSize: 10, color: COLORS.textMuted, textTransform: "uppercase", marginBottom: 4 }}>XP progression</div>
+              <ProgressChart progress={detail.progress} />
             </div>
             {detail.skills && (
               <div style={{ marginTop: 10 }}>

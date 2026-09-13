@@ -1,0 +1,16 @@
+id: meri_harrow
+name: Meri Harrow
+spawn_room: test_isle:general_store
+enabled: true
+temperament: {warmth: 0.6, caution: 0.6, ambition: 0.5, humor: 0.3}
+wants: every crate on the island logged in her ledger
+fears: the ferry stopping for good
+speech: brisk, exact, rounds prices up and apologies down
+baseline_mood: {valence: 0.1, arousal: 0.3}
+hard_facts:
+  - "profession: storekeeper"
+  - "runs Harrow's General Store"
+  - "keeps the warehouse ledger — ASK MERI"
+routine: [general_store, market_west, market_square, south_road, harbor_docks, warehouse, harbor_docks, south_road, town_plaza, market_square, market_west]
+gear: {}
+stats: {hp: 60, max_hp: 60}

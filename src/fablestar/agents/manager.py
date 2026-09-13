@@ -217,6 +217,8 @@ class AgentManager:
                         room_id = await self.server.redis.get_player_location(name)
                         stats = await self.server.redis.get_player_stats(name)
                         inventory = await self.server.redis.get_player_inventory(name)
+                        self._append_progress_sample(stats)
+                        await self.server.redis.set_player_stats(name, stats)
                         result = await db.execute(
                             select(AgentStateRow).where(AgentStateRow.id == state.persona.id)
                         )
@@ -231,6 +233,39 @@ class AgentManager:
                         row.updated_at = datetime.utcnow()
         except Exception:
             logger.exception("Agent state flush failed")
+
+    PROGRESS_KEY = "progress_log"
+    PROGRESS_CAP = 400  # 60s cadence → ~6.5h of history in the stats blob
+
+    def _append_progress_sample(self, stats: dict[str, Any]) -> None:
+        """Time-series sample for the admin XP-progression chart (flush cadence)."""
+        try:
+            from fablestar.proficiencies.state_helpers import total_proficiency_levels
+
+            counters = stats.get("counters") if isinstance(stats.get("counters"), dict) else {}
+            try:
+                levels = total_proficiency_levels(
+                    stats, registry=self.server.content_loader.get_proficiency_registry()
+                )
+            except Exception:
+                levels = 0
+            log = stats.get(self.PROGRESS_KEY)
+            if not isinstance(log, list):
+                log = []
+                stats[self.PROGRESS_KEY] = log
+            log.append(
+                {
+                    "t": int(time.time()),
+                    "levels": levels,
+                    "kills": int(counters.get("kills", 0)),
+                    "deaths": int(counters.get("deaths", 0)),
+                    "goals": int(counters.get("goals_completed", 0)),
+                    "rooms": len(stats.get("visited_rooms") or []),
+                }
+            )
+            del log[: -self.PROGRESS_CAP]
+        except Exception:
+            logger.debug("progress sample skipped", exc_info=True)
 
     # ------------------------------------------------------------------
     # Tick

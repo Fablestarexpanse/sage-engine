@@ -59,6 +59,18 @@ Test suites: server **150** pytest, WorldForge **34** vitest — all green.
       items-used/most-used/top-prey/rooms/achievements/memories with an
       all-agents totals row; unknown future counters (trades, rent, ...)
       grow columns automatically from the counters blob
+- [x] XP progression: 60s time-series samples (levels/kills/goals/rooms) in
+      the stats blob (cap 400 ≈ 6.5h, durable), multi-line chart in the
+      detail drawer. FINDING: field proficiency gains are dead for everyone —
+      try_field_gain hits depth_gate (tier-3 leaf needs parent branch >= 15,
+      no in-game path raises branches); 68 kills = 0 levels. Owner decision
+      in docs/design/AGENT_LIFE_ROADMAP.md item 9
+- [x] 5 new islander agents (8 total): Aldo Vex (pawnbroker), Meri Harrow
+      (storekeeper), Old Pell (fisherman), Juno Task (orchard/forager),
+      Cutter Vale (lighthouse salvage scout) — routines match their trades
+- [x] docs/design/AGENT_LIFE_ROADMAP.md — gap analysis for agents living
+      full lives (money, shops, hunger, rent, work, society, day cycle,
+      death costs) with build order E1-E3
 - [x] Tidegate Isle (test_isle, 26 rooms): harbor/ferry arrival, town plaza,
       market with 4 shops (general store, pawn/salvage, apothecary,
       chandlery), clinic (safe respawn), orchard/meadow/forest, drone gulch +

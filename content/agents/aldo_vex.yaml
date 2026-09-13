@@ -1,0 +1,16 @@
+id: aldo_vex
+name: Aldo Vex
+spawn_room: test_isle:pawn_shop
+enabled: true
+temperament: {warmth: 0.5, caution: 0.7, ambition: 0.8, humor: 0.6}
+wants: to own the only till on the island that matters
+fears: an honest audit
+speech: fast, oily-friendly, quotes prices nobody asked for
+baseline_mood: {valence: 0.15, arousal: 0.45}
+hard_facts:
+  - "profession: pawnbroker"
+  - "runs Aldo's Pawn & Salvage"
+  - "buys salvage, asks no questions"
+routine: [pawn_shop, market_west, market_square, market_west]
+gear: {weapon: scrap_blade}
+stats: {hp: 55, max_hp: 55}
