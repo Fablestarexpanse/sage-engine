@@ -218,7 +218,7 @@ async def attack(session: Session, args: list[str]):
 
             fac_registry = app_instance.content_loader.get_faction_registry()
             mission_msgs, completed = record_kill(
-                player_stats, fac_registry, target_state.get("template", "")
+                player_stats, fac_registry, target_state.get("template", ""), app_instance.wallet
             )
             faction_messages += mission_msgs
             if completed:

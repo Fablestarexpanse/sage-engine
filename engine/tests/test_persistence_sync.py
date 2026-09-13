@@ -10,7 +10,7 @@ from types import SimpleNamespace
 
 from sage.state.models import Character
 from sage.state.persistence import PersistenceManager
-from tests.fakes import FakeRedis
+from tests.fakes import FakeRedis, fake_wallet
 
 
 class _FakeResult:
@@ -46,6 +46,7 @@ class _FakeSession:
 def _server(row, fail=False):
     srv = SimpleNamespace()
     srv.redis = FakeRedis()
+    srv.wallet = fake_wallet()
     srv.db = SimpleNamespace(session_factory=lambda: _FakeSession(row, fail=fail))
     return srv
 

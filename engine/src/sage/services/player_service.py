@@ -327,7 +327,7 @@ class PlayerService:
             room_id=self.server.world.start_room,
             portrait_url=portrait_url,
             portrait_prompt=portrait_prompt,
-            digi_balance=int(self.server.config.server.starting_digi_balance),
+            digi_balance=self.server.wallet.starting() if self.server.wallet.enabled else 0,
             pvp_enabled=False,
             reputation=0,
         )

@@ -24,7 +24,7 @@ class TeleportBody(BaseModel):
     room_id: str
 
 
-NON_NEGATIVE_STATS = frozenset({"digi", "hp", "max_hp", "xp", "level", "hunger"})
+NON_NEGATIVE_STATS = frozenset({"hp", "max_hp", "xp", "level", "hunger"})
 
 
 class GiveBody(BaseModel):
@@ -156,7 +156,7 @@ def build_agents_router(server: "SageServer") -> APIRouter:
         except Exception:
             levels = 0
         return {
-            "digi": int(stats.get("digi", 0) or 0),
+            "digi": server.wallet.balance(stats),
             "trades": int(counters.get("trades", 0)),
             "kills": int(counters.get("kills", 0)),
             "deaths": int(counters.get("deaths", 0)),
@@ -400,7 +400,8 @@ def build_agents_router(server: "SageServer") -> APIRouter:
             await server.redis.set_player_inventory(name, inv)
             return {"status": "ok", "granted": template.id, "count": max(1, body.count)}
         if body.stat and body.value is not None:
-            if body.stat in NON_NEGATIVE_STATS and body.value < 0:
+            currencies = {c.key for c in server.world.currencies}
+            if body.stat in NON_NEGATIVE_STATS | currencies and body.value < 0:
                 raise HTTPException(status_code=400, detail="value_must_be_non_negative")
             stats = await server.redis.get_player_stats(name)
             stats[body.stat] = body.value

@@ -104,7 +104,8 @@ async def _rent_locked(session: Session, player_id: str, room_id: str, lodging) 
     redis = app_instance.redis
     rentals = await read_rentals(redis)
     stats = await redis.get_player_stats(player_id)
-    digi = int(stats.get("digi", 0) or 0)
+    wallet = app_instance.wallet
+    money = wallet.balance(stats)
     home = stats.get("home_room")
     home_lease = rentals.get(home) if home else None
     holds_home = bool(
@@ -138,13 +139,12 @@ async def _rent_locked(session: Session, player_id: str, room_id: str, lodging) 
             return
         target, action = free[0], "rent"
 
-    if digi < lodging.price:
-        await session.send(f"A room here runs {lodging.price} Digi; you carry {digi}.")
+    if not wallet.debit(stats, lodging.price):
+        await session.send(f"A room here runs {lodging.price} {wallet.name()}; you carry {money}.")
         return
 
     start = max(now, float(home_lease["until"])) if action == "renew" else now
     until = start + lodging.lease_minutes * 60
-    stats["digi"] = digi - lodging.price
     stats["home_room"] = target
     stats["home_until"] = int(until)
     from sage.world.counters import count
@@ -161,8 +161,8 @@ async def _rent_locked(session: Session, player_id: str, room_id: str, lodging) 
     slug = target.split(":")[-1]
     verb = "extends your lease on" if action == "renew" else "hands you the key to"
     await session.send(
-        f"The keeper {verb} {slug} — {lodging.lease_minutes} minutes for {lodging.price} Digi "
-        f"({stats['digi']} left)."
+        f"The keeper {verb} {slug} — {lodging.lease_minutes} minutes for {lodging.price} {wallet.name()} "
+        f"({wallet.balance(stats)} left)."
     )
     for line in rent_lines:
         await session.send(line)

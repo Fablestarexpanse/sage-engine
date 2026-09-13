@@ -3,6 +3,9 @@
 who:
   empty: "The station is silent. Nobody is connected."
 
+currency:
+  digi: {name: Digi}
+
 death:
   wake: "\r\nYou wake on a diagnostic bed, patched together and aching. The dispensary arm gives you an encouraging whir.{bill}"
   bill: " The clinic took {amount} {currency} for the trouble."

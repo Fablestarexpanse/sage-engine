@@ -10,6 +10,7 @@ from types import SimpleNamespace
 
 from sage.services.scene_service import SceneService, _is_safe_player_scene_storage_url
 from sage.state.models import Account, AccountSceneImage, Character
+from tests.fakes import fake_wallet
 
 # ---- storage-URL guard ------------------------------------------------------
 
@@ -75,8 +76,8 @@ def _scene_server(rows, comfy_enabled=False):
                 pixels_per_usd=100,
                 economy_enabled=True,
             ),
-            server=SimpleNamespace(game_currency_display_name="digi"),
         ),
+        wallet=fake_wallet(),
     )
     return srv, session, fake_resolve
 

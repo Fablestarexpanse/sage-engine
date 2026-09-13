@@ -69,7 +69,9 @@ async def missions(session: Session, args: list[str]):
 
     if sub == "complete":
         inventory = await app_instance.redis.get_player_inventory(player_id)
-        messages, new_inventory = try_complete_collect(stats, registry, inventory)
+        messages, new_inventory = try_complete_collect(
+            stats, registry, inventory, app_instance.wallet
+        )
         if new_inventory is not None:
             await app_instance.redis.set_player_inventory(player_id, new_inventory)
             from sage.world.counters import count

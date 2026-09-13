@@ -160,3 +160,23 @@ def test_describe_mission_uses_faction_name():
     reg = FactionRegistry([_guild()])
     m = {"faction": "guild", "kind": "kill", "target": "scrap_drone", "count": 3, "progress": 1}
     assert describe_mission(m, reg) == "Destroy 3x scrap_drone for Guild (1/3)"
+
+
+def test_completion_pays_through_the_world_wallet():
+    from tests.fakes import fake_wallet
+
+    reg = FactionRegistry([_guild()])
+    stats: dict = {
+        MISSION_KEY: {
+            "faction": "guild",
+            "kind": "kill",
+            "target": "scrap_drone",
+            "count": 1,
+            "progress": 0,
+        },
+        "coin": 5,
+    }
+    msgs, done = record_kill(stats, reg, "scrap_drone", fake_wallet("coin"))
+    assert done
+    assert stats["coin"] == 5 + _guild().mission_pay
+    assert any(f"+{_guild().mission_pay}" in m for m in msgs)

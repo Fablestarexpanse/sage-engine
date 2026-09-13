@@ -34,10 +34,6 @@ class ServerConfig(BaseModel):
     # Passwordless test logins via POST /play/dev/login, loopback clients only.
     # Needs dev_mode too; never enable on a networked host.
     dev_login: bool = False
-    # Shown in client UI for in-world economy (wallet / vendors); not the ComfyUI art balance.
-    game_currency_display_name: str = "Digi"
-    # Starting in-world balance for each new character (existing rows default 0 until granted in-game).
-    starting_digi_balance: int = 100
     # When True, personal combat uses max(legacy strength/dexterity-derived, proficiency-derived) ratings.
     proficiency_combat_hybrid: bool = True
     # When True, Nexus admin/content/forge/llm routes require a staff JWT (see /admin/auth/login).

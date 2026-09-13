@@ -46,6 +46,7 @@ from sage.world.ambient import AmbientManager
 from sage.world.loader import ContentLoader
 from sage.world.package import select_world
 from sage.world.spawner import EntitySpawnManager
+from sage.world.wallet import Wallet
 
 logger = logging.getLogger(__name__)
 
@@ -95,6 +96,8 @@ class SageServer:
         self.redis = RedisState(self.config.redis)
         self.db = PostgresState(self.config.database)
         self.persistence = PersistenceManager(self)
+        # In-world money in the world's currencies (sage.world.wallet).
+        self.wallet = Wallet(self.world)
         self.content_loader = ContentLoader(self.world.content_dir)
         content_browser.set_content_root(self.world.content_dir)
         self.spawner = EntitySpawnManager(self)
@@ -550,9 +553,11 @@ class SageServer:
             )
             character.room_id = self.world.start_room
 
-        # In-game wallet: the DB column is the durable copy; the stats blob is
-        # what shop commands spend from (PersistenceManager mirrors it back).
-        norm_stats["digi"] = int(character.digi_balance or 0)
+        # In-world wallet: the DB column is the durable copy of the primary balance until the
+        # JSONB state step; the stats blob is what the wallet spends from (PersistenceManager
+        # mirrors it back).
+        if self.wallet.enabled:
+            self.wallet.set(norm_stats, int(character.digi_balance or 0))
 
         # Seed Redis with the character's current state
         await self.redis.set_player_location(character.name, character.room_id)
@@ -560,7 +565,7 @@ class SageServer:
         await self.redis.set_player_inventory(character.name, character.inventory)
 
         if respawned:
-            currency = self.config.server.game_currency_display_name
+            currency = self.wallet.name() if self.wallet.enabled else ""
             bill = (
                 lexicon.t("death.bill", amount=respawn_bill, currency=currency)
                 if respawn_bill

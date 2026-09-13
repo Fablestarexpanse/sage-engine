@@ -157,6 +157,13 @@ class PluginAPI:
     def world(self) -> Any:
         return self._host.world
 
+    @property
+    def wallet(self) -> Any:
+        """The engine wallet over this world's currencies (sage.world.wallet.Wallet)."""
+        from sage.world.wallet import Wallet
+
+        return Wallet(self._host.world)
+
     def param(self, key: str, default: Any = None) -> Any:
         """A world param namespaced to this plugin: "<plugin id>.<key>"."""
         return self._host.world.param(f"{self.id}.{key}", default)

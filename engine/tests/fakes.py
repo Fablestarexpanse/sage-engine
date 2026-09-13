@@ -7,9 +7,19 @@ from types import SimpleNamespace
 from typing import Any
 
 from sage.world.models import EntityTemplate, ItemTemplate, RoomModel
+from sage.world.package import Currency
+from sage.world.wallet import Wallet
 
 # Repository root (world content lives at <root>/content during the SAGE transition).
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def fake_wallet(key: str = "coin", starting: int = 100) -> Wallet:
+    """A wallet over a one-currency test world (label resolves through the active lexicon)."""
+    world = SimpleNamespace(
+        id="test", currencies=[Currency(key=key, label=f"currency.{key}.name", starting=starting)]
+    )
+    return Wallet(world)
 
 
 class FakeRedis:

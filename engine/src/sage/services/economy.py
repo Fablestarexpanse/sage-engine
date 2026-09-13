@@ -24,10 +24,10 @@ class EconomyService:
 
     def public_fields(self) -> dict[str, Any]:
         c = self.server.config.comfyui
-        s = self.server.config.server
+        wallet = self.server.wallet
         return {
             "currency_display_name": c.currency_display_name,
-            "game_currency_display_name": s.game_currency_display_name,
+            "game_currency_display_name": wallet.name() if wallet.enabled else "",
             "pixels_per_usd": int(c.pixels_per_usd),
         }
 

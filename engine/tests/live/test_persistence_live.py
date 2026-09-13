@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sage.state.models import Account, Character
 from sage.state.persistence import PersistenceManager
 from sage.state.postgres import PostgresState
+from tests.fakes import fake_wallet
 from tests.live.conftest import open_redis
 
 pytestmark = pytest.mark.live
@@ -47,9 +48,11 @@ def test_sync_character_writes_real_row(live_config, migrated_database):
 
             async with open_redis(live_config) as redis:
                 await redis.set_player_location("live_hero", "probe:end")
-                await redis.set_player_stats("live_hero", {"hp": 7, "digi": 42})
+                await redis.set_player_stats("live_hero", {"hp": 7, "coin": 42})
                 await redis.set_player_inventory("live_hero", [{"id": "i1", "template": "rope"}])
-                server = SimpleNamespace(redis=redis, db=db, agent_manager=None)
+                server = SimpleNamespace(
+                    redis=redis, db=db, agent_manager=None, wallet=fake_wallet("coin")
+                )
                 await PersistenceManager(server).sync_character("live_hero")
 
             async with db.session_factory() as session:

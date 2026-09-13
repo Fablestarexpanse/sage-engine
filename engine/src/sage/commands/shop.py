@@ -1,7 +1,7 @@
 """Shop commands — buy/sell/browse in rooms that carry a shop block.
 
-The wallet is stats["digi"] (mirrored to the character's digi_balance column
-by the PersistenceManager; agents persist it via agent_state). Deterministic:
+Money goes through the engine wallet (the world's primary currency, sage.world.wallet;
+agents persist it via agent_state). Deterministic:
 fixed sell prices from YAML, buy prices = template value * buy_rate.
 """
 
@@ -23,7 +23,15 @@ async def _shop_here(player_id: str):
 
 
 def _wallet(stats) -> int:
-    return int(stats.get("digi", 0) or 0)
+    from sage.app import app_instance
+
+    return app_instance.wallet.balance(stats)
+
+
+def _cur() -> str:
+    from sage.app import app_instance
+
+    return app_instance.wallet.name()
 
 
 def _buy_price(template, shop) -> int:
@@ -123,13 +131,13 @@ async def browse(session: Session, args: list[str]):
         await session.send("Nobody here is selling anything.")
         return
     stats = await app_instance.redis.get_player_stats(player_id)
-    lines = [f"{shop.name} — you carry {_wallet(stats)} Digi."]
+    lines = [f"{shop.name} — you carry {_wallet(stats)} {_cur()}."]
     if shop.sells:
         lines.append("For sale:")
         for entry in shop.sells:
             template = app_instance.content_loader.get_item_template(entry.template)
             name = template.name if template else entry.template
-            lines.append(f"  {name} — {entry.price} Digi (buy {name.split()[0].lower()})")
+            lines.append(f"  {name} — {entry.price} {_cur()} (buy {name.split()[0].lower()})")
     if shop.buys:
         used = await secondhand_stock(app_instance.redis, shop_room_id)
         if used:
@@ -139,7 +147,7 @@ async def browse(session: Session, args: list[str]):
                 if template is None:
                     continue
                 lines.append(
-                    f"  {template.name} x{count} — {resale_price(template, shop)} Digi each"
+                    f"  {template.name} x{count} — {resale_price(template, shop)} {_cur()} each"
                 )
         pct = int(shop.buy_rate * 100)
         lines.append(f"Buying: most goods at {pct}% of value (sell <item>).")
@@ -199,7 +207,9 @@ async def buy(session: Session, args: list[str]):
 
     stats = await redis.get_player_stats(player_id)
     if _wallet(stats) < price:
-        await session.send(f"The {template.name} costs {price} Digi; you carry {_wallet(stats)}.")
+        await session.send(
+            f"The {template.name} costs {price} {_cur()}; you carry {_wallet(stats)}."
+        )
         return
 
     if from_shelf:
@@ -211,7 +221,7 @@ async def buy(session: Session, args: list[str]):
             return
 
     entry_price = price
-    stats["digi"] = _wallet(stats) - price
+    app_instance.wallet.debit(stats, price)
     trade_lines = await _record_trade(player_id, stats, "purchases")
     inv = await app_instance.redis.get_player_inventory(player_id)
     inv.append(
@@ -239,7 +249,7 @@ async def buy(session: Session, args: list[str]):
     await heat(app_instance.redis, "trades", shop_room_id)
     await _keeper_till(shop, player_id, entry_price)
     await session.send(
-        f"You buy the {template.name} for {entry_price} Digi ({stats['digi']} left)."
+        f"You buy the {template.name} for {entry_price} {_cur()} ({_wallet(stats)} left)."
     )
     for line in trade_lines:
         await session.send(line)
@@ -322,7 +332,7 @@ async def sell(session: Session, args: list[str]):
         if not overstocked:
             await app_instance.redis.client.hincrby(_stock_key(shop_room_id), template.id, 1)
 
-    stats["digi"] = _wallet(stats) + total
+    app_instance.wallet.credit(stats, total)
     await app_instance.redis.set_player_stats(player_id, stats)
     await app_instance.redis.set_player_inventory(
         player_id, [it for it in inv if it.get("id") not in sold_ids]
@@ -339,18 +349,18 @@ async def sell(session: Session, args: list[str]):
     )
     await heat(app_instance.redis, "trades", shop_room_id)
     summary = ", ".join(sold_names[:4]) + ("…" if len(sold_names) > 4 else "")
-    await session.send(f"You sell {summary} for {total} Digi ({stats['digi']} carried).")
+    await session.send(f"You sell {summary} for {total} {_cur()} ({_wallet(stats)} carried).")
     if overstock_ids:
         await session.send("The shelves are overflowing — some of that went for half price.")
 
 
 @command("wallet", aliases=["digi", "money"])
 async def wallet(session: Session, args: list[str]):
-    """Check how much Digi you carry. Usage: wallet"""
+    """Check how much money you carry. Usage: wallet"""
     from sage.app import app_instance
 
     player_id = session.player_id
     if not player_id:
         return
     stats = await app_instance.redis.get_player_stats(player_id)
-    await session.send(f"You carry {_wallet(stats)} Digi.")
+    await session.send(f"You carry {_wallet(stats)} {_cur()}.")

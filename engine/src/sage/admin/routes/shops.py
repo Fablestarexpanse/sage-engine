@@ -72,7 +72,7 @@ def build_shops_router(server: "SageServer") -> APIRouter:
                 owner = {
                     "id": shop.owner,
                     "name": name,
-                    "digi": int(stats.get("digi", 0) or 0),
+                    "digi": server.wallet.balance(stats),
                     "room_id": await server.redis.get_player_location(name),
                     "home_room": stats.get("home_room"),
                     "inventory": [it.get("name", "?") for it in inventory],

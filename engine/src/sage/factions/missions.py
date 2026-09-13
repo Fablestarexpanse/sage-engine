@@ -65,7 +65,7 @@ def describe_mission(mission: dict[str, Any], registry: FactionRegistry) -> str:
 
 
 def record_kill(
-    stats: dict[str, Any], registry: FactionRegistry, template_id: str
+    stats: dict[str, Any], registry: FactionRegistry, template_id: str, wallet: Any = None
 ) -> tuple[list[str], bool]:
     """
     Advance an active kill mission after a kill. Returns (messages, completed).
@@ -77,13 +77,14 @@ def record_kill(
     mission["progress"] = int(mission.get("progress", 0)) + 1
     if mission["progress"] < int(mission.get("count", 0)):
         return [f"Mission: {describe_mission(mission, registry)}"], False
-    return _complete(stats, registry, mission), True
+    return _complete(stats, registry, mission, wallet), True
 
 
 def try_complete_collect(
     stats: dict[str, Any],
     registry: FactionRegistry,
     inventory: list[dict[str, Any]],
+    wallet: Any = None,
 ) -> tuple[list[str], list[dict[str, Any]] | None]:
     """
     Complete an active collect mission from an in-hand inventory list.
@@ -103,13 +104,14 @@ def try_complete_collect(
         ], None
     consumed_ids = {it.get("id") for it in have[:needed]}
     new_inventory = [it for it in inventory if it.get("id") not in consumed_ids]
-    messages = _complete(stats, registry, mission)
+    messages = _complete(stats, registry, mission, wallet)
     return messages, new_inventory
 
 
 def _complete(
-    stats: dict[str, Any], registry: FactionRegistry, mission: dict[str, Any]
+    stats: dict[str, Any], registry: FactionRegistry, mission: dict[str, Any], wallet: Any
 ) -> list[str]:
+    """Pay out a finished mission; money goes through the engine wallet when the world has one."""
     stats[MISSION_KEY] = None
     faction = registry.get(mission.get("faction", ""))
     from sage.telemetry import log_event
@@ -125,10 +127,11 @@ def _complete(
     if faction is not None:
         crossing = adjust_rep(stats, faction, faction.mission_rep)
         pay = int(getattr(faction, "mission_pay", 0) or 0)
-        if pay > 0:
-            stats["digi"] = int(stats.get("digi", 0) or 0) + pay
+        if pay > 0 and wallet is not None and wallet.enabled:
+            wallet.credit(stats, pay)
             messages.append(
-                f"{faction.name} credits your account ({faction.mission_rep:+d} rep, +{pay} Digi)."
+                f"{faction.name} credits your account "
+                f"({faction.mission_rep:+d} rep, +{pay} {wallet.name()})."
             )
         else:
             messages.append(f"{faction.name} credits your account ({faction.mission_rep:+d} rep).")

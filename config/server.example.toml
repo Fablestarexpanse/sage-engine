@@ -15,8 +15,6 @@ dev_mode = false
 # Handy for playtests and automation; never enable on a networked host.
 dev_login = false
 
-game_currency_display_name = "Digi"
-starting_digi_balance = 100
 proficiency_combat_hybrid = true
 
 # Always true in production. Requires a JWT secret (see below).

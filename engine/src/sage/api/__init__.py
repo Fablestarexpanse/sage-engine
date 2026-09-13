@@ -18,6 +18,7 @@ from sage.lexicon import t
 from sage.plugins.api import PluginAPI
 from sage.plugins.manifest import PluginError
 from sage.world.death import Respawn
+from sage.world.wallet import Wallet, WalletError
 
 __all__ = [
     "CommandExecuted",
@@ -31,5 +32,7 @@ __all__ = [
     "RoomEntered",
     "SessionEnded",
     "SessionStarted",
+    "Wallet",
+    "WalletError",
     "t",
 ]

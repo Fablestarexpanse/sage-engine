@@ -14,6 +14,7 @@ from fastapi import HTTPException
 from sage.admin import staff_service
 from sage.services.economy import EconomyService
 from sage.state.models import Account, AdminStaff
+from tests.fakes import fake_wallet
 
 
 class _Result:
@@ -67,8 +68,8 @@ def _server_with(session):
                 currency_display_name="pixels",
                 pixels_per_usd=100,
             ),
-            server=SimpleNamespace(game_currency_display_name="digi"),
         ),
+        wallet=fake_wallet(),
     )
 
 
