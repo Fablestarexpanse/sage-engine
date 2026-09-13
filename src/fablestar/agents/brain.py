@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 VOICE_COOLDOWN_S = 20.0
 VOICE_MAX_CHARS = 200
 INTENT_COOLDOWN_S = 90.0
-INTENT_GOALS = ("wander_to", "hunt", "rest", "talk", "scavenge", "idle")
+INTENT_GOALS = ("wander_to", "hunt", "rest", "talk", "scavenge", "sell", "buy", "idle")
 _JSON_BLOB = re.compile(r"\{.*\}", re.DOTALL)
 # '<Speaker> says: "message"' — the say broadcast shape.
 SAY_LINE = re.compile(r'^(?P<speaker>[^:]{1,60}) says: "(?P<message>.*)"$')
@@ -94,6 +94,8 @@ def intent_prompt(
     known_rooms: list[str],
     memories: list[str],
     players_present: list[str],
+    digi: int = 0,
+    sellables: list[str] | None = None,
 ) -> str:
     p = state.persona
     facts = "; ".join(p.hard_facts) if p.hard_facts else "none recorded"
@@ -101,17 +103,21 @@ def intent_prompt(
     remembered = " / ".join(memories) if memories else "nothing notable"
     rooms = ", ".join(known_rooms[:14]) if known_rooms else "nowhere new"
     people = ", ".join(players_present) if players_present else "nobody"
+    carrying = ", ".join((sellables or [])[:4]) if sellables else "nothing worth selling"
     return (
         f"You are {p.name}, a character in a space-station MUD.\n"
         f"Hard facts (never contradict): {facts}.\n"
         f"You want: {p.wants}. You fear: {p.fears}.\n"
         f"You feel {feelings_word}. Present with you: {people}.\n"
+        f"You carry {digi} Digi. Sellable goods on you: {carrying}.\n"
         f"You remember: {remembered}\n"
         f"Recently: {recent}\n"
         f"Rooms you know: {rooms}.\n"
+        "Shops: the pawn_shop buys salvage; the general_store sells food; "
+        "scavenging the wilds finds sellable goods.\n"
         "Decide what to do next. Answer with ONLY one JSON object, no prose:\n"
-        '{"goal": "wander_to|hunt|rest|talk|scavenge|idle", '
-        '"target": "<room slug, entity, or empty>", '
+        '{"goal": "wander_to|hunt|rest|talk|scavenge|sell|buy|idle", '
+        '"target": "<room slug, entity, item, or empty>", '
         '"why": "<few words>", "say": "<one spoken line or empty>"}'
     )
 
@@ -144,6 +150,8 @@ def compile_goal(
     zone: str,
     exits_of: dict[str, dict[str, str]],
     entity_room_finder: Callable[[str], str | None],
+    buyer_room_finder: Callable[[], str | None] | None = None,
+    seller_room_finder: Callable[[str], str | None] | None = None,
 ) -> tuple[str, list[str]] | None:
     """
     Pure: intent dict -> (goal_label, command list) for the Body, or None when
@@ -159,6 +167,23 @@ def compile_goal(
         return ("rest", ["rest"])
     if goal == "scavenge":
         return ("scavenge", ["search"])
+    if goal == "sell":
+        room_id = buyer_room_finder() if buyer_room_finder else None
+        if room_id is None:
+            return None
+        path = route_path(current_room, room_id, exits_of)
+        if path is None:
+            return None
+        return ("sell salvage", [*path, "sell all"])
+    if goal == "buy":
+        item = (target or "ration").strip().lower()
+        room_id = seller_room_finder(item) if seller_room_finder else None
+        if room_id is None:
+            return None
+        path = route_path(current_room, room_id, exits_of)
+        if path is None:
+            return None
+        return (f"buy {item[:20]}", [*path, f"buy {item}"])
     if goal == "talk":
         line = sanitize_utterance(intent.get("say") or target)
         return (f"talk: {line[:40]}", [f"say {line}"]) if line else None
@@ -294,12 +319,23 @@ class AgentBrain:
             from fablestar.agents.feelings import mood_word, recall
 
             stats = await self.server.redis.get_player_stats(state.persona.name)
+            inventory = await self.server.redis.get_player_inventory(state.persona.name)
+            equipped_ids = {
+                (it or {}).get("id") for it in (stats.get("equipment") or {}).values() if it
+            }
+            sellables = [
+                it.get("name", "?")
+                for it in inventory
+                if it.get("id") not in equipped_ids and int(it.get("value", 0) or 0) > 0
+            ]
             prompt = intent_prompt(
                 state,
                 mood_word(stats, state.persona),
                 known_rooms,
                 recall(stats, 8),
                 players_present,
+                digi=int(stats.get("digi", 0) or 0),
+                sellables=sellables,
             )
             try:
                 raw = await self.llm.generate_or_raise(

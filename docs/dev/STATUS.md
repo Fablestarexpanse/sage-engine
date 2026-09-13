@@ -81,9 +81,24 @@ Test suites: server **150** pytest, WorldForge **34** vitest — all green.
       world/defaults.py; characters saved in deleted rooms auto-relocate
 - [x] World Builder: Export PNG button renders the whole zone graph
       (html-to-image over the React Flow viewport)
-- [ ] Economy systems for the island: vendor NPCs / buy-sell at the shops,
-      room rent at the AIpub apartments, Digi sinks/sources (spaces exist,
-      systems next)
+- [x] E1 survival economy: digi wallet in the stats blob for everyone
+      (players seeded from digi_balance and mirrored back on flush; agents
+      seeded from persona `digi`, durable); shop blocks on room YAML
+      (general store, pawn & salvage [buys 50%], apothecary, chandlery
+      [buys 35%], the AIpub bar w/ algae stout); browse/buy/sell/wallet
+      commands; trades/purchases/sales counters; clinic bill (10 Digi, to
+      zero) on player and agent respawn; agents: sell/buy intent goals +
+      deterministic sell-when-in-buying-shop Body reflex. Verified live:
+      player bought a stout at the AIpub (100→96), sold it at Aldo's,
+      bought a blade (→73); Sela sold 2 power cells on her own (20→32
+      Digi, trades 2)
+- [x] Character redo (owner call): every persona now rolls its own conduit
+      attribute spread + starting wallet (persona `attributes` + `digi`);
+      all 8 restarted with distinct sheets (Aldo PRS 15 / 120 Digi,
+      Pell RSV 15 / 15 Digi, ...)
+- [ ] E2: hunger need + food buying; AIpub apartment rent + own-bed sleep;
+      coarse day cycle in routines
+- [ ] E3: faction missions as agent work; budgeted agent-to-agent talk
 
 ### worldforge-mcp gaps found building Tidegate Isle
 - [ ] create_room(from_room, from_dir) positions the room but does NOT create

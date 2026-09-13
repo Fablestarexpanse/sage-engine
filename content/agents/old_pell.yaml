@@ -14,3 +14,5 @@ hard_facts:
 routine: [fishing_pier, fisherman_row, harbor_docks, fisherman_row]
 gear: {}
 stats: {hp: 45, max_hp: 45}
+attributes: {FRT: 11, RFX: 9, ACU: 9, RSV: 15, PRS: 10}
+digi: 15

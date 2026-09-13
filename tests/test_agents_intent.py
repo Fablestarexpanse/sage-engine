@@ -86,6 +86,33 @@ class TestCompileGoal:
     def test_hunt_unknown_entity_none(self):
         assert compile_goal(self._i("hunt", "dragon"), "z:a", "z", EXITS, _find_none) is None
 
+    def test_sell_routes_to_buyer_and_sells_all(self):
+        label, cmds = compile_goal(
+            self._i("sell"), "z:a", "z", EXITS, _find_none, buyer_room_finder=lambda: "z:c"
+        )
+        assert label == "sell salvage"
+        assert cmds == ["east", "east", "sell all"]
+
+    def test_sell_no_buyer_none(self):
+        assert (
+            compile_goal(
+                self._i("sell"), "z:a", "z", EXITS, _find_none, buyer_room_finder=lambda: None
+            )
+            is None
+        )
+
+    def test_buy_routes_to_seller_and_buys(self):
+        label, cmds = compile_goal(
+            self._i("buy", "ration"),
+            "z:a",
+            "z",
+            EXITS,
+            _find_none,
+            seller_room_finder=lambda item: "z:d" if item == "ration" else None,
+        )
+        assert label == "buy ration"
+        assert cmds == ["east", "north", "buy ration"]
+
 
 class TestMemoryRing:
     def test_remember_recall_capped(self):

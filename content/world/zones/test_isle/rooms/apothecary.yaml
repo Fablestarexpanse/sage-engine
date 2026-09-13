@@ -36,3 +36,8 @@ ambient:
   lines:
   - A kettle mutters over a low flame.
   - Dried herbs whisper against the beam when the door moves.
+shop:
+  name: The Apothecary
+  sells:
+  - template: ration_pack
+    price: 10

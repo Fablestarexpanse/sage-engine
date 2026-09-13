@@ -29,10 +29,17 @@ features:
 entity_spawns: []
 hazards: []
 tags: []
-name: Aldo's Pawn &amp; Salvage
+name: Aldo's Pawn & Salvage
 ambient:
   min_interval: 50
   max_interval: 130
   lines:
   - Aldo polishes something that was stolen at least once.
   - A bin shifts and settles with a metallic sigh.
+shop:
+  name: Aldo's Pawn & Salvage
+  sells:
+  - template: scrap_blade
+    price: 25
+  buys: true
+  buy_rate: 0.5

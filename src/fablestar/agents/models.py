@@ -34,6 +34,11 @@ class AgentPersonaModel(BaseModel):
     # slot -> item template id, equipped on spawn.
     gear: dict[str, str] = Field(default_factory=dict)
     stats: dict[str, int] = Field(default_factory=lambda: {"hp": 60, "max_hp": 60})
+    # Conduit attribute spread (FRT/RFX/ACU/RSV/PRS) — each agent rolls their
+    # own character, same stat block a new player gets. Missing keys default 10.
+    attributes: dict[str, int] = Field(default_factory=dict)
+    # Starting wallet (stats blob "digi"; durable via agent_state).
+    digi: int = 25
 
     def spawn_zone(self) -> str:
         return self.spawn_room.split(":")[0] if ":" in self.spawn_room else ""

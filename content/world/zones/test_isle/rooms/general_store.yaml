@@ -36,3 +36,10 @@ ambient:
   lines:
   - Harrow licks a pencil and adjusts a price, upward.
   - The door bell gives its dusty jingle.
+shop:
+  name: Harrow's General Store
+  sells:
+  - template: ration_pack
+    price: 8
+  - template: power_cell
+    price: 20

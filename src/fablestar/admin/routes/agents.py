@@ -157,6 +157,8 @@ def build_agents_router(server: "FablestarServer") -> APIRouter:
         except Exception:
             levels = 0
         return {
+            "digi": int(stats.get("digi", 0) or 0),
+            "trades": int(counters.get("trades", 0)),
             "kills": int(counters.get("kills", 0)),
             "deaths": int(counters.get("deaths", 0)),
             "goals_completed": int(counters.get("goals_completed", 0)),

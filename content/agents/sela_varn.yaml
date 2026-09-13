@@ -14,3 +14,5 @@ hard_facts:
 routine: [scrap_beach, north_shore, wild_meadow, market_square, pawn_shop, market_square, wild_meadow, north_shore]
 gear: {weapon: scrap_blade}
 stats: {hp: 60, max_hp: 60}
+attributes: {FRT: 9, RFX: 13, ACU: 13, RSV: 10, PRS: 8}
+digi: 20

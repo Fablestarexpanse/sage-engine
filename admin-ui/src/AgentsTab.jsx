@@ -199,7 +199,7 @@ function StatBoard() {
   const rows = board?.rows ?? [];
   // Fixed interesting columns first, then any extra counters new systems add
   // (trades, rentals, ...) appear automatically.
-  const known = ["kills", "deaths", "goals_completed", "items_used", "rooms_visited"];
+  const known = ["kills", "deaths", "goals_completed", "items_used", "rooms_visited", "trades", "purchases", "sales"];
   const extra = (board?.counter_keys ?? []).filter((k) => !known.includes(k));
   const sum = (key) => rows.reduce((a, r) => a + (Number(r[key] ?? r.counters?.[key]) || 0), 0);
 
@@ -213,6 +213,7 @@ function StatBoard() {
           <thead><tr>
             <th style={th}>Name</th><th style={th}>Room</th><th style={th}>HP</th><th style={th}>Mood</th>
             <th style={th} title="Total proficiency levels">Levels</th>
+            <th style={th}>Digi</th><th style={th}>Trades</th>
             <th style={th}>Kills</th><th style={th}>Deaths</th>
             <th style={th}>Goals</th><th style={th}>Items used</th>
             <th style={th}>Most used</th><th style={th}>Top prey</th>
@@ -227,6 +228,8 @@ function StatBoard() {
                 <td style={cell}>{r.hp != null ? `${r.hp}/${r.max_hp}` : "—"}</td>
                 <td style={cell}>{r.mood ?? "—"}</td>
                 <td style={cell}>{r.levels}</td>
+                <td style={cell}>{r.digi}</td>
+                <td style={cell}>{r.trades}</td>
                 <td style={cell}>{r.kills}</td>
                 <td style={cell}>{r.deaths}</td>
                 <td style={cell}>{r.goals_completed}</td>
@@ -244,6 +247,8 @@ function StatBoard() {
                 <td style={{ ...cell, fontWeight: 700 }}>All agents</td>
                 <td style={cell} colSpan={3}></td>
                 <td style={{ ...cell, fontWeight: 700 }}>{sum("levels")}</td>
+                <td style={{ ...cell, fontWeight: 700 }}>{sum("digi")}</td>
+                <td style={{ ...cell, fontWeight: 700 }}>{sum("trades")}</td>
                 <td style={{ ...cell, fontWeight: 700 }}>{sum("kills")}</td>
                 <td style={{ ...cell, fontWeight: 700 }}>{sum("deaths")}</td>
                 <td style={{ ...cell, fontWeight: 700 }}>{sum("goals_completed")}</td>
@@ -386,6 +391,7 @@ export default function AgentsTab() {
             <th style={th}>Name</th><th style={th}>Room</th><th style={th}>HP</th>
             <th style={th}>Mood</th><th style={th} title="Total proficiency levels">Lv</th>
             <th style={th} title="Kills / Deaths">K/D</th>
+            <th style={th}>Digi</th>
             <th style={th}>Last action</th><th style={th}></th>
           </tr></thead>
           <tbody>
@@ -399,6 +405,7 @@ export default function AgentsTab() {
                 <td style={cell}>{r.mood ?? "—"}</td>
                 <td style={cell}>{r.levels ?? 0}</td>
                 <td style={cell}>{r.kills ?? 0}/{r.deaths ?? 0}</td>
+                <td style={cell}>{r.digi ?? 0}</td>
                 <td style={cell} title={r.last_action}>{(r.last_action || "").slice(0, 28)} <span style={{ color: COLORS.textMuted }}>{fmtAgo(r.last_action_at)}</span></td>
                 <td style={cell}>
                   <div style={{ display: "flex", gap: 4 }}>
@@ -410,7 +417,7 @@ export default function AgentsTab() {
                 </td>
               </tr>
             ))}
-            {!rows.length && <tr><td style={cell} colSpan={8}>No agents. Add YAML personas under content/agents/.</td></tr>}
+            {!rows.length && <tr><td style={cell} colSpan={9}>No agents. Add YAML personas under content/agents/.</td></tr>}
           </tbody>
         </table>
       </div>
@@ -423,6 +430,8 @@ export default function AgentsTab() {
             </div>
             {detail.metrics && (
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10, fontSize: 11, color: COLORS.textMuted }}>
+                <span>Digi <b style={{ color: COLORS.text }}>{detail.metrics.digi}</b></span>
+                <span>Trades <b style={{ color: COLORS.text }}>{detail.metrics.trades}</b></span>
                 <span>Levels <b style={{ color: COLORS.text }}>{detail.metrics.levels}</b></span>
                 <span>Kills <b style={{ color: COLORS.text }}>{detail.metrics.kills}</b></span>
                 <span>Deaths <b style={{ color: COLORS.text }}>{detail.metrics.deaths}</b></span>

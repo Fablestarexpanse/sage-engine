@@ -48,6 +48,21 @@ class AmbientModel(BaseModel):
     max_interval: float = Field(default=120.0, gt=0)
 
 
+class ShopStockModel(BaseModel):
+    template: str
+    price: int = Field(gt=0)
+
+
+class ShopModel(BaseModel):
+    """A room that trades: fixed sell stock, and optionally buys items for a
+    fraction of their template value."""
+
+    name: str = "the shop"
+    sells: list[ShopStockModel] = Field(default_factory=list)
+    buys: bool = False
+    buy_rate: float = Field(default=0.5, gt=0, le=1.0)
+
+
 class RoomModel(BaseModel):
     id: str
     zone: str
@@ -61,6 +76,7 @@ class RoomModel(BaseModel):
     entity_spawns: list[EntitySpawnModel] = Field(default_factory=list)
     hazards: list[HazardModel] = Field(default_factory=list)
     ambient: AmbientModel | None = None
+    shop: ShopModel | None = None
     tags: set[str] = Field(default_factory=set)
 
 

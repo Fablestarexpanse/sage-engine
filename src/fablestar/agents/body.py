@@ -36,6 +36,8 @@ class BodyContext:
     goal_commands: list[str] = field(default_factory=list)
     next_routine_direction: str | None = None
     wander_ready: bool = True
+    in_buying_shop: bool = False  # this room's shop buys goods
+    sellable_count: int = 0  # unequipped items with value > 0
 
 
 def decide(ctx: BodyContext, rng: random.Random | None = None) -> tuple[str, str | None]:
@@ -51,6 +53,9 @@ def decide(ctx: BodyContext, rng: random.Random | None = None) -> tuple[str, str
         return ("eat", f"use {ctx.consumables[0]}")
     if hp_frac < 1.0 and ctx.room_type == "safe" and not ctx.resting:
         return ("rest", "rest")
+    # Merchant instinct: standing in a shop that buys while carrying goods.
+    if ctx.in_buying_shop and ctx.sellable_count > 0:
+        return ("sell", "sell all")
     if ctx.goal_commands:
         return ("goal", ctx.goal_commands[0])
     if ctx.next_routine_direction and ctx.wander_ready:

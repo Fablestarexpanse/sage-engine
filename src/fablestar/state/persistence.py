@@ -57,6 +57,10 @@ class PersistenceManager:
                             character.room_id = current_room
                         if current_stats:
                             character.stats = current_stats
+                            # In-game wallet lives in the stats blob (shops);
+                            # mirror it to the account-visible column.
+                            if isinstance(current_stats.get("digi"), int):
+                                character.digi_balance = current_stats["digi"]
                         if current_inventory is not None:
                             character.inventory = current_inventory
                         character.updated_at = datetime.utcnow()

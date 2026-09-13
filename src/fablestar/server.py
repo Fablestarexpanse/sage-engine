@@ -53,6 +53,7 @@ class _CharSnapshot:
     room_id: str
     stats: dict[str, Any]
     inventory: list[Any]
+    digi_balance: int = 0
 
 
 def _snapshot_from_orm(character: Any) -> _CharSnapshot:
@@ -61,6 +62,7 @@ def _snapshot_from_orm(character: Any) -> _CharSnapshot:
         room_id=character.room_id,
         stats=dict(character.stats or {}),
         inventory=list(character.inventory or []),
+        digi_balance=int(character.digi_balance or 0),
     )
 
 
@@ -309,6 +311,7 @@ class FablestarServer:
         registry.load_module_strict("fablestar.commands.search")
         registry.load_module_strict("fablestar.commands.factions")
         registry.load_module_strict("fablestar.commands.missions")
+        registry.load_module_strict("fablestar.commands.shop")
         registry.load_module_strict("fablestar.commands.admin")
 
         # 2. Tick handlers — must be registered before the tick loop starts in step 4
@@ -451,6 +454,9 @@ class FablestarServer:
             norm_stats["hp"] = max(1, int(norm_stats.get("max_hp", 20)) // 2)
             if self.content_loader.get_room(RESPAWN_ROOM) is not None:
                 character.room_id = RESPAWN_ROOM
+            # Clinic bill (down to zero) — dying has a price on Tidegate.
+            bill = min(int(character.digi_balance or 0), 10)
+            character.digi_balance = int(character.digi_balance or 0) - bill
             respawned = True
 
         # A character saved in a room that no longer exists (zone deleted or
@@ -465,6 +471,10 @@ class FablestarServer:
                 START_ROOM,
             )
             character.room_id = START_ROOM
+
+        # In-game wallet: the DB column is the durable copy; the stats blob is
+        # what shop commands spend from (PersistenceManager mirrors it back).
+        norm_stats["digi"] = int(character.digi_balance or 0)
 
         # Seed Redis with the character's current state
         await self.redis.set_player_location(character.name, character.room_id)

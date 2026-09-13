@@ -30,6 +30,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 AGENT_TICK_INTERVAL = 8  # 4 Hz tick → body decisions every 2 s (staggered)
+CLINIC_BILL_DIGI = 10  # respawn cost, deducted down to zero (matches player bill)
 
 
 class AgentState:
@@ -105,7 +106,13 @@ class AgentManager:
             from fablestar.proficiencies.state_helpers import ensure_proficiency_block
 
             ensure_proficiency_block(stats)
+            if persona.attributes:
+                attrs = stats["conduit"]["conduit_attributes"]
+                for key, value in persona.attributes.items():
+                    if key in attrs:
+                        attrs[key] = int(value)
             stats.setdefault("counters", {})
+            stats.setdefault("digi", int(persona.digi))
 
             inventory = []
             # Equip persona gear (slot -> template id) through the equipment engine.
@@ -303,13 +310,19 @@ class AgentManager:
 
             clear_on_death(stats)
             stats["hp"] = max(1, int(stats.get("max_hp", 20)) // 2)
-            remember(stats, "died and woke in the clinic, patched together")
+            # The clinic doesn't work for free: dying costs Digi (down to 0).
+            bill = min(int(stats.get("digi", 0) or 0), CLINIC_BILL_DIGI)
+            stats["digi"] = int(stats.get("digi", 0) or 0) - bill
+            remember(
+                stats,
+                f"died and woke in the clinic, patched together ({bill} Digi bill)"
+                if bill
+                else "died and woke in the clinic; too broke to bill",
+            )
             try:
                 from fablestar.achievements.engine import record_counter
 
-                record_counter(
-                    stats, server.content_loader.get_achievement_registry(), "deaths"
-                )
+                record_counter(stats, server.content_loader.get_achievement_registry(), "deaths")
             except Exception:
                 logger.debug("death counter skipped", exc_info=True)
             from fablestar.world.defaults import RESPAWN_ROOM
@@ -373,6 +386,15 @@ class AgentManager:
 
         from fablestar.effects.engine import find_effects
 
+        equipped_ids = {
+            (it or {}).get("id") for it in (stats.get("equipment") or {}).values() if it
+        }
+        sellable_count = sum(
+            1
+            for it in inventory
+            if it.get("id") not in equipped_ids and int(it.get("value", 0) or 0) > 0
+        )
+
         now = time.time()
         ctx = BodyContext(
             hp=int(stats.get("hp", 1)),
@@ -385,6 +407,8 @@ class AgentManager:
             goal_commands=list(state.goal_commands),
             next_routine_direction=self._routine_direction(state, room_id),
             wander_ready=now >= state.next_wander_at,
+            in_buying_shop=bool(room.shop is not None and room.shop.buys),
+            sellable_count=sellable_count,
         )
         # Voice first: being spoken to outranks reflexes short of combat.
         if not ctx.hostiles:
@@ -452,6 +476,32 @@ class AgentManager:
         zone = state.persona.spawn_zone()
         return sorted(r.split(":")[-1] for r in self._exits_map(zone))
 
+    def _shop_finder(self, zone: str, *, buying: bool):
+        """buying=True: () -> a room whose shop buys. buying=False: (item substring)
+        -> a room whose shop sells a matching template."""
+
+        def find_buyer() -> str | None:
+            for room_id in self._exits_map(zone):
+                room = self.server.content_loader.get_room(room_id)
+                if room is not None and room.shop is not None and room.shop.buys:
+                    return room_id
+            return None
+
+        def find_seller(item: str) -> str | None:
+            item = (item or "").lower()
+            for room_id in self._exits_map(zone):
+                room = self.server.content_loader.get_room(room_id)
+                if room is None or room.shop is None:
+                    continue
+                for entry in room.shop.sells:
+                    tmpl = self.server.content_loader.get_item_template(entry.template)
+                    hay = f"{entry.template} {tmpl.name if tmpl else ''}".lower()
+                    if item in hay:
+                        return room_id
+            return None
+
+        return find_buyer if buying else find_seller
+
     def _entity_room_finder(self, zone: str):
         """target substring -> a room_id whose spawns include a matching template."""
 
@@ -480,7 +530,13 @@ class AgentManager:
 
         zone = state.persona.spawn_zone()
         compiled = compile_goal(
-            intent, room_id, zone, self._exits_map(zone), self._entity_room_finder(zone)
+            intent,
+            room_id,
+            zone,
+            self._exits_map(zone),
+            self._entity_room_finder(zone),
+            buyer_room_finder=self._shop_finder(zone, buying=True),
+            seller_room_finder=self._shop_finder(zone, buying=False),
         )
         why = intent.get("why") or "no reason given"
         if compiled is None:

@@ -38,3 +38,12 @@ ambient:
   lines:
   - The chandler tests a rope with a grunt of professional distrust.
   - Tallow scent thickens near the candle crates.
+shop:
+  name: The Chandlery
+  sells:
+  - template: padded_vest
+    price: 35
+  - template: power_cell
+    price: 18
+  buys: true
+  buy_rate: 0.35

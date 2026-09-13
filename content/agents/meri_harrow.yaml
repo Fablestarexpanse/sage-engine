@@ -14,3 +14,5 @@ hard_facts:
 routine: [general_store, market_west, market_square, south_road, harbor_docks, warehouse, harbor_docks, south_road, town_plaza, market_square, market_west]
 gear: {}
 stats: {hp: 60, max_hp: 60}
+attributes: {FRT: 9, RFX: 8, ACU: 14, RSV: 12, PRS: 12}
+digi: 90

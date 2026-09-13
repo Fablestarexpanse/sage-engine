@@ -1,0 +1,7 @@
+id: algae_stout
+name: pint of algae stout
+type: consumable
+description: The AIpub's own brew — green-black, faintly luminous, better than it
+  has any right to be. Locals swear by it; visitors swear at it, then order another.
+value: 4
+heal: 3

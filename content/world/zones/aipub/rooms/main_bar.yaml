@@ -3,11 +3,10 @@ zone: aipub
 type: hub
 depth: 1
 description:
-  base: The heart of the AiPub. A long chrome bar stretches across the far wall, lined
-    with stools of worn synthetic leather. Holographic cocktail menus float above
-    the counter. The barkeep — a half-chromed human with a permanent squint — serves
-    drinks with mechanical efficiency. Regulars nurse their glasses and argue about
-    jump-gate politics.
+  base: The heart of the AiPub. A long chrome bar stretches across the far wall, lined with stools of
+    worn synthetic leather. Holographic cocktail menus float above the counter. The barkeep — a half-chromed
+    human with a permanent squint — serves drinks with mechanical efficiency. Regulars nurse their glasses
+    and argue about jump-gate politics.
 exits:
   south:
     destination: aipub:pub_entrance
@@ -23,3 +22,10 @@ entity_spawns: []
 hazards: []
 tags: []
 name: The Main Bar
+shop:
+  name: The AIpub
+  sells:
+  - template: algae_stout
+    price: 4
+  - template: ration_pack
+    price: 9

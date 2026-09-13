@@ -14,3 +14,5 @@ hard_facts:
 routine: [old_lighthouse, cliff_path, north_shore, scrap_beach, north_shore, cliff_path]
 gear: {weapon: scrap_blade, armor: padded_vest}
 stats: {hp: 70, max_hp: 70}
+attributes: {FRT: 12, RFX: 12, ACU: 11, RSV: 13, PRS: 5}
+digi: 40
