@@ -1,6 +1,7 @@
 {
   "name": "admin-ui",
   "private": true,
+  "license": "SEE LICENSE IN ../engine/LICENSE",
   "version": "0.2.0",
   "type": "module",
   "scripts": {

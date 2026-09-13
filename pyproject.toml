@@ -4,7 +4,7 @@ version = "0.2.0"
 description = "Vibe-coded MUD platform with LLM integration and hot-reload."
 readme = "README.md"
 requires-python = ">=3.11"
-license = {text = "MIT"}
+license = {file = "engine/LICENSE"}  # FSL-1.1-ALv2; scope in NOTICE
 dependencies = [
     "redis[hiredis]>=5.0.0",
     "asyncpg>=0.29.0",

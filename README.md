@@ -126,4 +126,6 @@ Developer documentation lives in [`CLAUDE.md`](CLAUDE.md) (architecture guide) a
 
 ## License
 
-MIT — see `pyproject.toml`.
+The SAGE engine is licensed under the Functional Source License, Version 1.1, ALv2 Future License (`FSL-1.1-ALv2`) — see [`engine/LICENSE`](engine/LICENSE) and the plain-English [`LICENSE-FAQ.md`](LICENSE-FAQ.md). Each release becomes Apache-2.0 two years after it is published.
+
+Fablestar Expanse world content, lore, art and branding are proprietary, all rights reserved. [`NOTICE`](NOTICE) lists which paths are which.
