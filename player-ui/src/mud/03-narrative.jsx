@@ -69,11 +69,6 @@ function readPortraitBackdropXOffsetFromLs() {
 
 export const DEFAULT_NARRATIVE = [
   { type: "system", text: "— Connected to Fablestar Expanse —", ts: "" },
-  { type: "room_title", text: "Corroded Junction — Sector 7, Depth 2" },
-  { type: "room_desc", text: "Three corridors converge beneath a fractured ceiling. Violet |item:glyph-channels:glyph_channels| glimmer in the plating." },
-  { type: "exits", exits: [{ dir: "north", label: "Glyph Chamber Alpha" }, { dir: "east", label: "Maintenance Shaft 03" }, { dir: "down", label: "Sub-level Access" }] },
-  { type: "entity", text: "A |npc:Corroded Sentinel:sentinel_01| stands motionless in the arch." },
-  { type: "sep" },
 ];
 
 export function stripMudMarkup(text) {

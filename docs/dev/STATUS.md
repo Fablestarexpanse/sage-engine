@@ -51,7 +51,8 @@ Test suites: server **150** pytest, WorldForge **34** vitest — all green.
       command + effect tick (location/effects/inventory added); LOCATION, VITALS,
       INVENTORY, EFFECTS render live server state (verified in client + ws probe).
       Still fake: MAP / GLYPH LOADOUT / COMMS placeholders
-- [ ] Remove the demo "Corroded Junction" intro block pinned above the real narrative log
+- [x] Demo "Corroded Junction" intro block removed — DEFAULT_NARRATIVE is just
+      the connect line; log opens with the real room (verified live)
 - [x] Disconnect UX: "Connection to the station lost — reconnecting…" banner +
       2.5s auto-reconnect (verified live: kill server → banner, restart → clears)
 - [x] `examine` dead ends now list the room's examinable features (or say nothing
