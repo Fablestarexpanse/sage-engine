@@ -101,6 +101,17 @@ class ContentLoader:
             logger.error(f"Error loading item template {item_id}: {e}")
             return None
 
+    def list_room_ids(self) -> list[str]:
+        """Every room id on disk ("zone:slug"), zone by zone."""
+        zones_dir = self.content_dir / "world" / "zones"
+        out: list[str] = []
+        if zones_dir.is_dir():
+            for zdir in sorted(p for p in zones_dir.iterdir() if p.is_dir()):
+                rooms = zdir / "rooms"
+                if rooms.is_dir():
+                    out.extend(f"{zdir.name}:{f.stem}" for f in sorted(rooms.glob("*.yaml")))
+        return out
+
     def list_item_template_ids(self) -> list[str]:
         """All item template ids on disk (file stems under content/world/items)."""
         items_dir = self.content_dir / "world" / "items"

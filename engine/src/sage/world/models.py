@@ -1,6 +1,6 @@
 """Pydantic world models — RoomModel, EntityTemplate, ItemTemplate, StarSystemModel, ShipTemplate."""
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ExitModel(BaseModel):
@@ -80,6 +80,9 @@ class LodgingModel(BaseModel):
 
 
 class RoomModel(BaseModel):
+    # Unknown fields are kept: plugins claim them as content extensions (sage.world.extensions).
+    model_config = ConfigDict(extra="allow")
+
     id: str
     zone: str
     name: str | None = None  # display name (WorldForge writes it; falls back to the id)
@@ -113,6 +116,9 @@ class LootEntryModel(BaseModel):
 
 
 class EntityTemplate(BaseModel):
+    # Unknown fields are kept: plugins claim them as content extensions (sage.world.extensions).
+    model_config = ConfigDict(extra="allow")
+
     id: str
     name: str
     type: str = "creature"
@@ -141,6 +147,9 @@ class EntityTemplate(BaseModel):
 
 
 class ItemTemplate(BaseModel):
+    # Unknown fields are kept: plugins claim them as content extensions (sage.world.extensions).
+    model_config = ConfigDict(extra="allow")
+
     id: str
     name: str
     type: str = "misc"

@@ -18,6 +18,7 @@ from sage.plugins.loader import (
     trust_banner,
 )
 from sage.plugins.manifest import PluginError
+from sage.world.extensions import ContentExtensions
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +37,8 @@ class PluginHost:
     redis: Any
     plugins_root: Path
     trusted_roots: list[Path]
+    content: Any = None  # ContentLoader
+    extensions: ContentExtensions = field(default_factory=ContentExtensions)
     services: dict[str, tuple[str, Any]] = field(default_factory=dict)
     state_owners: dict[str, str] = field(default_factory=dict)
     loaded: list[PluginRecord] = field(default_factory=list)

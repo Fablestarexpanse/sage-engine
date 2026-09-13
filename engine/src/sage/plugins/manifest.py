@@ -25,6 +25,7 @@ SUPPORTED_TOUCHES = (
     "tick_jobs",
     "state_blocks",
     "services",
+    "content_extensions",
     "lexicon_prefix",
 )
 
@@ -105,9 +106,10 @@ class Touches(BaseModel):
     state_blocks: list[str] = Field(default_factory=list)
     services: list[str] = Field(default_factory=list)
     lexicon_prefix: str | None = None
+    # "<kind>.<field>", e.g. "room.shop" (sage.world.extensions).
+    content_extensions: list[str] = Field(default_factory=list)
     # Declared for later engine versions (contracts C.2); refused if a plugin uses them now.
     content_types: list[str] = Field(default_factory=list)
-    content_extensions: list[str] = Field(default_factory=list)
     snapshot: list[str] = Field(default_factory=list)
     routes: list[str] = Field(default_factory=list)
     panels: list[str] = Field(default_factory=list)

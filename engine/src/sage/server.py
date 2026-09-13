@@ -114,6 +114,7 @@ class SageServer:
             resolvers=self.resolvers,
             tick_manager=self.tick_manager,
             redis=self.redis,
+            content=self.content_loader,
             plugins_root=self.project_root / "plugins",
             trusted_roots=[self.project_root / "plugins", self.project_root / "worlds"],
         )

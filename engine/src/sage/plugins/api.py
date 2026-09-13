@@ -209,6 +209,37 @@ class _Content:
 
         return DirCache(Path(self._api._host.world.content_dir) / subdir, loader, pattern)
 
+    def extend(self, kind: str, name: str, model: type) -> None:
+        """Claim a YAML field on rooms, items or entities ("room", "shop", ShopModel)."""
+        from sage.world.extensions import ExtensionError
+
+        host = self._api._host
+        try:
+            host.extensions.register(kind, name, model, owner=self._api.id)
+        except ExtensionError as exc:
+            raise PluginError(f"plugin {self._api.id}: {exc}") from exc
+        self._api._record.record("content_extensions", f"{kind}.{name}")
+        self._api._cleanup.append(lambda: host.extensions.withdraw(self._api.id))
+
+    def extension(self, obj: Any, kind: str, name: str) -> Any:
+        """This plugin's validated block on a content object, or None."""
+        host = self._api._host
+        if host.extensions.owner(kind, name) != self._api.id:
+            raise PluginError(f"plugin {self._api.id} reads {kind}.{name}, which it did not claim")
+        return host.extensions.get(obj, kind, name)
+
+    def room(self, room_id: str) -> Any:
+        return self._api._host.content.get_room(room_id)
+
+    def room_ids(self) -> list[str]:
+        return self._api._host.content.list_room_ids()
+
+    def item_template(self, template_id: str) -> Any:
+        return self._api._host.content.get_item_template(template_id)
+
+    def entity_template(self, template_id: str) -> Any:
+        return self._api._host.content.get_entity_template(template_id)
+
 
 class PluginAPI:
     def __init__(self, host: Any, record: Any):

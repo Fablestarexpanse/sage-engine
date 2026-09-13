@@ -14,6 +14,7 @@ from sage.core.events import EventBus
 from sage.core.resolvers import Resolvers
 from sage.core.tick import TickManager
 from sage.plugins import PluginHost
+from sage.world.loader import ContentLoader
 from tests.fakes import FakeRedis
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -43,6 +44,7 @@ def plugin_host():
             resolvers=Resolvers(),
             tick_manager=TickManager(),
             redis=FakeRedis(),
+            content=ContentLoader(world.content_dir),
             plugins_root=REPO_ROOT / "plugins",
             trusted_roots=[REPO_ROOT / "plugins", REPO_ROOT / "worlds"],
         )

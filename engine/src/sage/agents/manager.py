@@ -612,7 +612,7 @@ class AgentManager:
         """The factions plugin's service, or None when the world doesn't enable it.
 
         Transitional: engine code reads a plugin service by name until agents are a plugin
-        themselves (phase-3 plan 3.8) and declare the dependency.
+        themselves (phase-3 plan) and declare the dependency.
         """
         entry = getattr(getattr(self.server, "plugins", None), "services", {}).get("factions")
         return entry[1] if entry else None

@@ -324,3 +324,84 @@ def test_manifest_helpers(tmp_path):
     renamed = plugin.rename(tmp_path / "other")
     with pytest.raises(PluginError, match="must match its directory"):
         read_manifest(renamed)
+
+
+NOTICES = """
+from pydantic import BaseModel
+
+from sage.api import PluginAPI
+
+
+class NoticeBoard(BaseModel):
+    title: str
+    posts: list[str] = []
+
+
+def setup(api: PluginAPI) -> None:
+    api.content.extend("room", "notice_board", NoticeBoard)
+
+    async def read(session, args):
+        room = api.content.room(args[0])
+        board = api.content.extension(room, "room", "notice_board")
+        await session.send(board.title if board else "no board")
+
+    api.commands.register("notices", read)
+"""
+
+
+def _room(world_dir: Path, slug: str, extra: str) -> None:
+    rooms = world_dir / "content" / "world" / "zones" / "town" / "rooms"
+    rooms.mkdir(parents=True, exist_ok=True)
+    body = f"id: town:{slug}\nzone: town\ntype: hub\n{extra}"
+    (rooms / f"{slug}.yaml").write_text(body, encoding="utf-8")
+
+
+def test_plugin_claims_a_room_field_and_reads_it_validated(tmp_path, host_for, caplog):
+    from sage.world.loader import ContentLoader
+    from tests.fakes import StubSession
+
+    write_plugin(
+        tmp_path / "plugins",
+        "notices",
+        NOTICES,
+        touches='commands = ["notices"]\ncontent_extensions = ["room.notice_board"]',
+    )
+    host = host_for({"notices": "^1"})
+    _room(host.world.root, "gate", "notice_board:\n  title: Wanted\n  posts: [rats]\n")
+    _room(host.world.root, "well", "notice_board:\n  posts: [no title]\n")
+    _room(host.world.root, "lane", "")
+    host.content = ContentLoader(host.world.content_dir)
+    host.load()
+
+    session = StubSession("hero")
+    handler = host.registry.get("notices").handler
+    with caplog.at_level(logging.ERROR):
+        for slug in ("gate", "well", "lane"):
+            asyncio.run(handler(session, [f"town:{slug}"]))
+    assert session.sent == ["Wanted", "no board", "no board"]
+    assert "town:well: invalid 'notice_board' block" in caplog.text
+    assert "room.notice_board" in host.extensions.schemas()
+
+
+def test_extensions_must_be_declared_unique_and_not_engine_fields(tmp_path, host_for):
+    write_plugin(tmp_path / "plugins", "notices", NOTICES, touches='commands = ["notices"]')
+    with pytest.raises(PluginError, match="content_extensions"):
+        host_for({"notices": "^1"}).load()
+
+    from pydantic import BaseModel
+
+    from sage.world.extensions import ContentExtensions, ExtensionError
+
+    class Board(BaseModel):
+        title: str
+
+    registry = ContentExtensions()
+    registry.register("room", "notice_board", Board, owner="a")
+    with pytest.raises(ExtensionError, match="already claimed by a"):
+        registry.register("room", "notice_board", Board, owner="b")
+    with pytest.raises(ExtensionError, match="engine field"):
+        registry.register("room", "exits", Board, owner="a")
+    with pytest.raises(ExtensionError, match="unknown content kind"):
+        registry.register("zone", "x", Board, owner="a")
+    registry.withdraw("a")
+    registry.register("room", "notice_board", Board, owner="b")
