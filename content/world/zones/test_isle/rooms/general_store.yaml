@@ -43,3 +43,4 @@ shop:
     price: 8
   - template: power_cell
     price: 20
+  owner: meri_harrow

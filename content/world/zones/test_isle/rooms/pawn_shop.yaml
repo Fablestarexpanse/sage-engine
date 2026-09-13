@@ -43,3 +43,4 @@ shop:
     price: 25
   buys: true
   buy_rate: 0.5
+  owner: aldo_vex

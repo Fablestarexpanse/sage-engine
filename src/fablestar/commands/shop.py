@@ -30,6 +30,28 @@ def _buy_price(template, shop) -> int:
     return max(1, int(int(template.value or 0) * shop.buy_rate))
 
 
+LEDGER_CAP = 200
+
+
+async def _ledger(room_id: str, kind: str, actor: str, item: str, price: int) -> None:
+    """Per-shop transaction log (Redis list, newest first, capped)."""
+    import json as _json
+    import time as _time
+
+    from fablestar.app import app_instance
+
+    try:
+        key = f"shopledger:{room_id}"
+        entry = _json.dumps(
+            {"at": int(_time.time()), "kind": kind, "actor": actor, "item": item, "price": price}
+        )
+        client = app_instance.redis.client
+        await client.lpush(key, entry)
+        await client.ltrim(key, 0, LEDGER_CAP - 1)
+    except Exception:
+        logger.debug("shop ledger skipped", exc_info=True)
+
+
 async def _record_trade(stats, kind: str) -> list:
     from fablestar.app import app_instance
 
@@ -84,7 +106,7 @@ async def buy(session: Session, args: list[str]):
     if not args:
         await session.send("Buy what? Try 'browse' to see the stock.")
         return
-    shop, _ = await _shop_here(player_id)
+    shop, shop_room_id = await _shop_here(player_id)
     if shop is None or not shop.sells:
         await session.send("Nobody here is selling anything.")
         return
@@ -126,6 +148,7 @@ async def buy(session: Session, args: list[str]):
     )
     await app_instance.redis.set_player_stats(player_id, stats)
     await app_instance.redis.set_player_inventory(player_id, inv)
+    await _ledger(shop_room_id, "sale", player_id, template.name, entry.price)
     await session.send(
         f"You buy the {template.name} for {entry.price} Digi ({stats['digi']} left)."
     )
@@ -146,7 +169,7 @@ async def sell(session: Session, args: list[str]):
     if not args:
         await session.send("Sell what? Usage: sell <item> (or 'sell all').")
         return
-    shop, _ = await _shop_here(player_id)
+    shop, shop_room_id = await _shop_here(player_id)
     if shop is None or not shop.buys:
         await session.send("Nobody here is buying.")
         return
@@ -188,6 +211,7 @@ async def sell(session: Session, args: list[str]):
         sold_ids.add(it.get("id"))
         sold_names.append(it.get("name", template.id))
         await _record_trade(stats, "sales")
+        await _ledger(shop_room_id, "purchase", player_id, it.get("name", template.id), price)
 
     stats["digi"] = _wallet(stats) + total
     await app_instance.redis.set_player_stats(player_id, stats)

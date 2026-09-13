@@ -3,6 +3,7 @@ import axios from "axios";
 import WorldBuilderPage from "./builder/WorldBuilderPage.jsx";
 import PlayerAccountsTab from "./PlayerAccountsTab.jsx";
 import AgentsTab from "./AgentsTab.jsx";
+import ShopsTab from "./ShopsTab.jsx";
 import ProficienciesPage from "./ProficienciesPage.jsx";
 import { useAdminTheme } from "./AdminThemeContext.jsx";
 import { API_BASE, WS_BASE } from "./apiConfig.js";
@@ -150,6 +151,7 @@ const NAV_ITEMS = [
   { id: "skills", label: "Skills catalog", icon: <Icons.Skills /> },
   { id: "builder", label: "World Builder", icon: <Icons.Map /> },
   { id: "agents", label: "Agents", icon: <Icons.Players /> },
+  { id: "shops", label: "Shops", icon: <Icons.Items /> },
   { id: "server", label: "Server", icon: <Icons.Server /> },
   { id: "settings", label: "Settings", icon: <Icons.Settings /> },
   { id: "team", label: "Team & access", icon: <Icons.Players />, headOnly: true },
@@ -158,6 +160,12 @@ const NAV_ITEMS = [
 const AgentsPage = () => (
   <div style={{ display: "grid", gap: 16 }}>
     <AgentsTab />
+  </div>
+);
+
+const ShopsPage = () => (
+  <div style={{ display: "grid", gap: 16 }}>
+    <ShopsTab />
   </div>
 );
 
@@ -170,6 +178,7 @@ const PAGES = {
   skills: ProficienciesPage,
   builder: WorldBuilderPage,
   agents: AgentsPage,
+  shops: ShopsPage,
   server: ServerPage,
   settings: SettingsPlaceholderPage,
   team: StaffTeamPage,

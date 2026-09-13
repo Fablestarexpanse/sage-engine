@@ -107,6 +107,11 @@ Test suites: server **150** pytest, WorldForge **34** vitest — all green.
       cooldowns, one reply via pending-key, replies never re-trigger).
       Verified live: Juno opened on Old Pell; Pell answered with a weather
       report, exactly one exchange
+- [x] Shops admin tab: every shop room with keeper (live wallet, current
+      room, home, carried goods), stock + prices + buy policy, and a
+      per-shop transaction ledger (Redis capped list written by buy/sell)
+      with sold/bought totals. shop.owner links a persona id; Meri owns
+      the general store, Aldo the pawn shop
 - [ ] E3b: faction missions as agent work (accept/progress via player
       commands; purpose need satisfied by completion)
 

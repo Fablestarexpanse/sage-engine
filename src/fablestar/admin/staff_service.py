@@ -104,6 +104,7 @@ def _default_console_permissions(role: str) -> dict[str, Any]:
                 "entities",
                 "items",
                 "glyphs",
+            "shops",
                 "locations",
                 "builder",
                 "server",
