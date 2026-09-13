@@ -16,6 +16,7 @@ from sqlalchemy import select
 
 from fablestar import app
 from fablestar.admin.nexus import NexusApp
+from fablestar.agents.manager import AgentManager
 from fablestar.bootstrap import ensure_dev_defaults
 from fablestar.commands.registry import registry
 from fablestar.core.comfyui_persist import save_comfyui_toml
@@ -81,6 +82,7 @@ class FablestarServer:
         self.ambient = AmbientManager(self)
         self.effects = EffectsManager(self)
         self.maestro = MaestroDirector(self)
+        self.agent_manager = AgentManager(self)
         self.hot_reloader = HotReloader(self._on_file_changed)
         self.dispatcher = CommandDispatcher()
         self.nexus = NexusApp(self)
@@ -314,6 +316,7 @@ class FablestarServer:
         self.tick_manager.register(self.ambient.on_tick)
         self.tick_manager.register(self.effects.on_tick)
         self.tick_manager.register(self.maestro.on_tick)
+        self.tick_manager.register(self.agent_manager.on_tick)
         self.tick_manager.register(self.persistence.on_tick)
 
         # 3. HotReloader — watches content/ and commands/; safe to start any time after step 1
@@ -546,6 +549,14 @@ class FablestarServer:
             # Final sync to DB before the session tears down
             if session.player_id:
                 await self.persistence.sync_character(session.player_id)
+                # Ghost fix: leaving the game must leave the room too, or the
+                # room's player set keeps a phantom occupant forever.
+                try:
+                    room_id = await self.redis.get_player_location(session.player_id)
+                    if room_id:
+                        await self.redis.remove_player_from_room(session.player_id, room_id)
+                except Exception:
+                    logger.debug("Room-set cleanup failed for %s", session.player_id, exc_info=True)
             await self.session_manager.destroy_session(session.id)
 
     async def _on_file_changed(self, path: Path):

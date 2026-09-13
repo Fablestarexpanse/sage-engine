@@ -13,6 +13,7 @@ from fablestar.world.models import EntityTemplate, ItemTemplate, RoomModel
 
 if TYPE_CHECKING:
     from fablestar.achievements.registry import AchievementRegistry
+    from fablestar.agents.registry import AgentRegistry
     from fablestar.factions.registry import FactionRegistry
 
 logger = logging.getLogger(__name__)
@@ -138,6 +139,17 @@ class ContentLoader:
         from fablestar.achievements.registry import load_achievements
 
         registry = load_achievements(self.content_dir)
+        self._cache[cache_key] = registry
+        return registry
+
+    def get_agent_registry(self) -> "AgentRegistry":
+        """Load and cache agent personas from content/agents/."""
+        cache_key = "agents:registry"
+        if cache_key in self._cache:
+            return self._cache[cache_key]
+        from fablestar.agents.registry import load_agents
+
+        registry = load_agents(self.content_dir)
         self._cache[cache_key] = registry
         return registry
 

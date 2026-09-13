@@ -47,6 +47,12 @@ async def look(session: Session, args: list[str]):
             exits_str = ", ".join(room.exits.keys())
             await session.send(f"Exits: {exits_str}")
 
+        # 4b. Other players and agents present (deterministic)
+        room_players = await app_instance.redis.get_room_players(room_id)
+        others = sorted(p for p in room_players if p != session.player_id)
+        if others:
+            await session.send(f"Also here: {', '.join(others)}")
+
         # 5. Show live entities (deterministic — no LLM)
         entity_ids = await app_instance.redis.get_room_entities(room_id)
         alive = []

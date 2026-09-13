@@ -1,0 +1,16 @@
+id: tessa_moke
+name: Tessa Moke
+spawn_room: starter_zone:medbay
+enabled: true
+temperament: {warmth: 0.9, caution: 0.6, ambition: 0.2, humor: 0.5}
+wants: for the medbay dispensary to stock real anaesthetic again
+fears: running out of supplies mid-emergency
+speech: warm, fast, medical shorthand, terrible at goodbyes
+baseline_mood: {valence: 0.3, arousal: 0.3}
+hard_facts:
+  - "profession: medtech"
+  - "unaffiliated"
+  - "will not fight unless cornered"
+routine: [medbay, plaza, medbay, market_row]
+gear: {}
+stats: {hp: 50, max_hp: 50}
