@@ -1,8 +1,9 @@
 # SAGE decoupling — decision log
 
 NEXT: Phase 3 on sage/phase-3 (plan: docs/dev/milestones/M2-sage-decoupling/phase-3-plan.md).
-3.1 achievements plugin DONE; 3.2 engine wallet DONE. Next: 3.3 factions + missions -> plugins/factions
-(EntityKilled subscriber; mission pay via api.wallet). Local dev DB at n7o8p9q0r1s2. Ratchet 2146/167.
+3.1 achievements DONE; 3.2 engine wallet DONE; 3.3 factions plugin DONE. Next: 3.4 shop and lodging ->
+plugins/shop, plugins/lodging (agents' keeper-till and rent sweep touch both). Dev DB at n7o8p9q0r1s2.
+Ratchet 2146/157.
 Open owner questions: Rivermoot license; PRs for sage/stage-2b and sage/stage-2c.
 Review page: https://claude.ai/code/artifact/2d488113-1ca9-4f45-b993-ac0253e0670c
 
@@ -33,3 +34,4 @@ decisions are proposals until the Phase 1 review approves them.
 | 2026-09-13 | Architect | WorldForge Tauri identifier changed `com.fablestar.worldforge` → `com.sage.worldforge` (productName "SAGE WorldForge"). One-way for local app data: WorldForge forgets its saved content folder once; exe auto-detect (now 8 levels) finds the repo, else pick the folder again. | Engine tool identity; flagged in F.1. |
 | 2026-09-13 | Architect | Second reference world named **Rivermoot** (slug `rivermoot`); stat keys `mgt`/`wts`/`nrv` (not common English words, so the invariant ratchet can auto-deny them in engine code); world-private `levels` plugin. License of `worlds/rivermoot/` left undecided (NOTICE) — owner question. | G.9 delegated; brief §6. |
 | 2026-09-13 | Architect | **Wallet before factions (phase-3 plan 3.2).** In-world money is an engine service over the world's `currencies.yaml` (first currency = primary, name via lexicon `currency.<key>.name`, overdraft refused). `server.game_currency_display_name` / `starting_digi_balance` config deleted. Balance still mirrored to `characters.digi_balance` until the schema step. | Missions, shop and lodging all pay or charge; extracting any of them first would bake Fablestar's currency key into a plugin. |
+| 2026-09-13 | Architect | **Plugins may edit a whole character, within a seal (phase-3 3.3).** `api.state.edit(player_id)` loads the full stats blob for work that spans a plugin's own blocks and engine services (wallet, counters); on exit any other changed top-level key raises `PluginError` and nothing is saved. Chosen over giving plugins raw `set_player_stats`. | Mission payout moves money, bumps counters and clears the plugin's own block in one step; per-block `state.set` couldn't express it without losing the ownership check. |

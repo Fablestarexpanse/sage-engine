@@ -1,18 +1,23 @@
 """
-Faction reputation bookkeeping — pure functions over the player stats blob.
+Faction reputation bookkeeping — pure functions over the character's stats blob.
 
-Reputation lives at stats["factions"] = {faction_id: int}, so it rides the
-existing persistence flush like counters and effects do. Standing changes
-return player-facing messages; only standing-level crossings are announced
-(a silent +2 shouldn't spam the feed).
+Reputation lives in the ``factions`` state block ({faction_id: int}), so it rides the engine's
+persistence flush. Standing changes return player-facing lines; only standing-level crossings are
+announced (a silent +2 shouldn't spam the feed).
 """
 
 from typing import Any
 
-from sage.factions.models import REP_MAX, REP_MIN, FactionModel, standing_name
-from sage.factions.registry import FactionRegistry
+from sage.api import t
+
+from .models import REP_MAX, REP_MIN, FactionModel, standing_name
+from .registry import FactionRegistry
 
 FACTIONS_KEY = "factions"
+
+
+def standing_label(rep: int) -> str:
+    return t(f"factions.standing.{standing_name(rep)}")
 
 
 def ensure_factions(stats: dict[str, Any]) -> dict[str, int]:
@@ -36,11 +41,10 @@ def adjust_rep(stats: dict[str, Any], faction: FactionModel, delta: int) -> str 
     before = get_rep(stats, faction)
     after = max(REP_MIN, min(REP_MAX, before + delta))
     reps[faction.id] = after
-    old_level, new_level = standing_name(before), standing_name(after)
-    if new_level == old_level:
+    if standing_name(after) == standing_name(before):
         return None
-    direction = "improves" if after > before else "worsens"
-    return f"Your standing with {faction.name} {direction}: you are now {new_level}."
+    key = "factions.standing_improves" if after > before else "factions.standing_worsens"
+    return t(key, faction=faction.name, standing=standing_label(after))
 
 
 def apply_kill_reputation(
@@ -74,5 +78,13 @@ def standings_lines(stats: dict[str, Any], registry: FactionRegistry) -> list[st
     lines = []
     for faction in registry.all():
         rep = get_rep(stats, faction)
-        lines.append(f"  {faction.name}: {standing_name(rep)} ({rep:+d}) — {faction.description}")
+        lines.append(
+            t(
+                "factions.entry",
+                name=faction.name,
+                standing=standing_label(rep),
+                rep=rep,
+                description=faction.description,
+            )
+        )
     return lines

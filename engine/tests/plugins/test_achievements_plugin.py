@@ -58,20 +58,6 @@ def test_grant_rules_all_any_and_unrelated_counters(plugin_host):
     assert host.loaded[0].id == "achievements"
 
 
-def test_definitions_reload_when_files_change(plugin_host, tmp_path):
-    world = repo_world()
-    content = tmp_path / "content"
-    _write(content, one="name: One\nstory: did a thing\ncriteria:\n  pokes: 1\n")
-    main = None
-    host = plugin_host(world, ["achievements"])
-    main = _plugin_module("main")
-    cache = main._CachedRegistry(content / "achievements")
-    assert [a.id for a in cache.get().all()] == ["one"]
-    _write(content, two="name: Two\nstory: did two\ncriteria:\n  pokes: 2\n")
-    assert [a.id for a in cache.get().all()] == ["one", "two"]
-    assert host is not None
-
-
 def test_room_visits_count_once_and_unlock(plugin_host):
     host = plugin_host(repo_world(), ["achievements"])
     server = server_for(host)

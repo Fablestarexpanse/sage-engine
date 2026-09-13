@@ -2,8 +2,8 @@
 
 import random
 
-from sage.factions.engine import FACTIONS_KEY
-from sage.factions.missions import (
+import pytest
+from sage_plugin_factions.missions import (
     MISSION_KEY,
     active_mission,
     describe_mission,
@@ -12,8 +12,17 @@ from sage.factions.missions import (
     try_complete_collect,
     will_deal,
 )
-from sage.factions.models import FactionModel
-from sage.factions.registry import FactionRegistry
+from sage_plugin_factions.models import FactionModel
+from sage_plugin_factions.registry import FactionRegistry
+from sage_plugin_factions.standing import FACTIONS_KEY
+
+from tests.fakes import repo_world
+
+
+@pytest.fixture(autouse=True)
+def _factions_lexicon(plugin_host):
+    """Player lines come from the plugin's lexicon, active while the plugin is loaded."""
+    plugin_host(repo_world(), ["factions"])
 
 
 def _guild(**overrides) -> FactionModel:

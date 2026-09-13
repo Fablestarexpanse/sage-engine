@@ -1,8 +1,9 @@
-"""Faction definitions loaded from content/factions/*.yaml."""
+"""Faction definitions loaded from the world's content/factions/*.yaml."""
 
 from pydantic import BaseModel, Field
 
-# Ordered worst → best; thresholds map a numeric rep onto these names.
+# Ordered worst -> best; thresholds map a numeric rep onto these standing ids.
+# Player-facing names come from the lexicon (factions.standing.<id>).
 STANDING_LEVELS = [
     ("loathed", -100),
     ("hated", -60),
@@ -18,7 +19,7 @@ REP_MAX = 200
 
 
 def standing_name(rep: int) -> str:
-    """Map a numeric reputation onto its standing label."""
+    """Map a numeric reputation onto its standing id."""
     for name, upper in STANDING_LEVELS:
         if rep < upper:
             return name

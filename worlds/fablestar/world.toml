@@ -22,6 +22,7 @@ equipment_slots = ["weapon", "armor"]
 [plugins]
 # Fablestar systems move here from the engine during SAGE Phase 3.
 achievements = "^1"
+factions = "^1"
 
 [params]
 # Tidegate clinic bills up to 10 Digi on respawn; half health on waking.

@@ -1,0 +1,16 @@
+# Factions: reputation-bearing groups, kill reputation and generated kill/collect contracts.
+# Definitions live in the world's content/factions/*.yaml.
+[plugin]
+id = "factions"
+name = "Factions"
+version = "1.0.0"
+engine = ">=0.2,<0.3"
+entry = "sage_plugin_factions.main:setup"
+first_party = true
+
+[touches]
+commands = ["factions", "missions"]
+events_subscribe = ["EntityKilled"]
+state_blocks = ["factions", "mission"]
+services = ["factions"]
+lexicon_prefix = "factions."

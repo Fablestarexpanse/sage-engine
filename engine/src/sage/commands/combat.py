@@ -185,7 +185,7 @@ async def attack(session: Session, args: list[str]):
             room_id,
             target_state.get("template", ""),
         )
-    faction_messages: list[str] = []
+    kill_messages: list[str] = []
     if entity_dead:
         from sage.world.counters import count
 
@@ -198,36 +198,7 @@ async def attack(session: Session, args: list[str]):
             f"kills.{template_id}" if template_id else "",
         )
 
-        # Faction reputation consequences of the kill.
-        try:
-            from sage.factions.engine import apply_kill_reputation
-
-            faction_messages = apply_kill_reputation(
-                player_stats,
-                app_instance.content_loader.get_faction_registry(),
-                target_state.get("template", ""),
-                target_state.get("faction", ""),
-            )
-        except Exception as exc:
-            logger.warning("Faction reputation skipped: %s", exc)
-
-        # Active kill-mission progress (completion pays out immediately).
-        try:
-            from sage.factions.missions import record_kill
-            from sage.world.counters import count
-
-            fac_registry = app_instance.content_loader.get_faction_registry()
-            mission_msgs, completed = record_kill(
-                player_stats, fac_registry, target_state.get("template", ""), app_instance.wallet
-            )
-            faction_messages += mission_msgs
-            if completed:
-                counter_lines += await count(
-                    app_instance, player_id, player_stats, "missions_completed"
-                )
-        except Exception as exc:
-            logger.warning("Mission progress skipped: %s", exc)
-
+        # What the kill means (reputation, contracts, ...) is up to EntityKilled subscribers.
         from sage.core.events import EntityKilled, emit
 
         killed = EntityKilled(
@@ -239,7 +210,7 @@ async def attack(session: Session, args: list[str]):
             stats=player_stats,
         )
         await emit(app_instance, killed)
-        faction_messages += killed.messages
+        kill_messages += killed.messages
 
     await app_instance.redis.set_player_stats(player_id, player_stats)
 
@@ -311,7 +282,7 @@ async def attack(session: Session, args: list[str]):
         else:
             await session.send(f"{entity_name} is dead.")
 
-    for msg in faction_messages:
+    for msg in kill_messages:
         await session.send(f"\r\n{msg}")
 
     for line in counter_lines:

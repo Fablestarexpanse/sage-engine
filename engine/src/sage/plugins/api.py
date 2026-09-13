@@ -6,8 +6,11 @@ against its manifest and withdraw everything if setup fails or the plugin is tor
 
 from __future__ import annotations
 
+import contextlib
+import copy
 import logging
-from collections.abc import Callable
+from collections.abc import AsyncIterator, Callable
+from pathlib import Path
 from typing import Any
 
 from sage import lexicon
@@ -76,6 +79,13 @@ class _Tick:
         self._api._cleanup.append(lambda: tick.unregister(wrapper))
 
 
+def _engine_service_keys(world: Any) -> set[str]:
+    """Stats keys engine services write on a plugin's behalf (wallet, counters)."""
+    from sage.world.counters import COUNTERS_KEY, VISITED_KEY
+
+    return {COUNTERS_KEY, VISITED_KEY, *(c.key for c in getattr(world, "currencies", []) or [])}
+
+
 class _State:
     """Named per-character state blocks stored under the block name in the stats blob."""
 
@@ -98,9 +108,30 @@ class _State:
 
     async def snapshot(self, player_id: str) -> dict[str, Any]:
         """A read-only copy of the character's whole stats blob (engine counters included)."""
-        import copy
-
         return copy.deepcopy(await self._api._host.redis.get_player_stats(player_id))
+
+    @contextlib.asynccontextmanager
+    async def edit(self, player_id: str) -> AsyncIterator[dict[str, Any]]:
+        """Load the whole stats blob, let the plugin change it, save it on success.
+
+        For work that spans the plugin's own blocks and engine services (wallet balances,
+        counters — whose subscribers may update their own blocks). Changing any other top-level
+        key (vitals, a world's progression data) raises PluginError and saves nothing.
+        """
+        redis = self._api._host.redis
+        before = await redis.get_player_stats(player_id)
+        stats = copy.deepcopy(before)
+        yield stats
+        allowed = (
+            set(self._defaults)
+            | set(self._api._host.state_owners)
+            | _engine_service_keys(self._api._host.world)
+        )
+        changed = {k for k in set(before) | set(stats) if before.get(k) != stats.get(k)}
+        stray = sorted(changed - allowed)
+        if stray:
+            raise PluginError(f"plugin {self._api.id} changed stats it does not own: {stray}")
+        await redis.set_player_stats(player_id, stats)
 
     async def get(self, player_id: str, name: str) -> Any:
         self._check(name)
@@ -139,6 +170,46 @@ class _Services:
         return service
 
 
+class _Counters:
+    """Engine counters (sage.world.counters): bump, publish CountersChanged, return player lines."""
+
+    def __init__(self, api: PluginAPI):
+        self._api = api
+
+    async def count(
+        self, player_id: str, stats: dict[str, Any], *names: str, delta: int = 1
+    ) -> list[str]:
+        from sage.world.counters import count
+
+        return await count(self._api._host, player_id, stats, *names, delta=delta)
+
+
+class _Inventory:
+    """A character's carried items (engine hot state)."""
+
+    def __init__(self, api: PluginAPI):
+        self._api = api
+
+    async def get(self, player_id: str) -> list[dict[str, Any]]:
+        return list(await self._api._host.redis.get_player_inventory(player_id) or [])
+
+    async def set(self, player_id: str, items: list[dict[str, Any]]) -> None:
+        await self._api._host.redis.set_player_inventory(player_id, items)
+
+
+class _Content:
+    """Read-only, hot-reloading access to the world's content directories."""
+
+    def __init__(self, api: PluginAPI):
+        self._api = api
+
+    def cached(self, subdir: str, loader: Callable[[Path], Any], pattern: str = "*.yaml") -> Any:
+        """A DirCache over <world content_dir>/<subdir>; get() reloads when files change."""
+        from sage.world.content_cache import DirCache
+
+        return DirCache(Path(self._api._host.world.content_dir) / subdir, loader, pattern)
+
+
 class PluginAPI:
     def __init__(self, host: Any, record: Any):
         self._host = host
@@ -152,6 +223,9 @@ class PluginAPI:
         self.tick = _Tick(self)
         self.state = _State(self)
         self.services = _Services(self)
+        self.counters = _Counters(self)
+        self.inventory = _Inventory(self)
+        self.content = _Content(self)
 
     @property
     def world(self) -> Any:

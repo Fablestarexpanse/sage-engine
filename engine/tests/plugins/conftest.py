@@ -18,6 +18,12 @@ from tests.fakes import FakeRedis
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
+# First-party plugin packages are importable directly so their pure rules can be unit-tested.
+# Behaviour through the engine is tested via plugin_host, which loads them the way servers do.
+for _plugin_dir in sorted((REPO_ROOT / "plugins").iterdir()):
+    if (_plugin_dir / "plugin.toml").is_file() and str(_plugin_dir) not in sys.path:
+        sys.path.insert(0, str(_plugin_dir))
+
 
 @pytest.fixture
 def plugin_host():

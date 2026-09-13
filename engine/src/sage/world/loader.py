@@ -13,7 +13,6 @@ from sage.world.models import EntityTemplate, ItemTemplate, RoomModel
 
 if TYPE_CHECKING:
     from sage.agents.registry import AgentRegistry
-    from sage.factions.registry import FactionRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -145,17 +144,6 @@ class ContentLoader:
         from sage.agents.registry import load_agents
 
         registry = load_agents(self.content_dir)
-        self._cache[cache_key] = registry
-        return registry
-
-    def get_faction_registry(self) -> "FactionRegistry":
-        """Load and cache the faction registry from content/factions/."""
-        cache_key = "factions:registry"
-        if cache_key in self._cache:
-            return self._cache[cache_key]
-        from sage.factions.registry import load_factions
-
-        registry = load_factions(self.content_dir)
         self._cache[cache_key] = registry
         return registry
 

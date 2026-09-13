@@ -608,6 +608,15 @@ class AgentManager:
         zone = state.persona.spawn_zone()
         return sorted(r.split(":")[-1] for r in self._exits_map(zone))
 
+    def _factions(self):
+        """The factions plugin's service, or None when the world doesn't enable it.
+
+        Transitional: engine code reads a plugin service by name until agents are a plugin
+        themselves (phase-3 plan 3.8) and declare the dependency.
+        """
+        entry = getattr(getattr(self.server, "plugins", None), "services", {}).get("factions")
+        return entry[1] if entry else None
+
     async def _lodging_choice(self, digi: int) -> str | None:
         """Desk room with a free (or lapsed) bed this agent can afford, cheapest first."""
         from sage.commands.rent import free_rooms, read_rentals
@@ -637,8 +646,9 @@ class AgentManager:
     ):
         """Deterministic needs-driven goals, most urgent first. (label, commands) or None."""
         from sage.agents.body import route_path
-        from sage.factions.missions import active_mission
         from sage.world.clock import day_phase
+
+        factions = self._factions()
 
         zone = state.persona.spawn_zone()
         exits_of = self._exits_map(zone)
@@ -691,7 +701,7 @@ class AgentManager:
 
         # 4. Work: progress the contract, give up on hopeless ones, or take new
         #    work when purpose bites. Only healthy agents go hunting.
-        mission = active_mission(stats)
+        mission = factions.active_mission(stats) if factions else None
         if mission:
             target = str(mission.get("target", ""))
             trips = int(mission.get("trips", 0))
@@ -718,10 +728,15 @@ class AgentManager:
                         mission["trips"] = trips + 1
                         return g
         elif float(needs.get("purpose", 0)) > 0.8 and hp_frac >= 0.7:
-            from sage.factions.missions import will_deal
-
-            registry = self.server.content_loader.get_faction_registry()
-            hiring = [f for f in registry.all() if f.offers_missions() and will_deal(stats, f)]
+            hiring = (
+                [
+                    f
+                    for f in factions.registry().all()
+                    if f.offers_missions() and factions.will_deal(stats, f)
+                ]
+                if factions
+                else []
+            )
             if hiring:
                 # Spread work across factions; overnight every contract went to
                 # whichever faction happened to load first.

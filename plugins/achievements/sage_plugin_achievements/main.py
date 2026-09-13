@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import time
-from pathlib import Path
 from typing import Any
 
 from sage.api import CountersChanged, PluginAPI
@@ -41,26 +40,9 @@ def check_grants(
     return granted
 
 
-class _CachedRegistry:
-    """Reload definitions when any achievement file changes (content stays hot-reloadable)."""
-
-    def __init__(self, directory: Path):
-        self._dir = directory
-        self._stamp: tuple | None = None
-        self._registry = AchievementRegistry([])
-
-    def get(self) -> AchievementRegistry:
-        files = sorted(self._dir.glob("*.yaml")) if self._dir.is_dir() else []
-        stamp = tuple((f.name, f.stat().st_mtime_ns) for f in files)
-        if stamp != self._stamp:
-            self._registry = load_achievements(self._dir.parent)
-            self._stamp = stamp
-        return self._registry
-
-
 def setup(api: PluginAPI) -> None:
     api.state.block(GRANTS_KEY)
-    cache = _CachedRegistry(Path(api.world.content_dir) / "achievements")
+    cache = api.content.cached("achievements", lambda d: load_achievements(d.parent))
 
     def announce(ach: AchievementModel) -> str:
         return api.t("achievements.unlocked", level=ach.level, story=ach.story_line())

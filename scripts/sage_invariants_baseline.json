@@ -1,7 +1,7 @@
 {
   "totals": {
     "denylist": 2146,
-    "player_literals": 167
+    "player_literals": 157
   },
   "denylist": {
     "engine/alembic/versions/b3c4d5e6f7a8_account_echo_credits.py": 5,
@@ -117,10 +117,8 @@
     "engine/src/sage/commands/communication.py": 17,
     "engine/src/sage/commands/crafting.py": 10,
     "engine/src/sage/commands/effects.py": 7,
-    "engine/src/sage/commands/factions.py": 2,
     "engine/src/sage/commands/info.py": 13,
     "engine/src/sage/commands/items.py": 28,
-    "engine/src/sage/commands/missions.py": 8,
     "engine/src/sage/commands/movement.py": 7,
     "engine/src/sage/commands/proficiency.py": 6,
     "engine/src/sage/commands/rent.py": 6,

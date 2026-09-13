@@ -1,10 +1,10 @@
 """
-Generated faction missions — Epitaph's quests-vs-missions split (roadmap C6).
+Generated faction missions — the quests-vs-missions split.
 
 Kill and collect contracts are machine-generated from faction config; they
 are never hand-written. Hand-crafted puzzle quests are a separate future
-system. One active mission at a time; it lives in the stats blob under
-"mission" so persistence is free.
+system. One active mission at a time; it lives in the ``mission`` state block
+so persistence is free.
 
 Mission shape:
     {"faction": id, "kind": "kill"|"collect", "target": template_id,
@@ -14,12 +14,14 @@ Mission shape:
 import random
 from typing import Any
 
-from sage.factions.engine import adjust_rep, get_rep
-from sage.factions.models import FactionModel, standing_name
-from sage.factions.registry import FactionRegistry
+from sage.api import log_event, t
+
+from .models import FactionModel, standing_name
+from .registry import FactionRegistry
+from .standing import adjust_rep, get_rep
 
 MISSION_KEY = "mission"
-# Standings (by name) that refuse to hand out work.
+# Standings (by id) that refuse to hand out work.
 UNFRIENDLY = {"loathed", "hated"}
 KILL_COUNT_RANGE = (3, 5)
 COLLECT_COUNT_RANGE = (2, 3)
@@ -40,8 +42,8 @@ def generate_mission(
     """Roll one contract from the faction's config; None when it offers none."""
     rng = rng or random.Random()
     options: list[tuple[str, str, tuple[int, int]]] = []
-    options += [("kill", t, KILL_COUNT_RANGE) for t in faction.enemies]
-    options += [("collect", t, COLLECT_COUNT_RANGE) for t in faction.wanted_items]
+    options += [("kill", tid, KILL_COUNT_RANGE) for tid in faction.enemies]
+    options += [("collect", tid, COLLECT_COUNT_RANGE) for tid in faction.wanted_items]
     if not options:
         return None
     kind, target, (lo, hi) = rng.choice(options)
@@ -56,11 +58,12 @@ def generate_mission(
 
 def describe_mission(mission: dict[str, Any], registry: FactionRegistry) -> str:
     faction = registry.get(mission.get("faction", ""))
-    fname = faction.name if faction else mission.get("faction", "?")
-    verb = "Destroy" if mission.get("kind") == "kill" else "Deliver"
-    return (
-        f"{verb} {mission.get('count', 0)}x {mission.get('target', '?')} for {fname} "
-        f"({mission.get('progress', 0)}/{mission.get('count', 0)})"
+    return t(
+        "factions.mission.kill" if mission.get("kind") == "kill" else "factions.mission.collect",
+        count=mission.get("count", 0),
+        target=mission.get("target", "?"),
+        faction=faction.name if faction else mission.get("faction", "?"),
+        progress=mission.get("progress", 0),
     )
 
 
@@ -76,7 +79,7 @@ def record_kill(
         return [], False
     mission["progress"] = int(mission.get("progress", 0)) + 1
     if mission["progress"] < int(mission.get("count", 0)):
-        return [f"Mission: {describe_mission(mission, registry)}"], False
+        return [t("factions.mission.progress", mission=describe_mission(mission, registry))], False
     return _complete(stats, registry, mission, wallet), True
 
 
@@ -93,14 +96,19 @@ def try_complete_collect(
     """
     mission = active_mission(stats)
     if not mission or mission.get("kind") != "collect":
-        return ["You have no delivery to complete."], None
+        return [t("factions.mission.no_delivery")], None
     target = mission.get("target", "")
     needed = int(mission.get("count", 0))
     have = [it for it in inventory if it.get("template") == target]
     if len(have) < needed:
         return [
-            f"You need {needed}x {target} but are carrying {len(have)}. "
-            f"Mission: {describe_mission(mission, registry)}"
+            t(
+                "factions.mission.short",
+                needed=needed,
+                target=target,
+                have=len(have),
+                mission=describe_mission(mission, registry),
+            )
         ], None
     consumed_ids = {it.get("id") for it in have[:needed]}
     new_inventory = [it for it in inventory if it.get("id") not in consumed_ids]
@@ -114,8 +122,6 @@ def _complete(
     """Pay out a finished mission; money goes through the engine wallet when the world has one."""
     stats[MISSION_KEY] = None
     faction = registry.get(mission.get("faction", ""))
-    from sage.telemetry import log_event
-
     log_event(
         "mission_complete",
         faction=mission.get("faction", ""),
@@ -123,18 +129,25 @@ def _complete(
         target=mission.get("target", ""),
         count=mission.get("count", 0),
     )
-    messages = [f"Mission complete: {describe_mission(mission, registry)}"]
+    messages = [t("factions.mission.complete", mission=describe_mission(mission, registry))]
     if faction is not None:
         crossing = adjust_rep(stats, faction, faction.mission_rep)
         pay = int(getattr(faction, "mission_pay", 0) or 0)
         if pay > 0 and wallet is not None and wallet.enabled:
             wallet.credit(stats, pay)
             messages.append(
-                f"{faction.name} credits your account "
-                f"({faction.mission_rep:+d} rep, +{pay} {wallet.name()})."
+                t(
+                    "factions.mission.paid",
+                    faction=faction.name,
+                    rep=faction.mission_rep,
+                    pay=pay,
+                    currency=wallet.name(),
+                )
             )
         else:
-            messages.append(f"{faction.name} credits your account ({faction.mission_rep:+d} rep).")
+            messages.append(
+                t("factions.mission.rep_only", faction=faction.name, rep=faction.mission_rep)
+            )
         if crossing:
             messages.append(crossing)
     return messages

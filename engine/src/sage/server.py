@@ -360,8 +360,6 @@ class SageServer:
         registry.load_module_strict("sage.commands.proficiency")
         registry.load_module_strict("sage.commands.effects")
         registry.load_module_strict("sage.commands.search")
-        registry.load_module_strict("sage.commands.factions")
-        registry.load_module_strict("sage.commands.missions")
         registry.load_module_strict("sage.commands.shop")
         registry.load_module_strict("sage.commands.rent")
         registry.load_module_strict("sage.commands.crafting")

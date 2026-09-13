@@ -1,16 +1,23 @@
 """Factions: standing math, kill reputation, registry loading."""
 
-from pathlib import Path
-
-from sage.factions.engine import (
+import pytest
+from sage_plugin_factions.models import REP_MAX, REP_MIN, FactionModel, standing_name
+from sage_plugin_factions.registry import FactionRegistry, load_factions
+from sage_plugin_factions.standing import (
     FACTIONS_KEY,
     adjust_rep,
     apply_kill_reputation,
     get_rep,
     standings_lines,
 )
-from sage.factions.models import REP_MAX, REP_MIN, FactionModel, standing_name
-from sage.factions.registry import FactionRegistry, load_factions
+
+from tests.fakes import repo_world
+
+
+@pytest.fixture(autouse=True)
+def _factions_lexicon(plugin_host):
+    """Player lines come from the plugin's lexicon, active while the plugin is loaded."""
+    plugin_host(repo_world(), ["factions"])
 
 
 def _faction(**overrides) -> FactionModel:
@@ -81,7 +88,7 @@ def test_standings_lines_include_every_faction():
 
 
 def test_repo_content_factions_load():
-    reg = load_factions(Path("content"))
+    reg = load_factions(repo_world().content_dir / "factions")
     ids = {f.id for f in reg.all()}
     assert {"salvage_union", "dockworkers"} <= ids
     assert reg.enemies_of_template("scrap_drone")[0].id == "dockworkers"

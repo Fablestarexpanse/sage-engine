@@ -23,12 +23,12 @@ by owner G.4 ("every mechanic is a first-party plugin").
 |---|------|--------|
 | 3.1 | Counters service + `CountersChanged` event; achievements → `plugins/achievements` | done |
 | 3.2 | Wallet service over world currencies (`sage.world.wallet`, `api.wallet`); shop, lodging, mission pay, respawn bill, new-character balance use it | done |
-| 3.3 | Factions + missions → `plugins/factions` (subscribe to `EntityKilled`) | next |
-| 3.4 | Shop and lodging → `plugins/shop`, `plugins/lodging` | todo |
+| 3.3 | Factions + missions → `plugins/factions` (subscribe to `EntityKilled`); `PluginAPI` gains `counters`, `inventory`, `content.cached`, `state.edit` | done |
+| 3.4 | Shop and lodging → `plugins/shop`, `plugins/lodging` | next |
 | 3.5 | Crafting and search → `plugins/crafting`, `plugins/search` | todo |
 | 3.6 | Maestro → `plugins/maestro` | todo |
 | 3.7 | Effects API in engine; hazards → `plugins/hazards` | todo |
-| 3.8 | Agents → `plugins/agents` (owner ruling); agent wallet reads (`stats["digi"]`, clinic bill, pending takings) move onto `api.wallet` here | todo |
+| 3.8 | Agents → `plugins/agents` (owner ruling); agent wallet reads (`stats["digi"]`, clinic bill, pending takings) move onto `api.wallet`, and the transitional `AgentManager._factions()` service lookup becomes a declared `depends` on `factions` | todo |
 | 3.9 | Conduit (proficiencies, FRT..PRS, combat resolver, chargen) → `worlds/fablestar/plugins/conduit` | todo |
 | 3.10 | Combat, equipment, ambient, effects → first-party plugins (owner G.4) | todo |
 | 3.11 | Snapshot contributors; `resonance_levels_total` out of the protocol | todo |
@@ -50,3 +50,11 @@ by owner G.4 ("every mechanic is a first-party plugin").
 - `server.game_currency_display_name` and `server.starting_digi_balance` were deleted from config:
   the name comes from the world lexicon (`currency.<key>.name`) and the starting balance from
   `currencies.yaml`. Old keys in a deployment's `server.toml` are ignored.
+- **3.3 new plugin surfaces.** Moving missions out needed four engine seams, all generic:
+  `api.counters.count` (bump + `CountersChanged`), `api.inventory.get/set`,
+  `api.content.cached(subdir, loader)` (mtime-reloading `DirCache`; achievements uses it too), and
+  `api.state.edit(player_id)` — a whole-character edit for work spanning the plugin's own blocks and
+  engine services. `edit` works on a copy and refuses (saving nothing) if any other top-level key
+  changed, so a plugin still cannot write vitals or another world's progression data.
+- Standing names (`loathed` … `exalted`) are ids; players see `factions.standing.<id>` from the
+  lexicon.

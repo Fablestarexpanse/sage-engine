@@ -17,6 +17,7 @@ from sage.core.events import (
 from sage.lexicon import t
 from sage.plugins.api import PluginAPI
 from sage.plugins.manifest import PluginError
+from sage.telemetry import log_event
 from sage.world.death import Respawn
 from sage.world.wallet import Wallet, WalletError
 
@@ -34,5 +35,6 @@ __all__ = [
     "SessionStarted",
     "Wallet",
     "WalletError",
+    "log_event",
     "t",
 ]

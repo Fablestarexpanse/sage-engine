@@ -1,11 +1,11 @@
-"""FactionRegistry — loads content/factions/*.yaml (same pattern as achievements)."""
+"""FactionRegistry — loads the world's content/factions/*.yaml."""
 
 import logging
 from pathlib import Path
 
 import yaml
 
-from sage.factions.models import FactionModel
+from .models import FactionModel
 
 logger = logging.getLogger(__name__)
 
@@ -33,8 +33,9 @@ class FactionRegistry:
         return self._enemy_of.get(template_id, [])
 
 
-def load_factions(content_dir: Path) -> FactionRegistry:
-    factions_dir = Path(content_dir) / "factions"
+def load_factions(factions_dir: Path) -> FactionRegistry:
+    """Every faction YAML in factions_dir (the file stem is the default id)."""
+    factions_dir = Path(factions_dir)
     results: list[FactionModel] = []
     if factions_dir.is_dir():
         for f in sorted(factions_dir.glob("*.yaml")):
