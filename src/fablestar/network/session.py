@@ -28,6 +28,9 @@ class Session:
         self.state = SessionState.CONNECTED
         self.player_id: str | None = None
         self.last_activity = 0.0  # Will be updated with monotonic time
+        # Set when a newer login for the same character evicts this session;
+        # the character's shared state then belongs to the new session.
+        self.superseded = False
 
     async def send(self, message: str):
         """Send raw text to the client, adding a newline."""
@@ -72,7 +75,7 @@ class SessionManager:
         """Remove a session from tracking."""
         if session_id in self.sessions:
             session = self.sessions[session_id]
-            if session.player_id and session.player_id in self.player_to_session:
+            if session.player_id and self.player_to_session.get(session.player_id) == session_id:
                 del self.player_to_session[session.player_id]
 
             await session.close()
@@ -92,6 +95,7 @@ class SessionManager:
         if not old_id or old_id not in self.sessions:
             return False
         old = self.sessions[old_id]
+        old.superseded = True
         try:
             await old.send("\r\nThis character just signed in from another connection. Goodbye.")
         except Exception:
@@ -106,6 +110,12 @@ class SessionManager:
         self.sessions.pop(old_id, None)
         logger.info("Kicked prior session %s for %s (new login)", old_id, player_id)
         return True
+
+    def owns_player(self, session: Session) -> bool:
+        """True while this session is the live owner of its character's shared state."""
+        if session.superseded or not session.player_id:
+            return False
+        return self.player_to_session.get(session.player_id) in (None, session.id)
 
     def link_player(self, session_id: str, player_id: str):
         """Link a session to a player ID once authenticated."""

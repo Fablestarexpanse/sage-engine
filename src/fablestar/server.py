@@ -657,7 +657,9 @@ class FablestarServer:
             logger.error(f"Error in session loop for {session.id}: {e}", exc_info=True)
         finally:
             # Final sync to DB before the session tears down
-            if session.player_id:
+            # A session evicted by a newer login must not tear down the state
+            # the new session is now using (room set, DB sync).
+            if session.player_id and self.session_manager.owns_player(session):
                 await self.persistence.sync_character(session.player_id)
                 # Ghost fix: leaving the game must leave the room too, or the
                 # room's player set keeps a phantom occupant forever.
