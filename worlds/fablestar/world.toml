@@ -23,6 +23,9 @@ equipment_slots = ["weapon", "armor"]
 # Populated as Fablestar systems become plugins (stage 2c loader, Phase 3 migration).
 
 [params]
+# Tidegate clinic bills up to 10 Digi on respawn; half health on waking.
+"engine.death.respawn_bill_max" = 10
+"engine.death.respawn_hp_fraction" = 0.5
 
 [transition]
 # Content and prompts still live at the repository root until Phase 3 moves them in here.

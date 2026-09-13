@@ -22,7 +22,9 @@ from sage.bootstrap import ensure_dev_defaults
 from sage.commands.registry import registry
 from sage.core.comfyui_persist import save_comfyui_toml
 from sage.core.config import ComfyUIConfig, Config, LLMConfig, load_config, resolve_project_root
+from sage.core.events import EventBus, SessionEnded, SessionStarted, emit
 from sage.core.llm_persist import save_llm_toml
+from sage.core.resolvers import Resolvers
 from sage.core.tick import TickManager
 from sage.effects.manager import EffectsManager
 from sage.hot_reload import HotReloader
@@ -85,6 +87,9 @@ class SageServer:
             self.project_root / self.config.server.worlds_dir, self.config.server.world
         )
         self.tick_manager = TickManager(tick_rate=self.config.server.tick_rate)
+        self.events = EventBus()
+        self.resolvers = Resolvers()
+        self._define_engine_resolvers()
         self.session_manager = SessionManager()
         self.redis = RedisState(self.config.redis)
         self.db = PostgresState(self.config.database)
@@ -97,7 +102,7 @@ class SageServer:
         self.maestro = MaestroDirector(self)
         self.agent_manager = AgentManager(self)
         self.hot_reloader = HotReloader(self._on_file_changed)
-        self.dispatcher = CommandDispatcher()
+        self.dispatcher = CommandDispatcher(events=self.events)
         self.nexus = NexusApp(self)
 
         # LLM Subsystems
@@ -496,18 +501,19 @@ class SageServer:
         # as a corpse that dies to the first breeze.
         respawned = False
         respawn_bill = 0
-        if int(norm_stats.get("hp", 1)) <= 0:
+        if self.resolvers.get("death.check")(norm_stats):
             from sage.effects.engine import clear_on_death
 
             clear_on_death(norm_stats)
-            norm_stats["hp"] = max(1, int(norm_stats.get("max_hp", 20)) // 2)
-            if self.content_loader.get_room(self.world.respawn_room) is not None:
-                character.room_id = self.world.respawn_room
-            # Clinic bill (down to zero) — dying has a price on Tidegate.
-            bill = min(int(character.digi_balance or 0), 10)
-            character.digi_balance = int(character.digi_balance or 0) - bill
+            plan = self.resolvers.get("death.respawn")(
+                self.world, norm_stats, int(character.digi_balance or 0)
+            )
+            norm_stats["hp"] = plan.hp
+            if self.content_loader.get_room(plan.room_id) is not None:
+                character.room_id = plan.room_id
+            character.digi_balance = int(character.digi_balance or 0) - plan.bill
             respawned = True
-            respawn_bill = bill
+            respawn_bill = plan.bill
 
         # A character saved in a room that no longer exists (zone deleted or
         # renamed) wakes at the world start instead of a void.
@@ -543,6 +549,8 @@ class SageServer:
         for key in ("login.banner", "login.motd"):
             if text := lexicon.t(key).strip():
                 await session.send(text)
+
+        await emit(self, SessionStarted(player_id=character.name))
 
         # Initial look
         await self.dispatcher.dispatch(session, "look")
@@ -709,6 +717,7 @@ class SageServer:
             # A session evicted by a newer login must not tear down the state
             # the new session is now using (room set, DB sync).
             if session.player_id and self.session_manager.owns_player(session):
+                await emit(self, SessionEnded(player_id=session.player_id))
                 await self.persistence.sync_character(session.player_id)
                 # Ghost fix: leaving the game must leave the room too, or the
                 # room's player set keeps a phantom occupant forever.
@@ -719,6 +728,13 @@ class SageServer:
                 except Exception:
                     logger.debug("Room-set cleanup failed for %s", session.player_id, exc_info=True)
             await self.session_manager.destroy_session(session.id)
+
+    def _define_engine_resolvers(self) -> None:
+        """Engine resolver slots and their defaults (contracts catalog #4)."""
+        from sage.world.death import default_death_check, default_respawn
+
+        self.resolvers.define("death.check", default_death_check)
+        self.resolvers.define("death.respawn", default_respawn)
 
     def _build_lexicon(self) -> lexicon.Lexicon:
         """World strings over engine defaults; installed for Session.say and lexicon.t."""

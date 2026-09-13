@@ -29,6 +29,30 @@ class TickManager:
         """Register an async handler to be called each tick."""
         self._handlers.append(handler)
 
+    def every(
+        self,
+        seconds: float,
+        job: Callable[[int], Coroutine[Any, Any, None]],
+        name: str | None = None,
+    ) -> Callable[[int], Coroutine[Any, Any, None]]:
+        """Run an async job about every `seconds` (rounded to whole ticks, at least one).
+
+        Returns the registered wrapper; its __qualname__ is `name` so failures log clearly.
+        """
+        interval = max(1, round(seconds / self.tick_rate))
+
+        async def run_job(tick: int) -> None:
+            if tick % interval == 0:
+                await job(tick)
+
+        run_job.__qualname__ = name or getattr(job, "__qualname__", "tick_job")
+        self._handlers.append(run_job)
+        return run_job
+
+    def unregister(self, handler: Callable[[int], Coroutine[Any, Any, None]]) -> None:
+        if handler in self._handlers:
+            self._handlers.remove(handler)
+
     async def run(self) -> None:
         """Main tick loop with drift compensation."""
         self.is_running = True

@@ -173,6 +173,10 @@ class WorldPackage:
         override = self.manifest.transition.prompts_dir
         return (self.root / override).resolve() if override else self.root / "ai" / "prompts"
 
+    def param(self, key: str, default: Any = None) -> Any:
+        """A world.toml [params] value, or default when the world does not set it."""
+        return self.manifest.params.get(key, default)
+
     @property
     def lexicon_dir(self) -> Path:
         return self.root / "lexicon"

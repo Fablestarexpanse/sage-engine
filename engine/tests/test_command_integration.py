@@ -136,3 +136,43 @@ class TestUnknownCommandIntegration(IntegrationCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestKillEventIntegration(IntegrationCase):
+    def test_kill_publishes_entity_killed_and_sends_subscriber_lines(self) -> None:
+        asyncio.run(self._kill_event())
+
+    async def _kill_event(self) -> None:
+        from sage.core.events import EntityKilled, EventBus, RoomEntered
+
+        self.server.events = EventBus()
+        seen: list[EntityKilled] = []
+
+        def on_kill(event: EntityKilled) -> None:
+            seen.append(event)
+            event.messages.append("The town will remember this.")
+
+        entered: list[RoomEntered] = []
+        self.server.events.subscribe(EntityKilled, on_kill, owner="probe")
+        self.server.events.subscribe(RoomEntered, entered.append, owner="probe")
+        await self._login()
+        await self.server.redis.set_entity_state(
+            "stalker_1",
+            {
+                "name": "Void Stalker",
+                "template": "stalker",
+                "hp": 1,
+                "max_hp": 10,
+                "defense": 0,
+                "alive": True,
+                "loot": [],
+            },
+        )
+        await self.server.redis.add_entity_to_room("stalker_1", ROOM)
+        await self.server.dispatcher.dispatch(self.session, "attack stalker")
+        self.assertEqual(
+            [(e.killer_id, e.template, e.room_id) for e in seen], [("tester", "stalker", ROOM)]
+        )
+        self.assertIn("The town will remember this.", "\n".join(self.session.sent))
+        await self.server.dispatcher.dispatch(self.session, "north")
+        self.assertEqual([(e.from_room_id, e.room_id) for e in entered], [(ROOM, ROOM_NORTH)])

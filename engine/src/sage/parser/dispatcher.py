@@ -7,6 +7,7 @@ import time
 
 from sage import lexicon
 from sage.commands.registry import registry
+from sage.core.events import CommandExecuted
 from sage.network.session import Session
 from sage.parser.tokenizer import tokenize
 
@@ -61,6 +62,10 @@ class CommandDispatcher:
     Routes user input to the appropriate command handler.
     """
 
+    def __init__(self, events=None):
+        # EventBus for CommandExecuted; optional so tests can dispatch without a server.
+        self.events = events
+
     def _allow(self, session: Session) -> bool:
         if getattr(session, "is_agent", False):
             return True
@@ -102,6 +107,10 @@ class CommandDispatcher:
         if command:
             try:
                 await command.handler(session, args)
+                if self.events is not None:
+                    await self.events.publish(
+                        CommandExecuted(player_id=session.player_id, verb=command.name, args=args)
+                    )
             except Exception as e:
                 logger.error(f"Error executing command '{verb}': {e}")
                 await session.say("parser.command_error")
