@@ -1,8 +1,8 @@
 # SAGE decoupling — decision log
 
-NEXT: Phase 1 contracts APPROVED 2026-09-13 (amendments: PHASE1_CONTRACTS.md Part H). Stage 2a
-started: executor phase doc `docs/dev/milestones/M2-sage-decoupling/phase-01-ci-baseline.md` is
-ready to dispatch (`/rexymcp:dispatch`); docs for phases 02-04 are written after 01 is reviewed.
+NEXT: Contracts approved. Stage 2a: phase 01 CI baseline DONE (first GitHub run green,
+branch pushed). Phase 02 live test tier doc ready: `docs/dev/milestones/M2-sage-decoupling/phase-02-live-test-tier.md`.
+Then phases 03 (invariant ratchet) and 04 (license report); docs written after 02 review.
 Review page (private): https://claude.ai/code/artifact/2d488113-1ca9-4f45-b993-ac0253e0670c
 
 Append-only. One entry per ruling or decision, newest last. Owner rulings are binding; architect

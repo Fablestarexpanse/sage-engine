@@ -1,7 +1,7 @@
 # Phase 01: CI baseline
 
 **Milestone:** M2 — SAGE engine decoupling
-**Status:** review
+**Status:** done
 **Depends on:** none
 **Estimated diff:** ~120 lines
 **Tags:** language=yaml, kind=feature, size=s
@@ -180,3 +180,14 @@ Not yet run on GitHub — the branch is not pushed.
 `requirements.lock` natively; the lock was verified on Windows only. `npm ci` reported audit
 advisories in WorldForge dependencies (not acted on; phase 04 license/dependency report is the
 place).
+
+### Review — 2026-09-13 (architect)
+
+**Verdict:** accepted. **Bounces:** 0. **Executor:** architect (direct, owner said "continue").
+**Scope deviations:** one, justified — `core/config.py` `tomli` → `tomllib`; without it CI fails
+on first run and a clean server install cannot load config.
+**First GitHub run:** https://github.com/Fablestarexpanse/FablestarExpanseMUD/actions/runs/34781080176
+on `862f48f` — `python` success, `worldforge` success, 30 s wall time.
+**Calibration:** the spec's "no source changes" boundary was wrong for a first clean-environment
+run; future CI phases should expect environment-only bugs and authorize minimal dependency
+fixes.
