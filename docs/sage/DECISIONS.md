@@ -1,9 +1,10 @@
 # SAGE decoupling — decision log
 
-NEXT: Stage 2a in PR #7 (green). Stage 2b DONE on branch `sage/stage-2b` (dae9508 rename, e99cfcb
-engine/ move, b06b09a clients/tools move, bd1f292 identity). Next: architect writes stage 2c phase docs
-(plugin loader, lexicon, world loader, resolvers, event bus, state blocks, skeleton world 2).
-Ratchet 2188/177 must only go down. Review page: https://claude.ai/code/artifact/2d488113-1ca9-4f45-b993-ac0253e0670c
+NEXT: Stage 2a in PR #7. 2b done (branch sage/stage-2b). Stage 2c on branch sage/stage-2c:
+phase 05 world packages, 06 lexicon, 07 events/resolvers/tick jobs, 08 plugin loader DONE (+ tick race fix).
+In progress: phase 09 skeleton second world `rivermoot` + world-private `levels` plugin + per-world
+boot smoke test in the live tier. Then: plugin migrations, world_overrides + Nexus lexicon editing,
+import-boundary check. Ratchet 2186/169. Review page: https://claude.ai/code/artifact/2d488113-1ca9-4f45-b993-ac0253e0670c
 
 Append-only. One entry per ruling or decision, newest last. Owner rulings are binding; architect
 decisions are proposals until the Phase 1 review approves them.
