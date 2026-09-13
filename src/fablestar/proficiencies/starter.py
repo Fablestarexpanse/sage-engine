@@ -12,6 +12,22 @@ STARTER_POINTS_BUDGET = 15
 STARTER_MAX_PER_LEAF = 5
 
 
+def coerce_starter_level(raw: Any) -> int | None:
+    """A whole-number level from JSON, or None when the value isn't one.
+
+    Accepts ints and integral floats (2.0). Rejects bools, strings, fractions,
+    NaN and infinities instead of truncating them: int(5.9) would quietly
+    become 5 and int(inf) raises OverflowError.
+    """
+    if isinstance(raw, bool):
+        return None
+    if isinstance(raw, int):
+        return raw
+    if isinstance(raw, float) and raw.is_integer():
+        return int(raw)
+    return None
+
+
 def validate_starter_allocation(
     allocation: dict[str, int],
     registry: ProficiencyRegistry,
@@ -26,9 +42,8 @@ def validate_starter_allocation(
         lid = lid.strip()
         if registry.get_leaf(lid) is None:
             return False, f"unknown_proficiency:{lid}"
-        try:
-            n = int(raw)
-        except (TypeError, ValueError):
+        n = coerce_starter_level(raw)
+        if n is None:
             return False, f"invalid_level:{lid}"
         if n < 0 or n > STARTER_MAX_PER_LEAF:
             return False, f"level_out_of_range:{lid}"

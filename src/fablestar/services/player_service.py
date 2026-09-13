@@ -251,7 +251,10 @@ class PlayerService:
         self, starter_proficiencies: dict[str, int] | None
     ) -> tuple[dict[str, Any] | None, dict[str, int]]:
         """Coerce and validate the chargen skill allocation. Returns (error_response, cleaned)."""
+        from fablestar.proficiencies.starter import coerce_starter_level
+
         starter_clean: dict[str, int] = {}
+        seen: set[str] = set()
         if starter_proficiencies:
             for k, v in starter_proficiencies.items():
                 if not isinstance(k, str):
@@ -259,9 +262,12 @@ class PlayerService:
                 kid = k.strip()
                 if not kid:
                     continue
-                try:
-                    n = int(v)
-                except (TypeError, ValueError):
+                if kid in seen:
+                    # " combat.melee.blades" and "combat.melee.blades" both given.
+                    return {"ok": False, "error": "invalid_starter_proficiencies"}, {}
+                seen.add(kid)
+                n = coerce_starter_level(v)
+                if n is None:
                     return {"ok": False, "error": "invalid_starter_proficiencies"}, {}
                 if n != 0:
                     starter_clean[kid] = n

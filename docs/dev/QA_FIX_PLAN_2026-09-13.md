@@ -30,7 +30,6 @@ scrolled up and follows when at bottom, focus stays on the input.
 ## Follow-ups (not done)
 
 - ~~Narrow screens~~ — owner ruling 2026-09-13: phones are not a supported target; tablets are. Tablet (768x1024) checked: all panels visible, no horizontal scroll, top bar a little crowded.
-- Chargen float/bool starter allocation still untested.
 - Tab completion list is static; drifts when commands are added (a server-provided list would fix that).
 
 ## Death & respawn pass (2026-09-13)
@@ -55,3 +54,20 @@ Found and fixed:
 
 Design notes (not changed): death disconnects the socket and respawn happens on the next login; the web
 client makes that a ~2.5 s blink. No item or XP loss beyond the 10 Digi bill.
+
+## Chargen starter allocation pass (2026-09-13)
+
+`POST /play/characters/create` with 30 raw-JSON allocations (dev-login token, portrait_url preset so no
+ComfyUI spend; accepted characters deleted straight after).
+
+Found and fixed (`proficiencies/starter.py:coerce_starter_level`, used by the service and the validator):
+- **S2 Infinity / -Infinity / 1e400 → HTTP 500** — `int(inf)` raised OverflowError, which nothing caught.
+- **S3 non-integers silently truncated** — 2.7 became 2, 5.9 became 5 (over the per-leaf max as typed),
+  `true` became 1, `"3"` and `" 4 "` were accepted, -0.5 and 0.99 silently dropped. Now only ints and
+  integral floats (2.0) are accepted; everything else is `invalid_starter_proficiencies`.
+- **S4 duplicate keys after trimming** (`"combat.melee.blades"` and `" combat.melee.blades"`) — the last one
+  silently won; now refused.
+
+Already fine: NaN, null, lists, objects and non-numeric strings refused; 1e308 → level_out_of_range; a
+non-object allocation → 422; unknown leaf at 0 is ignored; budget and per-leaf max hold. The player UI
+already sends floored integers, so normal character creation is unaffected.
