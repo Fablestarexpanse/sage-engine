@@ -24,8 +24,8 @@ by owner G.4 ("every mechanic is a first-party plugin").
 | 3.1 | Counters service + `CountersChanged` event; achievements → `plugins/achievements` | done |
 | 3.2 | Wallet service over world currencies (`sage.world.wallet`, `api.wallet`); shop, lodging, mission pay, respawn bill, new-character balance use it | done |
 | 3.3 | Factions + missions → `plugins/factions` (subscribe to `EntityKilled`); `PluginAPI` gains `counters`, `inventory`, `content.cached`, `state.edit` | done |
-| 3.4 | Engine seams shop/lodging need: content schema extensions (catalog #7, `api.content.extend`) and plugin HTTP routes (#9) | in progress |
-| 3.5 | Shop and lodging → `plugins/shop`, `plugins/lodging` | todo |
+| 3.4 | Engine seams shop/lodging need: content schema extensions (catalog #7, `api.content.extend`) and plugin admin HTTP routes (#9, `api.http.admin_router`) | done |
+| 3.5 | Shop and lodging → `plugins/shop`, `plugins/lodging` | next |
 | 3.6 | Crafting and search → `plugins/crafting`, `plugins/search` | todo |
 | 3.7 | Maestro → `plugins/maestro` | todo |
 | 3.8 | Effects API in engine; hazards → `plugins/hazards` | todo |
@@ -64,3 +64,8 @@ by owner G.4 ("every mechanic is a first-party plugin").
   `api.content.extend("room", "shop", ShopModel)` and reads it validated with
   `api.content.extension(room, "room", "shop")`. Invalid blocks log once with the content id and
   read as absent. `ContentExtensions.schemas()` is the hook WorldForge will use for plugin fields.
+- **3.4 plugin routes.** Only `api.http.admin_router(router, tool)` exists: mounted at
+  `/plugins/<id>/admin/*`, staff token plus an existing Nexus tool id required; `routes` in the
+  manifest may only be `"/plugins/<id>/*"`; teardown unmounts. The contract's `play_router` is not
+  built until a plugin needs a player-facing HTTP route (prefer-delete / two-world ceiling). Tool
+  ids stay the fixed Nexus set until declarative admin panels (3.13) let plugins add nav entries.

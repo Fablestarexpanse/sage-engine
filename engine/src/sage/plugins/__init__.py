@@ -38,6 +38,7 @@ class PluginHost:
     plugins_root: Path
     trusted_roots: list[Path]
     content: Any = None  # ContentLoader
+    http: Any = None  # the Nexus FastAPI app (None in hosts without HTTP)
     extensions: ContentExtensions = field(default_factory=ContentExtensions)
     services: dict[str, tuple[str, Any]] = field(default_factory=dict)
     state_owners: dict[str, str] = field(default_factory=dict)

@@ -405,3 +405,67 @@ def test_extensions_must_be_declared_unique_and_not_engine_fields(tmp_path, host
         registry.register("zone", "x", Board, owner="a")
     registry.withdraw("a")
     registry.register("room", "notice_board", Board, owner="b")
+
+
+LEDGER = """
+from fastapi import APIRouter
+
+from sage.api import PluginAPI
+
+
+def setup(api: PluginAPI) -> None:
+    router = APIRouter()
+
+    @router.get("/ledger")
+    async def ledger():
+        return {"rows": 3}
+
+    api.http.admin_router(router, tool="shops")
+"""
+
+
+def _app_with_staff(tools):
+    from fastapi import FastAPI
+
+    from sage.admin.admin_security import AdminContext
+
+    app = FastAPI()
+
+    @app.middleware("http")
+    async def staff(request, call_next):
+        request.state.admin_ctx = AdminContext(
+            staff_id=1, username="s", display_name="S", role="staff", permissions={"tools": tools}
+        )
+        return await call_next(request)
+
+    return app
+
+
+def test_plugin_admin_routes_mount_under_their_prefix_behind_a_tool(tmp_path, host_for):
+    from fastapi.testclient import TestClient
+
+    write_plugin(tmp_path / "plugins", "ledgers", LEDGER, touches='routes = ["/plugins/ledgers/*"]')
+    host = host_for({"ledgers": "^1"})
+    host.http = _app_with_staff(["shops"])
+    host.load()
+    client = TestClient(host.http)
+    assert client.get("/plugins/ledgers/admin/ledger").json() == {"rows": 3}
+
+    denied = _app_with_staff(["agents"])
+    denied.router.routes[:] = host.http.router.routes
+    assert TestClient(denied).get("/plugins/ledgers/admin/ledger").status_code == 403
+
+    host.teardown()
+    assert client.get("/plugins/ledgers/admin/ledger").status_code == 404
+
+
+def test_plugin_routes_must_be_declared_under_their_own_prefix(tmp_path, host_for):
+    write_plugin(tmp_path / "plugins", "ledgers", LEDGER, touches="")
+    host = host_for({"ledgers": "^1"})
+    host.http = _app_with_staff(["shops"])
+    with pytest.raises(PluginError, match="routes"):
+        host.load()
+    bad = tmp_path / "bad"
+    write_plugin(bad, "ledgers", LEDGER, touches='routes = ["/admin/*"]')
+    with pytest.raises(PluginError, match="may only declare"):
+        read_manifest(bad / "ledgers")

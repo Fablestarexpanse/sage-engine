@@ -26,6 +26,7 @@ SUPPORTED_TOUCHES = (
     "state_blocks",
     "services",
     "content_extensions",
+    "routes",
     "lexicon_prefix",
 )
 
@@ -133,6 +134,14 @@ class PluginManifest(BaseModel):
             k: ({"version": v} if isinstance(v, str) else v) for k, v in deps.items()
         }
         return data
+
+    @model_validator(mode="after")
+    def _routes(self) -> PluginManifest:
+        allowed = f"/plugins/{self.plugin.id}/*"
+        for route in self.touches.routes:
+            if route != allowed:
+                raise ValueError(f"routes may only declare {allowed!r} (got {route!r})")
+        return self
 
     @model_validator(mode="after")
     def _lexicon_prefix(self) -> PluginManifest:

@@ -241,6 +241,41 @@ class _Content:
         return self._api._host.content.get_entity_template(template_id)
 
 
+class _Http:
+    """Plugin HTTP routes on Nexus (contracts catalog #9), mounted under /plugins/<id>/."""
+
+    def __init__(self, api: PluginAPI):
+        self._api = api
+
+    def admin_router(self, router: Any, tool: str) -> None:
+        """Mount router at /plugins/<id>/admin; every route needs a staff token and `tool`."""
+        from fastapi import Depends
+
+        from sage.admin.route_helpers import require_tool
+
+        app = self._api._host.http
+        if app is None:
+            self._api.log.info("no HTTP app in this host; admin routes not mounted")
+            return
+        try:
+            guard = require_tool(tool)
+        except ValueError as exc:
+            raise PluginError(f"plugin {self._api.id}: {exc}") from exc
+        before = list(app.router.routes)
+        app.include_router(
+            router, prefix=f"/plugins/{self._api.id}/admin", dependencies=[Depends(guard)]
+        )
+        added = [r for r in app.router.routes if r not in before]
+        app.openapi_schema = None
+        self._api._record.record("routes", f"/plugins/{self._api.id}/*")
+
+        def unmount() -> None:
+            app.router.routes[:] = [r for r in app.router.routes if r not in added]
+            app.openapi_schema = None
+
+        self._api._cleanup.append(unmount)
+
+
 class PluginAPI:
     def __init__(self, host: Any, record: Any):
         self._host = host
@@ -257,6 +292,7 @@ class PluginAPI:
         self.counters = _Counters(self)
         self.inventory = _Inventory(self)
         self.content = _Content(self)
+        self.http = _Http(self)
 
     @property
     def world(self) -> Any:

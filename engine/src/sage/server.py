@@ -119,6 +119,7 @@ class SageServer:
             trusted_roots=[self.project_root / "plugins", self.project_root / "worlds"],
         )
         self.nexus = NexusApp(self)
+        self.plugins.http = self.nexus.app
 
         # LLM Subsystems
         self.llm_client = LLMClient(self.config.llm)
