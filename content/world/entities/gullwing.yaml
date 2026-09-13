@@ -11,4 +11,5 @@ stats:
   attack: 1
   defense: 0
 tags: [animal, neutral]
-loot: [dried_gullwing]
+loot:
+- {template: dried_gullwing, chance: 0.7}

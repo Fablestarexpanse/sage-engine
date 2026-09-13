@@ -9,3 +9,5 @@ slot: weapon
 attack: 6
 ammo: charge_cell
 tags: [weapon, ballistic, scifi]
+recipe: {drone_core: 1, power_cell: 2, scrap_blade: 1}
+scraps: {drone_core: 1, power_cell: 1}

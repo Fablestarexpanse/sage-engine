@@ -8,3 +8,5 @@ weight: 1.2
 slot: weapon
 attack: 2
 tags: [weapon, salvage]
+recipe: {crab_chitin: 1, power_cell: 1}
+scraps: {power_cell: 1}

@@ -103,6 +103,13 @@ class ContentLoader:
             logger.error(f"Error loading item template {item_id}: {e}")
             return None
 
+    def list_item_template_ids(self) -> list[str]:
+        """All item template ids on disk (file stems under content/world/items)."""
+        items_dir = self.content_dir / "world" / "items"
+        if not items_dir.is_dir():
+            return []
+        return sorted(p.stem for p in items_dir.glob("*.yaml"))
+
     def list_entity_templates(self) -> list[EntityTemplate]:
         """Return all entity templates found on disk."""
         entities_dir = self.content_dir / "world" / "entities"

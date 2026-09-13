@@ -8,3 +8,5 @@ weight: 4.0
 slot: armor
 defense: 3
 tags: [armor]
+recipe: {crab_chitin: 3}
+scraps: {crab_chitin: 1}

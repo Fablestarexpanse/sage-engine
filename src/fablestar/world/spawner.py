@@ -97,7 +97,7 @@ class EntitySpawnManager:
             "attack": stats.get("attack", 3),
             "defense": stats.get("defense", 1),
             "alive": True,
-            "loot": list(tmpl.loot),
+            "loot": [e.model_dump() for e in tmpl.loot],
             "faction": tmpl.faction or "",
         }
         await self.server.redis.set_entity_state(entity_id, state)
@@ -123,9 +123,17 @@ class EntitySpawnManager:
             return []
 
         dropped: list[str] = []
-        for item_template_id in state.get("loot", []):
-            if random.random() < 0.6:  # 60% drop chance per loot entry
-                item_id = await self._drop_item(room_id, item_template_id)
+        for entry in state.get("loot", []):
+            # Drop-table rows carry their own chance/count; bare template ids
+            # (pre-rate entity states still in Redis) keep the legacy 60%.
+            if isinstance(entry, str):
+                entry = {"template": entry}
+            chance = float(entry.get("chance", 0.6))
+            count = int(entry.get("count", 1))
+            if random.random() >= chance:
+                continue
+            for _ in range(max(1, count)):
+                item_id = await self._drop_item(room_id, entry.get("template", ""))
                 if item_id:
                     dropped.append(item_id)
 

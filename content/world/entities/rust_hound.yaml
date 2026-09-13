@@ -12,4 +12,5 @@ stats:
   attack: 4
   defense: 1
 tags: [animal, hostile]
-loot: [hound_pelt]
+loot:
+- {template: hound_pelt, chance: 0.65}

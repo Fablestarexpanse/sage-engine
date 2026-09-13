@@ -8,3 +8,5 @@ weight: 1.5
 slot: weapon
 attack: 4
 tags: [weapon, melee]
+recipe: {scrap_blade: 1, power_cell: 2}
+scraps: {power_cell: 1, scrap_blade: 1}

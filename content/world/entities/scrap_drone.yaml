@@ -12,5 +12,7 @@ stats:
   attack: 2
   defense: 0
 tags: [mechanical, hostile]
-loot: [power_cell, drone_core]
+loot:
+- {template: power_cell, chance: 0.5}
+- {template: drone_core, chance: 0.15}
 faction: salvage_union

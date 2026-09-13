@@ -6,3 +6,4 @@ description: The great focusing lens from the cave machine's eye, deep amber and
 value: 60
 weight: 1.0
 tags: [artifact, salvage, rare]
+scraps: {charge_cell: 4, drone_core: 1}

@@ -148,6 +148,19 @@ Test suites: server **150** pytest, WorldForge **34** vitest — all green.
       empty at fist damage; two crabs killed, both dropped chitin;
       gullwings coexisted peacefully; the Warden spawned in the caves
 
+- [x] Crafting + deconstruction (owner ask): recipes on ItemTemplate
+      (recipe inputs, yields batch size, scraps outputs) — recipes/craft/
+      deconstruct commands; equipped gear never counts as parts; crafting
+      trains the fabrication tree, deconstruct trains salvage.disassembly;
+      crafted/deconstructed counters. Recipes: charge cells 3-from-a-power-
+      cell, scrap blade, shock baton, scrap plate (3 chitin), pulse pistol;
+      warden lens + drone core deconstruct-only. Drop RATES (owner ask):
+      loot is now a drop table ({template, chance, count}; bare ids keep
+      legacy 60%) — drone 50% cell/15% core, gullwing 70%, crab 55%,
+      hound 65%, Warden 100% lens + 4 cells + 80% core. Verified live:
+      'charge cell x3' from one dead cell, plate from 3 chitin, strip
+      plate back to chitin, equipped pistol refused
+
 ### worldforge-mcp gaps found building Tidegate Isle
 - [ ] create_room(from_room, from_dir) positions the room but does NOT create
       the exit — every link needs a separate connect_rooms call; either add

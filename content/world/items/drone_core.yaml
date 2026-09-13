@@ -6,3 +6,4 @@ description: A feral drone's processor core, still warm. The Salvage Union pays
 value: 20
 weight: 0.6
 tags: [component, salvage]
+scraps: {power_cell: 1, charge_cell: 2}

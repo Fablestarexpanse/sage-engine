@@ -11,4 +11,5 @@ stats:
   attack: 3
   defense: 2
 tags: [animal, hostile]
-loot: [crab_chitin]
+loot:
+- {template: crab_chitin, chance: 0.55}
