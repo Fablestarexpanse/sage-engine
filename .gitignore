@@ -42,3 +42,4 @@ config/redis.toml
 Thumbs.db
 .idea/
 config/agents_llm.toml
+models/

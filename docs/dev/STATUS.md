@@ -96,8 +96,10 @@ Test suites: server **150** pytest, WorldForge **34** vitest — all green.
       one-shot "Test brain"); settings persist to config/agents_llm.toml and
       apply live (AgentBrain.reconfigure). Verified live: backend switch saved,
       test returns graceful "model file not found" with no GGUF present.
-      Positive embedded path needs a GGUF dropped into models/ (user approval
-      required for download)
+      Positive path verified with Qwen2.5-3B-Instruct-Q4_K_M.gguf (~1.9 GB in
+      models/, gitignored): admin Test brain ✓ 2.16s; live in-game reply
+      ('Sela Varn says: "anythin needs doin?"' to an addressed say). M3 fully
+      closed; no external LLM process needed for agent voices
 - [ ] M4 intent: wake queue → JSON goals compiled to Body scripts; memory ring
       into prompts (needs the brain endpoint running to tune)
 - [x] Durability: agent_state table (Alembic k4l5m6n7o8p9), flushed on the
