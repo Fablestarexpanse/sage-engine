@@ -205,6 +205,10 @@ def compile_goal(
         if not slug:
             return None
         room_id = target if ":" in target else f"{zone}:{slug}"
+        if room_id not in exits_of:
+            # Known rooms are offered as bare slugs and can live in another
+            # zone (the AIpub apartments): resolve the slug against the map.
+            room_id = next((r for r in exits_of if r.split(":")[-1] == slug), room_id)
         path = route_path(current_room, room_id, exits_of)
         if not path:  # unreachable or already there
             return None

@@ -58,6 +58,17 @@ class TestCompileGoal:
         assert label == "wander_to d"
         assert cmds == ["east", "north"]
 
+    def test_wander_to_resolves_slug_in_another_zone(self):
+        exits = {
+            **EXITS,
+            "z:d": {"south": "z:b", "up": "pub:apartment_1"},
+            "pub:apartment_1": {"down": "z:d"},
+        }
+        label, cmds = compile_goal(
+            self._i("wander_to", "apartment_1"), "z:a", "z", exits, _find_none
+        )
+        assert cmds == ["east", "north", "up"]
+
     def test_wander_to_unreachable_none(self):
         assert compile_goal(self._i("wander_to", "mars"), "z:a", "z", EXITS, _find_none) is None
 
