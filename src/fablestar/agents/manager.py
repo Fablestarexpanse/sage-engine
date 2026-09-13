@@ -42,6 +42,11 @@ class AgentState:
         self.goal_label: str | None = None
         self.last_action: str = "spawned"
         self.last_action_at: float = time.time()
+        self.last_hp: int | None = None
+        self.enabled = True
+        # POV log for the admin "look through their eyes" panel (brain fills
+        # real prompts in M3/M4; body decisions land here meanwhile).
+        self.pov: list[dict[str, Any]] = []
         self.rng = random.Random(hash(persona.id) & 0xFFFF)
 
 
@@ -139,6 +144,8 @@ class AgentManager:
 
     async def _tick_agent(self, state: AgentState):
         server = self.server
+        if not state.enabled:
+            return
         name = state.persona.name
         room_id = await server.redis.get_player_location(name)
         if not room_id:
@@ -147,6 +154,22 @@ class AgentManager:
         if room is None:
             return
         stats = await server.redis.get_player_stats(name)
+
+        # Feelings: event detection + decay (deterministic, cheap).
+        from fablestar.agents import feelings as fx
+
+        hp_now = int(stats.get("hp", 1))
+        if state.last_hp is not None and hp_now < state.last_hp:
+            fx.on_hurt(
+                stats, state.persona, (state.last_hp - hp_now) / max(1, stats.get("max_hp", 1))
+            )
+        state.last_hp = hp_now
+        for other in await server.redis.get_room_players(room_id):
+            if other != name:
+                fx.on_company(stats, state.persona, other)
+        fx.decay_tick(stats, state.persona)
+        # Decay always mutates, so one unconditional write per tick.
+        await server.redis.set_player_stats(name, stats)
 
         # Entities + hostility
         entity_states = []
@@ -188,11 +211,19 @@ class AgentManager:
             state.goal_commands.pop(0)
             if not state.goal_commands:
                 state.goal_label = None
+                from fablestar.agents import feelings as fx2
+
+                fx2.on_goal_done(stats, state.persona)
+                await server.redis.set_player_stats(name, stats)
         if reason == "wander":
             lo, hi = WANDER_COOLDOWN_S
             state.next_wander_at = now + state.rng.uniform(lo, hi)
         state.last_action = f"{reason}: {command}"
         state.last_action_at = now
+        state.pov.append(
+            {"at": now, "kind": "body", "prompt": f"[reflex] {reason}", "response": command}
+        )
+        del state.pov[:-20]
         await server.dispatcher.dispatch(state.session, command)
 
     # ------------------------------------------------------------------
