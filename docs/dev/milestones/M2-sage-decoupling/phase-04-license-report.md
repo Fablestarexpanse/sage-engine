@@ -1,7 +1,7 @@
 # Phase 04: License report
 
 **Milestone:** M2 — SAGE engine decoupling
-**Status:** todo
+**Status:** done
 **Depends on:** phase-01
 **Estimated diff:** ~400 lines
 **Tags:** language=python, kind=feature, size=m
@@ -56,11 +56,11 @@ the build on strong-copyleft or unidentified licenses in shipped dependencies.
 
 ## Acceptance criteria
 
-- [ ] Report runs in the clean venv from phase 01 with cargo, exits 0, and lists elkjs EPL-2.0
+- [x] Report runs in the clean venv from phase 01 with cargo, exits 0, and lists elkjs EPL-2.0
       as weak.
-- [ ] A synthetic GPL-3.0 runtime package makes the policy fail; allowlisting it passes.
-- [ ] CI `licenses` job green and uploads `license-report.md`.
-- [ ] Gates and invariant ratchet pass.
+- [x] A synthetic GPL-3.0 runtime package makes the policy fail; allowlisting it passes.
+- [x] CI `licenses` job green and uploads `license-report.md`.
+- [x] Gates and invariant ratchet pass.
 
 ## Test plan
 
@@ -83,3 +83,35 @@ the build on strong-copyleft or unidentified licenses in shipped dependencies.
 ## Update Log
 
 <!-- entries appended below this line -->
+
+### Update — 2026-09-13 14:40 (complete)
+
+**Summary:** Executed by the architect directly. Built as specified. The first real run failed
+the policy on `target-lexicon` (`Apache-2.0 WITH LLVM-exception`), which exposed missing SPDX
+`WITH` handling; exceptions now classify by their base license (GPL + exception counts as weak).
+The synthetic GPL/allowlist criterion is covered by
+`test_policy_fails_strong_and_unknown_unless_allowlisted`.
+
+**Commands:** ruff check/format clean (`src tests` + both scripts); `pytest -q` 376 passed,
+5 skipped; invariant ratchet unchanged (2885 / 177).
+
+**End-to-end verification:**
+
+```
+clean venv + cargo: python scripts/license_report.py --require-cargo --out license-report.md
+  before WITH fix: FAIL cargo target-lexicon 0.12.16: Apache-2.0 WITH LLVM-exception (unknown)   exit 1
+  after:  1194 dependencies (666 shipped); 0 policy violations   exit 0
+| python | 44 shipped  | 43 permissive | 1 weak (certifi MPL-2.0) |
+| npm    | 84 shipped, 528 dev-only | 82 permissive | 2 weak (elkjs EPL-2.0 in admin-ui, worldforge) |
+| cargo  | 538 shipped | 530 permissive | 7 weak (cssparser x2, cssparser-macros, dtoa-short, option-ext, selectors x2 — MPL-2.0) | 1 unknown -> fixed |
+GitHub run 34782191850 licenses job: identical summary, 0 violations, report uploaded
+```
+
+**Commits:** `b12560c` ci: dependency license report with a copyleft/unknown policy
+
+### Review — 2026-09-13 (architect)
+
+**Verdict:** accepted. **Bounces:** 0. Closes stage 2a.
+**Owner-facing findings:** no strong copyleft anywhere in shipped dependencies. Weak copyleft
+(MPL-2.0, EPL-2.0) is file-level and compatible with shipping unmodified; modifications to those
+specific files would have to be published. Worth a line in any legal review of the FSL release.

@@ -36,7 +36,7 @@ written on demand, only after the Phase 1 contracts are approved.
 | −1 | Stabilize: floors data loss, silent tick errors, stale commands on reload, regression guards | done (`sage/phase-0-1`) |
 | 0 | Audit | done (`docs/sage/PHASE0_AUDIT.md`) |
 | 1 | Contracts | done — approved 2026-09-13 |
-| 2a | CI and ratchets | in progress — executor phases below |
+| 2a | CI and ratchets | done — CI jobs python, worldforge, live, licenses |
 | 2b | Mechanical move and rename to `engine/`, package `sage` | todo |
 | 2c | Seams, plugin loader, lexicon, skeleton second world | todo |
 | 3 | Migrate Fablestar system by system | blocked on 2 |
@@ -52,7 +52,7 @@ Expanded on demand; later stages get phase docs when 2a lands.
 | 01 | CI baseline — gates + WorldForge vitest in GitHub Actions ([phase-01-ci-baseline.md](phase-01-ci-baseline.md)) | done — first CI run green |
 | 02 | Live test tier — `live` marker, Postgres/Redis CI job, migration up/down + persistence tests ([phase-02-live-test-tier.md](phase-02-live-test-tier.md)) | done — CI live job green |
 | 03 | Invariant ratchet — denylist + player-string scanner with per-file baseline ([phase-03-invariant-ratchet.md](phase-03-invariant-ratchet.md)) | done |
-| 04 | License report — clean-venv Python and npm/cargo license listing in CI | todo (doc not yet written) |
+| 04 | License report — clean-venv Python and npm/cargo license listing in CI ([phase-04-license-report.md](phase-04-license-report.md)) | done |
 
 ## Notes
 

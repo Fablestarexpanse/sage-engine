@@ -499,7 +499,7 @@ Brief decision 4 asks for an early license audit ahead of a possible paid releas
 | CC-BY-4.0 | `caniuse-lite` (build-time data) | Attribution. |
 | Python direct deps (17 + 2 extras) | `pyproject.toml` | All permissive (MIT/BSD/Apache/ISC/PSF). |
 | GPL/LGPL packages present in the global interpreter but **not** in the lock | PyQt6, comfy-cli, color-matcher, chardet, fpdf2, py7zr, ldap3, lameenc | Not project dependencies; they pollute any audit run against the global interpreter. |
-| 172 Rust crates unverified | `worldforge/src-tauri/Cargo.lock` | Mostly Linux/macOS targets with no local registry source. Re-run `cargo deny` / `cargo about` in CI. |
+| ~~172 Rust crates unverified~~ | `worldforge/src-tauri/Cargo.lock` | **Resolved 2026-09-13:** CI `licenses` job (`scripts/license_report.py`, clean environment) covers all 538 crates, 44 Python and 612 npm packages: 0 strong copyleft; weak copyleft = certifi, elkjs, 7 MPL-2.0 crates. |
 
 ---
 

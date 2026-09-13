@@ -1,8 +1,8 @@
 # SAGE decoupling — decision log
 
-NEXT: Stage 2a: phases 01 CI, 02 live tier, 03 invariant ratchet DONE (CI green). Next: phase 04
-license report, which closes 2a; then stage 2b (move/rename to engine/, package sage) phase docs.
-Ratchet baseline 2885 term hits / 177 literal sends must only go down.
+NEXT: Stage 2a DONE (phases 01-04; CI jobs python/worldforge/live/licenses green on b12560c).
+Next: architect writes stage 2b phase docs (mechanical move to engine/ + rename to package `sage`,
+one-way door F.1 — announce before executing). Ratchet 2885/177 must only go down.
 Review page (private): https://claude.ai/code/artifact/2d488113-1ca9-4f45-b993-ac0253e0670c
 
 Append-only. One entry per ruling or decision, newest last. Owner rulings are binding; architect
