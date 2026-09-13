@@ -15,11 +15,15 @@ class TickManager:
     Ensures logic runs at a consistent rate regardless of processing time.
     """
 
+    # Same handler + same error is logged at most once per this many ticks (~60 s at 4 Hz).
+    ERROR_REPEAT_TICKS = 240
+
     def __init__(self, tick_rate: float = 0.25):
         self.tick_rate = tick_rate
         self.tick_count = 0
         self.is_running = False
         self._handlers: list[Callable[[int], Coroutine[Any, Any, None]]] = []
+        self._last_error_tick: dict[tuple[str, str], int] = {}
 
     def register(self, handler: Callable[[int], Coroutine[Any, Any, None]]) -> None:
         """Register an async handler to be called each tick."""
@@ -35,9 +39,13 @@ class TickManager:
             self.tick_count += 1
 
             # Execute all handlers for this tick
-            tasks = [asyncio.create_task(handler(self.tick_count)) for handler in self._handlers]
+            handlers = list(self._handlers)
+            tasks = [asyncio.create_task(handler(self.tick_count)) for handler in handlers]
             if tasks:
-                await asyncio.gather(*tasks, return_exceptions=True)
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+                for handler, result in zip(handlers, results, strict=True):
+                    if isinstance(result, Exception):
+                        self._log_handler_error(handler, result)
 
             # Compensation for processing time
             elapsed = time.monotonic() - start_time
@@ -49,6 +57,22 @@ class TickManager:
                 )
 
             await asyncio.sleep(sleep_time)
+
+    def _log_handler_error(self, handler: Callable[..., Any], exc: Exception) -> None:
+        """Log a failed tick handler; repeats of the same error stay quiet for ERROR_REPEAT_TICKS."""
+        name = getattr(handler, "__qualname__", repr(handler))
+        key = (name, repr(exc))
+        last = self._last_error_tick.get(key)
+        if last is not None and self.tick_count - last < self.ERROR_REPEAT_TICKS:
+            return
+        self._last_error_tick[key] = self.tick_count
+        logger.error(
+            "Tick handler %s failed on tick %d: %r",
+            name,
+            self.tick_count,
+            exc,
+            exc_info=(type(exc), exc, exc.__traceback__),
+        )
 
     def stop(self) -> None:
         """Stop the tick loop."""
