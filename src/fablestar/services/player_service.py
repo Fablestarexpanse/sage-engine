@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import re
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
@@ -80,6 +81,8 @@ def reserved_name_reason(name: str, agent_names: set[str]) -> str | None:
 
 
 MAX_CHARACTERS_PER_ACCOUNT = 8
+# Owner of passwordless dev-login characters (see PlayerService.dev_login).
+DEV_LOGIN_ACCOUNT = "dev-login"
 
 
 def _default_character_portrait_prompt(character_name: str) -> str:
@@ -297,6 +300,101 @@ class PlayerService:
             logger.warning("ComfyUI portrait on character create failed: %s", e, exc_info=True)
             return None, None, pp, str(e), charged
 
+    async def _insert_character(
+        self,
+        db_session,
+        account_id: int,
+        name: str,
+        portrait_url: str | None,
+        portrait_prompt: str | None,
+        starter_clean: dict[str, int] | None,
+    ) -> Character:
+        """Insert a fresh character row with initialised stats (caller validated the name)."""
+        from fablestar.proficiencies.starter import apply_starter_to_stats
+        from fablestar.proficiencies.state_helpers import (
+            ensure_proficiency_block,
+            migrate_legacy_stats,
+        )
+
+        character = Character(
+            account_id=account_id,
+            name=name,
+            room_id=START_ROOM,
+            portrait_url=portrait_url,
+            portrait_prompt=portrait_prompt,
+            digi_balance=int(self.server.config.server.starting_digi_balance),
+            pvp_enabled=False,
+            reputation=0,
+        )
+        db_session.add(character)
+        await db_session.commit()
+        await db_session.refresh(character)
+        merged_stats = migrate_legacy_stats(dict(character.stats or {}))
+        ensure_proficiency_block(merged_stats)
+        if starter_clean:
+            apply_starter_to_stats(
+                merged_stats,
+                starter_clean,
+                self.server.content_loader.get_proficiency_registry(),
+            )
+        character.stats = merged_stats
+        await db_session.commit()
+        await db_session.refresh(character)
+        return character
+
+    def dev_login_enabled(self) -> bool:
+        cfg = self.server.config.server
+        return bool(getattr(cfg, "dev_mode", False) and getattr(cfg, "dev_login", False))
+
+    async def dev_login(self, character_name: str) -> dict[str, Any]:
+        """Passwordless test login: find or create `character_name` on the dev account.
+
+        Returns the normal login payload (play token included) plus `character_id`.
+        Characters owned by any other account are refused, so this can't be used
+        to step into a real player. Callers must gate on dev_login_enabled() and a
+        loopback client.
+        """
+        name = " ".join((character_name or "").split())
+        err, _, _ = self._validate_create_character_inputs(name, "", "")
+        if err:
+            return err
+        async with self.server.db.session_factory() as db_session:
+            acc = await db_session.execute(
+                select(Account).where(Account.username == DEV_LOGIN_ACCOUNT)
+            )
+            account = acc.scalar_one_or_none()
+            if account is None:
+                unusable = bcrypt.hashpw(os.urandom(24), bcrypt.gensalt()).decode()
+                account = Account(
+                    username=DEV_LOGIN_ACCOUNT,
+                    password_hash=unusable,
+                    last_login=datetime.utcnow(),
+                    echo_credits=int(self.server.config.comfyui.starting_echo_credits),
+                )
+                db_session.add(account)
+                await db_session.commit()
+                await db_session.refresh(account)
+
+            found = await db_session.execute(
+                select(Character).where(func.lower(Character.name) == name.lower())
+            )
+            character = found.scalar_one_or_none()
+            if character is not None and character.account_id != account.id:
+                return {"ok": False, "error": "character_not_dev"}
+            if character is None:
+                reason = reserved_name_reason(name, self._agent_names())
+                if reason:
+                    return {"ok": False, "error": reason}
+                character = await self._insert_character(
+                    db_session, account.id, name, None, None, None
+                )
+            account.last_login = datetime.utcnow()
+            response = await self.account_characters_response(db_session, account)
+            response["play_token"] = issue_play_token(self.server, account.id)
+            response["character_id"] = character.id
+            await db_session.commit()
+        return response
+
     async def create_character(
         self,
         username: str,
@@ -357,37 +455,9 @@ class PlayerService:
                 return err
 
         async with self.server.db.session_factory() as db_session:
-            start_digi = int(self.server.config.server.starting_digi_balance)
-            character = Character(
-                account_id=account_id,
-                name=name,
-                room_id=START_ROOM,
-                portrait_url=p_url,
-                portrait_prompt=pp,
-                digi_balance=start_digi,
-                pvp_enabled=False,
-                reputation=0,
+            character = await self._insert_character(
+                db_session, account_id, name, p_url, pp, starter_clean
             )
-            db_session.add(character)
-            await db_session.commit()
-            await db_session.refresh(character)
-            from fablestar.proficiencies.starter import apply_starter_to_stats
-            from fablestar.proficiencies.state_helpers import (
-                ensure_proficiency_block,
-                migrate_legacy_stats,
-            )
-
-            merged_stats = migrate_legacy_stats(dict(character.stats or {}))
-            ensure_proficiency_block(merged_stats)
-            if starter_clean:
-                apply_starter_to_stats(
-                    merged_stats,
-                    starter_clean,
-                    self.server.content_loader.get_proficiency_registry(),
-                )
-            character.stats = merged_stats
-            await db_session.commit()
-            await db_session.refresh(character)
             payload = self.character_play_dict(character)
             result = await db_session.execute(
                 select(Character).where(Character.account_id == account_id).order_by(Character.id)

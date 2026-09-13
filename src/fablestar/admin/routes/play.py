@@ -21,6 +21,10 @@ if TYPE_CHECKING:
     from fablestar.server import FablestarServer
 
 
+class DevLoginBody(BaseModel):
+    character: str = Field(..., min_length=2, max_length=50)
+
+
 class PlayAuthBody(BaseModel):
     username: str
     password: str = Field(..., min_length=MIN_PASSWORD_LENGTH)
@@ -143,6 +147,22 @@ def build_play_router(server: FablestarServer) -> APIRouter:
     async def play_auth_login(request: Request, body: PlayAuthBody):
         """Web player: validate credentials and list characters."""
         return await server.player.login(body.username, body.password)
+
+    def _dev_login_allowed(request: Request) -> bool:
+        host = (request.client.host if request.client else "") or ""
+        return server.player.dev_login_enabled() and host in ("127.0.0.1", "::1", "localhost")
+
+    @router.get("/play/dev/status")
+    async def play_dev_status(request: Request):
+        """Whether passwordless dev login is available to this client."""
+        return {"enabled": _dev_login_allowed(request)}
+
+    @router.post("/play/dev/login")
+    async def play_dev_login(request: Request, body: DevLoginBody):
+        """Dev only: log in as (and create if needed) a test character without a password."""
+        if not _dev_login_allowed(request):
+            raise HTTPException(status_code=404, detail="not_found")
+        return await server.player.dev_login(body.character)
 
     @router.post("/play/auth/register")
     @limiter.limit("5/minute")

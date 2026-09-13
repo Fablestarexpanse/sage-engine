@@ -15,6 +15,9 @@ class ServerConfig(BaseModel):
     max_connections: int = 100
     tick_rate: float = 0.25  # 4 ticks per second
     dev_mode: bool = False
+    # Passwordless test logins via POST /play/dev/login, loopback clients only.
+    # Needs dev_mode too; never enable on a networked host.
+    dev_login: bool = False
     # Shown in client UI for in-world economy (wallet / vendors); not the ComfyUI art balance.
     game_currency_display_name: str = "Digi"
     # Starting in-world balance for each new character (existing rows default 0 until granted in-game).

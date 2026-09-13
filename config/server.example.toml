@@ -7,6 +7,10 @@ tick_rate = 0.25
 # Set to true only for local development. Seeds staff/test and player/test accounts.
 dev_mode = false
 
+# Passwordless test logins (POST /play/dev/login) for loopback clients. Needs dev_mode.
+# Handy for playtests and automation; never enable on a networked host.
+dev_login = false
+
 game_currency_display_name = "Digi"
 starting_digi_balance = 100
 proficiency_combat_hybrid = true

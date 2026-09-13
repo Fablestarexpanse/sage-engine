@@ -2,6 +2,8 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { usePlayTheme } from "./PlayThemeContext.jsx";
 import {
   playLogin,
+  playDevLogin,
+  playDevStatus,
   playRegister,
   playWebSocketUrl,
   playMediaUrl,
@@ -370,6 +372,33 @@ function AuthSignInForm({ onLoggedIn }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [devEnabled, setDevEnabled] = useState(false);
+  const [devName, setDevName] = useState("Dev Tester");
+
+  useEffect(() => {
+    let alive = true;
+    playDevStatus().then((ok) => alive && setDevEnabled(ok));
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const devLogin = async () => {
+    setError("");
+    setBusy(true);
+    try {
+      const res = await playDevLogin(devName.trim());
+      if (!res.ok) {
+        setError(res.error || "Dev login failed");
+        setBusy(false);
+        return;
+      }
+      onLoggedIn(mapPlayAuthPayload(res), "");
+    } catch (err) {
+      setError(err.message || "Network error — is the Nexus running?");
+    }
+    setBusy(false);
+  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -458,6 +487,54 @@ function AuthSignInForm({ onLoggedIn }) {
             {busy ? "…" : "Sign in"}
           </button>
         </form>
+        {devEnabled && (
+          <div
+            data-testid="dev-login"
+            style={{
+              marginTop: 16,
+              padding: "10px",
+              borderRadius: T.radius.md,
+              border: `1px dashed ${T.glyph.amber}`,
+              background: T.bg.surface,
+            }}
+          >
+            <label style={{ display: "block", fontSize: 10, color: T.glyph.amber, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>
+              Dev login (no password, localhost only)
+            </label>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input
+                aria-label="Dev character name"
+                value={devName}
+                onChange={(e) => setDevName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    devLogin();
+                  }
+                }}
+                style={{ ...authInputStyle, marginBottom: 0, flex: 1 }}
+              />
+              <button
+                type="button"
+                disabled={busy || devName.trim().length < 2}
+                onClick={devLogin}
+                style={{
+                  padding: "0 14px",
+                  borderRadius: T.radius.md,
+                  border: `1px solid ${T.glyph.amber}`,
+                  background: "transparent",
+                  color: T.glyph.amber,
+                  fontWeight: 700,
+                  fontFamily: T.font.body,
+                  fontSize: 12,
+                  cursor: busy ? "wait" : "pointer",
+                }}
+              >
+                Play
+              </button>
+            </div>
+          </div>
+        )}
         <AuthNavLinks>
           <AuthTextLink href="#/register">New conduit? Create account</AuthTextLink>
           <AuthTextLink href="#/">Back to welcome</AuthTextLink>
