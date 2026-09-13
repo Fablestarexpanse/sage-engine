@@ -1,7 +1,7 @@
 # SAGE decoupling — decision log
 
 NEXT: Phase −1 (4 commits) + Phase 0 (144706a) + Phase 1 contracts committed on `sage/phase-0-1`.
-Artifact published. STOPPED for owner review of PHASE1_CONTRACTS.md (Part G questions).
+Review page: https://claude.ai/code/artifact/2d488113-1ca9-4f45-b993-ac0253e0670c (private). STOPPED for owner review of PHASE1_CONTRACTS.md (Part G questions).
 Do not start Phase 2 until approved.
 
 Append-only. One entry per ruling or decision, newest last. Owner rulings are binding; architect
