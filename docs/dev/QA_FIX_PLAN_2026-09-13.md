@@ -2,20 +2,35 @@
 
 Source: `QA_PLAYTEST_2026-09-13.md`. Work top-down; each step = fix + test + commit.
 
-NEXT: step 1
+NEXT: all 13 steps done and verified live (33/33 regression checks). Open follow-ups at the bottom.
 
 | Step | IDs | Fix | Status |
 |---|---|---|---|
-| 1 | QA-02 | Session teardown only cleans room/sync when this session still owns the player | todo |
-| 2 | QA-01, QA-14 | Character names: case-insensitive unique, not an agent name, not reserved; kick_existing never evicts an agent | todo |
-| 3 | QA-03 | Combat: send deterministic line immediately, narration as background flavour | todo |
-| 4 | QA-06 | Maestro ambush respects max_count, skips neutral templates | todo |
-| 5 | QA-07 | Forge inject validates YAML + RoomModel + id match before writing | todo |
-| 6 | QA-04 | Dispatcher keeps raw-case args for free-text commands (say/emote/tell) | todo |
-| 7 | QA-05 | tell: longest online-name prefix match, excludes sender, ambiguity message | todo |
-| 8 | QA-13 | Inbound frame cap, truncated unknown-command echo, per-session rate limit, strip control chars | todo |
-| 9 | QA-10 | Scene narration dropped if player moved; no hardcoded Eternal Night | todo |
-| 10 | QA-11 | Arrival/departure broadcasts | todo |
-| 11 | QA-12 | look <target> delegates to examine; examine players | todo |
-| 12 | QA-08, QA-15, QA-17, QA-18, QA-19 | Admin give clamps wallet ≥0; one password minimum; flee needs a hostile; map collapses unexplored; first-screen help hint | todo |
-| 13 | QA-16 | Player client: scroll only when at bottom, cap narrative lines, completion list from real commands | todo |
+| 1 | QA-02 | Session teardown only cleans room/sync when this session still owns the player | done |
+| 2 | QA-01, QA-14, QA-15 | Character names: case-insensitive unique (index), not an agent name, not reserved; login refuses agent-named rows; shared password minimum | done |
+| 3 | QA-03 | Combat: deterministic line immediately, narration as background flavour | done |
+| 4 | QA-06 | Maestro ambush respects max_count, only hostile templates | done |
+| 5 | QA-07 | Room YAML writes validate YAML + RoomModel + id match | done |
+| 6 | QA-04 | Dispatcher keeps raw-case args for free-text commands | done |
+| 7 | QA-05 | tell: longest exact name, unique prefix, excludes sender, ambiguity list | done |
+| 8 | QA-13 | Input cap 1000, control chars stripped, echo cut to 40, token bucket 8/s burst 20; prefix commands + did-you-mean | done |
+| 9 | QA-10 | Scene narration: real day phase, dropped if player moved, one pending, auto-look narrates first visits only | done |
+| 10 | QA-11 | Arrival/departure lines (not sent to agents) | done |
+| 11 | QA-12 | look <target> delegates to examine; examine exits and players | done |
+| 12 | QA-08, QA-17, QA-18, QA-19 | give refuses negative wallet/hp; flee needs a threat; map collapses unexplored; help hint | done |
+| 13 | QA-16 | Client: follow output only at bottom (plus MutationObserver), cap 1500 lines, real completion list | done |
+| + | — | Dev login (`dev_mode` + `dev_login`, loopback only): `POST /play/dev/login {character}` and a sign-in box | done |
+
+## Live verification
+
+`scratchpad/regress.py` (dev-login based) — 33/33 pass after restart. Browser (player-ui via dev login):
+Enter submits, empty Enter ignored, ArrowUp history, Tab suggestions from real commands, log keeps place when
+scrolled up and follows when at bottom, focus stays on the input.
+
+## Follow-ups (not done)
+
+- **Narrow screens:** at 390px wide the three-column play layout squeezes (Conduit panel clipped, scene column
+  a sliver). No horizontal page scroll, but it isn't a usable phone layout. Needs a design decision.
+- Death / respawn path still untested by QA.
+- Chargen float/bool starter allocation still untested.
+- Tab completion list is static; drifts when commands are added (a server-provided list would fix that).

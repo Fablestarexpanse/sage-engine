@@ -286,6 +286,8 @@ cd player-ui
 VITE_NEXUS_PORT=8001 npm run dev -- --port 5173 --host
 ```
 
+**Playtesting without passwords:** with `dev_mode = true` and `dev_login = true` in `config/server.toml`, loopback clients can `POST /play/dev/login {"character": "Qa Tester"}` to get a play token for that character (created on the `dev-login` account if missing; other accounts' characters and agent names are refused). Connect the WebSocket with `{"token": ..., "character_id": ...}`. The player UI shows a "Dev login" box on the sign-in screen when it's enabled. Never enable on a networked host.
+
 Default ports: Nexus 8001, player UI 5173, admin UI 5174, Postgres 5432, Redis 6379.
 
 ---
