@@ -243,33 +243,41 @@ async def attack(session: Session, args: list[str]):
             f"Player remaining HP: {player_stats.get('hp', 0)}\n"
         )
 
-    # Agents fight constantly and read nothing — generating prose for them
-    # floods the LLM (with the embedded backend it can stall the tick loop).
-    if getattr(session, "is_agent", False):
-        narration = (
-            f"You strike {entity_name} for {damage_dealt} damage. It falls."
-            if entity_dead
-            else f"You hit {entity_name} for {damage_dealt} damage. "
+    # The outcome line is sent now, always; the LLM must never make a player
+    # wait or stand in for the numbers. Prose follows as optional flavour.
+    if entity_dead:
+        outcome_line = f"You strike {entity_name} for {damage_dealt} damage. It falls."
+    else:
+        outcome_line = (
+            f"You hit {entity_name} for {damage_dealt} damage. "
             f"It strikes back for {counter_damage}."
         )
-    else:
-        try:
-            prompt = app_instance.prompt_manager.render(
-                "combat_narration",
-                narration_facts=narration_facts,
-            )
-            narration = await app_instance.llm_client.generate_or_raise(prompt, max_tokens=200)
-        except Exception as e:
-            logger.warning(f"Combat narration failed: {e}")
-            if entity_dead:
-                narration = f"You strike {entity_name} for {damage_dealt} damage. It falls."
-            else:
-                narration = (
-                    f"You hit {entity_name} for {damage_dealt} damage. "
-                    f"It strikes back for {counter_damage}."
-                )
 
-    await session.send(f"\r\n{narration}")
+    # Agents read nothing; one pending narration per player, so a slow backend
+    # drops extra flavour instead of queueing it behind later commands.
+    if not getattr(session, "is_agent", False) and not getattr(
+        session, "combat_narration_pending", False
+    ):
+        session.combat_narration_pending = True
+
+        async def _narrate():
+            try:
+                prompt = app_instance.prompt_manager.render(
+                    "combat_narration",
+                    narration_facts=narration_facts,
+                )
+                prose = await app_instance.llm_client.generate_or_raise(prompt, max_tokens=200)
+                prose = (prose or "").strip()
+                if prose:
+                    await session.send(f"\r\n{prose}")
+            except Exception as e:
+                logger.warning(f"Combat narration failed: {e}")
+            finally:
+                session.combat_narration_pending = False
+
+        asyncio.get_running_loop().create_task(_narrate())
+
+    await session.send(f"\r\n{outcome_line}")
     if ammo_note:
         await session.send(ammo_note)
 
