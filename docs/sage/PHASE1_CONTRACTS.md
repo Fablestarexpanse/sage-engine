@@ -1,7 +1,8 @@
 # SAGE Phase 1 — Contracts
 
-**Status:** DRAFT — awaiting owner review. **Nothing downstream starts until this is approved**
-(brief §5). Everything here except the owner rulings is a proposal and open to push-back.
+**Status:** **APPROVED 2026-09-13** (v1.0), with the owner amendments folded into the text below
+and summarised in Part H. Changes to this contract from here on go through `docs/sage/DECISIONS.md`
+first.
 
 **Inputs:** `docs/sage/BRIEF.md` (locked decisions §2, invariants §3) · `docs/sage/PHASE0_AUDIT.md`
 (evidence; section references below as "audit §N") · `docs/sage/DECISIONS.md` (owner rulings).
@@ -335,15 +336,16 @@ D.A.
 | 1 | Commands | `api.commands.register(verb, handler, aliases, help_key, permission)` | multi, unique verbs; conflict fails boot |
 | 2 | State blocks | `api.state.block(name, Model, default, upgrade)` | namespaced key in the character state JSONB; validated on load and write |
 | 3 | Progression provider | `api.resolvers.provide("progression", impl)` | single; gives level/xp display, `on_skill_use`, chargen seed |
-| 4 | Resolver slots | `api.resolvers.provide(slot, fn)` for `combat.resolve`, `death.check`, `death.respawn`, `chargen.validate`, `chargen.seed` | single provider per slot; engine default if none; two providers fail boot |
+| 4 | Resolver slots | `api.resolvers.provide(slot, fn)`. Engine slots: `death.check`, `death.respawn`, `chargen.validate`, `chargen.seed`. Plugins may define their own with `api.resolvers.define(slot, default)` — e.g. the combat plugin defines `combat.resolve`, which Fablestar's `conduit` provides | single provider per slot; the defining owner's default if none; two providers fail boot |
 | 5 | Domain events | `api.events.subscribe(EventType, handler)`, `api.events.publish(event)` | fan-out, no return value |
 | 6 | Tick jobs | `api.tick.every(seconds, fn, name)` | multi; errors logged per job |
 | 7 | Content types and schema extensions | `api.content.type(name, dir, Model)`, `api.content.extend("room"\|"item"\|"entity", field, Model)` | new YAML dirs, and extra fields on engine content models |
 | 8 | Snapshot contributors | `api.snapshot.contribute(section, fn)` | ordered multi; adds a section to the client character snapshot |
 | 9 | HTTP routes | `api.http.play_router(router)`, `api.http.admin_router(router, tool)` | mounted under `/plugins/<id>/`; admin routes behind a tool permission |
 | 10 | AI slots | `api.ai.slot(name, fallback_key)` | declares a template slot the world can fill (B.6) |
-| 11 | Declarative UI panels | `api.ui.panel(id, surface="player"\|"admin", kind, source)` | kinds: `stat_sheet`, `wallet`, `tree`, `list`, `key_value`, `schema_form`, `table`; the data source is a snapshot section or a plugin route |
+| 11 | Declarative UI panels | `api.ui.panel(id, surface="player"\|"admin", kind, source)` | kinds: `stat_sheet`, `wallet`, `tree`, `list`, `key_value`, `schema_form`, `table`; the data source is a snapshot section or a plugin route. `kind = "module"` (plugin-shipped client code) is **reserved**: the schema accepts it, boot rejects it as unsupported in this engine version |
 | 12 | Migrations | `migrations/` dir + `[touches].tables` | alembic branch per plugin (D.D) |
+| 13 | Plugin services | `api.services.provide(name, obj)`; dependents call `api.services.get(name)` | lets a mechanic plugin (effects, equipment, combat) offer an API to plugins that declare it in `[depends]`; getting an undeclared service fails boot |
 
 ### C.5 Engine services plugins may call
 
@@ -359,7 +361,6 @@ The other half of the public surface. Plugins call these; they don't register th
 | `api.sessions` | broadcast, find by player, **virtual sessions** (socketless players with a `kind`, for the agents plugin) |
 | `api.dispatch` | run a command as a session (agents, maestro) |
 | `api.ai` | `narrate(slot, ctx)`, `generate(slot, ctx)`, `image(role, ctx)`; all go through engine routing, breaker, budgets and the AI-credit ledger |
-| `api.effects` | apply/remove timed effects (DoT/HoT/flags) |
 | `api.clock` | day phase, game time |
 | `api.redis` | a client pre-scoped to `<world>:plg:<id>:` — raw keys outside the declared prefixes are impossible |
 | `api.log` | a logger named `sage.plugin.<id>` |
@@ -389,7 +390,7 @@ Starting list → decision, with the audit evidence:
 | entity components | **Replace with state blocks** (#2) | There is no component system to extend. What exists is an unnamespaced stats blob where each subsystem owns top-level keys by convention (audit §8). Formalising that as named, typed blocks gives worlds real per-mechanic data without inventing an ECS. |
 | stat and progression systems | **Keep, split** (stat schema = world data B.3; progression = resolver #3) | The stat *shape* is generic; FRT..PRS is data. Progression differs structurally between the two worlds (a 278-leaf tree vs levels), so it has to be code. |
 | abilities | **Cut** | No ability runtime exists. Glyphs are mock UI panels and a dead `GlyphModel` (audit §6, §11.7). With two worlds as the ceiling (brief §8), commands + state blocks + effects cover ability-like mechanics. If Fablestar's design needs glyphs, they are built as a plugin using those three. Brief decision 1's "glyphs become a plugin" is satisfied without a dedicated point. |
-| combat resolution | **Keep as a resolver slot** (#4 `combat.resolve`) | Combat flow (targeting, turns, loot, kill events) is generic. Only the math is world-specific (`sf/proficiencies/state_helpers.py:75-107`), and it returns a value, so it's a resolver, not an event. |
+| combat resolution | **Combat is a first-party plugin that defines the `combat.resolve` slot** (#4, amended per owner G.4) | A world without combat simply doesn't enable it. Within combat, only the math is world-specific (`sf/proficiencies/state_helpers.py:75-107`), and it returns a value, so the plugin exposes it as a resolver that world plugins like `conduit` replace. |
 | economy and currency | **Cut as an extension point; becomes an engine service** (`api.wallet`) + data (B.4) | Currencies are data. The wallet is generic (balance, atomic debit/credit). What's world-specific is shops and rent, and those are plugins built on the wallet. |
 | room and content generation | **Fold into #7 content types + #10 AI slots** | Generation today is LLM forge endpoints producing YAML. That is an AI slot writing a content type, not a separate mechanism. |
 | AI narrative hooks | **Keep as AI slots** (#10) | Narration call sites are already slot-shaped (`narrate room`, `narrate combat`); the template, tone and fallback move to the world. |
@@ -555,15 +556,15 @@ Raised in audit §11, repeated here as design inputs:
    happen as soon as WorldForge covers its fields (it already does, apart from shop/lodging/
    ambient/search, which none of the three tools edit). Schema-driven forms wait for 2c.
 
-### Proposed classification (for review)
+### Classification (approved; amended per owner G.4)
 
 | Where | Systems |
 |---|---|
-| **Engine** | network, sessions (incl. virtual sessions), parser, command registry, tick, bus, resolvers, Redis/Postgres state, persistence, content loader (rooms/entities/items + extensions), spawner, **ambient**, **effects engine**, equipment (slots from world), clock (phases from world), wallet, lexicon, world loader, plugin loader, AI (LLM client, breaker, embedded, ComfyUI client, AI-credit ledger, slots, overrides), Nexus core, clients, tools |
-| **First-party plugins** (`plugins/`) | agents (owner ruling; also takes over the lease sweep now in `sf/agents/manager.py:289-295`), achievements, factions (+ missions), shop, lodging, crafting, search, maestro, hazards |
+| **Engine** (runtime infrastructure only) | network, sessions (incl. virtual sessions), parser, command registry, tick, bus, resolvers, plugin services, Redis/Postgres state, persistence, content loader (rooms/entities/items + extensions), spawner, clock (phases from world), wallet, death check + respawn policy defaults, lexicon, world loader, plugin loader, AI (LLM client, breaker, embedded, ComfyUI client, AI-credit ledger, slots, overrides), Nexus core, clients, tools. **Universal verbs only:** look, move, say/emote/tell, who, help, inventory/take/drop/examine, quit |
+| **First-party plugins** (`plugins/`) | `combat` (attack/flee, loot, kill events, defines `combat.resolve`), `effects` (timed DoT/HoT/flags, rest; exports the effects service), `equipment` (slots from world, equip/unequip, item attack/defense fields), `ambient`, `hazards` (depends on effects), `search`, `crafting`, `achievements`, `factions` (+ missions), `shop`, `lodging`, `maestro`, `agents` (owner ruling; also takes over the lease sweep now in `sf/agents/manager.py:289-295`) |
 | **Fablestar world plugins** | `conduit` (proficiency tree, FRT..PRS combat resolver, resonance cap, chargen allocation, skill panels), `morality` (reputation thermometer) |
 | **World 2 plugins** | `levels` |
-| **Deleted** | glyph/ship/system/galaxy models and editors, mock client panels (pending vault, G.3) |
+| **Deleted** (owner G.3) | glyph/ship/system/galaxy models and editors, mock client panels, admin-ui World Builder (owner G.6) |
 
 ---
 
@@ -575,7 +576,7 @@ Raised in audit §11, repeated here as design inputs:
 | 2 | No world-specific literals in `engine/` | A denylist scanner over `engine/` (Python via AST string constants and comments; JS/JSX/TS and YAML/JSON via token scan). Denylist = the brief's seed list + FRT/RFX/ACU/RSV/PRS, Tidegate, AIpub, `test_isle`, Digi, pixels, echo_credits + **every stat key, currency key, zone id and lexicon label value auto-extracted from both reference worlds**. "Resolve", "Presence" and "Reflex" are matched case-sensitive as whole words in string literals only, so identifiers like `resolve_project_root` and JS `Promise.resolve` don't trip it. Ratchet baseline until Phase 3 ends, then zero. | **Yes**, with a small reviewed allowlist file for real false positives |
 | 3 | Every player-facing string is a lexicon key | AST lint: in `engine/` and `plugins/`, `session.send(...)`, `broadcast(...)` and friends may not receive a string literal, f-string or `%`/`.format` expression. Player text must go through `session.say(key, **vars)` / `api.lexicon.t`. JSON protocol frames use `session.send_json`. The React clients get an ESLint rule banning JSX text literals outside a `t()` call in `engine/clients`. | **Mostly.** Strings built indirectly (a variable holding a literal) escape the lint; code review covers the remainder. The CI smoke test also fails on any rendered `[missing.key]`. |
 | 4 | Engine has no knowledge of stat, currency or ability names | Covered by #2's auto-extracted world keys (both worlds, so the engine can't name *either* world's stats), plus a test that boots the engine with `worlds/_fixture`, whose stat and currency keys are random per run. | **Yes** |
-| 5 | Both reference worlds boot and pass smoke tests in CI | CI job per world: `sage db upgrade`, boot, dev login, scripted session (look, move, say, attack, die/respawn, buy if the plugin is enabled, quit), assert no ERROR logs and no `[missing.key]`, plugin uninstall/reinstall round-trip on a throwaway DB. | **Yes** |
+| 5 | Both reference worlds boot and pass smoke tests in CI | CI job per world: `sage db upgrade`, boot, dev login, scripted session (look, move, say, plus attack/die/respawn and buy when those plugins are enabled, quit), assert no ERROR logs and no `[missing.key]`, plugin uninstall/reinstall round-trip on a throwaway DB. | **Yes** |
 
 ---
 
@@ -600,7 +601,22 @@ Each gets its own announced commit, never bundled with other changes.
 
 ---
 
-## Part G — Questions for the owner
+## Part H — Owner amendments at approval (2026-09-13)
+
+| Question | Answer | Effect on this contract |
+|---|---|---|
+| G.1 WorldForge spec | None yet | WorldForge roadmap = D.E |
+| G.2 Database per world | Yes | B.8 approved |
+| G.3 Glyph/ship/system/galaxy | Not needed at this time | Deleted when Phase 3/5 reaches them |
+| G.4 Engine vs plugin split | Delegated: "more modular and editable for a user" | Every mechanic is a plugin, incl. ambient, effects, combat, equipment; catalog #13 plugin services; plugins may define resolver slots |
+| G.5 Rename | Yes — "SAGE - Synthetic Agent Game Engine" | F.1 approved |
+| G.6 Admin World Builder | Retire | D.E approved |
+| G.7 Test tiers | Delegated | Hermetic unit tier by default + required live Postgres/Redis tier for migrations, persistence, plugin install/uninstall, world smoke; migrations and persistence never tested only against fakes |
+| G.8 License | FSL-1.1-ALv2 engine, Fablestar proprietary | `engine/LICENSE`, `NOTICE` |
+| G.9 Second world | No set genre; SAGE builds any world. Architect picks the harness | Low-fantasy river town, Might/Wits/Nerve, silver, `levels`, no agents, no AI images |
+| G.10 Plugin client code | Delegated: best long-term | Declarative panels in v1; `kind = "module"` reserved and rejected at boot |
+
+## Part G — Questions for the owner (all answered, see Part H)
 
 **Answered 2026-09-13** (details in `docs/sage/DECISIONS.md`): **2** yes, one database per world ·
 **3** not needed at this time, delete when reached · **5** rename approved, official name

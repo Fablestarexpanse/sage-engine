@@ -4,7 +4,7 @@
 as the first world package, proven by a second, deliberately different world running on
 unchanged engine code.
 
-**Status:** planning — Phase 1 contracts awaiting owner review
+**Status:** in-progress — Phase 1 contracts approved 2026-09-13; stage 2a starting
 
 **Depends on:** M1 (done)
 
@@ -35,13 +35,26 @@ written on demand, only after the Phase 1 contracts are approved.
 |---|---|---|
 | −1 | Stabilize: floors data loss, silent tick errors, stale commands on reload, regression guards | done (`sage/phase-0-1`) |
 | 0 | Audit | done (`docs/sage/PHASE0_AUDIT.md`) |
-| 1 | Contracts | **awaiting owner review** |
-| 2 | Scaffolding (proposed split 2a CI + ratchet, 2b move/rename, 2c seams + loader + skeleton world 2) | blocked on 1 |
+| 1 | Contracts | done — approved 2026-09-13 |
+| 2a | CI and ratchets | in progress — executor phases below |
+| 2b | Mechanical move and rename to `engine/`, package `sage` | todo |
+| 2c | Seams, plugin loader, lexicon, skeleton second world | todo |
 | 3 | Migrate Fablestar system by system | blocked on 2 |
 | 4 | Second reference world, full size | blocked on 3 |
-| 5 | Tooling | blocked on 1 (decisions), 2 (format) |
+| 5 | Tooling | decisions made (D.E); work after 2c |
+
+## Phases (stage 2a)
+
+Expanded on demand; later stages get phase docs when 2a lands.
+
+| #  | Phase | Status |
+|----|-------|--------|
+| 01 | CI baseline — gates + WorldForge vitest in GitHub Actions ([phase-01-ci-baseline.md](phase-01-ci-baseline.md)) | todo |
+| 02 | Live test tier — `live` marker, Postgres/Redis CI job, migration up/down + persistence tests | todo (doc not yet written) |
+| 03 | Invariant ratchet — denylist + player-string scanner with per-file baseline | todo (doc not yet written) |
+| 04 | License report — clean-venv Python and npm/cargo license listing in CI | todo (doc not yet written) |
 
 ## Notes
 
-- Hard stop after stage 1 (brief §5). Do not dispatch executor phases before approval.
-- Stage order changes are proposals in `PHASE1_CONTRACTS.md` §G until approved.
+- Stage 1 approved 2026-09-13; the revised stage order in `PHASE1_CONTRACTS.md` D.G is the plan.
+- Owner amendments at approval are in `PHASE1_CONTRACTS.md` Part H.

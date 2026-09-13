@@ -171,6 +171,16 @@ ignored by default, and never run on CI — they need a live endpoint and
 carry setup the CI environment can't reliably provide. When the phase doc calls
 for one, gate it as ignored and document how to run it.
 
+### 3.5 Live-service tests (owner ruling 2026-09-13)
+
+Two tiers. The **hermetic tier** (§3.3) is the default: `python -m pytest` must pass with no
+Redis or Postgres running. The **live tier** runs against real Postgres and Redis and is
+required in CI (M2 phase 02 adds the marker and job). It owns the concerns where fakes have hidden
+real failures: database migrations (upgrade and downgrade), Redis→Postgres persistence, plugin
+install/uninstall including schema, and world boot smoke tests. Those concerns must never be
+covered by fakes alone. Live tests are marked `@pytest.mark.live` and skipped unless
+`SAGE_LIVE_TESTS=1`.
+
 ---
 
 ## 4. Required Commands

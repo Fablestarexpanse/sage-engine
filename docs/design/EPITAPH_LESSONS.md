@@ -1,9 +1,9 @@
 # Epitaph Lessons — MUD design comparison and adoption roadmap
 
-> **Flagged for owner conversation (SAGE audit §13, 2026-09-13).** This doc places ambient, search,
-> effects and factions in the core engine and `RoomModel`. The SAGE brief makes world-specific
-> mechanics plugins. Do not build further on this roadmap until that is resolved; see
-> `docs/sage/PHASE1_CONTRACTS.md`.
+> **Superseded on engine placement (owner ruling 2026-09-13).** The design ideas below still stand,
+> but every mechanic this doc puts in the core engine or `RoomModel` (ambient, search, effects,
+> hazards, factions) is a first-party SAGE plugin — see `docs/sage/PHASE1_CONTRACTS.md` Part D
+> classification. Do not add these to the engine.
 
 Source: *The Epitaph Survival Guide* (Michael "Drakkos" Heron), the 554-page creator
 handbook for Epitaph Online — a zombie-apocalypse MUD built on a Discworld-lineage LPC

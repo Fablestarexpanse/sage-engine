@@ -2,12 +2,11 @@
 
 Active milestone: **M2 — SAGE engine decoupling** (`docs/dev/milestones/M2-sage-decoupling/`).
 
-Active phase: **none — awaiting owner review of the Phase 1 contracts**
-(`docs/sage/PHASE1_CONTRACTS.md`). The brief (`docs/sage/BRIEF.md` §5) requires a hard stop
-here: do not start Phase 2 scaffolding, and do not dispatch executor phases, until the owner
-approves the contracts. Rulings: `docs/sage/DECISIONS.md`.
+Active phase: **phase-01-ci-baseline** —
+`docs/dev/milestones/M2-sage-decoupling/phase-01-ci-baseline.md`.
 
-Done on branch `sage/phase-0-1`: Phase −1 stabilization (4 commits), Phase 0 audit
-(`docs/sage/PHASE0_AUDIT.md`).
+Phase 1 contracts were approved by the owner on 2026-09-13 (`docs/sage/PHASE1_CONTRACTS.md`,
+amendments in Part H). Rulings log: `docs/sage/DECISIONS.md`. Stage 2a (CI and ratchets) is in
+progress; stages 2b and 2c get phase docs after it lands.
 
 Pre-SAGE status and backlog: `docs/dev/STATUS.md`.

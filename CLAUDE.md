@@ -343,9 +343,9 @@ python -m alembic upgrade head
 pytest tests/
 ```
 
-Tests cover config loading, command dispatch, proficiency math, admin auth, and session state. Integration tests expect a live Postgres (use Docker). Do not mock the database — mocked tests have masked real migration failures in the past.
+Tests cover config loading, command dispatch, proficiency math, admin auth, and session state.
 
-> **Flagged (SAGE audit §13):** the current suite runs hermetically — `python -m pytest` passes with no services, using in-memory fakes in `tests/fakes.py` for Redis and content. The rule above and the suite disagree; owner to decide which holds for new tests.
+**Two tiers (owner ruling 2026-09-13, `docs/dev/STANDARDS.md` §3.5):** the default suite is hermetic — `python -m pytest` passes with no services, using in-memory fakes in `tests/fakes.py`. A live tier (`@pytest.mark.live`, run with `SAGE_LIVE_TESTS=1` against Docker Postgres/Redis, required in CI) covers migrations, persistence, plugin install/uninstall and world smoke tests. Never test migrations or persistence against fakes alone — mocked tests have masked real migration failures in the past.
 
 ---
 
