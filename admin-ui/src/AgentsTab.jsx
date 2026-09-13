@@ -132,8 +132,98 @@ function BrainPanel() {
   );
 }
 
+function StatBoard() {
+  const { colors: COLORS } = useAdminTheme();
+  const [board, setBoard] = useState(null);
+  const [error, setError] = useState("");
+
+  const refresh = useCallback(async () => {
+    try {
+      const r = await axios.get(`${API_BASE}/admin/agents-statboard`);
+      setBoard(r.data);
+      setError("");
+    } catch (e) {
+      setError(e.response?.data?.detail || e.message || "statboard API failed");
+    }
+  }, []);
+  useEffect(() => {
+    refresh();
+    const t = setInterval(refresh, 5000);
+    return () => clearInterval(t);
+  }, [refresh]);
+
+  const cell = { padding: "6px 10px", fontSize: 12, color: COLORS.text, borderBottom: `1px solid ${COLORS.border}`, whiteSpace: "nowrap" };
+  const th = { ...cell, color: COLORS.textMuted, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", textAlign: "left" };
+  const rows = board?.rows ?? [];
+  // Fixed interesting columns first, then any extra counters new systems add
+  // (trades, rentals, ...) appear automatically.
+  const known = ["kills", "deaths", "goals_completed", "items_used", "rooms_visited"];
+  const extra = (board?.counter_keys ?? []).filter((k) => !known.includes(k));
+  const sum = (key) => rows.reduce((a, r) => a + (Number(r[key] ?? r.counters?.[key]) || 0), 0);
+
+  return (
+    <div style={{ background: COLORS.bgCard, border: `1px solid ${COLORS.border}`, borderRadius: 10, overflow: "hidden" }}>
+      <div style={{ padding: "10px 12px", fontWeight: 700, fontSize: 13, color: COLORS.text, borderBottom: `1px solid ${COLORS.border}` }}>
+        Stat board {error && <span style={{ color: COLORS.danger, fontWeight: 400, marginLeft: 8 }}>{error}</span>}
+      </div>
+      <div style={{ overflowX: "auto" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead><tr>
+            <th style={th}>Name</th><th style={th}>Room</th><th style={th}>HP</th><th style={th}>Mood</th>
+            <th style={th} title="Total proficiency levels">Levels</th>
+            <th style={th}>Kills</th><th style={th}>Deaths</th>
+            <th style={th}>Goals</th><th style={th}>Items used</th>
+            <th style={th}>Most used</th><th style={th}>Top prey</th>
+            <th style={th}>Rooms</th><th style={th}>Achievements</th><th style={th}>Memories</th>
+            {extra.map((k) => <th key={k} style={th}>{k.replace(/_/g, " ")}</th>)}
+          </tr></thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.id}>
+                <td style={cell}>{r.name}</td>
+                <td style={cell}>{r.room_id ? r.room_id.split(":")[1] : "—"}</td>
+                <td style={cell}>{r.hp != null ? `${r.hp}/${r.max_hp}` : "—"}</td>
+                <td style={cell}>{r.mood ?? "—"}</td>
+                <td style={cell}>{r.levels}</td>
+                <td style={cell}>{r.kills}</td>
+                <td style={cell}>{r.deaths}</td>
+                <td style={cell}>{r.goals_completed}</td>
+                <td style={cell}>{r.items_used}</td>
+                <td style={cell}>{r.most_used_item ?? "—"}</td>
+                <td style={cell}>{r.top_prey ? `${r.top_prey} (${r.top_prey_kills})` : "—"}</td>
+                <td style={cell}>{r.rooms_visited}</td>
+                <td style={cell} title={(r.achievements ?? []).join(", ")}>{(r.achievements ?? []).length}</td>
+                <td style={cell}>{r.memories_count}</td>
+                {extra.map((k) => <td key={k} style={cell}>{r.counters?.[k] ?? 0}</td>)}
+              </tr>
+            ))}
+            {rows.length > 1 && (
+              <tr style={{ background: COLORS.bgInput }}>
+                <td style={{ ...cell, fontWeight: 700 }}>All agents</td>
+                <td style={cell} colSpan={3}></td>
+                <td style={{ ...cell, fontWeight: 700 }}>{sum("levels")}</td>
+                <td style={{ ...cell, fontWeight: 700 }}>{sum("kills")}</td>
+                <td style={{ ...cell, fontWeight: 700 }}>{sum("deaths")}</td>
+                <td style={{ ...cell, fontWeight: 700 }}>{sum("goals_completed")}</td>
+                <td style={{ ...cell, fontWeight: 700 }}>{sum("items_used")}</td>
+                <td style={cell} colSpan={2}></td>
+                <td style={{ ...cell, fontWeight: 700 }}>{sum("rooms_visited")}</td>
+                <td style={{ ...cell, fontWeight: 700 }}>{rows.reduce((a, r) => a + (r.achievements?.length || 0), 0)}</td>
+                <td style={{ ...cell, fontWeight: 700 }}>{sum("memories_count")}</td>
+                {extra.map((k) => <td key={k} style={{ ...cell, fontWeight: 700 }}>{sum(k)}</td>)}
+              </tr>
+            )}
+            {!rows.length && <tr><td style={cell} colSpan={14}>No agents running.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export default function AgentsTab() {
   const { colors: COLORS } = useAdminTheme();
+  const [view, setView] = useState("watch");
   const [rows, setRows] = useState([]);
   const [error, setError] = useState("");
   const [selectedId, setSelectedId] = useState(null);
@@ -212,7 +302,7 @@ export default function AgentsTab() {
   };
 
   const teleport = (id) => {
-    const room = window.prompt("Teleport to room id (zone:slug):", "starter_zone:plaza");
+    const room = window.prompt("Teleport to room id (zone:slug):", "test_isle:town_plaza");
     if (room) act(id, "teleport", { room_id: room });
   };
   const give = (id) => {
@@ -229,9 +319,21 @@ export default function AgentsTab() {
   const th = { ...cell, color: COLORS.textMuted, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", textAlign: "left" };
   const btn = { padding: "4px 8px", fontSize: 11, borderRadius: 6, border: `1px solid ${COLORS.border}`, background: COLORS.bgCard, color: COLORS.text, cursor: "pointer" };
 
+  const viewBtn = (id, label) => (
+    <button type="button" onClick={() => setView(id)}
+      style={{ ...btn, background: view === id ? COLORS.bgInput : COLORS.bgCard, fontWeight: view === id ? 700 : 400 }}>
+      {label}
+    </button>
+  );
+
   return (
     <div>
     <BrainPanel />
+    <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+      {viewBtn("watch", "Watch")}
+      {viewBtn("stats", "Stat board")}
+    </div>
+    {view === "stats" ? <StatBoard /> : (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(420px, 1fr) minmax(360px, 1fr)", gap: 16, alignItems: "start" }}>
       <div style={{ background: COLORS.bgCard, border: `1px solid ${COLORS.border}`, borderRadius: 10, overflow: "hidden" }}>
         <div style={{ padding: "10px 12px", fontWeight: 700, fontSize: 13, color: COLORS.text, borderBottom: `1px solid ${COLORS.border}` }}>
@@ -296,9 +398,18 @@ export default function AgentsTab() {
                 </div>
               </div>
               <div>
-                <div style={{ fontSize: 10, color: COLORS.textMuted, textTransform: "uppercase", marginBottom: 4 }}>Inventory</div>
-                <div style={{ fontSize: 11, color: COLORS.text }}>
-                  {(detail.inventory ?? []).map((it) => it.name).join(", ") || "empty"}
+                <div style={{ fontSize: 10, color: COLORS.textMuted, textTransform: "uppercase", marginBottom: 4 }}>Inventory + equipped</div>
+                <div style={{ fontSize: 11, color: COLORS.text, maxHeight: 70, overflow: "auto" }}>
+                  {Object.entries(detail.equipment ?? {}).map(([slot, it]) => (
+                    <div key={slot}><span style={{ color: COLORS.accent }}>▣ {slot}:</span> {it?.name ?? "?"}</div>
+                  ))}
+                  {(() => {
+                    const grouped = {};
+                    (detail.inventory ?? []).forEach((it) => { grouped[it.name] = (grouped[it.name] || 0) + 1; });
+                    const entries = Object.entries(grouped);
+                    if (!entries.length && !Object.keys(detail.equipment ?? {}).length) return "empty";
+                    return entries.map(([n, c]) => <div key={n}>{n}{c > 1 ? ` ×${c}` : ""}</div>);
+                  })()}
                 </div>
                 <div style={{ fontSize: 10, color: COLORS.textMuted, textTransform: "uppercase", margin: "8px 0 4px" }}>Recent perceptions</div>
                 <div style={{ fontSize: 10, color: COLORS.textMuted, maxHeight: 90, overflow: "auto", whiteSpace: "pre-wrap" }}>
@@ -306,6 +417,30 @@ export default function AgentsTab() {
                 </div>
               </div>
             </div>
+            {detail.skills && (
+              <div style={{ marginTop: 10 }}>
+                <div style={{ fontSize: 10, color: COLORS.textMuted, textTransform: "uppercase", marginBottom: 4 }}>
+                  Skill sheet <span style={{ textTransform: "none" }}>(Σ {detail.metrics?.levels ?? 0} levels)</span>
+                </div>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", fontSize: 11, color: COLORS.text, marginBottom: 6 }}>
+                  {Object.entries(detail.skills.attributes ?? {}).map(([k, v]) => (
+                    <span key={k}><span style={{ color: COLORS.textMuted }}>{k}</span> <b>{v}</b></span>
+                  ))}
+                </div>
+                <div style={{ maxHeight: 110, overflow: "auto", fontSize: 10, fontFamily: "monospace", color: COLORS.text }}>
+                  {(detail.skills.leaves ?? []).filter((l) => l.level > 0 || l.peak > 0).map((l) => (
+                    <div key={l.id}>
+                      {l.id} <span style={{ color: COLORS.accent }}>lv {l.level}</span>
+                      {l.peak > l.level ? <span style={{ color: COLORS.textMuted }}> (peak {l.peak})</span> : null}
+                      <span style={{ color: COLORS.textMuted }}> · {l.state}</span>
+                    </div>
+                  ))}
+                  {!(detail.skills.leaves ?? []).some((l) => l.level > 0 || l.peak > 0) && (
+                    <span style={{ color: COLORS.textMuted }}>All proficiencies still at 0 — they raise through use, same engine as players.</span>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -342,6 +477,7 @@ export default function AgentsTab() {
         )}
       </div>
     </div>
+    )}
     </div>
   );
 }

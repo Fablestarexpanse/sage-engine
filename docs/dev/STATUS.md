@@ -53,6 +53,12 @@ Test suites: server **150** pytest, WorldForge **34** vitest — all green.
       agents Lv + K/D in the admin watch table, full metrics in the detail
       drawer. Agents excluded from admin player/session lists and counts
       (Agents tab is their home; in-world they remain players)
+- [x] Agents tab data views: detail drawer shows inventory with equipped
+      slots, a skill sheet (FRT/RFX/ACU/RSV/PRS + proficiency leaves), and
+      metrics; new Stat board view — per-agent levels/kills/deaths/goals/
+      items-used/most-used/top-prey/rooms/achievements/memories with an
+      all-agents totals row; unknown future counters (trades, rent, ...)
+      grow columns automatically from the counters blob
 - [x] Tidegate Isle (test_isle, 26 rooms): harbor/ferry arrival, town plaza,
       market with 4 shops (general store, pawn/salvage, apothecary,
       chandlery), clinic (safe respawn), orchard/meadow/forest, drone gulch +

@@ -165,6 +165,77 @@ def build_agents_router(server: "FablestarServer") -> APIRouter:
             "levels": levels,
         }
 
+    def _skills_sheet(stats: dict) -> dict:
+        """Character-sheet view of the conduit block: attributes + leaf levels."""
+        conduit = stats.get("conduit") if isinstance(stats.get("conduit"), dict) else {}
+        profs = (
+            conduit.get("proficiencies") if isinstance(conduit.get("proficiencies"), dict) else {}
+        )
+        leaves = sorted(
+            (
+                {
+                    "id": pid,
+                    "level": int(p.get("level", 0)),
+                    "peak": int(p.get("peak", 0)),
+                    "state": p.get("state", ""),
+                }
+                for pid, p in profs.items()
+                if isinstance(p, dict)
+            ),
+            key=lambda r: (-r["level"], -r["peak"], r["id"]),
+        )
+        return {
+            "attributes": conduit.get("conduit_attributes", {}),
+            "leaves": leaves,
+        }
+
+    @router.get("/admin/agents-statboard")
+    async def agents_statboard(
+        _ctx: Annotated[AdminContext, Depends(require_tool("agents"))],
+    ):
+        """Aggregate play-data board: one row per agent, every counter surfaced."""
+        rows = []
+        counter_keys: set[str] = set()
+        for state in manager.agents.values():
+            name = state.persona.name
+            stats = await server.redis.get_player_stats(name)
+            counters = stats.get("counters") if isinstance(stats.get("counters"), dict) else {}
+            per_prey = {
+                k.removeprefix("kills."): int(v)
+                for k, v in counters.items()
+                if k.startswith("kills.")
+            }
+            top_prey = max(per_prey, key=per_prey.get) if per_prey else None
+            grants = (
+                stats.get("achievements") if isinstance(stats.get("achievements"), dict) else {}
+            )
+            memories = (
+                stats.get("agent_memories") if isinstance(stats.get("agent_memories"), list) else []
+            )
+            flat = {k: int(v) for k, v in counters.items() if isinstance(v, int | float)}
+            counter_keys.update(k for k in flat if "." not in k)
+            rows.append(
+                {
+                    "id": state.persona.id,
+                    "name": name,
+                    "room_id": await server.redis.get_player_location(name),
+                    "hp": stats.get("hp"),
+                    "max_hp": stats.get("max_hp"),
+                    "mood": mood_word(stats, state.persona),
+                    **_agent_metrics(stats),
+                    "rooms_visited": len(stats.get("visited_rooms") or []),
+                    "top_prey": top_prey,
+                    "top_prey_kills": per_prey.get(top_prey, 0) if top_prey else 0,
+                    "achievements": sorted(grants.keys()),
+                    "memories_count": len(memories),
+                    "counters": flat,
+                }
+            )
+        rows.sort(key=lambda r: r["name"])
+        # Union of top-level counter keys so the UI can grow columns as new
+        # systems (trades, rentals, ...) start counting.
+        return {"rows": rows, "counter_keys": sorted(counter_keys)}
+
     @router.get("/admin/agents")
     async def agents_list(
         _ctx: Annotated[AdminContext, Depends(require_tool("agents"))],
@@ -227,6 +298,8 @@ def build_agents_router(server: "FablestarServer") -> APIRouter:
             "goal": state.goal_label,
             "goal_commands": state.goal_commands,
             "metrics": _agent_metrics(stats),
+            "skills": _skills_sheet(stats),
+            "equipment": stats.get("equipment") or {},
             "last_action": state.last_action,
             "perceptions": state.session.recent_perceptions(20),
             "persona": state.persona.model_dump(),
