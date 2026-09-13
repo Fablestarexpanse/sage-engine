@@ -12,7 +12,14 @@ from fablestar.agents.models import AgentPersonaModel
 
 FEELINGS_KEY = "feelings"
 DECAY_RATE = 0.03  # per feelings tick (~2s): fraction of distance to baseline
-NEED_RISE = {"rest": 0.002, "company": 0.004, "purpose": 0.003, "safety": 0.0}
+NEED_RISE = {
+    "rest": 0.002,
+    "company": 0.004,
+    "purpose": 0.003,
+    "safety": 0.0,
+    # ~0.0012/2s → hungry (0.7) in about 20 minutes of play.
+    "hunger": 0.0012,
+}
 
 
 def ensure_feelings(stats: dict[str, Any], persona: AgentPersonaModel) -> dict[str, Any]:
@@ -23,7 +30,7 @@ def ensure_feelings(stats: dict[str, Any], persona: AgentPersonaModel) -> dict[s
                 "valence": persona.baseline_mood.valence,
                 "arousal": persona.baseline_mood.arousal,
             },
-            "needs": {"rest": 0.2, "company": 0.3, "purpose": 0.4, "safety": 0.1},
+            "needs": {"rest": 0.2, "company": 0.3, "purpose": 0.4, "safety": 0.1, "hunger": 0.2},
             "bonds": {},
         }
         stats[FEELINGS_KEY] = f
@@ -70,6 +77,17 @@ def on_goal_done(stats: dict[str, Any], persona: AgentPersonaModel) -> None:
 def on_rested(stats: dict[str, Any], persona: AgentPersonaModel) -> None:
     f = ensure_feelings(stats, persona)
     _nudge(f, rest=-0.5, arousal=-0.1)
+
+
+def on_ate(stats: dict[str, Any], persona: AgentPersonaModel) -> None:
+    f = ensure_feelings(stats, persona)
+    _nudge(f, valence=0.05, hunger=-0.6)
+
+
+def on_slept_home(stats: dict[str, Any], persona: AgentPersonaModel) -> None:
+    """Sleeping in your own rented room beats a bench in the clinic."""
+    f = ensure_feelings(stats, persona)
+    _nudge(f, valence=0.1, rest=-0.8, safety=-0.4, arousal=-0.15)
 
 
 def decay_tick(stats: dict[str, Any], persona: AgentPersonaModel) -> None:

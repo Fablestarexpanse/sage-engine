@@ -48,6 +48,7 @@ class AgentState:
         # POV log for the admin "look through their eyes" panel (brain fills
         # real prompts in M3/M4; body decisions land here meanwhile).
         self.pov: list[dict[str, Any]] = []
+        self.next_life_goal_at = 0.0  # throttle needs-driven goals (rent retries etc.)
         self.rng = random.Random(hash(persona.id) & 0xFFFF)
 
 
@@ -409,6 +410,8 @@ class AgentManager:
             wander_ready=now >= state.next_wander_at,
             in_buying_shop=bool(room.shop is not None and room.shop.buys),
             sellable_count=sellable_count,
+            hungry=float((stats.get("feelings", {}).get("needs", {}) or {}).get("hunger", 0.0))
+            > 0.7,
         )
         # Voice first: being spoken to outranks reflexes short of combat.
         if not ctx.hostiles:
@@ -417,6 +420,24 @@ class AgentManager:
                     return
             except Exception as exc:
                 logger.warning("Agent voice failed for %s: %s", state.persona.id, exc)
+
+        # Deterministic life goals first (survival never waits on an LLM):
+        # starving -> buy food; homeless + flush -> rent a room; exhausted
+        # with a home -> go sleep in it; evenings pull the warm toward the pub.
+        if (
+            not ctx.hostiles
+            and not state.goal_commands
+            and time.time() >= state.next_life_goal_at
+        ):
+            life = self._life_goal(state, stats, room_id, ctx)
+            if life is not None:
+                state.next_life_goal_at = time.time() + 120.0
+                state.goal_label, state.goal_commands = life
+                from fablestar.agents.feelings import remember
+
+                remember(stats, f"needed to {state.goal_label}")
+                await server.redis.set_player_stats(name, stats)
+                ctx.goal_commands = list(state.goal_commands)
 
         # Intent: idle, unhurt-enough, no goal, a real player present -> ask
         # the brain for a goal and compile it into a Body script.
@@ -467,6 +488,18 @@ class AgentManager:
         del state.pov[:-20]
         await server.dispatcher.dispatch(state.session, command)
 
+        # Post-action feelings: eating settles hunger; sleeping in your own
+        # rented room beats any bench.
+        if reason == "eat" or command == "rest":
+            from fablestar.agents import feelings as fx3
+
+            post_stats = await server.redis.get_player_stats(name)
+            if reason == "eat":
+                fx3.on_ate(post_stats, state.persona)
+            if command == "rest" and post_stats.get("home_room") == room_id:
+                fx3.on_slept_home(post_stats, state.persona)
+            await server.redis.set_player_stats(name, post_stats)
+
     # ------------------------------------------------------------------
     # Intent (M4) — compile brain goals into Body scripts
     # ------------------------------------------------------------------
@@ -475,6 +508,50 @@ class AgentManager:
         """Room slugs the agent can path to (its zone's walked exits map)."""
         zone = state.persona.spawn_zone()
         return sorted(r.split(":")[-1] for r in self._exits_map(zone))
+
+    def _life_goal(self, state: AgentState, stats: dict[str, Any], room_id: str, ctx):
+        """Deterministic needs-driven goals. Returns (label, commands) or None."""
+        from fablestar.agents.body import route_path
+        from fablestar.world.clock import day_phase
+
+        zone = state.persona.spawn_zone()
+        exits_of = self._exits_map(zone)
+        needs = (stats.get("feelings", {}) or {}).get("needs", {}) or {}
+        digi = int(stats.get("digi", 0) or 0)
+        home = stats.get("home_room")
+
+        # Starving, no food on hand, can afford some: buy rations.
+        if float(needs.get("hunger", 0)) > 0.85 and not ctx.consumables and digi >= 10:
+            seller = self._shop_finder(zone, buying=False)("ration")
+            if seller:
+                path = route_path(room_id, seller, exits_of)
+                if path is not None:
+                    return ("buy food (starving)", [*path, "buy ration"])
+
+        # Homeless with savings: rent a room above the AIpub.
+        if not home and digi >= 40:
+            desk = "aipub:main_bar"
+            path = route_path(room_id, desk, exits_of)
+            if path is not None:
+                return ("rent a room", [*path, "rent"])
+
+        # Exhausted with a home: go sleep in your own bed.
+        if home and float(needs.get("rest", 0)) > 0.95 and room_id != home:
+            path = route_path(room_id, home, exits_of)
+            if path is not None:
+                return ("sleep at home", [*path, "rest"])
+
+        # Evening: the warm-hearted drift toward the pub now and then.
+        if (
+            day_phase() == "evening"
+            and state.persona.temperament.warmth > 0.5
+            and not room_id.startswith("aipub:")
+            and state.rng.random() < 0.04
+        ):
+            path = route_path(room_id, "aipub:main_bar", exits_of)
+            if path is not None:
+                return ("evening at the AIpub", path)
+        return None
 
     def _shop_finder(self, zone: str, *, buying: bool):
         """buying=True: () -> a room whose shop buys. buying=False: (item substring)

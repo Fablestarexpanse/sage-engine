@@ -38,6 +38,7 @@ class BodyContext:
     wander_ready: bool = True
     in_buying_shop: bool = False  # this room's shop buys goods
     sellable_count: int = 0  # unequipped items with value > 0
+    hungry: bool = False  # hunger need past threshold
 
 
 def decide(ctx: BodyContext, rng: random.Random | None = None) -> tuple[str, str | None]:
@@ -49,7 +50,7 @@ def decide(ctx: BodyContext, rng: random.Random | None = None) -> tuple[str, str
         return ("flee", rng.choice(ctx.exits))
     if ctx.hostiles:
         return ("fight", f"attack {ctx.hostiles[0]}")
-    if hp_frac < EAT_HP_FRACTION and ctx.consumables:
+    if (hp_frac < EAT_HP_FRACTION or ctx.hungry) and ctx.consumables:
         return ("eat", f"use {ctx.consumables[0]}")
     if hp_frac < 1.0 and ctx.room_type == "safe" and not ctx.resting:
         return ("rest", "rest")
