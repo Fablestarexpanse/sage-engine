@@ -78,6 +78,23 @@ Test suites: server **150** pytest, WorldForge **34** vitest — all green.
       following the existing PlayerAccountsTab pattern)
 - [ ] `content_browser.py` package split (deferred as not-yet-friction)
 
+### Agent NPCs (headless players — plan: .claude/plans, 2026-09-12)
+- [x] M1 bodies: AgentSession (Session + NullProtocol, dispatcher-only actions),
+      Body reflexes (flee/fight/eat/rest/goal/wander w/ BFS routing), 3 personas
+      in content/agents/*.yaml; ghost-room + look-players prerequisite fixes
+- [x] M2 feelings + admin: deterministic mood/needs/bonds w/ baseline decay;
+      /admin/agents API (list/detail/POV/restart/enable/teleport/give/persona
+      GET+PUT) + Agents tab in admin-ui (watch table, drawer, YAML editor)
+- [x] M3 voice: separate agents_llm.toml endpoint + own circuit breaker;
+      reply gate (addressed by non-agent, 20s cooldown), sanitizer; degrade
+      verified live (dead endpoint → '[no reply]' in POV, body unaffected).
+      Positive path awaits a real local model in config/agents_llm.toml
+- [ ] M4 intent: wake queue → JSON goals compiled to Body scripts; memory ring
+      into prompts (needs the brain endpoint running to tune)
+- Phase 2 (explicitly later): pgvector memories + reflection, bonds→long goals,
+      trading, LOD scheduler for dozens+, world chronicle feed, PG agent_state
+      durability (agents currently reset to persona on server restart)
+
 ### Game content / product (the actual game)
 - [x] Player command surface v1 complete (2026-09-12 audit): use/eat, rest
       (safe-room heal-over-time), who, tell, emote, equip/unequip with

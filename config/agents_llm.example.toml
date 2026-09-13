@@ -1,0 +1,9 @@
+# Agent-brain LLM — a SEPARATE endpoint from the narration LLM (config/llm.toml)
+# so agent thinking never competes with room narration. Copy to agents_llm.toml.
+enabled = false
+primary_backend = "lm_studio"   # or "ollama"
+lm_studio_url = "http://localhost:1234/v1"
+ollama_url = "http://localhost:11434/v1"
+chat_model = "auto"             # e.g. "qwen3-8b" — small + fast is the point
+temperature = 0.8
+timeout_seconds = 8.0

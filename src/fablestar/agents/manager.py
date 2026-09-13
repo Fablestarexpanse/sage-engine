@@ -55,6 +55,15 @@ class AgentManager:
         self.server = server
         self.agents: dict[str, AgentState] = {}  # persona.id -> state
         self._spawned = False
+        self._brain = None  # lazy: config not fully loaded at construction
+
+    @property
+    def brain(self):
+        if self._brain is None:
+            from fablestar.agents.brain import AgentBrain
+
+            self._brain = AgentBrain(self.server)
+        return self._brain
 
     # ------------------------------------------------------------------
     # Lifecycle
@@ -204,6 +213,14 @@ class AgentManager:
             next_routine_direction=self._routine_direction(state, room_id),
             wander_ready=now >= state.next_wander_at,
         )
+        # Voice first: being spoken to outranks reflexes short of combat.
+        if not ctx.hostiles:
+            try:
+                if await self.brain.maybe_voice(state):
+                    return
+            except Exception as exc:
+                logger.warning("Agent voice failed for %s: %s", state.persona.id, exc)
+
         reason, command = decide(ctx, state.rng)
         if command is None:
             return
