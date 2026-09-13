@@ -15,6 +15,7 @@ from starlette.responses import FileResponse
 
 from fablestar.admin.route_helpers import limiter
 from fablestar.network.websocket_protocol import WebSocketProtocol
+from fablestar.services.player_service import MIN_PASSWORD_LENGTH
 
 if TYPE_CHECKING:
     from fablestar.server import FablestarServer
@@ -22,7 +23,7 @@ if TYPE_CHECKING:
 
 class PlayAuthBody(BaseModel):
     username: str
-    password: str = Field(..., min_length=8)
+    password: str = Field(..., min_length=MIN_PASSWORD_LENGTH)
 
 
 class PlayAuthCharactersBody(BaseModel):

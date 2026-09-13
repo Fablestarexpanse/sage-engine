@@ -903,7 +903,8 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
             starterMsg = `Each skill can be at most 5 at creation (${err.slice("level_out_of_range:".length)}).`;
         }
         const map = {
-          invalid_character_name: "Use 2–50 characters: letters, numbers, spaces, _ -",
+          invalid_character_name: "Use 2–50 characters: letters, numbers, single spaces, _ - (start and end with a letter or number)",
+          character_name_reserved: "That name is reserved. Pick another.",
           character_name_taken: "That character name is already taken.",
           character_limit: "Maximum characters per account reached.",
           invalid_credentials: "Session expired — sign in again.",

@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 import bcrypt
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from fablestar.comfyui_client import generate_portrait_png
 from fablestar.core.config import resolve_config_asset_path
@@ -26,7 +26,59 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-CHAR_NAME_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9 _-]{1,49}$")
+CHAR_NAME_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9 _-]{0,48}[a-zA-Z0-9]$")
+MIN_PASSWORD_LENGTH = 8
+
+# Names that would read as staff, as the parser, or as a direction in chat.
+RESERVED_CHAR_NAMES = frozenset(
+    {
+        "admin",
+        "administrator",
+        "staff",
+        "gm",
+        "moderator",
+        "mod",
+        "system",
+        "server",
+        "nexus",
+        "god",
+        "nobody",
+        "someone",
+        "anyone",
+        "everyone",
+        "self",
+        "me",
+        "you",
+        "north",
+        "south",
+        "east",
+        "west",
+        "up",
+        "down",
+        "northeast",
+        "northwest",
+        "southeast",
+        "southwest",
+    }
+)
+
+
+def reserved_name_reason(name: str, agent_names: set[str]) -> str | None:
+    """Why a character name can't be used, or None. Compares case-insensitively."""
+    from fablestar.commands.registry import registry
+
+    key = " ".join(name.split()).lower()
+    if key in agent_names:
+        return "character_name_taken"
+    if key in RESERVED_CHAR_NAMES or registry.get(key) is not None:
+        return "character_name_reserved"
+    if any(
+        part in RESERVED_CHAR_NAMES - {"up", "down", "me", "you", "self"} for part in key.split()
+    ):
+        return "character_name_reserved"
+    return None
+
+
 MAX_CHARACTERS_PER_ACCOUNT = 8
 
 
@@ -43,6 +95,13 @@ class PlayerService:
 
     def __init__(self, server: FablestarServer):
         self.server = server
+
+    def _agent_names(self) -> set[str]:
+        try:
+            return {p.name.lower() for p in self.server.content_loader.get_agent_registry().all()}
+        except Exception:
+            logger.debug("agent registry unavailable for name check", exc_info=True)
+            return set()
 
     # ------------------------------------------------------------------
     # Shared response building
@@ -118,7 +177,7 @@ class PlayerService:
             return {"ok": False, "error": "username_too_short"}
         if len(username) > 50:
             return {"ok": False, "error": "username_too_long"}
-        if len(password) < 4:
+        if len(password) < MIN_PASSWORD_LENGTH:
             return {"ok": False, "error": "password_too_short"}
         async with self.server.db.session_factory() as db_session:
             result = await db_session.execute(select(Account).where(Account.username == username))
@@ -173,7 +232,7 @@ class PlayerService:
         name: str, portrait_url: str, portrait_prompt: str
     ) -> tuple[dict[str, Any] | None, str | None, str | None]:
         """Pure validation. Returns (error_response, portrait_url, portrait_prompt)."""
-        if not CHAR_NAME_RE.match(name):
+        if not CHAR_NAME_RE.match(name) or "  " in name:
             return {"ok": False, "error": "invalid_character_name"}, None, None
         p_url = (portrait_url or "").strip() or None
         if p_url and (
@@ -275,8 +334,13 @@ class PlayerService:
             if len(list(result.scalars().all())) >= MAX_CHARACTERS_PER_ACCOUNT:
                 return {"ok": False, "error": "character_limit"}
 
-            taken = await db_session.execute(select(Character).where(Character.name == name))
-            if taken.scalar_one_or_none():
+            reason = reserved_name_reason(name, self._agent_names())
+            if reason:
+                return {"ok": False, "error": reason}
+            taken = await db_session.execute(
+                select(Character.id).where(func.lower(Character.name) == name.lower())
+            )
+            if taken.first() is not None:
                 return {"ok": False, "error": "character_name_taken"}
 
         portrait_gen_failed: str | None = None

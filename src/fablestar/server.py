@@ -425,6 +425,20 @@ class FablestarServer:
                 )
                 return None
 
+            # Agents and players share the name-keyed state; a character row
+            # that predates the name guard must not take over a resident agent.
+            try:
+                agent_names = {
+                    p.name.lower() for p in self.content_loader.get_agent_registry().all()
+                }
+            except Exception:
+                agent_names = set()
+            if character.name.lower() in agent_names:
+                await session.send(
+                    json.dumps({"ok": False, "error": "character_name_reserved"}) + "\r\n"
+                )
+                return None
+
             account.last_login = datetime.utcnow()
             await db_session.commit()
             await db_session.refresh(character)
