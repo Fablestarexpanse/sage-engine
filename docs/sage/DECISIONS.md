@@ -1,9 +1,9 @@
 # SAGE decoupling — decision log
 
-NEXT: Stage 2a DONE (phases 01-04; CI jobs python/worldforge/live/licenses green on b12560c).
-Next: architect writes stage 2b phase docs (mechanical move to engine/ + rename to package `sage`,
-one-way door F.1 — announce before executing). Ratchet 2885/177 must only go down.
-Review page (private): https://claude.ai/code/artifact/2d488113-1ca9-4f45-b993-ac0253e0670c
+NEXT: Stage 2a in PR #7 (green). Stage 2b DONE on branch `sage/stage-2b` (dae9508 rename, e99cfcb
+engine/ move, b06b09a clients/tools move, bd1f292 identity). Next: architect writes stage 2c phase docs
+(plugin loader, lexicon, world loader, resolvers, event bus, state blocks, skeleton world 2).
+Ratchet 2188/177 must only go down. Review page: https://claude.ai/code/artifact/2d488113-1ca9-4f45-b993-ac0253e0670c
 
 Append-only. One entry per ruling or decision, newest last. Owner rulings are binding; architect
 decisions are proposals until the Phase 1 review approves them.
