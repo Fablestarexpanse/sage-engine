@@ -40,6 +40,7 @@ NAV_TOOL_IDS = frozenset(
         "skills",
         "agents",
         "shops",
+        "lexicon",
     }
 )
 

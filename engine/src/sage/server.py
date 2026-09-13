@@ -123,6 +123,10 @@ class SageServer:
         self._embedded_llm = None
         self.llm_client.embedded_getter = self.embedded_llm
         self.prompt_manager = PromptManager(self.world.prompts_dir)
+        from sage.lexicon.overrides import LexiconOverrides
+
+        self.lexicon_overrides = LexiconOverrides(self.db.session_factory)
+        self._active_lexicon_overrides: dict[str, str] = {}
         self.lexicon = self._build_lexicon()
 
         # Domain services (each reads config/db through this server so live
@@ -363,7 +367,7 @@ class SageServer:
 
         # 1b. The world's plugins, after engine commands so verb conflicts are caught.
         self.plugins.load(plugin_records)
-        self.lexicon = self._build_lexicon()
+        await self.reload_lexicon_overrides()
 
         # 2. Tick handlers — must be registered before the tick loop starts in step 4
         self.tick_manager.register(self.spawner.on_tick)
@@ -780,11 +784,19 @@ class SageServer:
         self.resolvers.define("death.check", default_death_check)
         self.resolvers.define("death.respawn", default_respawn)
 
+    async def reload_lexicon_overrides(self) -> None:
+        """Re-read active Nexus lexicon edits and rebuild the live lexicon (no restart)."""
+        self._active_lexicon_overrides = await self.lexicon_overrides.active()
+        self.lexicon = self._build_lexicon()
+
     def _build_lexicon(self) -> lexicon.Lexicon:
         """World strings over engine defaults; installed for Session.say and lexicon.t."""
         plugin_layers = self.plugins.lexicon_layers() if hasattr(self, "plugins") else []
         built = lexicon.build_lexicon(
-            self.world.lexicon_dir, self.world.manifest.world.locale, plugin_layers=plugin_layers
+            self.world.lexicon_dir,
+            self.world.manifest.world.locale,
+            overrides=getattr(self, "_active_lexicon_overrides", None),
+            plugin_layers=plugin_layers,
         )
         lexicon.set_active(built)
         return built

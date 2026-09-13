@@ -20,6 +20,7 @@ import ContentLibraryPage from "./pages/ContentLibraryPage.jsx";
 import ServerPage from "./pages/ServerPage.jsx";
 import OperationsPage from "./pages/OperationsPage.jsx";
 import StaffTeamPage from "./pages/StaffTeamPage.jsx";
+import LexiconPage from "./pages/LexiconPage.jsx";
 
 // ═══════════════════════════════════════════════════════════════
 // ADMIN AUTH, PRESENCE & TEAM (staff / head admin)
@@ -152,6 +153,7 @@ const NAV_ITEMS = [
   { id: "builder", label: "World Builder", icon: <Icons.Map /> },
   { id: "agents", label: "Agents", icon: <Icons.Players /> },
   { id: "shops", label: "Shops", icon: <Icons.Items /> },
+  { id: "lexicon", label: "Lexicon & MOTD", icon: <Icons.Content /> },
   { id: "server", label: "Server", icon: <Icons.Server /> },
   { id: "settings", label: "Settings", icon: <Icons.Settings /> },
   { id: "team", label: "Team & access", icon: <Icons.Players />, headOnly: true },
@@ -179,6 +181,7 @@ const PAGES = {
   builder: WorldBuilderPage,
   agents: AgentsPage,
   shops: ShopsPage,
+  lexicon: LexiconPage,
   server: ServerPage,
   settings: SettingsPlaceholderPage,
   team: StaffTeamPage,

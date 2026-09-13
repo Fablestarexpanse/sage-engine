@@ -153,3 +153,24 @@ class AdminStaff(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
+
+
+class WorldOverride(Base):
+    """Versioned live edits to world assets made from Nexus (contracts B.7).
+
+    One row per saved version. At most one version per (kind, key) is active; rolling back
+    re-activates an older row. The world package files stay the defaults underneath.
+    """
+
+    __tablename__ = "world_overrides"
+    __table_args__ = (Index("ix_world_overrides_kind_key", "kind", "key"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    kind: Mapped[str] = mapped_column(String(32))  # lexicon (prompt, style, param later)
+    key: Mapped[str] = mapped_column(String(255))
+    version: Mapped[int] = mapped_column(Integer)
+    value: Mapped[Any] = mapped_column(JSON)
+    active: Mapped[bool] = mapped_column(Boolean, default=False)
+    author_staff_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

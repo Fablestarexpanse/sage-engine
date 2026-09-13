@@ -285,3 +285,111 @@ def test_staff_patch_sends_only_set_fields(client, server, monkeypatch):
 def test_staff_patch_rejects_short_password(client, server):
     r = client.patch("/admin/staff/4", json={"password": "short"}, headers=_auth(server, 1))
     assert r.status_code == 422
+
+
+# ---- lexicon editing (decision 7) ------------------------------------------
+
+
+class _FakeOverrides:
+    def __init__(self):
+        self.rows: dict[str, list[dict]] = {}
+
+    async def active(self):
+        return {
+            k: next(v["value"] for v in vs if v["active"])
+            for k, vs in self.rows.items()
+            if any(v["active"] for v in vs)
+        }
+
+    async def history(self, key):
+        return list(reversed(self.rows.get(key, [])))
+
+    async def save(self, key, value, author_staff_id, note=None):
+        versions = self.rows.setdefault(key, [])
+        for v in versions:
+            v["active"] = False
+        versions.append(
+            {"version": len(versions) + 1, "value": value, "active": True, "note": note}
+        )
+        return len(versions)
+
+    async def rollback(self, key, version):
+        from sage.lexicon.overrides import OverrideError
+
+        versions = self.rows.get(key, [])
+        if not any(v["version"] == version for v in versions):
+            raise OverrideError(f"{key!r} has no version {version}")
+        for v in versions:
+            v["active"] = v["version"] == version
+
+    async def clear(self, key):
+        for v in self.rows.get(key, []):
+            v["active"] = False
+
+
+@pytest.fixture()
+def lexicon_client(server):
+    from sage.lexicon import Lexicon
+
+    base = [
+        ("world", {"login.motd": "Mind the eels."}),
+        ("engine", {"prompt": "> ", "login.motd": ""}),
+    ]
+    server.world = SimpleNamespace(id="demo")
+    server.lexicon_overrides = _FakeOverrides()
+    server.lexicon = Lexicon(base)
+
+    async def reload_lexicon_overrides():
+        active = await server.lexicon_overrides.active()
+        server.lexicon = Lexicon([("override", active), *base] if active else base)
+
+    server.reload_lexicon_overrides = reload_lexicon_overrides
+    return TestClient(NexusApp(server).app, raise_server_exceptions=False)
+
+
+def test_lexicon_requires_the_lexicon_tool(lexicon_client, server):
+    assert lexicon_client.get("/admin/lexicon", headers=_auth(server, 2)).status_code == 403
+
+
+def test_lexicon_edit_rollback_and_revert(lexicon_client, server):
+    head = _auth(server, 1)
+    listing = lexicon_client.get("/admin/lexicon", headers=head).json()
+    motd = next(r for r in listing["keys"] if r["key"] == "login.motd")
+    assert (motd["value"], motd["source"], motd["overridden"]) == ("Mind the eels.", "world", False)
+
+    r = lexicon_client.put(
+        "/admin/lexicon/login.motd", json={"value": "Flood warning!"}, headers=head
+    )
+    assert r.status_code == 200 and r.json() == {
+        "key": "login.motd",
+        "version": 1,
+        "value": "Flood warning!",
+    }
+    lexicon_client.put("/admin/lexicon/login.motd", json={"value": "All clear."}, headers=head)
+    assert server.lexicon.get("login.motd") == "All clear."
+
+    r = lexicon_client.post("/admin/lexicon/login.motd/rollback", json={"version": 1}, headers=head)
+    assert r.json()["value"] == "Flood warning!"
+    history = lexicon_client.get("/admin/lexicon/login.motd/history", headers=head).json()[
+        "versions"
+    ]
+    assert [(v["version"], v["active"]) for v in history] == [(2, False), (1, True)]
+
+    r = lexicon_client.delete("/admin/lexicon/login.motd", headers=head)
+    assert r.json() == {"key": "login.motd", "value": "Mind the eels.", "source": "world"}
+
+
+def test_lexicon_rejects_unknown_keys_and_versions(lexicon_client, server):
+    head = _auth(server, 1)
+    assert (
+        lexicon_client.put(
+            "/admin/lexicon/no.such.key", json={"value": "x"}, headers=head
+        ).status_code
+        == 404
+    )
+    assert (
+        lexicon_client.post(
+            "/admin/lexicon/prompt/rollback", json={"version": 9}, headers=head
+        ).status_code
+        == 404
+    )
