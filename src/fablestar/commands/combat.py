@@ -172,18 +172,19 @@ async def attack(session: Session, args: list[str]):
         )
         await heat(app_instance.redis, "kills", room_id)
         await heat(app_instance.redis, f"kills_by:{player_id}", target_state.get("template", "?"))
-    if player_stats.get("hp", 1) <= 0:
-        log_event(
-            "player_death",
-            player=player_id,
-            is_agent=bool(getattr(session, "is_agent", False)),
-            room=room_id,
-            by=target_state.get("template", ""),
-        )
-        await heat(app_instance.redis, "deaths", room_id)
-
     # Achievement counters: total kills plus per-template kills.
     newly_granted = []
+    if player_stats.get("hp", 1) <= 0:
+        from fablestar.effects.death import record_player_death
+
+        newly_granted += await record_player_death(
+            app_instance,
+            session,
+            player_id,
+            player_stats,
+            room_id,
+            target_state.get("template", ""),
+        )
     faction_messages: list[str] = []
     if entity_dead:
         try:
@@ -306,8 +307,7 @@ async def attack(session: Session, args: list[str]):
             await session.send(f"\r\n{announcement(ach)}")
 
     if player_stats.get("hp", 1) <= 0:
-        await session.send("\r\nYou have been slain. Disconnecting...")
-        await session.close()
+        await session.end("died", "\r\nYou have been slain. Disconnecting...")
 
 
 @command("flee", aliases=["run", "escape"])

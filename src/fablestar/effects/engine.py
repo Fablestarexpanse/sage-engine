@@ -122,6 +122,8 @@ def process_effects(state: dict[str, Any], now: float | None = None) -> list[str
         expired = eff.get("expires_at") is not None and now >= eff["expires_at"]
         # Fire any ticks that came due before expiry.
         while eff.get("kind") in ("dot", "hot") and eff.get("next_tick_at", now) <= now:
+            if int(state.get("hp", 1)) <= 0:
+                break  # dead: no more damage lines, no heals on a corpse
             tick_at = eff["next_tick_at"]
             if eff.get("expires_at") is not None and tick_at > eff["expires_at"]:
                 break

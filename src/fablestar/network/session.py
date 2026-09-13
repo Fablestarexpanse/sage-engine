@@ -44,6 +44,21 @@ class Session:
             prompt = "\r\n> "  # Default prompt
             await self.protocol.send(prompt)
 
+    async def end(self, reason: str, text: str | None = None):
+        """Close with a reason the web client can act on.
+
+        reason: "quit" | "died" | "replaced". The client auto-reconnects after
+        a drop or a death (respawn) but must not after quit or being replaced,
+        or two tabs on one character kick each other forever.
+        """
+        if text:
+            await self.send(text)
+        if not getattr(self, "is_agent", False):
+            import json
+
+            await self.send(json.dumps({"client_notice": "session_end", "reason": reason}))
+        await self.close()
+
     async def close(self):
         """Gracefully close the session."""
         self.state = SessionState.DISCONNECTING
@@ -96,15 +111,14 @@ class SessionManager:
             return False
         old = self.sessions[old_id]
         old.superseded = True
-        try:
-            await old.send("\r\nThis character just signed in from another connection. Goodbye.")
-        except Exception:
-            pass
         # Don't touch Redis room state — the new session inherits the same
         # character position; only the old socket dies.
         self.player_to_session.pop(player_id, None)
         try:
-            await old.close()
+            await old.end(
+                "replaced",
+                "\r\nThis character just signed in from another connection. Goodbye.",
+            )
         except Exception:
             pass
         self.sessions.pop(old_id, None)

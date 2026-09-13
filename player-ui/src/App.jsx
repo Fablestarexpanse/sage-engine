@@ -1992,6 +1992,9 @@ export default function App() {
     });
   }, []);
   const [wsConnected, setWsConnected] = useState(false);
+  // Set when the server ended the session on purpose (quit, signed in elsewhere,
+  // login refused): show why and wait for the player instead of auto-reconnecting.
+  const [wsStopped, setWsStopped] = useState(null);
   const [wsRetry, setWsRetry] = useState(0); // bumped by onclose to trigger auto-reconnect
   const wsRef = useRef(null);
   const [playerScenePath, setPlayerScenePath] = useState(null);
@@ -2177,9 +2180,11 @@ export default function App() {
     const url = playWebSocketUrl();
     const ws = new WebSocket(url);
     wsRef.current = ws;
+    let endReason = null;
 
     ws.onopen = () => {
       setWsConnected(true);
+      setWsStopped(null);
       const token = getPlayToken();
       const payload = token
         ? { token }
@@ -2197,7 +2202,12 @@ export default function App() {
         const j = JSON.parse(trimmed);
         if (j && j.ok === false) {
           setNarrativeLines((prev) => [...prev, { type: "alert", text: `Connection refused: ${j.error}`, level: "danger" }]);
+          endReason = "refused";
           ws.close();
+          return;
+        }
+        if (j && j.client_notice === "session_end") {
+          endReason = typeof j.reason === "string" ? j.reason : null;
           return;
         }
         if (j && j.client_notice === "echo_credits_granted") {
@@ -2291,8 +2301,17 @@ export default function App() {
     ws.onclose = () => {
       setWsConnected(false);
       wsRef.current = null;
-      // Auto-reconnect: bump wsRetry to re-run this effect. Without it a
-      // server restart left a dead socket silently eating commands.
+      const stopped = {
+        quit: "You left the station.",
+        replaced: "This character signed in from another window or device.",
+        refused: "The station refused this login.",
+      }[endReason];
+      if (stopped) {
+        setWsStopped(stopped);
+        return;
+      }
+      // Auto-reconnect after a drop or a death (the server respawns you on
+      // login). Without it a server restart left a dead socket eating commands.
       retryTimer = setTimeout(() => setWsRetry((n) => n + 1), 2500);
     };
 
@@ -2438,6 +2457,11 @@ export default function App() {
           narrativeLines={narrativeLines}
           onSendCommand={onSendCommand}
           wsConnected={wsConnected}
+          wsStopped={wsStopped}
+          onReconnect={() => {
+            setWsStopped(null);
+            setWsRetry((n) => n + 1);
+          }}
           sceneImageUrl={resolvedSceneImageUrl}
           sceneRoomLabel={import.meta.env.VITE_SCENE_ROOM_LABEL || undefined}
           sceneDownloadBaseName={`fablestar-scene-${String(playSession.characterName || "character").replace(/[^a-zA-Z0-9_-]+/g, "_")}`}

@@ -467,6 +467,7 @@ class FablestarServer:
         # half health with death-bound effects cleared, instead of logging in
         # as a corpse that dies to the first breeze.
         respawned = False
+        respawn_bill = 0
         if int(norm_stats.get("hp", 1)) <= 0:
             from fablestar.effects.engine import clear_on_death
             from fablestar.world.defaults import RESPAWN_ROOM
@@ -479,6 +480,7 @@ class FablestarServer:
             bill = min(int(character.digi_balance or 0), 10)
             character.digi_balance = int(character.digi_balance or 0) - bill
             respawned = True
+            respawn_bill = bill
 
         # A character saved in a room that no longer exists (zone deleted or
         # renamed) wakes at the world start instead of a void.
@@ -503,9 +505,15 @@ class FablestarServer:
         await self.redis.set_player_inventory(character.name, character.inventory)
 
         if respawned:
+            currency = self.config.server.game_currency_display_name
+            bill_line = (
+                f" The clinic took {respawn_bill} {currency} for the trouble."
+                if respawn_bill
+                else " You were too broke to bill; they patched you anyway."
+            )
             await session.send(
                 "\r\nYou wake on a diagnostic bed, patched together and aching. "
-                "The dispensary arm gives you an encouraging whir."
+                "The dispensary arm gives you an encouraging whir." + bill_line
             )
 
         await self.push_character_snapshot(session)

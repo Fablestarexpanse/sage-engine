@@ -37,17 +37,31 @@ class EffectsManager:
         stats = await self.server.redis.get_player_stats(player_id)
         if not stats.get(EFFECTS_KEY):
             return
+        was_alive = int(stats.get("hp", 1)) > 0
         messages = process_effects(stats)
         if not messages and stats.get(EFFECTS_KEY):
             return  # nothing fired, nothing expired — skip the write
+        session = self.server.session_manager.get_session_by_player(player_id)
+        died = was_alive and int(stats.get("hp", 1)) <= 0
+        granted = []
+        if died:
+            from fablestar.effects.death import record_player_death
+
+            room_id = await self.server.redis.get_player_location(player_id)
+            granted = await record_player_death(
+                self.server, session, player_id, stats, room_id, "affliction"
+            )
         await self.server.redis.set_player_stats(player_id, stats)
 
-        session = self.server.session_manager.get_session_by_player(player_id)
         if session is None:
             return
         for msg in messages:
             await session.send(f"\r\n{msg}")
+        if granted:
+            from fablestar.achievements.engine import announcement
+
+            for ach in granted:
+                await session.send(f"\r\n{announcement(ach)}")
         await self.server.push_character_snapshot(session)
         if int(stats.get("hp", 1)) <= 0:
-            await session.send("\r\nYou succumb to your afflictions. Disconnecting...")
-            await session.close()
+            await session.end("died", "\r\nYou succumb to your afflictions. Disconnecting...")

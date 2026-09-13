@@ -177,6 +177,12 @@ class StubSession:
     async def close(self) -> None:
         self.closed = True
 
+    async def end(self, reason: str, text: str | None = None) -> None:
+        if text:
+            self.sent.append(text)
+        self.end_reason = reason
+        self.closed = True
+
 
 def make_fake_server() -> SimpleNamespace:
     """A FablestarServer stand-in with the attributes command handlers touch."""

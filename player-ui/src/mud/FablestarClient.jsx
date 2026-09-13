@@ -62,6 +62,9 @@ export default function FablestarClient({
   narrativeLines,
   onSendCommand,
   wsConnected,
+  /** Why the server ended the session (quit / replaced / refused); null while reconnecting normally. */
+  wsStopped = null,
+  onReconnect,
   /** Absolute URL for current room scene art (from room YAML area_image_url + Nexus base). */
   sceneImageUrl,
   /** ComfyUI scene render in progress (spinner on Scene panel). */
@@ -232,10 +235,12 @@ export default function FablestarClient({
         role="alert"
         style={{
           position: "fixed",
-          top: 0,
+          // Below the 36px top bar (also fixed, z 9999), which otherwise covers
+          // the banner and swallows clicks on its Reconnect button.
+          top: 36,
           left: 0,
           right: 0,
-          zIndex: 9999,
+          zIndex: 10001,
           padding: "6px 14px",
           textAlign: "center",
           background: T.glyph.crimson,
@@ -245,7 +250,30 @@ export default function FablestarClient({
           letterSpacing: "0.06em",
         }}
       >
-        Connection to the station lost — reconnecting…
+        {wsStopped ? (
+          <>
+            {wsStopped}{" "}
+            <button
+              type="button"
+              onClick={onReconnect}
+              style={{
+                marginLeft: 8,
+                padding: "2px 10px",
+                borderRadius: 4,
+                border: "1px solid #fff",
+                background: "transparent",
+                color: "#fff",
+                cursor: "pointer",
+                fontFamily: T.font.body,
+                fontSize: 12,
+              }}
+            >
+              Reconnect
+            </button>
+          </>
+        ) : (
+          "Connection to the station lost — reconnecting…"
+        )}
       </div>
     )}
     <div style={{

@@ -30,6 +30,28 @@ scrolled up and follows when at bottom, focus stays on the input.
 ## Follow-ups (not done)
 
 - ~~Narrow screens~~ — owner ruling 2026-09-13: phones are not a supported target; tablets are. Tablet (768x1024) checked: all panels visible, no horizontal scroll, top bar a little crowded.
-- Death / respawn path still untested by QA.
 - Chargen float/bool starter allocation still untested.
 - Tab completion list is static; drifts when commands are added (a server-provided list would fix that).
+
+## Death & respawn pass (2026-09-13)
+
+Tested live (dev login, scripted + browser): combat death, affliction (DoT) death, relogin respawn, broke
+respawn, inventory kept, survive_death effects kept, room set cleared on death.
+
+Working before: disconnect on death, respawn in the clinic at half HP, 10 Digi bill (down to zero), effects
+without survive_death cleared, inventory kept.
+
+Found and fixed:
+- **S2 `quit` didn't quit in the player UI** — client auto-reconnected 2.5 s after any close, including quit.
+- **S2 two tabs on one character kicked each other forever** — same auto-reconnect after "signed in elsewhere".
+  Server now sends `{"client_notice": "session_end", "reason": quit|died|replaced}` before closing
+  (`Session.end`); the client stops on quit/replaced/refused with a banner + Reconnect button and still
+  auto-reconnects after a death or a drop. The banner was hidden under the fixed top bar; moved below it.
+- **S3 player deaths weren't counted** — agents counted deaths, players didn't, so the "Died Once, Billed
+  Twice" achievement was unearnable; affliction deaths weren't in telemetry or the deaths heatmap either.
+  Shared `effects/death.py:record_player_death` now does counter + `player_death` event + heatmap for both.
+- **S3 respawn bill was silent** — wake-up text now says what the clinic took (or that you were too broke).
+- **S4 DoT kept ticking on a corpse** — extra "-5 hp" line after hp hit 0; ticks stop at 0.
+
+Design notes (not changed): death disconnects the socket and respawn happens on the next login; the web
+client makes that a ~2.5 s blink. No item or XP loss beyond the 10 Digi bill.
