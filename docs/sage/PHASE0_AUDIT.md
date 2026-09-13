@@ -437,10 +437,11 @@ touches the matching code.
 | 18 | `docs/dev/QA_FIX_PLAN_2026-09-13.md` | H | No | **Now:** historical header. |
 | 19 | `docs/dev/SOAK_2026-09-13.md` | H | No | **Now:** historical header. |
 | 20 | `docs/dev/milestones/M1-code-quality-foundation/README.md` | H, C | Low — "completed" with phases 02/03 "todo" and files missing; "green CI baseline" with no CI | **Now:** historical header. |
-| 21 | `docs/dev/milestones/M1-…/phase-01-parser-registry-tests.md` | H | No | **Now:** historical header. |
+| 21 | `docs/dev/milestones/M1-code-quality-foundation/phase-01-parser-registry-tests.md` | H | No | **Now:** historical header. |
 | 22 | `docs/screenshots/README.md` | E | No | **Later** (Phase 5). |
+| 23 | `docs/dev/milestones/M2-sage-decoupling/README.md` | A | No — created by this work | Keep current as stages land. |
 
-New files from this work (`docs/sage/*.md`) are authoritative per the brief's precedence
+Rows 1–22 are the files that existed before this work; row 23 was added by it. `docs/sage/*.md` files are authoritative per the brief's precedence
 order and are not counted above.
 
 ---

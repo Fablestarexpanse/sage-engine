@@ -1,8 +1,8 @@
 # SAGE decoupling — decision log
 
-NEXT: Phase −1 committed (2a80ab9, 3d4cf48, 6e27147, dbfdcc8); Phase 0 audit + doc banners
-committed on `sage/phase-0-1`. Writing PHASE1_CONTRACTS.md, then publish Artifact, then STOP for
-owner review of Phase 1. Do not start Phase 2.
+NEXT: Phase −1 (4 commits) + Phase 0 (144706a) + Phase 1 contracts committed on `sage/phase-0-1`.
+Artifact published. STOPPED for owner review of PHASE1_CONTRACTS.md (Part G questions).
+Do not start Phase 2 until approved.
 
 Append-only. One entry per ruling or decision, newest last. Owner rulings are binding; architect
 decisions are proposals until the Phase 1 review approves them.
