@@ -39,6 +39,12 @@ jobs:
       - name: Lint
         run: python -m ruff check src tests
 
+      - name: SAGE invariant ratchet
+        run: |
+          python -m ruff check scripts/sage_invariants.py
+          python -m ruff format --check scripts/sage_invariants.py
+          python scripts/sage_invariants.py check
+
       - name: Test
         run: python -m pytest -q
 

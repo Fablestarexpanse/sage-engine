@@ -354,6 +354,8 @@ SAGE_LIVE_TESTS=1 python -m pytest -m live
 
 Live tests create and drop their own `sage_live_*` database and use Redis db 15, so they never touch the dev database. `tests/live/test_migrations.py::test_models_match_migrations` fails when the ORM models and migrations disagree — fix the model or add a migration, never weaken the test.
 
+**SAGE invariant ratchet** (CI step, `scripts/sage_invariants.py`): counts world-specific terms (`scripts/sage_denylist.toml`) and hardcoded player-facing strings (`session.send("...")`) per engine file, and fails if any file's count rises above `scripts/sage_invariants_baseline.json`. Run `python scripts/sage_invariants.py check` before committing. When you remove hits, run `python scripts/sage_invariants.py update` to lock in the lower counts. Never raise the baseline to make CI pass — put the term in a world package or the text behind a lexicon key instead.
+
 ---
 
 ## Key patterns to follow
