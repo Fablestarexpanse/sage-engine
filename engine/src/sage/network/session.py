@@ -38,11 +38,18 @@ class Session:
             # Automatic newline append for MUD feel
             await self.protocol.send(message + "\r\n")
 
+    async def say(self, key: str, **variables):
+        """Send the lexicon string for key (brief invariant 3: player text is never a literal)."""
+        from sage import lexicon
+
+        await self.send(lexicon.t(key, **variables))
+
     async def send_prompt(self):
         """Send the command prompt to the client (no newline)."""
         if self.protocol.is_connected:
-            prompt = "\r\n> "  # Default prompt
-            await self.protocol.send(prompt)
+            from sage import lexicon
+
+            await self.protocol.send(lexicon.t("prompt"))
 
     async def end(self, reason: str, text: str | None = None):
         """Close with a reason the web client can act on.

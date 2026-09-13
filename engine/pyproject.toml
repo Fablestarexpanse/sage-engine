@@ -37,6 +37,9 @@ sage = "sage.__main__:main"
 # Deprecated alias for one release (docs/sage/PHASE1_CONTRACTS.md F.1).
 fablestar = "sage.__main__:main"
 
+[tool.setuptools.package-data]
+sage = ["lexicon/*.yaml"]
+
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"

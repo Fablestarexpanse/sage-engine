@@ -172,6 +172,11 @@ class StubSession:
     async def send(self, message: str) -> None:
         self.sent.append(message)
 
+    async def say(self, key: str, **variables) -> None:
+        from sage import lexicon
+
+        self.sent.append(lexicon.t(key, **variables))
+
     async def send_prompt(self) -> None:
         pass
 

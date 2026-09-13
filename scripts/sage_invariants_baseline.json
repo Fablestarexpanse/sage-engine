@@ -1,7 +1,7 @@
 {
   "totals": {
     "denylist": 2187,
-    "player_literals": 177
+    "player_literals": 169
   },
   "denylist": {
     "engine/alembic/versions/b3c4d5e6f7a8_account_echo_credits.py": 5,
@@ -117,11 +117,11 @@
     "engine/src/sage/commands/achievements.py": 2,
     "engine/src/sage/commands/admin.py": 1,
     "engine/src/sage/commands/combat.py": 15,
-    "engine/src/sage/commands/communication.py": 18,
+    "engine/src/sage/commands/communication.py": 17,
     "engine/src/sage/commands/crafting.py": 10,
     "engine/src/sage/commands/effects.py": 7,
     "engine/src/sage/commands/factions.py": 2,
-    "engine/src/sage/commands/info.py": 15,
+    "engine/src/sage/commands/info.py": 13,
     "engine/src/sage/commands/items.py": 28,
     "engine/src/sage/commands/missions.py": 8,
     "engine/src/sage/commands/movement.py": 7,
@@ -132,8 +132,7 @@
     "engine/src/sage/effects/manager.py": 3,
     "engine/src/sage/maestro/modules.py": 3,
     "engine/src/sage/network/session.py": 2,
-    "engine/src/sage/parser/dispatcher.py": 3,
-    "engine/src/sage/server.py": 10,
+    "engine/src/sage/server.py": 8,
     "engine/src/sage/world/ambient.py": 1,
     "engine/tests/test_agents_body.py": 1,
     "engine/tests/test_session.py": 4

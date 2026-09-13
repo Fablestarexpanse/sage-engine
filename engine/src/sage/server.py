@@ -14,7 +14,7 @@ from typing import Any
 
 from sqlalchemy import select
 
-from sage import app
+from sage import app, lexicon
 from sage.admin import content_browser
 from sage.admin.nexus import NexusApp
 from sage.agents.manager import AgentManager
@@ -107,6 +107,7 @@ class SageServer:
         self._embedded_llm = None
         self.llm_client.embedded_getter = self.embedded_llm
         self.prompt_manager = PromptManager(self.world.prompts_dir)
+        self.lexicon = self._build_lexicon()
 
         # Domain services (each reads config/db through this server so live
         # settings updates are always observed)
@@ -354,6 +355,7 @@ class SageServer:
                 str(PACKAGE_DIR / "commands"),
                 str(self.project_root / "config"),
                 str(self.world.prompts_dir),
+                str(self.world.lexicon_dir),
             ]
         )
 
@@ -529,22 +531,23 @@ class SageServer:
 
         if respawned:
             currency = self.config.server.game_currency_display_name
-            bill_line = (
-                f" The clinic took {respawn_bill} {currency} for the trouble."
+            bill = (
+                lexicon.t("death.bill", amount=respawn_bill, currency=currency)
                 if respawn_bill
-                else " You were too broke to bill; they patched you anyway."
+                else lexicon.t("death.no_bill")
             )
-            await session.send(
-                "\r\nYou wake on a diagnostic bed, patched together and aching. "
-                "The dispensary arm gives you an encouraging whir." + bill_line
-            )
+            await session.say("death.wake", bill=bill)
 
         await self.push_character_snapshot(session)
+
+        for key in ("login.banner", "login.motd"):
+            if text := lexicon.t(key).strip():
+                await session.send(text)
 
         # Initial look
         await self.dispatcher.dispatch(session, "look")
         if not norm_stats.get("visited_rooms"):
-            await session.send("\r\nNew here? Type 'help' to see what you can do.")
+            await session.say("onboarding.new_player")
         await session.send_prompt()
 
     async def push_character_snapshot(self, session: Session) -> None:
@@ -717,11 +720,20 @@ class SageServer:
                     logger.debug("Room-set cleanup failed for %s", session.player_id, exc_info=True)
             await self.session_manager.destroy_session(session.id)
 
+    def _build_lexicon(self) -> lexicon.Lexicon:
+        """World strings over engine defaults; installed for Session.say and lexicon.t."""
+        built = lexicon.build_lexicon(self.world.lexicon_dir, self.world.manifest.world.locale)
+        lexicon.set_active(built)
+        return built
+
     async def _on_file_changed(self, path: Path):
         """Handle hot-reload requests from the watcher."""
         logger.info(f"Hot-reload triggered for: {path}")
 
         world = getattr(self, "world", None)
+        if world is not None and path.resolve().is_relative_to(world.lexicon_dir):
+            self.lexicon = self._build_lexicon()
+
         if world is not None and path.resolve().is_relative_to(world.content_dir):
             self.content_loader.invalidate(path)
 

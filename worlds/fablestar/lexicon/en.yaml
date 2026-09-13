@@ -1,0 +1,9 @@
+# Fablestar Expanse strings. Proprietary, all rights reserved (see NOTICE).
+
+who:
+  empty: "The station is silent. Nobody is connected."
+
+death:
+  wake: "\r\nYou wake on a diagnostic bed, patched together and aching. The dispensary arm gives you an encouraging whir.{bill}"
+  bill: " The clinic took {amount} {currency} for the trouble."
+  no_bill: " You were too broke to bill; they patched you anyway."

@@ -5,6 +5,7 @@ import logging
 import re
 import time
 
+from sage import lexicon
 from sage.commands.registry import registry
 from sage.network.session import Session
 from sage.parser.tokenizer import tokenize
@@ -84,9 +85,7 @@ class CommandDispatcher:
         if not self._allow(session):
             if not getattr(session, "_rate_warned", False):
                 session._rate_warned = True
-                await session.send(
-                    "Slow down — commands are arriving faster than the world can act."
-                )
+                await session.say("parser.rate_limited")
             return
 
         tokens = tokenize(text)
@@ -105,8 +104,12 @@ class CommandDispatcher:
                 await command.handler(session, args)
             except Exception as e:
                 logger.error(f"Error executing command '{verb}': {e}")
-                await session.send("An error occurred while processing your command.")
+                await session.say("parser.command_error")
         else:
             shown = verb if len(verb) <= ECHO_CHARS else verb[:ECHO_CHARS] + "…"
-            hint = f" Did you mean: {', '.join(suggestions)}?" if suggestions else ""
-            await session.send(f"Unknown command: '{shown}'.{hint} Type 'help' for assistance.")
+            hint = (
+                lexicon.t("parser.did_you_mean", suggestions=", ".join(suggestions))
+                if suggestions
+                else ""
+            )
+            await session.say("parser.unknown_command", verb=shown, hint=hint)

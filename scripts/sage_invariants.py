@@ -28,7 +28,20 @@ BASELINE_FILE = ROOT / "scripts" / "sage_invariants_baseline.json"
 
 # Engine code (NOTICE) plus repository tooling that ships beside it.
 ENGINE_PATHS = ["engine", "scripts"]
-EXTENSIONS = {".py", ".js", ".jsx", ".ts", ".tsx", ".html", ".css", ".json", ".toml", ".rs"}
+EXTENSIONS = {
+    ".py",
+    ".js",
+    ".jsx",
+    ".ts",
+    ".tsx",
+    ".html",
+    ".css",
+    ".json",
+    ".toml",
+    ".rs",
+    ".yaml",
+    ".yml",
+}
 SKIP_DIRS = {"node_modules", "dist", "target", "__pycache__", ".desloppify", ".pytest_cache"}
 SKIP_FILES = {
     "package-lock.json",

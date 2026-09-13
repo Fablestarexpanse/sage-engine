@@ -141,6 +141,15 @@ async def map_cmd(session: Session, args: list[str]):
     await session.send("\r\n".join(lines))
 
 
+def _help_text(verb: str, handler) -> str:
+    """help.<verb> from the lexicon, else the handler docstring."""
+    from sage import lexicon
+
+    return lexicon.active().get(f"help.{verb}") or (
+        (handler.__doc__ or "").strip() or lexicon.t("help.no_description")
+    )
+
+
 @command("help", aliases=["h", "?"])
 async def help_cmd(session: Session, args: list[str]):
     """Display available commands. Usage: help [command]"""
@@ -150,19 +159,19 @@ async def help_cmd(session: Session, args: list[str]):
         wanted = args[0].lower()
         cmd = registry.get(wanted)
         if cmd is None:
-            await session.send(f"No command called '{wanted}'. Plain 'help' lists them all.")
+            await session.say("help.no_such_command", verb=wanted)
             return
-        doc = (cmd.handler.__doc__ or "No description.").strip()
+        doc = _help_text(cmd.name, cmd.handler)
         aliases = f" (aliases: {', '.join(cmd.aliases)})" if cmd.aliases else ""
         await session.send(f"{wanted}{aliases}\r\n  {doc}")
         return
 
-    await session.send("--- Available Commands ---")
+    await session.say("help.header")
     cmds = sorted(registry._commands.keys())
     for cmd_name in cmds:
         cmd = registry.get(cmd_name)
         if cmd is None:
             continue
-        doc = cmd.handler.__doc__ or "No description."
+        doc = _help_text(cmd_name, cmd.handler)
         label = cmd_name if not cmd.aliases else f"{cmd_name} ({', '.join(cmd.aliases)})"
         await session.send(f"{label.ljust(26)} - {doc.splitlines()[0]}")
