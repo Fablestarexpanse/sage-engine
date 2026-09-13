@@ -149,6 +149,6 @@ class SessionManager:
     async def broadcast(self, message: str, exclude: set[str] | None = None):
         """Send a message to all playing sessions."""
         exclude = exclude or set()
-        for session in self.sessions.values():
+        for session in list(self.sessions.values()):
             if session.state == SessionState.PLAYING and session.id not in exclude:
                 await session.send(message)
