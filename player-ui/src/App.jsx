@@ -2108,6 +2108,26 @@ export default function App() {
           setNarrativeLines((prev) => [...prev, { type: "pixel_grant", text: msg }]);
           return;
         }
+        if (j && j.client_notice === "chat_message") {
+          setPlaySession((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  chatMessages: [
+                    ...(prev.chatMessages || []).slice(-99),
+                    {
+                      channel: j.channel === "tell" ? "tell" : "local",
+                      from: String(j.from || "?"),
+                      text: String(j.text || ""),
+                      self: Boolean(j.self),
+                      at: typeof j.at === "number" ? j.at : Date.now() / 1000,
+                    },
+                  ],
+                }
+              : prev
+          );
+          return;
+        }
         if (j && j.client_notice === "character_snapshot") {
           setPlaySession((prev) =>
             prev
@@ -2303,6 +2323,7 @@ export default function App() {
             liveEffects: playSession.liveEffects ?? null,
             liveInventory: playSession.liveInventory ?? null,
             liveMap: playSession.liveMap ?? null,
+            chatMessages: playSession.chatMessages ?? null,
           }}
           onSignOut={onSignOut}
           narrativeLines={narrativeLines}

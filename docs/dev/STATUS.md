@@ -127,9 +127,13 @@ Test suites: server **150** pytest, WorldForge **34** vitest — all green.
       weapon/armor slots feeding combat bonuses; canonical hp/max_hp seeded
       at bootstrap. Two gear items in the alcove search pool. (8 equip tests)
 - [ ] Glyph runtime (cast/inscribe) — glyph content exists, no engine yet
-- [ ] Party/channels backing for the Comms panel (Map panel now real: zone
-      rooms/edges from editor positions in character_snapshot.map, visited
-      tracking in stats, current-room marker follows moves — verified live)
+- [x] Comms panel backed by real chat: say/tell emit chat_message client
+      notices (agents excluded), panel shows Local + Tells with a working
+      send box (say / tell passthrough); fake party roster removed — party
+      system itself is still future work. Verified live in browser + ws
+      (agent reply lands in Local). Map panel real too: zone rooms/edges
+      from editor positions in character_snapshot.map, visited tracking,
+      current-room marker follows moves
 - [ ] Flip `proficiency_combat_hybrid = false` once all 12 combat domains have
       leaf coverage, then delete the legacy stat path (pre-1.0 milestone)
 - [ ] Build out real zones/content (starter_zone currently minimal after

@@ -1,7 +1,28 @@
 """Communication commands — say (room broadcast) and similar player-to-player messages."""
 
+import json
+import time
+
 from fablestar.commands.registry import command
 from fablestar.network.session import Session
+
+
+async def _chat_notice(target: Session, channel: str, sender: str, text: str, self_line: bool):
+    """Structured copy of a chat line for the client Comms panel.
+
+    Agents read plain perception lines; JSON notices are noise to them.
+    """
+    if getattr(target, "is_agent", False):
+        return
+    notice = {
+        "client_notice": "chat_message",
+        "channel": channel,  # "local" | "tell"
+        "from": sender,
+        "text": text,
+        "self": self_line,
+        "at": time.time(),
+    }
+    await target.send(json.dumps(notice) + "\r\n")
 
 
 @command("say")
@@ -28,6 +49,7 @@ async def say(session: Session, args: list[str]):
 
     # Send to self
     await session.send(f'You say: "{message}"')
+    await _chat_notice(session, "local", player_name, message, self_line=True)
 
     # Broadcast to room
     room_players = await app_instance.redis.get_room_players(room_id)
@@ -36,6 +58,7 @@ async def say(session: Session, args: list[str]):
             target_session = app_instance.session_manager.get_session_by_player(target_pid)
             if target_session:
                 await target_session.send(broadcast_msg)
+                await _chat_notice(target_session, "local", player_name, message, self_line=False)
 
 
 @command("emote", aliases=["me"])
@@ -97,6 +120,8 @@ async def tell(session: Session, args: list[str]):
     message = " ".join(args[1:])
     await session.send(f'You tell {target_pid}: "{message}"')
     await target_session.send(f'{session.player_id} tells you: "{message}"')
+    await _chat_notice(session, "tell", f"→ {target_pid}", message, self_line=True)
+    await _chat_notice(target_session, "tell", session.player_id, message, self_line=False)
 
 
 @command("who", aliases=["online"])

@@ -254,6 +254,37 @@ class AgentManager:
             return
         stats = await server.redis.get_player_stats(name)
 
+        # Death: wake in the medbay at half health, like a player relogging
+        # at 0 hp — no immortal corpses wandering the halls.
+        if int(stats.get("hp", 1)) <= 0:
+            from fablestar.agents.feelings import remember
+            from fablestar.effects.engine import clear_on_death
+
+            clear_on_death(stats)
+            stats["hp"] = max(1, int(stats.get("max_hp", 20)) // 2)
+            remember(stats, "died and woke in the medbay, patched together")
+            respawn_room = "starter_zone:medbay"
+            if server.content_loader.get_room(respawn_room) is None:
+                respawn_room = state.persona.spawn_room
+            await server.redis.set_player_stats(name, stats)
+            await server.redis.set_player_location(name, respawn_room)
+            state.goal_commands = []
+            state.goal_label = None
+            state.last_hp = stats["hp"]
+            state.last_action = "respawn: medbay"
+            state.last_action_at = time.time()
+            state.pov.append(
+                {
+                    "at": time.time(),
+                    "kind": "body",
+                    "prompt": "[reflex] death",
+                    "response": f"respawn {respawn_room}",
+                }
+            )
+            del state.pov[:-20]
+            logger.info("Agent %s died; respawned in %s", state.persona.id, respawn_room)
+            return
+
         # Feelings: event detection + decay (deterministic, cheap).
         from fablestar.agents import feelings as fx
 

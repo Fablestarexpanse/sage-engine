@@ -481,6 +481,10 @@ class FablestarServer:
         player_id = session.player_id
         if not player_id:
             return
+        # Agents have no UI; JSON snapshots would only pollute their
+        # perception buffers (and push real say lines out of the voice window).
+        if getattr(session, "is_agent", False):
+            return
         try:
             stats = await self.redis.get_player_stats(player_id)
             inventory = await self.redis.get_player_inventory(player_id)

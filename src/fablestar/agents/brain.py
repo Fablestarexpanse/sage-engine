@@ -186,6 +186,7 @@ class AgentBrain:
         self.server = server
         self.llm = self._build_client(server.config.agents_llm)
         self._last_voice_at: dict[str, float] = {}
+        self._answered_lines: dict[str, tuple[str, str]] = {}
         self._last_intent_at: dict[str, float] = {}
         self._intent_busy = False  # budget: one intent generation at a time
 
@@ -242,6 +243,11 @@ class AgentBrain:
         if hit is None:
             return False
         speaker, message = hit
+        # The same perception line lingers in the buffer past the cooldown —
+        # never answer one address twice.
+        if self._answered_lines.get(agent_id) == (speaker, message):
+            return False
+        self._answered_lines[agent_id] = (speaker, message)
         # Claim the cooldown before the (slow) call so one address = one reply.
         self._last_voice_at[agent_id] = now
 
