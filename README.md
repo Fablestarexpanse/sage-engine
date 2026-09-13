@@ -1,5 +1,10 @@
 # Fablestar MUD Platform
 
+> **SAGE decoupling in progress (2026-09-13).** The brief `docs/sage/BRIEF.md`, the rulings log
+> `docs/sage/DECISIONS.md` and, once approved, `docs/sage/PHASE1_CONTRACTS.md` take precedence
+> over this file, which still describes the pre-split Fablestar-only shape. Audit:
+> `docs/sage/PHASE0_AUDIT.md`.
+
 [![Repository](https://img.shields.io/badge/GitHub-FablestarExpanseMUD-181717?logo=github)](https://github.com/Fablestarexpanse/FablestarExpanseMUD)
 
 A sci-fi MUD engine built for rapid iteration: deterministic Python game logic, optional local-LLM narration, AI-generated character portraits and scene art, and a desktop map editor for building the world visually.
@@ -37,7 +42,7 @@ A sci-fi MUD engine built for rapid iteration: deterministic Python game logic, 
 
 - **Conduit proficiency system** — dot-path skill trees (`combat.melee.blades`), five gating stats, field/mentored/archive advancement, chargen skill picker, and admin tooling.
 - **Security hardening** — staff JWT auth on all admin routes, rate limiting, CORS allowlist, credential rotation, first-message WebSocket auth envelope.
-- **WorldForge** — Tauri desktop map editor with room graph, stamps (reusable room groups), and write-through saving to the server via the forge API.
+- **WorldForge** — Tauri desktop map editor with room graph, stamps (reusable room groups), and saving that writes room YAML directly to `content/world/` on disk (it does not go through the Nexus API; the server hot-reloads the change).
 - **ComfyUI integration + economy** — AI character portraits and room scene art with a spendable credit balance, gallery, and admin-configurable costs.
 - **World Builder** — admin UI for zones, rooms, star systems, and ships backed by a content API.
 

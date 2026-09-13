@@ -1,5 +1,8 @@
 # QA fix plan — 2026-09-13
 
+> **Historical record (marked 2026-09-13).** Kept as written for the reasoning trail; do not
+> treat as current instructions. Superseded by: the commits it lists and `docs/dev/STATUS.md`.
+
 Source: `QA_PLAYTEST_2026-09-13.md`. Work top-down; each step = fix + test + commit.
 
 NEXT: all 13 steps done and verified live (33/33 regression checks). Open follow-ups at the bottom.

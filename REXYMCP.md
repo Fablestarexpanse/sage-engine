@@ -1,5 +1,10 @@
 # REXYMCP.md
 
+> **SAGE decoupling in progress (2026-09-13).** The brief `docs/sage/BRIEF.md`, the rulings log
+> `docs/sage/DECISIONS.md` and, once approved, `docs/sage/PHASE1_CONTRACTS.md` take precedence
+> over this file, which still describes the pre-split Fablestar-only shape. Audit:
+> `docs/sage/PHASE0_AUDIT.md`.
+
 The rexyMCP architect/executor workflow contract for the Fablestar MUD Platform
 project — whatever agent acts as the architect reads this first.
 

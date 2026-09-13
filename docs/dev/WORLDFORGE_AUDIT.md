@@ -1,5 +1,8 @@
 # WorldForge Audit — 2026-09-11
 
+> **Historical record (marked 2026-09-13).** Kept as written for the reasoning trail; do not
+> treat as current instructions. Superseded by: `docs/dev/STATUS.md` (WorldForge done-list; criticals 7 and 8 are fixed in `worldforge/src-tauri/src/commands.rs`, `validate_zone` exists) and `docs/sage/PHASE0_AUDIT.md` §9.
+
 Four-reviewer audit of the WorldForge Tauri app (`worldforge/`), its Rust bridge
 (`worldforge/src-tauri/`), and the `worldforge-mcp/` tool surface. Read-only:
 the working tree (including uncommitted WIP) was audited as-is.

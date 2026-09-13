@@ -1,5 +1,8 @@
 # QA Playtest Report — 2026-09-13
 
+> **Historical record (marked 2026-09-13).** Kept as written for the reasoning trail; do not
+> treat as current instructions. Superseded by: `docs/dev/QA_FIX_PLAN_2026-09-13.md` (all steps done) and `docs/dev/STATUS.md`.
+
 Hostile-new-player playtest of the live server (Tidegate Isle test world, 8 LLM agents running, embedded Qwen2.5-3B narration on).
 Driven over the `/play` WebSocket by a scripted two-client harness (a "tester" and a "watcher" on separate accounts) plus direct REST calls against Nexus.
 Every quoted input/output below is copied from the raw transcript.

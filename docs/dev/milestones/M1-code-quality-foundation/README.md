@@ -1,5 +1,8 @@
 # M1 — Code Quality Foundation
 
+> **Historical record (marked 2026-09-13).** Kept as written for the reasoning trail; do not
+> treat as current instructions. Superseded by: `docs/dev/STATUS.md` (M1 closed; phases 02-03 were never written as files) and `docs/dev/milestones/M2-sage-decoupling/`.
+
 **Goal:** Establish a green CI baseline and add test coverage for the core
 pure-logic modules that currently have zero tests (parser, command registry,
 config loading, session state machine).
