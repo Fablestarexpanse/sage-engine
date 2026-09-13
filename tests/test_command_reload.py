@@ -8,12 +8,12 @@ from pathlib import Path
 
 import pytest
 
-from fablestar.commands.registry import registry
+from sage.commands.registry import registry
 
 MODULE = "zz_reload_probe_cmds"
 
 V1 = '''
-from fablestar.commands.registry import command
+from sage.commands.registry import command
 
 @command("zzprobe", aliases=["zzp1", "zzp2"])
 async def zzprobe(session, args):
@@ -25,7 +25,7 @@ async def zzgone(session, args):
 '''
 
 V2 = '''
-from fablestar.commands.registry import command
+from sage.commands.registry import command
 
 @command("zzprobe", aliases=["zzp1"])
 async def zzprobe(session, args):
@@ -82,3 +82,18 @@ def test_failed_reload_keeps_previous_commands(probe_module: Path) -> None:
     assert registry.get("zzprobe") is not None
     assert registry.get("zzp2") is not None
     assert registry.get("zzgone") is not None
+
+
+def test_file_change_maps_to_module_under_the_package(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Hot reload derives the module name from the package location, not a hardcoded name."""
+    import asyncio
+    from types import SimpleNamespace
+
+    from sage import server as server_mod
+
+    calls: list[str] = []
+    monkeypatch.setattr(server_mod.registry, "reload_module", calls.append)
+    fake = SimpleNamespace()
+    changed = server_mod.PACKAGE_DIR / "commands" / "info.py"
+    asyncio.run(server_mod.SageServer._on_file_changed(fake, changed))
+    assert calls == [f"{server_mod.__package__}.commands.info"]

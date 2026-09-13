@@ -73,7 +73,7 @@ docker compose up -d redis postgres
 python -m alembic upgrade head
 
 # 4. Start the game server (Nexus, port 8001)
-python -m fablestar
+python -m sage
 ```
 
 Then start the UIs in separate terminals:
@@ -113,7 +113,7 @@ Do not expose Nexus directly to the public internet — put it behind a reverse 
 ## Project layout
 
 ```
-src/fablestar/     Python server — services, admin routers, commands, world loader
+src/sage/     Python server — services, admin routers, commands, world loader
 content/world/     Game content (YAML) — zones, rooms, entities, items; hot-reloaded
 admin-ui/          React admin console
 player-ui/         React player client

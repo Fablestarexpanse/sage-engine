@@ -6,24 +6,24 @@ import json
 import unittest
 from pathlib import Path
 
-from fablestar.proficiencies.bonus import (
+from sage.proficiencies.bonus import (
     CONDUIT_CHARGEN_POINTS_TOTAL,
     calculate_proficiency_bonus,
     validate_chargen_conduit_allocation,
 )
-from fablestar.proficiencies.catalog_loader import (
+from sage.proficiencies.catalog_loader import (
     leaf_definitions_from_builtin_rows,
     load_proficiency_catalog_from_disk,
 )
-from fablestar.proficiencies.data import EXPECTED_LEAF_COUNT, all_builtin_leaf_rows
-from fablestar.proficiencies.engine import ProficiencyEngine
-from fablestar.proficiencies.registry import ProficiencyRegistry
-from fablestar.proficiencies.state_helpers import (
+from sage.proficiencies.data import EXPECTED_LEAF_COUNT, all_builtin_leaf_rows
+from sage.proficiencies.engine import ProficiencyEngine
+from sage.proficiencies.registry import ProficiencyRegistry
+from sage.proficiencies.state_helpers import (
     combat_attack_defense_from_stats,
     ensure_proficiency_block,
     migrate_legacy_stats,
 )
-from fablestar.proficiencies.validation import validate_leaf_definitions
+from sage.proficiencies.validation import validate_leaf_definitions
 
 ROOT = Path(__file__).resolve().parents[1]
 

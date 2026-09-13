@@ -8,9 +8,9 @@ from types import SimpleNamespace
 import pytest
 from sqlalchemy import select
 
-from fablestar.state.models import Account, Character
-from fablestar.state.persistence import PersistenceManager
-from fablestar.state.postgres import PostgresState
+from sage.state.models import Account, Character
+from sage.state.persistence import PersistenceManager
+from sage.state.postgres import PostgresState
 from tests.live.conftest import open_redis
 
 pytestmark = pytest.mark.live

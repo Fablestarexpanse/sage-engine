@@ -1,6 +1,6 @@
 """Agent brain plumbing: utterance sanitizer + addressed-line detection."""
 
-from fablestar.agents.brain import addressed_line, sanitize_utterance
+from sage.agents.brain import addressed_line, sanitize_utterance
 
 
 def test_sanitize_collapses_whitespace_and_quotes():

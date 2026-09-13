@@ -6,8 +6,8 @@ import unittest
 from types import SimpleNamespace
 from unittest import mock
 
-from fablestar.admin.admin_security import decode_staff_token, issue_staff_token
-from fablestar.services.play_tokens import decode_play_token, issue_play_token
+from sage.admin.admin_security import decode_staff_token, issue_staff_token
+from sage.services.play_tokens import decode_play_token, issue_play_token
 
 
 def _server(secret: str = "unit-test-secret-0123456789abcdef0123456789abcdef") -> SimpleNamespace:

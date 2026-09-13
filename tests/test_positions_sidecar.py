@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from fablestar.admin import content_browser
+from sage.admin import content_browser
 
 
 @pytest.fixture

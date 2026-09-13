@@ -1,7 +1,7 @@
 """Secondhand resale pricing: the shelf always sells above what the shop paid."""
 
-from fablestar.commands.shop import _buy_price, resale_price
-from fablestar.world.models import ItemTemplate, ShopModel
+from sage.commands.shop import _buy_price, resale_price
+from sage.world.models import ItemTemplate, ShopModel
 
 PAWN = ShopModel(name="pawn", buys=True, buy_rate=0.5)
 

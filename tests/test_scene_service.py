@@ -8,8 +8,8 @@ actual ComfyUI HTTP round-trip stays out of scope for the default suite.
 import asyncio
 from types import SimpleNamespace
 
-from fablestar.services.scene_service import SceneService, _is_safe_player_scene_storage_url
-from fablestar.state.models import Account, AccountSceneImage, Character
+from sage.services.scene_service import SceneService, _is_safe_player_scene_storage_url
+from sage.state.models import Account, AccountSceneImage, Character
 
 # ---- storage-URL guard ------------------------------------------------------
 
@@ -88,7 +88,7 @@ async def _fake_resolve_or_error(server, **kw):
 def test_generate_scene_image_prompt_bounds(monkeypatch):
     async def check():
         srv, _, _ = _scene_server({Account: _account()})
-        import fablestar.services.scene_service as mod
+        import sage.services.scene_service as mod
 
         monkeypatch.setattr(mod, "resolve_play_account_or_error", _fake_resolve_or_error)
         svc = SceneService(srv)
@@ -103,7 +103,7 @@ def test_generate_scene_image_prompt_bounds(monkeypatch):
 def test_generate_scene_image_not_configured_reports_balance(monkeypatch):
     async def check():
         srv, _, _ = _scene_server({Account: _account()}, comfy_enabled=False)
-        import fablestar.services.scene_service as mod
+        import sage.services.scene_service as mod
 
         monkeypatch.setattr(mod, "resolve_play_account_or_error", _fake_resolve_or_error)
 
@@ -139,7 +139,7 @@ def _char(aid=5):
 
 def _apply(monkeypatch, rows):
     srv, session, fake_resolve = _scene_server(rows)
-    import fablestar.services.scene_service as mod
+    import sage.services.scene_service as mod
 
     monkeypatch.setattr(mod, "resolve_play_account", fake_resolve)
 

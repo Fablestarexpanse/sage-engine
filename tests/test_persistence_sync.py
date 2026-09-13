@@ -8,8 +8,8 @@ failures are swallowed (game loop must survive them).
 import asyncio
 from types import SimpleNamespace
 
-from fablestar.state.models import Character
-from fablestar.state.persistence import PersistenceManager
+from sage.state.models import Character
+from sage.state.persistence import PersistenceManager
 from tests.fakes import FakeRedis
 
 

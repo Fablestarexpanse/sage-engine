@@ -16,9 +16,9 @@ import sys
 # Repo root on path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from fablestar.core.config import load_config
-from fablestar.state.postgres import PostgresState
-from fablestar.admin import staff_service
+from sage.core.config import load_config
+from sage.state.postgres import PostgresState
+from sage.admin import staff_service
 
 
 async def main() -> None:

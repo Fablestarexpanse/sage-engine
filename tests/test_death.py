@@ -6,11 +6,11 @@ import asyncio
 import json
 import time
 
-import fablestar.commands.admin
-import fablestar.commands.combat  # noqa: F401 — registers attack
-from fablestar import app as app_module
-from fablestar.effects.engine import make_effect, process_effects
-from fablestar.network.session import Session, SessionManager
+import sage.commands.admin
+import sage.commands.combat  # noqa: F401 — registers attack
+from sage import app as app_module
+from sage.effects.engine import make_effect, process_effects
+from sage.network.session import Session, SessionManager
 from tests.fakes import StubProtocol, StubSession, make_fake_server
 
 ROOM = "z:gulch"
@@ -76,7 +76,7 @@ def test_quit_and_kick_tell_the_client_why():
         mgr.link_player(old.id, "hana")
         await mgr.kick_existing("hana")
         quitter = Session("q1", quit_proto)  # type: ignore[arg-type]
-        from fablestar.commands.admin import quit_cmd
+        from sage.commands.admin import quit_cmd
 
         await quit_cmd(quitter, [])
         return old_proto.sent, quit_proto.sent, old_proto.closed, quit_proto.closed

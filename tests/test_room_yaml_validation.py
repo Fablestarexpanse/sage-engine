@@ -2,7 +2,7 @@
 
 import pytest
 
-from fablestar.admin.content_browser import validate_room_yaml_text
+from sage.admin.content_browser import validate_room_yaml_text
 
 GOOD = "id: z:hall\nzone: z\nname: Hall\ntype: chamber\ndescription:\n  base: A hall.\n"
 

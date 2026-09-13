@@ -3,9 +3,9 @@ from sqlalchemy import pool
 from alembic import context
 
 # Fablestar internal imports
-from fablestar.state.postgres import Base
-from fablestar.state.models import Account, Character # Ensure models are imported for metadata
-from fablestar.core.config import load_config
+from sage.state.postgres import Base
+from sage.state.models import Account, Character # Ensure models are imported for metadata
+from sage.core.config import load_config
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

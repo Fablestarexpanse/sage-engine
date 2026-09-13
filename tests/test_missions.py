@@ -2,8 +2,8 @@
 
 import random
 
-from fablestar.factions.engine import FACTIONS_KEY
-from fablestar.factions.missions import (
+from sage.factions.engine import FACTIONS_KEY
+from sage.factions.missions import (
     MISSION_KEY,
     active_mission,
     describe_mission,
@@ -12,8 +12,8 @@ from fablestar.factions.missions import (
     try_complete_collect,
     will_deal,
 )
-from fablestar.factions.models import FactionModel
-from fablestar.factions.registry import FactionRegistry
+from sage.factions.models import FactionModel
+from sage.factions.registry import FactionRegistry
 
 
 def _guild(**overrides) -> FactionModel:

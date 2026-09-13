@@ -2,15 +2,15 @@
 
 from pathlib import Path
 
-from fablestar.achievements.engine import (
+from sage.achievements.engine import (
     COUNTERS_KEY,
     GRANTS_KEY,
     announcement,
     record_counter,
     record_room_visit,
 )
-from fablestar.achievements.models import AchievementModel
-from fablestar.achievements.registry import AchievementRegistry, load_achievements
+from sage.achievements.models import AchievementModel
+from sage.achievements.registry import AchievementRegistry, load_achievements
 
 
 def _registry(*achievements: AchievementModel) -> AchievementRegistry:

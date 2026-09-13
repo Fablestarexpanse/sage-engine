@@ -6,8 +6,8 @@ import asyncio
 import random
 import unittest
 
-from fablestar.world.models import EntityTemplate, ItemTemplate
-from fablestar.world.spawner import EntitySpawnManager
+from sage.world.models import EntityTemplate, ItemTemplate
+from sage.world.spawner import EntitySpawnManager
 from tests.fakes import make_fake_server
 
 ROOM = "starter_zone:entrance"

@@ -19,8 +19,8 @@ import asyncpg
 import pytest
 
 from alembic.config import Config as AlembicConfig
-from fablestar.core.config import Config, DatabaseConfig, load_config
-from fablestar.state.redis_client import RedisState
+from sage.core.config import Config, DatabaseConfig, load_config
+from sage.state.redis_client import RedisState
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 LIVE_REDIS_DB = 15

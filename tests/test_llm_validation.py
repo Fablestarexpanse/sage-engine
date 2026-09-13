@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from fablestar.llm.validation import LLMValidator
+from sage.llm.validation import LLMValidator
 
 REDACTED = "[The narration becomes garbled by static...]"
 

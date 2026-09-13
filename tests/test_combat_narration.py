@@ -10,8 +10,8 @@ import asyncio
 import unittest
 from types import SimpleNamespace
 
-import fablestar.commands.combat  # noqa: F401 — registers the attack command
-from fablestar import app as app_module
+import sage.commands.combat  # noqa: F401 — registers the attack command
+from sage import app as app_module
 from tests.fakes import StubSession, make_fake_server
 
 STALKER = {

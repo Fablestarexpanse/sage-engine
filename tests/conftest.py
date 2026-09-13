@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-from fablestar import telemetry
+from sage import telemetry
 
 # Command tests exercise real handlers that emit telemetry; without this they
 # append fake kills and missions to the live soak log in logs/.

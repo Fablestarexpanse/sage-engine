@@ -5,7 +5,7 @@ from __future__ import annotations
 import unittest
 from types import SimpleNamespace
 
-from fablestar.admin.admin_security import (
+from sage.admin.admin_security import (
     NAV_TOOL_IDS,
     AdminContext,
     decode_staff_token,

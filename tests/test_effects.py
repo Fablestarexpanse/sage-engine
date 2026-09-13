@@ -2,7 +2,7 @@
 
 import random
 
-from fablestar.effects.engine import (
+from sage.effects.engine import (
     EFFECTS_KEY,
     apply_effect,
     clear_on_death,
@@ -12,9 +12,9 @@ from fablestar.effects.engine import (
     process_effects,
     remove_effects,
 )
-from fablestar.effects.hazards import apply_room_hazards
-from fablestar.proficiencies.state_helpers import CONDUIT_KEY
-from fablestar.world.models import RoomModel
+from sage.effects.hazards import apply_room_hazards
+from sage.proficiencies.state_helpers import CONDUIT_KEY
+from sage.world.models import RoomModel
 
 T0 = 1_000_000.0
 

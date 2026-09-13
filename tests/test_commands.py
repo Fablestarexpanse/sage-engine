@@ -6,17 +6,17 @@ import asyncio
 import unittest
 from unittest import mock
 
-import fablestar.app as app_module
+import sage.app as app_module
 
 # Importing the modules registers the commands on the global registry.
-import fablestar.commands.combat as combat_mod
-import fablestar.commands.communication
-import fablestar.commands.info
-import fablestar.commands.items
-import fablestar.commands.movement  # noqa: F401
-from fablestar.commands.combat import _roll_damage, attack, flee
-from fablestar.commands.info import look
-from fablestar.world.models import RoomModel
+import sage.commands.combat as combat_mod
+import sage.commands.communication
+import sage.commands.info
+import sage.commands.items
+import sage.commands.movement  # noqa: F401
+from sage.commands.combat import _roll_damage, attack, flee
+from sage.commands.info import look
+from sage.world.models import RoomModel
 from tests.fakes import StubSession, make_fake_server
 
 ROOM = "starter_zone:entrance"
@@ -47,11 +47,11 @@ class CommandTestCase(unittest.TestCase):
 
 class TestRollDamage(unittest.TestCase):
     def test_minimum_damage_is_one(self) -> None:
-        with mock.patch("fablestar.commands.combat.random.randint", return_value=1):
+        with mock.patch("sage.commands.combat.random.randint", return_value=1):
             self.assertEqual(_roll_damage(1, 100), 1)
 
     def test_damage_formula(self) -> None:
-        with mock.patch("fablestar.commands.combat.random.randint", return_value=4):
+        with mock.patch("sage.commands.combat.random.randint", return_value=4):
             self.assertEqual(_roll_damage(5, 2), 7)  # 5 + 4 - 2
 
 
@@ -136,7 +136,7 @@ class TestAttack(CommandTestCase):
 
 class TestFlee(CommandTestCase):
     def _arm_room_with_exit(self) -> None:
-        from fablestar.world.models import ExitModel
+        from sage.world.models import ExitModel
 
         self.server.content_loader.rooms[ROOM] = _room(
             exits={"north": ExitModel(destination=ROOM_NORTH, description="A door.")}
@@ -212,7 +212,7 @@ class TestLook(CommandTestCase):
         asyncio.run(self._look_exits_entities())
 
     async def _look_exits_entities(self) -> None:
-        from fablestar.world.models import ExitModel
+        from sage.world.models import ExitModel
 
         self.server.content_loader.rooms[ROOM] = _room(
             exits={"north": ExitModel(destination=ROOM_NORTH, description="A door.")}

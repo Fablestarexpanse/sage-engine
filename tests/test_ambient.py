@@ -5,8 +5,8 @@ import random
 import pytest
 from pydantic import ValidationError
 
-from fablestar.world.ambient import next_due, pick_line
-from fablestar.world.models import AmbientModel, RoomModel
+from sage.world.ambient import next_due, pick_line
+from sage.world.models import AmbientModel, RoomModel
 
 
 def _ambient(**overrides) -> AmbientModel:

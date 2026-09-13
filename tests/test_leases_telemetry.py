@@ -3,9 +3,9 @@
 import asyncio
 import json
 
-from fablestar import telemetry
-from fablestar.commands.rent import free_rooms, read_rentals
-from fablestar.world.models import LodgingModel
+from sage import telemetry
+from sage.commands.rent import free_rooms, read_rentals
+from sage.world.models import LodgingModel
 
 LODGING = LodgingModel(rooms=["z:a", "z:b"], price=8, lease_minutes=60)
 

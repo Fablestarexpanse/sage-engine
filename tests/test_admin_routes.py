@@ -11,10 +11,10 @@ from types import SimpleNamespace
 import pytest
 from fastapi.testclient import TestClient
 
-from fablestar.admin import content_browser
-from fablestar.admin.admin_security import issue_staff_token
-from fablestar.admin.nexus import NexusApp
-from fablestar.state.models import AdminStaff
+from sage.admin import content_browser
+from sage.admin.admin_security import issue_staff_token
+from sage.admin.nexus import NexusApp
+from sage.state.models import AdminStaff
 from tests.fakes import make_fake_server
 
 SECRET = "test-secret-not-a-real-deployment-value"
@@ -168,7 +168,7 @@ def test_console_access_grant_requires_head_or_admin_role(client, server, monkey
 
 
 def test_account_patch_missing_account_404(client, server, monkeypatch):
-    from fablestar.admin.routes import admin_ops as admin_ops_mod
+    from sage.admin.routes import admin_ops as admin_ops_mod
 
     async def _none(*a, **k):
         return None
@@ -180,7 +180,7 @@ def test_account_patch_missing_account_404(client, server, monkeypatch):
 
 
 def test_account_patch_passes_patch_and_actor(client, server, monkeypatch):
-    from fablestar.admin.routes import admin_ops as admin_ops_mod
+    from sage.admin.routes import admin_ops as admin_ops_mod
 
     captured = {}
 
@@ -197,7 +197,7 @@ def test_account_patch_passes_patch_and_actor(client, server, monkeypatch):
 
 
 def test_character_patch_missing_character_404(client, server, monkeypatch):
-    from fablestar.admin.routes import admin_ops as admin_ops_mod
+    from sage.admin.routes import admin_ops as admin_ops_mod
 
     async def _none(*a, **k):
         return None
@@ -213,7 +213,7 @@ def test_character_patch_missing_character_404(client, server, monkeypatch):
 
 
 def test_console_access_revoke_reports_missing_grant(client, server, monkeypatch):
-    from fablestar.admin.routes import admin_ops as admin_ops_mod
+    from sage.admin.routes import admin_ops as admin_ops_mod
 
     async def _revoke(srv, account_id):
         return False
@@ -230,7 +230,7 @@ def test_console_access_revoke_reports_missing_grant(client, server, monkeypatch
 
 
 def test_staff_create_forwards_fields_and_requires_head_admin(client, server, monkeypatch):
-    from fablestar.admin.routes import admin_ops as admin_ops_mod
+    from sage.admin.routes import admin_ops as admin_ops_mod
 
     captured = {}
 
@@ -266,7 +266,7 @@ def test_staff_create_forwards_fields_and_requires_head_admin(client, server, mo
 
 
 def test_staff_patch_sends_only_set_fields(client, server, monkeypatch):
-    from fablestar.admin.routes import admin_ops as admin_ops_mod
+    from sage.admin.routes import admin_ops as admin_ops_mod
 
     captured = {}
 

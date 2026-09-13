@@ -1,6 +1,6 @@
 """Agent feelings: event rules, decay toward baseline, mood words."""
 
-from fablestar.agents.feelings import (
+from sage.agents.feelings import (
     decay_tick,
     ensure_feelings,
     mood_word,
@@ -8,7 +8,7 @@ from fablestar.agents.feelings import (
     on_goal_done,
     on_hurt,
 )
-from fablestar.agents.models import AgentPersonaModel
+from sage.agents.models import AgentPersonaModel
 
 
 def _persona(**overrides) -> AgentPersonaModel:

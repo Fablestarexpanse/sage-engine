@@ -7,7 +7,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from fablestar.admin import comfyui_workflows as wf
+from sage.admin import comfyui_workflows as wf
 
 API_WORKFLOW = {
     "_comment": "notes are allowed",

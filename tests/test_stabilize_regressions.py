@@ -11,14 +11,14 @@ import asyncio
 from types import SimpleNamespace
 from unittest import mock
 
-import fablestar.app as app_module
-import fablestar.commands.combat as combat_mod
-import fablestar.commands.info
-import fablestar.commands.movement  # noqa: F401
-from fablestar.network.session import SessionManager
-from fablestar.parser import dispatcher as dispatcher_mod
-from fablestar.server import FablestarServer
-from fablestar.world.models import ExitModel, RoomModel
+import sage.app as app_module
+import sage.commands.combat as combat_mod
+import sage.commands.info
+import sage.commands.movement  # noqa: F401
+from sage.network.session import SessionManager
+from sage.parser import dispatcher as dispatcher_mod
+from sage.server import SageServer
+from sage.world.models import ExitModel, RoomModel
 from tests.fakes import StubProtocol, StubSession, make_fake_server
 
 ROOM = "probe_zone:a"
@@ -84,7 +84,7 @@ async def _loop_exit(disconnect_first: bool) -> set[str]:
     if disconnect_first:
         # Admin "disconnect" destroys the session before the loop's finally runs.
         await server.session_manager.destroy_session(session.id)
-    await FablestarServer.run_session_loop(server, session)  # type: ignore[arg-type]
+    await SageServer.run_session_loop(server, session)  # type: ignore[arg-type]
     return set(await server.redis.get_room_players(ROOM))
 
 

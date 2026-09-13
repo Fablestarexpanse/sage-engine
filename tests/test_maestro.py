@@ -2,9 +2,9 @@
 
 import random
 
-from fablestar.maestro.director import pick_module
-from fablestar.maestro.modules import MODULES, _ambush_interest, _dread_interest, _mercy_interest
-from fablestar.world.models import RoomModel
+from sage.maestro.director import pick_module
+from sage.maestro.modules import MODULES, _ambush_interest, _dread_interest, _mercy_interest
+from sage.world.models import RoomModel
 
 
 def _room(spawns: bool) -> RoomModel:
@@ -72,8 +72,8 @@ def test_pick_module_handles_broken_interest():
 def test_ambush_respects_cap_and_skips_neutral():
     import asyncio
 
-    from fablestar.maestro.modules import _ambush_fire
-    from fablestar.world.models import EntityTemplate
+    from sage.maestro.modules import _ambush_fire
+    from sage.world.models import EntityTemplate
     from tests.fakes import StubSession, make_fake_server
 
     server = make_fake_server()

@@ -1,8 +1,8 @@
 """M4 intent: JSON parse, path compile, memory ring."""
 
-from fablestar.agents.body import route_path
-from fablestar.agents.brain import compile_goal, parse_intent
-from fablestar.agents.feelings import MEMORY_CAP, recall, remember
+from sage.agents.body import route_path
+from sage.agents.brain import compile_goal, parse_intent
+from sage.agents.feelings import MEMORY_CAP, recall, remember
 
 EXITS = {
     "z:a": {"east": "z:b"},

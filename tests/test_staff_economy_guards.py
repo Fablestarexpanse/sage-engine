@@ -11,9 +11,9 @@ from types import SimpleNamespace
 import pytest
 from fastapi import HTTPException
 
-from fablestar.admin import staff_service
-from fablestar.services.economy import EconomyService
-from fablestar.state.models import Account, AdminStaff
+from sage.admin import staff_service
+from sage.services.economy import EconomyService
+from sage.state.models import Account, AdminStaff
 
 
 class _Result:

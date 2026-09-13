@@ -19,7 +19,7 @@ The repository is being reorganised into engine/ and worlds/fablestar/ (see
 docs/sage/). Until that move is complete, the components live at these paths:
 
 SAGE engine - FSL-1.1-ALv2 (engine/LICENSE):
-  src/fablestar/        engine source
+  src/sage/             engine source
   alembic/              database migrations
   admin-ui/             Nexus admin console
   player-ui/            player client
@@ -38,9 +38,9 @@ Fablestar Expanse - proprietary, all rights reserved, no license granted:
 Fablestar Expanse material that is still embedded inside engine paths during
 the transition is also proprietary and is NOT covered by the FSL grant. This
 includes, without limitation: the proficiency domain data in
-src/fablestar/proficiencies/data/, agent prompts and world knowledge in
-src/fablestar/agents/, maestro event text in src/fablestar/maestro/, world room
-identifiers in src/fablestar/world/defaults.py, and all Fablestar Expanse
+src/sage/proficiencies/data/, agent prompts and world knowledge in
+src/sage/agents/, maestro event text in src/sage/maestro/, world room
+identifiers in src/sage/world/defaults.py, and all Fablestar Expanse
 names, lore, setting text, branding, logos and artwork anywhere in the
 repository.
 

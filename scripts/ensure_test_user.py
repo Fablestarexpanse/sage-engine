@@ -29,9 +29,9 @@ if str(_ROOT / "src") not in sys.path:
 import bcrypt
 from sqlalchemy import select
 
-from fablestar.core.config import load_config
-from fablestar.state.models import Account, Character
-from fablestar.state.postgres import PostgresState
+from sage.core.config import load_config
+from sage.state.models import Account, Character
+from sage.state.postgres import PostgresState
 
 # (username, password) — character name matches username for a default spawn.
 SEED_ACCOUNTS: tuple[tuple[str, str], ...] = (

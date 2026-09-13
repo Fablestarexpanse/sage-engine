@@ -4,9 +4,9 @@ import asyncio
 import random
 from pathlib import Path
 
-from fablestar.agents.body import BodyContext, decide, hostiles_in, route_step
-from fablestar.agents.registry import load_agents
-from fablestar.agents.session import AgentSession
+from sage.agents.body import BodyContext, decide, hostiles_in, route_step
+from sage.agents.registry import load_agents
+from sage.agents.session import AgentSession
 
 
 def _ctx(**overrides) -> BodyContext:

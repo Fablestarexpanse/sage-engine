@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import unittest
 
-from fablestar.core.tick import TickManager
+from sage.core.tick import TickManager
 
 
 class TestTickManager(unittest.TestCase):
@@ -72,7 +72,7 @@ class TestTickManager(unittest.TestCase):
             raise RuntimeError("boom")
 
         tm.register(exploding_job)
-        with self.assertLogs("fablestar.core.tick", level="ERROR") as logs:
+        with self.assertLogs("sage.core.tick", level="ERROR") as logs:
             await asyncio.wait_for(tm.run(), timeout=2.0)
         text = "\n".join(logs.output)
         self.assertIn("exploding_job", text)
@@ -90,7 +90,7 @@ class TestTickManager(unittest.TestCase):
             raise RuntimeError("same")
 
         tm.register(broken_every_tick)
-        with self.assertLogs("fablestar.core.tick", level="ERROR") as logs:
+        with self.assertLogs("sage.core.tick", level="ERROR") as logs:
             await asyncio.wait_for(tm.run(), timeout=2.0)
         failures = [line for line in logs.output if "broken_every_tick" in line]
         self.assertEqual(len(failures), 1)

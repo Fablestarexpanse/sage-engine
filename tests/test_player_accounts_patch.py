@@ -8,8 +8,8 @@ ownership checks, and which audit notification fires for whom.
 import asyncio
 from types import SimpleNamespace
 
-from fablestar.admin import player_accounts
-from fablestar.state.models import Account, Character
+from sage.admin import player_accounts
+from sage.state.models import Account, Character
 
 
 class _FakeSession:

@@ -1,7 +1,7 @@
 """Crafting recipes, deconstruction yields, and drop-table normalization."""
 
-from fablestar.commands.crafting import missing_for, scrap_yield
-from fablestar.world.models import EntityTemplate, ItemTemplate
+from sage.commands.crafting import missing_for, scrap_yield
+from sage.world.models import EntityTemplate, ItemTemplate
 
 
 def _inv(*templates):

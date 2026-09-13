@@ -7,8 +7,8 @@ import unittest
 from pathlib import Path
 from types import SimpleNamespace
 
-from fablestar.state.persistence import PersistenceManager
-from fablestar.world.loader import ContentLoader
+from sage.state.persistence import PersistenceManager
+from sage.world.loader import ContentLoader
 
 
 class TestPersistenceOnTick(unittest.TestCase):

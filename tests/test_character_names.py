@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import fablestar.commands.info
-import fablestar.commands.items  # noqa: F401 — registers examine
-from fablestar.services.player_service import PlayerService, reserved_name_reason
+import sage.commands.info
+import sage.commands.items  # noqa: F401 — registers examine
+from sage.services.player_service import PlayerService, reserved_name_reason
 
 AGENTS = {"sela varn", "old pell"}
 

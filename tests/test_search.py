@@ -6,8 +6,8 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-from fablestar.commands.search import CHANCE_CAP, find_chance
-from fablestar.world.models import FeatureModel, RoomModel, SearchModel
+from sage.commands.search import CHANCE_CAP, find_chance
+from sage.world.models import FeatureModel, RoomModel, SearchModel
 
 
 def test_search_model_defaults():

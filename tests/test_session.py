@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import unittest
 
-from fablestar.network.session import Session, SessionManager, SessionState
+from sage.network.session import Session, SessionManager, SessionState
 from tests.fakes import StubProtocol
 
 

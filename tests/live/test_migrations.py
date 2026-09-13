@@ -8,11 +8,11 @@ import pytest
 from sqlalchemy import inspect
 from sqlalchemy.ext.asyncio import create_async_engine
 
-import fablestar.state.models  # noqa: F401  (registers tables on Base.metadata)
+import sage.state.models  # noqa: F401  (registers tables on Base.metadata)
 from alembic import command
 from alembic.autogenerate import compare_metadata
 from alembic.migration import MigrationContext
-from fablestar.state.postgres import Base, PostgresState
+from sage.state.postgres import Base, PostgresState
 
 pytestmark = pytest.mark.live
 

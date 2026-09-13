@@ -25,9 +25,9 @@ Fablestar is a text MUD engine with an optional LLM narration layer. The core ga
 ## Repository layout
 
 ```
-src/fablestar/          Python server (Nexus)
+src/sage/          Python server (Nexus)
   app.py                Global singleton (app_instance)
-  server.py             FablestarServer class — owns all subsystems
+  server.py             SageServer class — owns all subsystems
   __main__.py           Entry point: asyncio.run(run_server())
   admin/                FastAPI REST + WebSocket admin API (NexusApp + routes/)
   commands/             MUD command handlers (@command decorator)
@@ -74,7 +74,7 @@ alembic/                Database migration scripts
 ```
 __main__.py
   └─ run_server()
-       └─ FablestarServer.start()
+       └─ SageServer.start()
             ├─ load_config()            config/ TOML files merged
             ├─ PostgresState.init()     SQLAlchemy async engine + sessionmaker
             ├─ RedisState.init()        redis[hiredis] connection pool
@@ -89,10 +89,10 @@ __main__.py
             └─ TickManager.start()      4 Hz game loop
 ```
 
-`app.py` holds the global singleton `app_instance: Optional[FablestarServer]`. Command handlers import it lazily:
+`app.py` holds the global singleton `app_instance: Optional[SageServer]`. Command handlers import it lazily:
 
 ```python
-from fablestar.app import app_instance  # import inside handler, not at module top
+from sage.app import app_instance  # import inside handler, not at module top
 ```
 
 ---
@@ -128,17 +128,17 @@ from fablestar.app import app_instance  # import inside handler, not at module t
 
 ## Adding a MUD command
 
-1. Create or edit a file in `src/fablestar/commands/`.
+1. Create or edit a file in `src/sage/commands/`.
 2. Decorate with `@command`:
 
 ```python
-from fablestar.commands.registry import command
-from fablestar.network.session import Session
+from sage.commands.registry import command
+from sage.network.session import Session
 
 @command("greet", aliases=["hi", "hello"])
 async def greet(session: Session, args: list[str]):
     """Greet another player. Usage: greet <name>"""
-    from fablestar.app import app_instance   # lazy import — required pattern
+    from sage.app import app_instance   # lazy import — required pattern
     target = " ".join(args) or "the room"
     await session.send(f"You wave to {target}.")
 ```
@@ -286,7 +286,7 @@ python -m alembic upgrade head
 python scripts/bootstrap_admin.py --username admin --password 'your-password'
 
 # 4. Start game server
-python -m fablestar
+python -m sage
 
 # 5. Start admin UI (new terminal)
 cd admin-ui
@@ -360,7 +360,7 @@ Live tests create and drop their own `sage_live_*` database and use Redis db 15,
 
 ## Key patterns to follow
 
-- **Lazy `app_instance` imports inside handlers** — avoids circular imports at module load time. Always import from `fablestar.app` inside the function body.
+- **Lazy `app_instance` imports inside handlers** — avoids circular imports at module load time. Always import from `sage.app` inside the function body.
 - **Never block the game loop** — all game code is `async`. Network I/O, DB queries, and LLM calls must be `await`-ed.
 - **LLM failures are non-fatal** — wrap every LLM call in `try/except` and provide a plain-text fallback.
 - **Redis for speed, Postgres for durability** — update Redis immediately; PersistenceManager handles the Postgres write asynchronously.

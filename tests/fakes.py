@@ -6,7 +6,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
-from fablestar.world.models import EntityTemplate, ItemTemplate, RoomModel
+from sage.world.models import EntityTemplate, ItemTemplate, RoomModel
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -119,8 +119,8 @@ class FakeContentLoader:
 
     def get_proficiency_registry(self):
         if self._registry is None:
-            from fablestar.proficiencies.catalog_loader import load_proficiency_catalog_from_disk
-            from fablestar.proficiencies.registry import ProficiencyRegistry
+            from sage.proficiencies.catalog_loader import load_proficiency_catalog_from_disk
+            from sage.proficiencies.registry import ProficiencyRegistry
 
             doc = load_proficiency_catalog_from_disk(ROOT / "content")
             self._registry = ProficiencyRegistry(doc.leaves)
@@ -185,9 +185,9 @@ class StubSession:
 
 
 def make_fake_server() -> SimpleNamespace:
-    """A FablestarServer stand-in with the attributes command handlers touch."""
-    from fablestar.parser.dispatcher import CommandDispatcher
-    from fablestar.world.spawner import EntitySpawnManager
+    """A SageServer stand-in with the attributes command handlers touch."""
+    from sage.parser.dispatcher import CommandDispatcher
+    from sage.world.spawner import EntitySpawnManager
 
     server = SimpleNamespace()
     server.redis = FakeRedis()

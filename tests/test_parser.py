@@ -5,9 +5,9 @@ from __future__ import annotations
 import asyncio
 import unittest
 
-from fablestar.commands.registry import CommandRegistry, registry
-from fablestar.parser.dispatcher import CommandDispatcher
-from fablestar.parser.tokenizer import tokenize
+from sage.commands.registry import CommandRegistry, registry
+from sage.parser.dispatcher import CommandDispatcher
+from sage.parser.tokenizer import tokenize
 
 
 class _StubSession:
@@ -26,7 +26,7 @@ class _StubSession:
 
 
 class TestTokenize(unittest.TestCase):
-    """Tests for fablestar.parser.tokenizer.tokenize()."""
+    """Tests for sage.parser.tokenizer.tokenize()."""
 
     def test_empty_string_returns_empty_list(self) -> None:
         self.assertEqual(tokenize(""), [])
@@ -59,7 +59,7 @@ class TestTokenize(unittest.TestCase):
 
 
 class TestCommandRegistry(unittest.TestCase):
-    """Tests for fablestar.commands.registry.CommandRegistry."""
+    """Tests for sage.commands.registry.CommandRegistry."""
 
     def setUp(self) -> None:
         self.reg = CommandRegistry()
@@ -110,7 +110,7 @@ class TestCommandRegistry(unittest.TestCase):
 
 
 class TestCommandDispatcher(unittest.TestCase):
-    """Tests for fablestar.parser.dispatcher.CommandDispatcher.dispatch()."""
+    """Tests for sage.parser.dispatcher.CommandDispatcher.dispatch()."""
 
     def setUp(self) -> None:
         self.dispatcher = CommandDispatcher()

@@ -1,5 +1,5 @@
 [project]
-name = "fablestar"
+name = "sage-engine"
 version = "0.2.0"
 description = "Vibe-coded MUD platform with LLM integration and hot-reload."
 readme = "README.md"
@@ -33,7 +33,9 @@ agents-embedded = ["llama-cpp-python>=0.3.0"]
 dev = ["ruff==0.12.7", "pytest==9.0.3"]
 
 [project.scripts]
-fablestar = "fablestar.__main__:main"
+sage = "sage.__main__:main"
+# Deprecated alias for one release (docs/sage/PHASE1_CONTRACTS.md F.1).
+fablestar = "sage.__main__:main"
 
 [build-system]
 requires = ["setuptools>=61.0"]
@@ -67,7 +69,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["fablestar"]
+known-first-party = ["sage"]
 
 [tool.ruff.format]
 quote-style = "double"

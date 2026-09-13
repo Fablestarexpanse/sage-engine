@@ -1,13 +1,13 @@
 """Equipment: equip/unequip/swap, bonuses, display lines."""
 
-from fablestar.items.equipment import (
+from sage.items.equipment import (
     EQUIPMENT_KEY,
     equip_item,
     equipment_bonuses,
     equipped_lines,
     unequip_slot,
 )
-from fablestar.world.models import ItemTemplate
+from sage.world.models import ItemTemplate
 
 BLADE = ItemTemplate(id="scrap_blade", name="scrap-forged blade", slot="weapon", attack=2)
 VEST = ItemTemplate(id="padded_vest", name="padded work vest", slot="armor", defense=1)

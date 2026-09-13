@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import asyncio
 
-import fablestar.commands.communication
-import fablestar.commands.info
-import fablestar.commands.proficiency  # noqa: F401 — registers score
-from fablestar import app as app_module
-from fablestar.commands.communication import resolve_tell_target
-from fablestar.network.session import SessionManager
-from fablestar.parser.dispatcher import MAX_INPUT_CHARS, RATE_BURST, _resolve_verb, clean_input
+import sage.commands.communication
+import sage.commands.info
+import sage.commands.proficiency  # noqa: F401 — registers score
+from sage import app as app_module
+from sage.commands.communication import resolve_tell_target
+from sage.network.session import SessionManager
+from sage.parser.dispatcher import MAX_INPUT_CHARS, RATE_BURST, _resolve_verb, clean_input
 from tests.fakes import StubSession, make_fake_server
 
 ONLINE = ["Qa Tester", "Qa Watcher", "Tessa Moke", "Old Pell"]
@@ -98,9 +98,9 @@ def test_flood_is_throttled_once():
 
 
 def test_look_with_target_examines_and_movement_announces():
-    import fablestar.commands.items
-    import fablestar.commands.movement  # noqa: F401
-    from fablestar.world.models import RoomModel
+    import sage.commands.items
+    import sage.commands.movement  # noqa: F401
+    from sage.world.models import RoomModel
 
     server, mover, watcher = _server_with_two_players()
     server.content_loader.rooms = {

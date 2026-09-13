@@ -2,15 +2,15 @@
 
 from pathlib import Path
 
-from fablestar.factions.engine import (
+from sage.factions.engine import (
     FACTIONS_KEY,
     adjust_rep,
     apply_kill_reputation,
     get_rep,
     standings_lines,
 )
-from fablestar.factions.models import REP_MAX, REP_MIN, FactionModel, standing_name
-from fablestar.factions.registry import FactionRegistry, load_factions
+from sage.factions.models import REP_MAX, REP_MIN, FactionModel, standing_name
+from sage.factions.registry import FactionRegistry, load_factions
 
 
 def _faction(**overrides) -> FactionModel:

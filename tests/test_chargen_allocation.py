@@ -6,8 +6,8 @@ import math
 
 import pytest
 
-from fablestar.proficiencies.starter import coerce_starter_level
-from fablestar.services.player_service import PlayerService
+from sage.proficiencies.starter import coerce_starter_level
+from sage.services.player_service import PlayerService
 from tests.fakes import make_fake_server
 
 LEAF = "combat.melee.blades"
