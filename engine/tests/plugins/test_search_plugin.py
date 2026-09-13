@@ -52,7 +52,9 @@ features:
 """
 
 
-def test_a_find_fills_the_pack_counts_and_reports_skill_use(plugin_host, tmp_path):
+def test_a_find_fills_the_pack_counts_and_reports_skill_use(plugin_host, tmp_path, monkeypatch):
+    # Find chance caps below 1.0, so pin the roll: this test is about what a find does.
+    monkeypatch.setattr("random.random", lambda: 0.0)
     rooms = tmp_path / "content" / "world" / "zones" / "town" / "rooms"
     items = tmp_path / "content" / "world" / "items"
     rooms.mkdir(parents=True)
