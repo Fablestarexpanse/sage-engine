@@ -127,6 +127,15 @@ class SceneService:
             "portrait_generation_cost": int(c.portrait_generation_cost),
             "pixels_per_usd": int(c.pixels_per_usd),
             "currency_display_name": (c.currency_display_name or "pixels").strip() or "pixels",
+            # The admin form fills from this payload; missing keys made it show
+            # (and then save back) defaults instead of the live config.
+            "area_positive_prompt_node_id": c.area_positive_prompt_node_id,
+            "area_output_node_id": c.area_output_node_id,
+            "checkpoint_name": c.checkpoint_name,
+            "timeout_seconds": float(c.timeout_seconds),
+            "poll_interval_seconds": float(c.poll_interval_seconds),
+            "starting_echo_credits": int(c.starting_echo_credits),
+            "character_create_portrait_cost": int(c.character_create_portrait_cost),
         }
 
     async def ping(self) -> tuple[bool, str]:

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
+from fablestar.admin import comfyui_workflows
 from fablestar.admin.admin_security import AdminContext
 from fablestar.admin.route_helpers import require_tool
 
@@ -44,6 +45,19 @@ class ComfyUISettingsBody(BaseModel):
     character_create_portrait_cost: int | None = None
     currency_display_name: str | None = None
     pixels_per_usd: int | None = None
+
+
+class WorkflowUploadBody(BaseModel):
+    filename: str
+    content: str
+    overwrite: bool = False
+
+
+class WorkflowAssignBody(BaseModel):
+    role: str
+    positive_prompt_node_id: str | None = None
+    output_node_id: str | None = None
+    persist: bool = True
 
 
 def _llm_public_config(cfg) -> dict[str, Any]:
@@ -149,6 +163,72 @@ def build_llm_comfyui_router(server: FablestarServer) -> APIRouter:
             server.update_comfyui_settings(patch, persist=persist)
         except (ValueError, TypeError) as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
+        return await server.scenes.comfyui_status()
+
+    # ── ComfyUI workflow library ───────────────────────────────────────
+
+    @router.get("/comfyui/workflows")
+    async def comfyui_workflows_list(
+        _ctx: Annotated[AdminContext, Depends(require_tool("server"))],
+    ):
+        """Workflow files the server can use, with validity and which role uses each."""
+        return {"workflows": comfyui_workflows.list_workflows(server.config.comfyui)}
+
+    @router.get("/comfyui/workflows/{name}")
+    async def comfyui_workflow_detail(
+        name: str,
+        _ctx: Annotated[AdminContext, Depends(require_tool("server"))],
+    ):
+        """Raw JSON plus the prompt/output/loader nodes found in it."""
+        detail = comfyui_workflows.workflow_detail(name, server.config.comfyui)
+        if detail is None:
+            raise HTTPException(status_code=404, detail="workflow_not_found")
+        return detail
+
+    @router.post("/comfyui/workflows")
+    async def comfyui_workflow_upload(
+        body: WorkflowUploadBody,
+        _ctx: Annotated[AdminContext, Depends(require_tool("server"))],
+    ):
+        """Save an uploaded API-format workflow into config/comfyui_workflows/."""
+        name = comfyui_workflows.slugify_name(body.filename)
+        try:
+            comfyui_workflows.save_workflow(name, body.content, overwrite=body.overwrite)
+        except ValueError as e:
+            code = 409 if str(e) == "name_taken" else 400
+            raise HTTPException(status_code=code, detail=str(e)) from None
+        return comfyui_workflows.workflow_detail(name, server.config.comfyui)
+
+    @router.delete("/comfyui/workflows/{name}")
+    async def comfyui_workflow_delete(
+        name: str,
+        _ctx: Annotated[AdminContext, Depends(require_tool("server"))],
+    ):
+        """Delete an uploaded workflow that no role is using."""
+        try:
+            comfyui_workflows.delete_workflow(name, server.config.comfyui)
+        except FileNotFoundError:
+            raise HTTPException(status_code=404, detail="workflow_not_found") from None
+        except ValueError as e:
+            raise HTTPException(status_code=409, detail=str(e)) from None
+        return {"deleted": name}
+
+    @router.post("/comfyui/workflows/{name}/assign")
+    async def comfyui_workflow_assign(
+        name: str,
+        body: WorkflowAssignBody,
+        _ctx: Annotated[AdminContext, Depends(require_tool("server"))],
+    ):
+        """Use this workflow for portraits or area scenes (node ids checked against the file)."""
+        try:
+            patch = comfyui_workflows.assignment_patch(
+                name, body.role, body.positive_prompt_node_id, body.output_node_id
+            )
+            server.update_comfyui_settings(patch, persist=body.persist)
+        except FileNotFoundError:
+            raise HTTPException(status_code=404, detail="workflow_not_found") from None
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from None
         return await server.scenes.comfyui_status()
 
     @router.post("/comfyui/test-connection")

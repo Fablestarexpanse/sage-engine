@@ -8,6 +8,7 @@ import {
   Badge, StatusDot, Pill, ActionButton, PlannedAction, SearchBar, TabBar,
   DataTable, StatCard, usePolledList, FetchErrorBanner,
 } from "../adminCommon.jsx";
+import ComfyWorkflowLibrary from "../ComfyWorkflowLibrary.jsx";
 
 
 const HostMachinePanel = ({ host, llmDetected, llmConfigured, llmConnected, llmBackend, llmModelsAlign }) => {
@@ -460,6 +461,7 @@ const LmStudioPanel = () => {
 
 const COMFY_TABS = [
   { id: "status",    label: "Status" },
+  { id: "library",   label: "Workflow library" },
   { id: "portrait",  label: "Portrait workflow" },
   { id: "scene",     label: "Scene/Area workflow" },
   { id: "economy",   label: "Economy" },
@@ -667,6 +669,8 @@ const ComfyUIPanel = () => {
         </div>
       )}
 
+      {tab === "library" && <ComfyWorkflowLibrary status={status} onStatus={setStatus} />}
+
       {tab === "portrait" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <div style={{ fontSize: 11, color: COLORS.textMuted, fontFamily: "'DM Sans', sans-serif", lineHeight: 1.5 }}>
@@ -731,7 +735,7 @@ const ComfyUIPanel = () => {
         </div>
       )}
 
-      {tab !== "status" && (
+      {tab !== "status" && tab !== "library" && (
         <div style={{ display: "flex", alignItems: "center", gap: 12, paddingTop: 6, borderTop: `1px solid ${COLORS.border}44` }}>
           <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: COLORS.textMuted, cursor: "pointer", flexShrink: 0 }}>
             <input type="checkbox" checked={persist} onChange={(e) => setPersist(e.target.checked)} />
