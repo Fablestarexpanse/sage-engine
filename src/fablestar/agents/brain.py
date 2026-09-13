@@ -331,6 +331,9 @@ class AgentBrain:
         if not reply:
             return False
         self._record(state, prompt, reply)
+        from fablestar.telemetry import log_event
+
+        log_event("voice", agent=state.persona.id, to=speaker, heard=message[:120], reply=reply)
         await self.server.dispatcher.dispatch(state.session, f"say {reply}")
         return True
 
@@ -377,6 +380,9 @@ class AgentBrain:
             if other_first.lower() not in line.lower():
                 line = f"{other_first}, {line}"
             self._record(state, prompt, line, kind="banter")
+            from fablestar.telemetry import log_event
+
+            log_event("banter", agent=state.persona.id, to=other_name, line=line)
             self._pair_reply_pending[key] = other_name
             await self.server.dispatcher.dispatch(state.session, f"say {line}")
             return True
@@ -434,6 +440,10 @@ class AgentBrain:
                 return None
             intent = parse_intent(raw)
             self._record(state, prompt, raw if intent else f"[unparsed] {raw}", kind="intent")
+            if intent is None:
+                from fablestar.telemetry import log_event
+
+                log_event("intent_unparsed", agent=agent_id, raw=raw[:200])
             return intent
         finally:
             self._intent_busy = False

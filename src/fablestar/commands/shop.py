@@ -171,6 +171,12 @@ async def buy(session: Session, args: list[str]):
     await app_instance.redis.set_player_stats(player_id, stats)
     await app_instance.redis.set_player_inventory(player_id, inv)
     await _ledger(shop_room_id, "sale", player_id, template.name, entry.price)
+    from fablestar.telemetry import heat, log_event
+
+    log_event(
+        "trade", kind="buy", actor=player_id, item=template.id, price=entry.price, room=shop_room_id
+    )
+    await heat(app_instance.redis, "trades", shop_room_id)
     await _keeper_till(shop, player_id, entry.price)
     await session.send(
         f"You buy the {template.name} for {entry.price} Digi ({stats['digi']} left)."
@@ -242,6 +248,12 @@ async def sell(session: Session, args: list[str]):
     await app_instance.redis.set_player_inventory(
         player_id, [it for it in inv if it.get("id") not in sold_ids]
     )
+    from fablestar.telemetry import heat, log_event
+
+    log_event(
+        "trade", kind="sell", actor=player_id, items=len(to_sell), total=total, room=shop_room_id
+    )
+    await heat(app_instance.redis, "trades", shop_room_id)
     summary = ", ".join(sold_names[:4]) + ("…" if len(sold_names) > 4 else "")
     await session.send(f"You sell {summary} for {total} Digi ({stats['digi']} carried).")
 

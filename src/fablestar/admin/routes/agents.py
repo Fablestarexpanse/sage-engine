@@ -190,6 +190,19 @@ def build_agents_router(server: "FablestarServer") -> APIRouter:
             "leaves": leaves,
         }
 
+    @router.get("/admin/heatmaps")
+    async def heatmaps(
+        _ctx: Annotated[AdminContext, Depends(require_tool("agents"))],
+    ):
+        """Soak-run aggregates: room presence, kills, deaths, trades — plus
+        per-agent presence maps."""
+        from fablestar.telemetry import read_heatmaps
+
+        names = ["presence", "kills", "deaths", "trades"]
+        names += [f"presence:{pid}" for pid in manager.agents]
+        names += [f"kills_by:{s.persona.name}" for s in manager.agents.values()]
+        return await read_heatmaps(server.redis, names)
+
     @router.get("/admin/agents-statboard")
     async def agents_statboard(
         _ctx: Annotated[AdminContext, Depends(require_tool("agents"))],

@@ -160,6 +160,28 @@ async def attack(session: Session, args: list[str]):
     except Exception as exc:
         logger.warning("Combat proficiency gain skipped: %s", exc)
 
+    from fablestar.telemetry import heat, log_event
+
+    if entity_dead:
+        log_event(
+            "kill",
+            killer=player_id,
+            is_agent=bool(getattr(session, "is_agent", False)),
+            template=target_state.get("template", ""),
+            room=room_id,
+        )
+        await heat(app_instance.redis, "kills", room_id)
+        await heat(app_instance.redis, f"kills_by:{player_id}", target_state.get("template", "?"))
+    if player_stats.get("hp", 1) <= 0:
+        log_event(
+            "player_death",
+            player=player_id,
+            is_agent=bool(getattr(session, "is_agent", False)),
+            room=room_id,
+            by=target_state.get("template", ""),
+        )
+        await heat(app_instance.redis, "deaths", room_id)
+
     # Achievement counters: total kills plus per-template kills.
     newly_granted = []
     faction_messages: list[str] = []

@@ -63,6 +63,9 @@ async def rent(session: Session, args: list[str]):
         record_counter(stats, app_instance.content_loader.get_achievement_registry(), "rent_paid")
     except Exception:
         logger.debug("rent counter skipped", exc_info=True)
+    from fablestar.telemetry import log_event
+
+    log_event("rent", tenant=player_id, room=free, cost=RENT_COST_DIGI)
     await client.hset(RENTALS_KEY, free, player_id)
     await app_instance.redis.set_player_stats(player_id, stats)
     slug = free.split(":")[-1]

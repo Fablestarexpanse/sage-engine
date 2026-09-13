@@ -243,7 +243,7 @@ class AgentManager:
             logger.exception("Agent state flush failed")
 
     PROGRESS_KEY = "progress_log"
-    PROGRESS_CAP = 400  # 60s cadence → ~6.5h of history in the stats blob
+    PROGRESS_CAP = 1600  # 60s cadence → ~26h of history (overnight soak safe)
 
     def _append_progress_sample(self, stats: dict[str, Any]) -> None:
         """Time-series sample for the admin XP-progression chart (flush cadence)."""
@@ -345,6 +345,17 @@ class AgentManager:
                 }
             )
             del state.pov[:-20]
+            from fablestar.telemetry import heat, log_event
+
+            log_event(
+                "agent_death",
+                agent=state.persona.id,
+                room=room_id,
+                respawn=respawn_room,
+                bill=bill,
+                digi=int(stats.get("digi", 0) or 0),
+            )
+            await heat(server.redis, "deaths", room_id)
             logger.info("Agent %s died; respawned in %s", state.persona.id, respawn_room)
             return
 
@@ -456,6 +467,15 @@ class AgentManager:
                 from fablestar.agents.feelings import remember
 
                 remember(stats, f"needed to {state.goal_label}")
+                from fablestar.telemetry import log_event
+
+                log_event(
+                    "life_goal",
+                    agent=state.persona.id,
+                    room=room_id,
+                    goal=state.goal_label,
+                    commands=len(state.goal_commands),
+                )
                 await server.redis.set_player_stats(name, stats)
                 ctx.goal_commands = list(state.goal_commands)
 
@@ -502,6 +522,19 @@ class AgentManager:
             state.next_wander_at = now + state.rng.uniform(lo, hi)
         state.last_action = f"{reason}: {command}"
         state.last_action_at = now
+        from fablestar.telemetry import heat, log_event
+
+        log_event(
+            "agent_action",
+            agent=state.persona.id,
+            room=room_id,
+            reason=reason,
+            command=command,
+            hp=int(stats.get("hp", 0)),
+            digi=int(stats.get("digi", 0) or 0),
+        )
+        await heat(server.redis, "presence", room_id)
+        await heat(server.redis, f"presence:{state.persona.id}", room_id)
         state.pov.append(
             {"at": now, "kind": "body", "prompt": f"[reflex] {reason}", "response": command}
         )
@@ -693,6 +726,9 @@ class AgentManager:
             state.goal_commands = commands
             remember(stats, f"decided to {label} — {why}")
             logger.info("Agent %s intent: %s (%s)", state.persona.id, label, why)
+            from fablestar.telemetry import log_event
+
+            log_event("intent", agent=state.persona.id, room=room_id, goal=label, why=why)
         await self.server.redis.set_player_stats(state.persona.name, stats)
 
     # ------------------------------------------------------------------

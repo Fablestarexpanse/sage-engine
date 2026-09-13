@@ -165,6 +165,9 @@ async def craft(session: Session, args: list[str]):
         player_id, CRAFT_GAIN_LEAVES.get(tmpl.type, "fabrication.materials.composites")
     )
 
+    from fablestar.telemetry import log_event
+
+    log_event("craft", actor=player_id, item=tmpl.id, count=len(made))
     count_note = f" x{len(made)}" if len(made) > 1 else ""
     await session.send(f"You assemble: {tmpl.name}{count_note}.")
     from fablestar.achievements.engine import announcement
@@ -232,6 +235,9 @@ async def deconstruct(session: Session, args: list[str]):
     await app_instance.redis.set_player_stats(player_id, stats)
     await _fabrication_gain(player_id, DECONSTRUCT_LEAF)
 
+    from fablestar.telemetry import log_event
+
+    log_event("deconstruct", actor=player_id, item=tmpl.id)
     await session.send(f"You strip the {tmpl.name} down to: {', '.join(made_names)}.")
     from fablestar.achievements.engine import announcement
 

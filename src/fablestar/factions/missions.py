@@ -112,6 +112,15 @@ def _complete(
 ) -> list[str]:
     stats[MISSION_KEY] = None
     faction = registry.get(mission.get("faction", ""))
+    from fablestar.telemetry import log_event
+
+    log_event(
+        "mission_complete",
+        faction=mission.get("faction", ""),
+        mission_kind=mission.get("kind", ""),
+        target=mission.get("target", ""),
+        count=mission.get("count", 0),
+    )
     messages = [f"Mission complete: {describe_mission(mission, registry)}"]
     if faction is not None:
         crossing = adjust_rep(stats, faction, faction.mission_rep)

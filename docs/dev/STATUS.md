@@ -179,6 +179,15 @@ Test suites: server **150** pytest, WorldForge **34** vitest — all green.
 - [x] 5. Achievements 4 → 17 (economy, crafting, living, survival, boss,
       per-mob, scavenging, missions milestones)
 - [ ] 6. Rep-repair path (donate/fine) so a hated faction isn't a dead end
+- [x] Overnight soak telemetry (2026-09-12 night run): logs/events-YYYYMMDD.jsonl
+      — one JSON line per kill, death, trade, craft, deconstruct, rent,
+      mission completion, intent (incl. unparsed), voice/banter line, life
+      goal, and every agent action with room/hp/digi. Redis heatmaps
+      (heat:presence, heat:presence:<agent>, heat:kills, heat:deaths,
+      heat:trades, heat:kills_by:<name>) served at GET /admin/heatmaps.
+      progress_log cap raised 400→1600 (~26h). Morning analysis: read the
+      JSONL (pandas/grep), /admin/heatmaps, Stat board, shop ledgers, agent
+      memories + XP charts
 - [x] 7. help <command> shows that command's help + aliases
 - [x] 8. `map`/`chart` text command — zone chart with @/*/? markers
 - [x] 9. `stats` → score, `equipment`/`gear` → inventory aliases
