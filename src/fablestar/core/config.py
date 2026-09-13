@@ -1,10 +1,10 @@
 """TOML config loading — merges all config/*.toml files into a single Config object."""
 
 import os
+import tomllib
 from pathlib import Path
 from typing import Any
 
-import tomli
 from pydantic import BaseModel, Field, SecretStr, field_validator
 
 
@@ -137,7 +137,7 @@ def load_config(config_dir: str = "config") -> Config:
         for toml_file in config_path.glob("*.toml"):
             section_name = toml_file.stem
             with open(toml_file, "rb") as f:
-                section_data = tomli.load(f)
+                section_data = tomllib.load(f)
                 data[section_name] = section_data
 
     # Environment variables can override (e.g., FABLESTAR_SERVER__WEBSOCKET_PORT=8001)
