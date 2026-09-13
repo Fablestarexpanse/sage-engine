@@ -22,6 +22,10 @@ class Session:
     Bridges the network layer to the player state.
     """
 
+    # A virtual session drives a character with no socket (e.g. an automated character):
+    # client-only JSON notices, input rate limits and UI snapshots are skipped for it.
+    virtual = False
+
     def __init__(self, session_id: str, protocol: WebSocketProtocol):
         self.id = session_id
         self.protocol = protocol
@@ -60,7 +64,7 @@ class Session:
         """
         if text:
             await self.send(text)
-        if not getattr(self, "is_agent", False):
+        if not getattr(self, "virtual", False):
             import json
 
             await self.send(json.dumps({"client_notice": "session_end", "reason": reason}))

@@ -11,24 +11,22 @@ async def record_player_death(
 ) -> list:
     """Count the death on the stats blob (caller saves it) and log telemetry.
 
-    Agents keep their own death counter in AgentManager, so only telemetry is
-    written for them here. Returns newly granted achievements.
+    Virtual sessions (automated characters) keep their own death counters, so only telemetry
+    is written for them here. Returns the counter lines to show the player.
     """
     from sage.telemetry import heat, log_event
 
-    is_agent = bool(getattr(session, "is_agent", False))
-    log_event("player_death", player=player_id, is_agent=is_agent, room=room_id or "", by=cause)
+    virtual = bool(getattr(session, "virtual", False))
+    log_event("player_death", player=player_id, virtual=virtual, room=room_id or "", by=cause)
     from sage.core.events import PlayerDied, emit
 
     await emit(
         server,
-        PlayerDied(
-            player_id=player_id, room_id=room_id, cause=cause, is_agent=is_agent, stats=stats
-        ),
+        PlayerDied(player_id=player_id, room_id=room_id, cause=cause, virtual=virtual, stats=stats),
     )
     if room_id:
         await heat(server.redis, "deaths", room_id)
-    if is_agent:
+    if virtual:
         return []
     from sage.world.counters import count
 

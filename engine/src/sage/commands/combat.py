@@ -166,7 +166,7 @@ async def attack(session: Session, args: list[str]):
         log_event(
             "kill",
             killer=player_id,
-            is_agent=bool(getattr(session, "is_agent", False)),
+            virtual=bool(getattr(session, "virtual", False)),
             template=target_state.get("template", ""),
             room=room_id,
         )
@@ -241,7 +241,7 @@ async def attack(session: Session, args: list[str]):
 
     # Agents read nothing; one pending narration per player, so a slow backend
     # drops extra flavour instead of queueing it behind later commands.
-    if not getattr(session, "is_agent", False) and not getattr(
+    if not getattr(session, "virtual", False) and not getattr(
         session, "combat_narration_pending", False
     ):
         session.combat_narration_pending = True

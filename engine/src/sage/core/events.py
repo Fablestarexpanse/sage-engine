@@ -63,7 +63,7 @@ class PlayerDied(Event):
     player_id: str
     room_id: str | None
     cause: str
-    is_agent: bool = False
+    virtual: bool = False  # the character is driven by a virtual (socketless) session
     stats: dict[str, Any] = field(default_factory=dict)
 
 

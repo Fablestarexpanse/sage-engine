@@ -12,7 +12,7 @@ async def _chat_notice(target: Session, channel: str, sender: str, text: str, se
 
     Agents read plain perception lines; JSON notices are noise to them.
     """
-    if getattr(target, "is_agent", False):
+    if getattr(target, "virtual", False):
         return
     notice = {
         "client_notice": "chat_message",

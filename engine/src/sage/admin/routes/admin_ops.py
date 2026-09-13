@@ -225,7 +225,7 @@ def build_admin_ops_router(server: SageServer) -> APIRouter:
     @router.get("/status", response_model=ServerStatus)
     async def get_status():
         human_sessions = sum(
-            1 for s in server.session_manager.sessions.values() if not getattr(s, "is_agent", False)
+            1 for s in server.session_manager.sessions.values() if not getattr(s, "virtual", False)
         )
         return ServerStatus(
             is_running=server.tick_manager.is_running,
@@ -243,7 +243,7 @@ def build_admin_ops_router(server: SageServer) -> APIRouter:
         for sid, session in server.session_manager.sessions.items():
             # Agents live in the Agents tab, not the player views — keeping
             # them out here is what makes "real player or agent?" answerable.
-            if getattr(session, "is_agent", False):
+            if getattr(session, "virtual", False):
                 continue
             room_id = None
             if session.player_id and redis.is_connected:
@@ -306,7 +306,7 @@ def build_admin_ops_router(server: SageServer) -> APIRouter:
             "active_sessions": sum(
                 1
                 for s2 in server.session_manager.sessions.values()
-                if not getattr(s2, "is_agent", False)
+                if not getattr(s2, "virtual", False)
             ),
             "is_running": tm.is_running,
             "uptime_seconds": tm.tick_count * cfg.tick_rate,
@@ -354,7 +354,7 @@ def build_admin_ops_router(server: SageServer) -> APIRouter:
             "sessions": sum(
                 1
                 for s2 in server.session_manager.sessions.values()
-                if not getattr(s2, "is_agent", False)
+                if not getattr(s2, "virtual", False)
             ),
             "tick_count": server.tick_manager.tick_count,
             "redis_ok": redis_ok,

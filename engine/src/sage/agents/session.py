@@ -29,7 +29,7 @@ class NullProtocol:
 class AgentSession(Session):
     """Same contract as a player Session; the world cannot tell the difference."""
 
-    is_agent = True  # client-only JSON notices are skipped for agents
+    virtual = True  # no socket: client-only JSON notices, rate limits and UI snapshots are skipped
 
     def __init__(self, agent_id: str, name: str, perception_size: int = 60):
         self.perception: deque = deque(maxlen=perception_size)

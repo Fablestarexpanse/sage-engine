@@ -30,7 +30,7 @@ async def _announce(app_instance, room_id: str, mover: str, line: str) -> None:
         target = app_instance.session_manager.get_session_by_player(other)
         # Agents already see occupants in every look; movement chatter would
         # crowd conversation out of their short perception window.
-        if target is not None and not getattr(target, "is_agent", False):
+        if target is not None and not getattr(target, "virtual", False):
             try:
                 await target.send(line)
             except Exception:

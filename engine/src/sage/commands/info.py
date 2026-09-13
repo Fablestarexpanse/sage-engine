@@ -67,7 +67,7 @@ async def look(session: Session, args: list[str]):
         # narration backend. One pending scene per player: extras are dropped.
         if (
             narrate
-            and not getattr(session, "is_agent", False)
+            and not getattr(session, "virtual", False)
             and not getattr(session, "scene_narration_pending", False)
         ):
             import asyncio as _asyncio

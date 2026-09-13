@@ -594,7 +594,7 @@ class SageServer:
             return
         # Agents have no UI; JSON snapshots would only pollute their
         # perception buffers (and push real say lines out of the voice window).
-        if getattr(session, "is_agent", False):
+        if getattr(session, "virtual", False):
             return
         try:
             stats = await self.redis.get_player_stats(player_id)

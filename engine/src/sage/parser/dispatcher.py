@@ -67,7 +67,7 @@ class CommandDispatcher:
         self.events = events
 
     def _allow(self, session: Session) -> bool:
-        if getattr(session, "is_agent", False):
+        if getattr(session, "virtual", False):
             return True
         now = time.monotonic()
         tokens = getattr(session, "_rate_tokens", RATE_BURST)
