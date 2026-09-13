@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            requirements.lock
+            pyproject.toml
+
+      - name: Install dependencies
+        run: |
+          python -m pip install -r requirements.lock
+          python -m pip install -e ".[dev]"
+
+      - name: Format
+        run: python -m ruff format --check src tests
+
+      - name: Build
+        run: python -m compileall -q src tests
+
+      - name: Lint
+        run: python -m ruff check src tests
+
+      - name: Test
+        run: python -m pytest -q
+
+  worldforge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: worldforge/package-lock.json
+
+      - name: Install dependencies
+        working-directory: worldforge
+        run: npm ci
+
+      - name: Test
+        working-directory: worldforge
+        run: npm test

@@ -195,6 +195,9 @@ python -m ruff check src tests 2>&1 | tail -20
 python -m pytest 2>&1 | tail -30
 ```
 
+CI (`.github/workflows/ci.yml`) runs the same gates, using `ruff format --check`, so a phase whose
+local gates pass should pass CI.
+
 If any command fails, the phase is **not** done. Fix the issue or file a blocker;
 do not paper over.
 
