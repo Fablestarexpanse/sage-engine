@@ -240,7 +240,9 @@ export default function AgentsTab() {
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead><tr>
             <th style={th}>Name</th><th style={th}>Room</th><th style={th}>HP</th>
-            <th style={th}>Mood</th><th style={th}>Last action</th><th style={th}></th>
+            <th style={th}>Mood</th><th style={th} title="Total proficiency levels">Lv</th>
+            <th style={th} title="Kills / Deaths">K/D</th>
+            <th style={th}>Last action</th><th style={th}></th>
           </tr></thead>
           <tbody>
             {rows.map((r) => (
@@ -251,6 +253,8 @@ export default function AgentsTab() {
                 <td style={cell}>{r.room_id ? r.room_id.split(":")[1] : "—"}</td>
                 <td style={cell}>{r.hp != null ? `${r.hp}/${r.max_hp}` : "—"}</td>
                 <td style={cell}>{r.mood ?? "—"}</td>
+                <td style={cell}>{r.levels ?? 0}</td>
+                <td style={cell}>{r.kills ?? 0}/{r.deaths ?? 0}</td>
                 <td style={cell} title={r.last_action}>{(r.last_action || "").slice(0, 28)} <span style={{ color: COLORS.textMuted }}>{fmtAgo(r.last_action_at)}</span></td>
                 <td style={cell}>
                   <div style={{ display: "flex", gap: 4 }}>
@@ -262,7 +266,7 @@ export default function AgentsTab() {
                 </td>
               </tr>
             ))}
-            {!rows.length && <tr><td style={cell} colSpan={6}>No agents. Add YAML personas under content/agents/.</td></tr>}
+            {!rows.length && <tr><td style={cell} colSpan={8}>No agents. Add YAML personas under content/agents/.</td></tr>}
           </tbody>
         </table>
       </div>
@@ -273,6 +277,15 @@ export default function AgentsTab() {
             <div style={{ fontWeight: 700, fontSize: 13, color: COLORS.text, marginBottom: 8 }}>
               {detail.name} <span style={{ color: COLORS.textMuted, fontWeight: 400 }}>· {detail.room_id} · {detail.mood}</span>
             </div>
+            {detail.metrics && (
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10, fontSize: 11, color: COLORS.textMuted }}>
+                <span>Levels <b style={{ color: COLORS.text }}>{detail.metrics.levels}</b></span>
+                <span>Kills <b style={{ color: COLORS.text }}>{detail.metrics.kills}</b></span>
+                <span>Deaths <b style={{ color: COLORS.text }}>{detail.metrics.deaths}</b></span>
+                <span>Goals done <b style={{ color: COLORS.text }}>{detail.metrics.goals_completed}</b></span>
+                <span>Items used <b style={{ color: COLORS.text }}>{detail.metrics.items_used}</b>{detail.metrics.most_used_item ? ` (top: ${detail.metrics.most_used_item})` : ""}</span>
+              </div>
+            )}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               <div>
                 <div style={{ fontSize: 10, color: COLORS.textMuted, textTransform: "uppercase", marginBottom: 4 }}>Needs</div>

@@ -131,6 +131,16 @@ async def use(session: Session, args: list[str]):
     max_hp = int(stats.get("max_hp", stats.get("hp", 20)))
     before = int(stats.get("hp", 0))
     stats["hp"] = min(max_hp, before + heal)
+    # Usage tracking: totals + per-template, so "most used item" is answerable.
+    newly_granted = []
+    try:
+        from fablestar.achievements.engine import record_counter
+
+        registry = app_instance.content_loader.get_achievement_registry()
+        newly_granted += record_counter(stats, registry, "items_used")
+        newly_granted += record_counter(stats, registry, f"items_used.{template.id}")
+    except Exception:
+        pass
     await app_instance.redis.set_player_stats(player_id, stats)
     await app_instance.redis.set_player_inventory(
         player_id, [it for it in inv if it.get("id") != item.get("id")]
@@ -139,6 +149,10 @@ async def use(session: Session, args: list[str]):
     await session.send(
         f"You consume the {item.get('name', 'item')} (+{gained} hp, {stats['hp']}/{max_hp})."
     )
+    for ach in newly_granted:
+        from fablestar.achievements.engine import announcement
+
+        await session.send(announcement(ach))
 
 
 @command("take", aliases=["get", "pick"])

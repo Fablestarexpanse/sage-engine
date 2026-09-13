@@ -139,6 +139,32 @@ def build_agents_router(server: "FablestarServer") -> APIRouter:
         except LLMGenerationError as exc:
             return {"ok": False, "error": str(exc), "latency_s": round(time.time() - started, 2)}
 
+    def _agent_metrics(stats: dict) -> dict:
+        """Play-data metrics for the watch table and detail drawer."""
+        from fablestar.proficiencies.state_helpers import total_proficiency_levels
+
+        counters = stats.get("counters") if isinstance(stats.get("counters"), dict) else {}
+        used = {
+            k.removeprefix("items_used."): int(v)
+            for k, v in counters.items()
+            if k.startswith("items_used.")
+        }
+        most_used = max(used, key=used.get) if used else None
+        try:
+            levels = total_proficiency_levels(
+                stats, registry=server.content_loader.get_proficiency_registry()
+            )
+        except Exception:
+            levels = 0
+        return {
+            "kills": int(counters.get("kills", 0)),
+            "deaths": int(counters.get("deaths", 0)),
+            "goals_completed": int(counters.get("goals_completed", 0)),
+            "items_used": int(counters.get("items_used", 0)),
+            "most_used_item": most_used,
+            "levels": levels,
+        }
+
     @router.get("/admin/agents")
     async def agents_list(
         _ctx: Annotated[AdminContext, Depends(require_tool("agents"))],
@@ -159,6 +185,7 @@ def build_agents_router(server: "FablestarServer") -> APIRouter:
                     "last_action": state.last_action,
                     "last_action_at": state.last_action_at,
                     "enabled": state.enabled,
+                    **_agent_metrics(stats),
                 }
             )
         # personas on disk but not running (disabled / failed spawn)
@@ -199,6 +226,7 @@ def build_agents_router(server: "FablestarServer") -> APIRouter:
             "inventory": await server.redis.get_player_inventory(name),
             "goal": state.goal_label,
             "goal_commands": state.goal_commands,
+            "metrics": _agent_metrics(stats),
             "last_action": state.last_action,
             "perceptions": state.session.recent_perceptions(20),
             "persona": state.persona.model_dump(),

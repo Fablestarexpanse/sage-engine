@@ -100,6 +100,12 @@ class AgentManager:
             stats.setdefault("max_hp", stats.get("hp", 60))
             stats.setdefault("hp", stats["max_hp"])
             stats["is_agent"] = True
+            # Agents are computer-controlled players: same conduit attribute
+            # and proficiency blocks, so they level through the same engine.
+            from fablestar.proficiencies.state_helpers import ensure_proficiency_block
+
+            ensure_proficiency_block(stats)
+            stats.setdefault("counters", {})
 
             inventory = []
             # Equip persona gear (slot -> template id) through the equipment engine.
@@ -262,8 +268,18 @@ class AgentManager:
 
             clear_on_death(stats)
             stats["hp"] = max(1, int(stats.get("max_hp", 20)) // 2)
-            remember(stats, "died and woke in the medbay, patched together")
-            respawn_room = "starter_zone:medbay"
+            remember(stats, "died and woke in the clinic, patched together")
+            try:
+                from fablestar.achievements.engine import record_counter
+
+                record_counter(
+                    stats, server.content_loader.get_achievement_registry(), "deaths"
+                )
+            except Exception:
+                logger.debug("death counter skipped", exc_info=True)
+            from fablestar.world.defaults import RESPAWN_ROOM
+
+            respawn_room = RESPAWN_ROOM
             if server.content_loader.get_room(respawn_room) is None:
                 respawn_room = state.persona.spawn_room
             await server.redis.set_player_stats(name, stats)
@@ -271,7 +287,7 @@ class AgentManager:
             state.goal_commands = []
             state.goal_label = None
             state.last_hp = stats["hp"]
-            state.last_action = "respawn: medbay"
+            state.last_action = "respawn: clinic"
             state.last_action_at = time.time()
             state.pov.append(
                 {
@@ -369,6 +385,16 @@ class AgentManager:
                 fx2.on_goal_done(stats, state.persona)
                 if state.goal_label:
                     fx2.remember(stats, f"finished: {state.goal_label}")
+                try:
+                    from fablestar.achievements.engine import record_counter
+
+                    record_counter(
+                        stats,
+                        server.content_loader.get_achievement_registry(),
+                        "goals_completed",
+                    )
+                except Exception:
+                    logger.debug("goal counter skipped", exc_info=True)
                 state.goal_label = None
                 await server.redis.set_player_stats(name, stats)
         if reason == "wander":
