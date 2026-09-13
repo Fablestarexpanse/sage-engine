@@ -49,7 +49,7 @@ Expanded on demand; later stages get phase docs when 2a lands.
 
 | #  | Phase | Status |
 |----|-------|--------|
-| 01 | CI baseline — gates + WorldForge vitest in GitHub Actions ([phase-01-ci-baseline.md](phase-01-ci-baseline.md)) | todo |
+| 01 | CI baseline — gates + WorldForge vitest in GitHub Actions ([phase-01-ci-baseline.md](phase-01-ci-baseline.md)) | review — awaiting first GitHub run |
 | 02 | Live test tier — `live` marker, Postgres/Redis CI job, migration up/down + persistence tests | todo (doc not yet written) |
 | 03 | Invariant ratchet — denylist + player-string scanner with per-file baseline | todo (doc not yet written) |
 | 04 | License report — clean-venv Python and npm/cargo license listing in CI | todo (doc not yet written) |
