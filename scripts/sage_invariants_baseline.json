@@ -1,12 +1,12 @@
 {
   "totals": {
-    "denylist": 2105,
-    "player_literals": 114
+    "denylist": 2049,
+    "player_literals": 113
   },
   "denylist": {
     "engine/alembic/versions/b3c4d5e6f7a8_account_echo_credits.py": 5,
     "engine/alembic/versions/d5e6f7a8b9c0_character_digi_balance.py": 3,
-    "engine/clients/admin-ui/src/AgentsTab.jsx": 8,
+    "engine/clients/admin-ui/src/AgentsTab.jsx": 1,
     "engine/clients/admin-ui/src/App.jsx": 3,
     "engine/clients/admin-ui/src/PlayerAccountsTab.jsx": 42,
     "engine/clients/admin-ui/src/ProficienciesPage.jsx": 10,
@@ -38,13 +38,9 @@
     "engine/src/sage/admin/content_browser.py": 9,
     "engine/src/sage/admin/player_accounts.py": 28,
     "engine/src/sage/admin/routes/admin_ops.py": 3,
-    "engine/src/sage/admin/routes/agents.py": 1,
     "engine/src/sage/admin/routes/content.py": 5,
     "engine/src/sage/admin/routes/llm_comfyui.py": 2,
     "engine/src/sage/admin/staff_service.py": 1,
-    "engine/src/sage/agents/brain.py": 8,
-    "engine/src/sage/agents/manager.py": 27,
-    "engine/src/sage/agents/models.py": 8,
     "engine/src/sage/bootstrap.py": 2,
     "engine/src/sage/commands/movement.py": 1,
     "engine/src/sage/commands/proficiency.py": 41,
@@ -80,7 +76,6 @@
     "engine/src/sage/world/models.py": 9,
     "engine/tests/live/test_persistence_live.py": 1,
     "engine/tests/test_admin_security.py": 4,
-    "engine/tests/test_agents_body.py": 5,
     "engine/tests/test_combat_narration.py": 1,
     "engine/tests/test_command_integration.py": 4,
     "engine/tests/test_commands.py": 3,
@@ -117,7 +112,6 @@
     "engine/src/sage/network/session.py": 2,
     "engine/src/sage/server.py": 8,
     "engine/src/sage/world/ambient.py": 1,
-    "engine/tests/test_agents_body.py": 1,
     "engine/tests/test_session.py": 4
   }
 }

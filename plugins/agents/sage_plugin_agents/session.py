@@ -1,6 +1,6 @@
 """AgentSession — a virtual session carrying the persona it drives."""
 
-from sage.network.virtual import VirtualSession
+from sage.api import VirtualSession
 
 
 class AgentSession(VirtualSession):

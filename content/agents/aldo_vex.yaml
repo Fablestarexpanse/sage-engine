@@ -15,4 +15,4 @@ routine: [pawn_shop, market_west, market_square, market_west]
 gear: {}
 stats: {hp: 55, max_hp: 55}
 attributes: {FRT: 8, RFX: 9, ACU: 12, RSV: 10, PRS: 15}
-digi: 120
+money: 120

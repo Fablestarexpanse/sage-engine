@@ -181,7 +181,7 @@ function StatBoard() {
 
   const refresh = useCallback(async () => {
     try {
-      const r = await axios.get(`${API_BASE}/admin/agents-statboard`);
+      const r = await axios.get(`${API_BASE}/plugins/agents/admin/statboard`);
       setBoard(r.data);
       setError("");
     } catch (e) {
@@ -213,7 +213,7 @@ function StatBoard() {
           <thead><tr>
             <th style={th}>Name</th><th style={th}>Room</th><th style={th}>HP</th><th style={th}>Mood</th>
             <th style={th} title="Total proficiency levels">Levels</th>
-            <th style={th}>Digi</th><th style={th}>Trades</th>
+            <th style={th}>Money</th><th style={th}>Trades</th>
             <th style={th}>Kills</th><th style={th}>Deaths</th>
             <th style={th}>Goals</th><th style={th}>Items used</th>
             <th style={th}>Most used</th><th style={th}>Top prey</th>
@@ -228,7 +228,7 @@ function StatBoard() {
                 <td style={cell}>{r.hp != null ? `${r.hp}/${r.max_hp}` : "—"}</td>
                 <td style={cell}>{r.mood ?? "—"}</td>
                 <td style={cell}>{r.levels}</td>
-                <td style={cell}>{r.digi}</td>
+                <td style={cell}>{r.money}</td>
                 <td style={cell}>{r.trades}</td>
                 <td style={cell}>{r.kills}</td>
                 <td style={cell}>{r.deaths}</td>
@@ -247,7 +247,7 @@ function StatBoard() {
                 <td style={{ ...cell, fontWeight: 700 }}>All agents</td>
                 <td style={cell} colSpan={3}></td>
                 <td style={{ ...cell, fontWeight: 700 }}>{sum("levels")}</td>
-                <td style={{ ...cell, fontWeight: 700 }}>{sum("digi")}</td>
+                <td style={{ ...cell, fontWeight: 700 }}>{sum("money")}</td>
                 <td style={{ ...cell, fontWeight: 700 }}>{sum("trades")}</td>
                 <td style={{ ...cell, fontWeight: 700 }}>{sum("kills")}</td>
                 <td style={{ ...cell, fontWeight: 700 }}>{sum("deaths")}</td>
@@ -282,7 +282,7 @@ export default function AgentsTab() {
 
   const refresh = useCallback(async () => {
     try {
-      const r = await axios.get(`${API_BASE}/admin/agents`);
+      const r = await axios.get(`${API_BASE}/plugins/agents/admin/agents`);
       setRows(Array.isArray(r.data) ? r.data : []);
       setError("");
     } catch (e) {
@@ -294,9 +294,9 @@ export default function AgentsTab() {
     if (!id) return;
     try {
       const [d, p, y] = await Promise.all([
-        axios.get(`${API_BASE}/admin/agents/${encodeURIComponent(id)}`).catch(() => null),
-        axios.get(`${API_BASE}/admin/agents/${encodeURIComponent(id)}/pov`).catch(() => null),
-        axios.get(`${API_BASE}/admin/agents/${encodeURIComponent(id)}/persona`).catch(() => null),
+        axios.get(`${API_BASE}/plugins/agents/admin/agents/${encodeURIComponent(id)}`).catch(() => null),
+        axios.get(`${API_BASE}/plugins/agents/admin/agents/${encodeURIComponent(id)}/pov`).catch(() => null),
+        axios.get(`${API_BASE}/plugins/agents/admin/agents/${encodeURIComponent(id)}/persona`).catch(() => null),
       ]);
       setDetail(d?.data ?? null);
       setPov(p?.data?.pov ?? []);
@@ -322,7 +322,7 @@ export default function AgentsTab() {
   const act = async (id, action, body) => {
     setBusy(true);
     try {
-      await axios.post(`${API_BASE}/admin/agents/${encodeURIComponent(id)}/${action}`, body ?? {});
+      await axios.post(`${API_BASE}/plugins/agents/admin/agents/${encodeURIComponent(id)}/${action}`, body ?? {});
       await refresh();
       await loadDetail(id);
     } catch (e) {
@@ -337,7 +337,7 @@ export default function AgentsTab() {
     setBusy(true);
     setPersonaMsg("");
     try {
-      const r = await axios.put(`${API_BASE}/admin/agents/${encodeURIComponent(selectedId)}/persona`, {
+      const r = await axios.put(`${API_BASE}/plugins/agents/admin/agents/${encodeURIComponent(selectedId)}/persona`, {
         yaml_text: personaText,
       });
       setPersonaMsg(r.data?.applies === "on_restart" ? "Saved — restart the agent to apply." : "Saved.");
@@ -391,7 +391,7 @@ export default function AgentsTab() {
             <th style={th}>Name</th><th style={th}>Room</th><th style={th}>HP</th>
             <th style={th}>Mood</th><th style={th} title="Total proficiency levels">Lv</th>
             <th style={th} title="Kills / Deaths">K/D</th>
-            <th style={th}>Digi</th>
+            <th style={th}>Money</th>
             <th style={th}>Last action</th><th style={th}></th>
           </tr></thead>
           <tbody>
@@ -405,7 +405,7 @@ export default function AgentsTab() {
                 <td style={cell}>{r.mood ?? "—"}</td>
                 <td style={cell}>{r.levels ?? 0}</td>
                 <td style={cell}>{r.kills ?? 0}/{r.deaths ?? 0}</td>
-                <td style={cell}>{r.digi ?? 0}</td>
+                <td style={cell}>{r.money ?? 0}</td>
                 <td style={cell} title={r.last_action}>{(r.last_action || "").slice(0, 28)} <span style={{ color: COLORS.textMuted }}>{fmtAgo(r.last_action_at)}</span></td>
                 <td style={cell}>
                   <div style={{ display: "flex", gap: 4 }}>
@@ -430,7 +430,7 @@ export default function AgentsTab() {
             </div>
             {detail.metrics && (
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10, fontSize: 11, color: COLORS.textMuted }}>
-                <span>Digi <b style={{ color: COLORS.text }}>{detail.metrics.digi}</b></span>
+                <span>Money <b style={{ color: COLORS.text }}>{detail.metrics.money}</b></span>
                 <span>Trades <b style={{ color: COLORS.text }}>{detail.metrics.trades}</b></span>
                 <span>Levels <b style={{ color: COLORS.text }}>{detail.metrics.levels}</b></span>
                 <span>Kills <b style={{ color: COLORS.text }}>{detail.metrics.kills}</b></span>

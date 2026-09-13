@@ -1,4 +1,4 @@
-"""Agent persona models loaded from content/agents/*.yaml — editable, hot-reloadable."""
+"""Agent persona models loaded from the world's content/agents/*.yaml — editable, hot-reloadable."""
 
 from pydantic import BaseModel, Field
 
@@ -34,11 +34,11 @@ class AgentPersonaModel(BaseModel):
     # slot -> item template id, equipped on spawn.
     gear: dict[str, str] = Field(default_factory=dict)
     stats: dict[str, int] = Field(default_factory=lambda: {"hp": 60, "max_hp": 60})
-    # Conduit attribute spread (FRT/RFX/ACU/RSV/PRS) — each agent rolls their
-    # own character, same stat block a new player gets. Missing keys default 10.
+    # Attribute spread, seeded through the world's progression (the same block a new player
+    # gets); keys the world doesn't define are ignored.
     attributes: dict[str, int] = Field(default_factory=dict)
-    # Starting wallet (stats blob "digi"; durable via agent_state).
-    digi: int = 25
+    # Starting balance in the world's primary currency.
+    money: int = 25
 
     def spawn_zone(self) -> str:
         return self.spawn_room.split(":")[0] if ":" in self.spawn_room else ""

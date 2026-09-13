@@ -62,8 +62,8 @@ def test_entering_a_hazard_room_applies_effects_and_reports_skill_use(plugin_hos
     async def skill_used(player_id, skill, chance):
         used.append(skill)
 
-    host.resolvers.define(SKILL_USED, skill_used)
-    host.resolvers.define(SKILL_LEVEL, lambda stats, skill: 0)
+    host.resolvers.provide(SKILL_USED, skill_used, owner="test")
+    host.resolvers.provide(SKILL_LEVEL, lambda stats, skill: 0, owner="test")
     host.redis.stats["hero"] = {"hp": 9}
 
     quiet = RoomEntered(player_id="hero", room_id="town:lane", from_room_id=None)

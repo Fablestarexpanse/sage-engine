@@ -51,8 +51,8 @@ def _workshop(plugin_host, tmp_path):
     async def skill_used(player_id, skill, chance):
         used.append(skill)
 
-    host.resolvers.define(SKILL_USED, skill_used)
-    host.resolvers.define(SKILL_LEVEL, lambda stats, skill: 0)
+    host.resolvers.provide(SKILL_USED, skill_used, owner="test")
+    host.resolvers.provide(SKILL_LEVEL, lambda stats, skill: 0, owner="test")
     return host, used
 
 

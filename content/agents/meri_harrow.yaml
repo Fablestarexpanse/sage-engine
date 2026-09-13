@@ -15,4 +15,4 @@ routine: [general_store, market_west, market_square, south_road, harbor_docks, w
 gear: {}
 stats: {hp: 60, max_hp: 60}
 attributes: {FRT: 9, RFX: 8, ACU: 14, RSV: 12, PRS: 12}
-digi: 90
+money: 90

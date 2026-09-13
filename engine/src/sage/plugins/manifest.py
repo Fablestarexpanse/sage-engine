@@ -28,6 +28,7 @@ SUPPORTED_TOUCHES = (
     "content_extensions",
     "routes",
     "redis_prefixes",
+    "tables",
     "lexicon_prefix",
 )
 
@@ -148,6 +149,14 @@ class PluginManifest(BaseModel):
         for route in self.touches.routes:
             if route != allowed:
                 raise ValueError(f"routes may only declare {allowed!r} (got {route!r})")
+        return self
+
+    @model_validator(mode="after")
+    def _tables(self) -> PluginManifest:
+        prefix = f"plg_{self.plugin.id}_"
+        for table in self.touches.tables:
+            if not table.startswith(prefix):
+                raise ValueError(f"table {table!r} must be named {prefix}*")
         return self
 
     @model_validator(mode="after")

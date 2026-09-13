@@ -29,7 +29,7 @@ by owner G.4 ("every mechanic is a first-party plugin").
 | 3.6 | Crafting and search → `plugins/crafting`, `plugins/search`; engine progression slots (`progression.skill_used/skill_level`, catalog #3) and `feature` content extensions | done |
 | 3.7 | Maestro → `plugins/maestro` (`api.sessions`, `api.entities`, `api.items`, `api.lexicon_keys`) | done |
 | 3.8 | Effects API in engine (`api.effects`); hazards → `plugins/hazards` over `RoomEntered` | done |
-| 3.9 | Agents → `plugins/agents` (owner ruling); agent wallet reads (`stats["digi"]`, clinic bill, pending takings) move onto `api.wallet`, and the transitional `AgentManager._factions()` service lookup becomes a declared `depends` on `factions` | next |
+| 3.9 | Agents → `plugins/agents` (owner ruling); agent wallet reads (`stats["digi"]`, clinic bill, pending takings) move onto `api.wallet`, and the transitional `AgentManager._factions()` service lookup becomes a declared `depends` on `factions` | in progress (plugin done; drop engine `agent_state` next) |
 | 3.10 | Conduit (proficiencies, FRT..PRS, combat resolver, chargen) → `worlds/fablestar/plugins/conduit` | todo |
 | 3.11 | Combat, equipment, ambient, effects → first-party plugins (owner G.4) | todo |
 | 3.12 | Snapshot contributors; `resonance_levels_total` out of the protocol | todo |
@@ -100,3 +100,12 @@ by owner G.4 ("every mechanic is a first-party plugin").
   owns no table. Asked the owner before building. Also to move with agents: Fablestar-specific life
   goals (food item, clinic bill, evening pub room, pub small-talk prompt) become world params and
   AI slots; persona attributes go through a chargen seed slot instead of writing Conduit blocks.
+- **3.9 agents plugin.** `plugins/agents` owns personas (`content/agents`), the Body/Brain, the
+  `agents` tick job, `plg_agents_state` (branch `plg_agents`, backfilled from `agent_state`), the
+  admin routes at `/plugins/agents/admin/*` (agents, statboard, heatmaps, persona) and a name claim
+  so players can't take agent names. Optional dependencies on factions/shop/lodging/search. World
+  params give the life-goal vocabulary (`agents.food_item`, `forage_item`, `social_zones`,
+  `evening_room`); prompts are `agents.prompt.*` lexicon (Fablestar overrides setting and notes).
+  Death uses the world's `death.respawn` policy and wallet bill instead of a hardcoded clinic bill.
+  Persona YAML's starting wallet key is `money:`. The world smoke test now runs
+  `python -m sage db upgrade` per world in its own database (one DB per world).

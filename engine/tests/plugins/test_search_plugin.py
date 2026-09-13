@@ -73,8 +73,8 @@ def test_a_find_fills_the_pack_counts_and_reports_skill_use(plugin_host, tmp_pat
     async def skill_used(player_id, skill, chance):
         used.append((player_id, skill, chance))
 
-    host.resolvers.define(SKILL_USED, skill_used)
-    host.resolvers.define(SKILL_LEVEL, lambda stats, skill: 0)
+    host.resolvers.provide(SKILL_USED, skill_used, owner="test")
+    host.resolvers.provide(SKILL_LEVEL, lambda stats, skill: 0, owner="test")
     host.redis.locations["hero"] = "town:cellar"
     host.redis.stats["hero"] = {"hp": 3}
 

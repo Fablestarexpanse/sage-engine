@@ -1,40 +1,40 @@
 """
 AgentManager — spawns agent bodies and drives their reflex ticks.
 
-Agents are full citizens of the session layer: registered in SessionManager,
-present in Redis room sets, acting only via dispatcher-dispatched command
-strings. M1 scope: spawn from personas, wander routines, fight/flee/eat/rest
-reflexes. Brains (LLM) arrive in M3/M4; restart/give/teleport admin hooks
-land in M2 but the manager API for them lives here from the start.
+Agents are full citizens of the session layer: attached as virtual sessions, present in room
+sets, acting only via dispatched command strings. The Body (rules) acts every tick; the Brain
+(LLM) runs in the background for voice, banter and intent. Everything world-specific — what food
+is called, which rooms are social, where evenings are spent — comes from world params.
 """
+
+from __future__ import annotations
 
 import asyncio
 import logging
 import random
 import time
 import uuid
-from typing import TYPE_CHECKING, Any
+from pathlib import Path
+from typing import Any
 
-from sage.agents.body import (
-    WANDER_COOLDOWN_S,
-    BodyContext,
-    decide,
-    hostiles_in,
-    route_step,
-)
-from sage.agents.models import AgentPersonaModel
-from sage.agents.session import AgentSession
+from sage.api import PluginAPI
 
-if TYPE_CHECKING:
-    from sage.server import SageServer
+from . import feelings as fx
+from .body import WANDER_COOLDOWN_S, BodyContext, decide, hostiles_in, route_path, route_step
+from .brain import AgentBrain, compile_goal
+from .models import AgentPersonaModel
+from .registry import AgentRegistry, load_agents
+from .session import AgentSession
+from .store import AgentStore
 
 logger = logging.getLogger(__name__)
 
-AGENT_TICK_INTERVAL = 8  # 4 Hz tick → body decisions every 2 s (staggered)
-CLINIC_BILL_DIGI = 10  # respawn cost, deducted down to zero (matches player bill)
+AGENT_TICK_SECONDS = 2.0  # body decisions every 2 s
 INVENTORY_SOFT_CAP = 12  # go sell before the 14-item loot cap
 CONTRACT_TRIP_LIMIT = 6  # hunting trips with zero progress before giving up
 IDLE_INTENT_CHANCE = 0.02  # per tick, when no human is present (~1 plan per ~100s)
+PROGRESS_KEY = "progress_log"
+PROGRESS_CAP = 1600  # 60s cadence -> ~26h of history (overnight soak safe)
 
 
 class AgentState:
@@ -49,8 +49,7 @@ class AgentState:
         self.last_action_at: float = time.time()
         self.last_hp: int | None = None
         self.enabled = True
-        # POV log for the admin "look through their eyes" panel (brain fills
-        # real prompts in M3/M4; body decisions land here meanwhile).
+        # POV log for the admin "look through their eyes" panel.
         self.pov: list[dict[str, Any]] = []
         self.next_life_goal_at = 0.0  # throttle needs-driven goals (rent retries etc.)
         self.brain_task: asyncio.Task | None = None  # in-flight LLM pass
@@ -58,27 +57,31 @@ class AgentState:
 
 
 class AgentManager:
-    def __init__(self, server: "SageServer"):
-        self.server = server
+    def __init__(self, api: PluginAPI):
+        self.api = api
         self.agents: dict[str, AgentState] = {}  # persona.id -> state
         self._spawned = False
-        self._brain = None  # lazy: config not fully loaded at construction
+        self.store = AgentStore(api)
+        self.brain = AgentBrain(api, self)
+        self._personas = api.content.cached("agents", load_agents)
+        self._exit_maps: dict[str, tuple[tuple, dict[str, dict[str, str]]]] = {}
+        self._stamp: tuple = ()
+        self._stamp_at = float("-inf")
+        # World params: the life-goal vocabulary of this world.
+        self.food_item: str = api.param("food_item", "")
+        self.forage_item: str = api.param("forage_item", "")
+        self.social_zones: set[str] = set(api.param("social_zones", []) or [])
+        self.evening_room: str = api.param("evening_room", "")
 
-    @property
-    def brain(self):
-        if self._brain is None:
-            from sage.agents.brain import AgentBrain
-
-            self._brain = AgentBrain(self.server)
-        return self._brain
+    def registry(self) -> AgentRegistry:
+        return self._personas.get()
 
     # ------------------------------------------------------------------
     # Lifecycle
     # ------------------------------------------------------------------
 
-    async def spawn_all(self):
-        registry = self.server.content_loader.get_agent_registry()
-        for persona in registry.all():
+    async def spawn_all(self) -> None:
+        for persona in self.registry().all():
             if persona.enabled and persona.id not in self.agents:
                 try:
                     await self.spawn(persona)
@@ -86,21 +89,20 @@ class AgentManager:
                     logger.error("Agent %s failed to spawn: %s", persona.id, exc)
         self._spawned = True
 
-    async def spawn(self, persona: AgentPersonaModel):
+    async def spawn(self, persona: AgentPersonaModel) -> None:
+        api = self.api
         session = AgentSession(persona.id, persona.name)
-        sm = self.server.session_manager
-        sm.sessions[session.id] = session
-        sm.player_to_session[persona.name] = session.id
+        api.sessions.attach(session)
 
         # Durable state wins over the persona seed (memories/feelings/gear
         # survive server restarts); admin restart deletes the row first.
-        row = await self._load_row(persona.id)
+        row = await self.store.load(persona.id)
         if row is not None:
             stats = dict(row["stats"])
             stats["is_agent"] = True
             inventory = list(row["inventory"])
             room_id = row["room_id"]
-            if self.server.content_loader.get_room(room_id) is None:
+            if api.content.room(room_id) is None:
                 room_id = persona.spawn_room
         else:
             stats = dict(persona.stats)
@@ -109,18 +111,15 @@ class AgentManager:
             stats["is_agent"] = True
             # Agents are computer-controlled players: the world's progression seeds their
             # attribute spread the way it does a new player's.
-            from sage.world.progression import SEED_ATTRIBUTES
-
-            self.server.resolvers.get(SEED_ATTRIBUTES)(stats, dict(persona.attributes))
+            api.progression.seed_attributes(stats, dict(persona.attributes))
             stats.setdefault("counters", {})
-            stats.setdefault("digi", int(persona.digi))
+            if api.wallet.enabled:
+                api.wallet.set(stats, int(persona.money))
 
-            inventory = []
+            inventory: list[dict[str, Any]] = []
             # Equip persona gear (slot -> template id) through the equipment engine.
-            from sage.items.equipment import equip_item
-
             for template_id in persona.gear.values():
-                template = self.server.content_loader.get_item_template(template_id)
+                template = api.content.item_template(template_id)
                 if template is None:
                     logger.warning("Agent %s gear %r unknown", persona.id, template_id)
                     continue
@@ -131,13 +130,10 @@ class AgentManager:
                     "description": template.description,
                     "value": template.value,
                 }
-                _, inventory = equip_item(stats, [*inventory, item], item, template)
+                _, inventory = api.equipment.equip(stats, [*inventory, item], item, template)
             room_id = persona.spawn_room
 
-        await self.server.redis.set_player_stats(persona.name, stats)
-        await self.server.redis.set_player_inventory(persona.name, inventory)
-        await self.server.redis.set_player_location(persona.name, room_id)
-
+        await api.characters.place(persona.name, stats, inventory, room_id)
         self.agents[persona.id] = AgentState(persona, session)
         logger.info(
             "Agent spawned: %s (%s) in %s%s",
@@ -147,126 +143,65 @@ class AgentManager:
             " [restored]" if row is not None else "",
         )
 
-    async def despawn(self, agent_id: str):
+    async def despawn(self, agent_id: str) -> None:
         state = self.agents.pop(agent_id, None)
         if state is None:
             return
         name = state.persona.name
-        room_id = await self.server.redis.get_player_location(name)
-        if room_id:
-            await self.server.redis.remove_player_from_room(name, room_id)
-        sm = self.server.session_manager
-        sm.player_to_session.pop(name, None)
-        sm.sessions.pop(state.session.id, None)
+        await self.api.characters.remove(name)
+        self.api.sessions.detach(name)
         logger.info("Agent despawned: %s", name)
 
-    async def restart(self, agent_id: str):
+    async def restart(self, agent_id: str) -> None:
         """Reset: drop durable state and respawn fresh from the persona on disk."""
         await self.despawn(agent_id)
-        await self._delete_row(agent_id)
-        registry = self.server.content_loader.get_agent_registry()
-        persona = registry.get(agent_id)
+        await self.store.delete(agent_id)
+        persona = self.registry().get(agent_id)
         if persona and persona.enabled:
             await self.spawn(persona)
 
     # ------------------------------------------------------------------
-    # Durability (agent_state table; flushed on the persistence cadence)
+    # Durability (plg_agents_state; flushed on the persistence cadence)
     # ------------------------------------------------------------------
 
-    async def _load_row(self, persona_id: str) -> dict[str, Any] | None:
-        try:
-            from sqlalchemy import select
-
-            from sage.state.models import AgentState as AgentStateRow
-
-            async with self.server.db.session_factory() as db:
-                result = await db.execute(
-                    select(AgentStateRow).where(AgentStateRow.id == persona_id)
-                )
-                row = result.scalar_one_or_none()
-                if row is None:
-                    return None
-                return {
-                    "stats": dict(row.stats or {}),
-                    "inventory": list(row.inventory or []),
-                    "room_id": row.room_id,
-                }
-        except Exception:
-            logger.exception("Agent state load failed for %s", persona_id)
-            return None
-
-    async def _delete_row(self, persona_id: str) -> None:
-        try:
-            from sqlalchemy import delete
-
-            from sage.state.models import AgentState as AgentStateRow
-
-            async with self.server.db.session_factory() as db:
-                async with db.begin():
-                    await db.execute(delete(AgentStateRow).where(AgentStateRow.id == persona_id))
-        except Exception:
-            logger.exception("Agent state delete failed for %s", persona_id)
-
     async def flush_all(self) -> None:
-        """Upsert every live agent's Redis state into agent_state (persistence cadence)."""
-        if not self.agents:
-            return
-        try:
-            from datetime import datetime
-
-            from sqlalchemy import select
-
-            from sage.state.models import AgentState as AgentStateRow
-
-            async with self.server.db.session_factory() as db:
-                async with db.begin():
-                    for state in self.agents.values():
-                        name = state.persona.name
-                        room_id = await self.server.redis.get_player_location(name)
-                        stats = await self.server.redis.get_player_stats(name)
-                        inventory = await self.server.redis.get_player_inventory(name)
-                        self._append_progress_sample(stats)
-                        await self.server.redis.set_player_stats(name, stats)
-                        result = await db.execute(
-                            select(AgentStateRow).where(AgentStateRow.id == state.persona.id)
-                        )
-                        row = result.scalar_one_or_none()
-                        if row is None:
-                            row = AgentStateRow(id=state.persona.id, name=name)
-                            db.add(row)
-                        row.name = name
-                        row.room_id = room_id or state.persona.spawn_room
-                        row.stats = stats
-                        row.inventory = list(inventory)
-                        row.updated_at = datetime.utcnow()
-        except Exception:
-            logger.exception("Agent state flush failed")
-
-    PROGRESS_KEY = "progress_log"
-    PROGRESS_CAP = 1600  # 60s cadence → ~26h of history (overnight soak safe)
+        """Upsert every live agent's hot state into plg_agents_state."""
+        rows = []
+        for state in list(self.agents.values()):
+            name = state.persona.name
+            stats = await self.api.characters.stats(name)
+            self._append_progress_sample(stats)
+            await self.api.characters.save_stats(name, stats)
+            rows.append(
+                {
+                    "id": state.persona.id,
+                    "name": name,
+                    "room_id": await self.api.state.location(name) or state.persona.spawn_room,
+                    "stats": stats,
+                    "inventory": list(await self.api.inventory.get(name)),
+                }
+            )
+        await self.store.save(rows)
 
     def _append_progress_sample(self, stats: dict[str, Any]) -> None:
-        """Time-series sample for the admin XP-progression chart (flush cadence)."""
+        """Time-series sample for the admin progression chart (flush cadence)."""
         try:
-            from sage.world.progression import TOTAL_LEVELS
-
             counters = stats.get("counters") if isinstance(stats.get("counters"), dict) else {}
-            levels = int(self.server.resolvers.get(TOTAL_LEVELS)(stats))
-            log = stats.get(self.PROGRESS_KEY)
+            log = stats.get(PROGRESS_KEY)
             if not isinstance(log, list):
                 log = []
-                stats[self.PROGRESS_KEY] = log
+                stats[PROGRESS_KEY] = log
             log.append(
                 {
                     "t": int(time.time()),
-                    "levels": levels,
+                    "levels": self.api.progression.total_levels(stats),
                     "kills": int(counters.get("kills", 0)),
                     "deaths": int(counters.get("deaths", 0)),
                     "goals": int(counters.get("goals_completed", 0)),
                     "rooms": len(stats.get("visited_rooms") or []),
                 }
             )
-            del log[: -self.PROGRESS_CAP]
+            del log[:-PROGRESS_CAP]
         except Exception:
             logger.debug("progress sample skipped", exc_info=True)
 
@@ -274,18 +209,14 @@ class AgentManager:
     # Tick
     # ------------------------------------------------------------------
 
-    async def on_tick(self, tick_count: int):
+    async def on_tick(self, tick_count: int) -> None:
         if not self._spawned:
             await self.spawn_all()
-        if tick_count % AGENT_TICK_INTERVAL != 0:
-            return
 
-        # Agents tick concurrently: the serial pass (8 agents x many Redis
-        # round-trips, plus inline LLM replies) overran the 0.25s tick budget
-        # on every agent tick overnight. Cross-agent money moves go through
-        # the atomic pending-digi counter, so concurrent stats writes can't
-        # lose a shopkeeper's takings.
-        async def _one(agent_id: str):
+        # Agents tick concurrently: a serial pass (8 agents x many Redis round-trips, plus
+        # replies) overran the tick budget. Money between characters goes through the wallet's
+        # atomic pending counter, so concurrent stats writes can't lose a keeper's takings.
+        async def _one(agent_id: str) -> None:
             state = self.agents.get(agent_id)
             if state is None:
                 return
@@ -296,116 +227,57 @@ class AgentManager:
 
         await asyncio.gather(*(_one(a) for a in list(self.agents)))
 
-    async def _tick_agent(self, state: AgentState):
-        server = self.server
+    async def _tick_agent(self, state: AgentState) -> None:
+        api = self.api
         if not state.enabled:
             return
         name = state.persona.name
-        room_id = await server.redis.get_player_location(name)
+        room_id = await api.state.location(name)
         if not room_id:
             return
-        room = server.content_loader.get_room(room_id)
+        room = api.content.room(room_id)
         if room is None:
             return
-        stats = await server.redis.get_player_stats(name)
+        stats = await api.characters.stats(name)
 
-        # Bank money other sessions owe this agent (shop takings). Written to an
-        # atomic counter by the payer so concurrent ticks can't overwrite it.
+        # Bank money other characters owe this agent (shop takings).
         try:
-            if await server.wallet.bank_pending(name, stats):
-                await server.redis.set_player_stats(name, stats)
+            if await api.wallet.bank_pending(name, stats):
+                await api.characters.save_stats(name, stats)
         except Exception:
             logger.debug("pending wallet merge failed for %s", name, exc_info=True)
 
-        # Death: wake in the medbay at half health, like a player relogging
-        # at 0 hp — no immortal corpses wandering the halls.
         if int(stats.get("hp", 1)) <= 0:
-            from sage.agents.feelings import remember
-            from sage.effects.engine import clear_on_death
-
-            clear_on_death(stats)
-            stats["hp"] = max(1, int(stats.get("max_hp", 20)) // 2)
-            # The clinic doesn't work for free: dying costs Digi (down to 0).
-            bill = min(int(stats.get("digi", 0) or 0), CLINIC_BILL_DIGI)
-            stats["digi"] = int(stats.get("digi", 0) or 0) - bill
-            remember(
-                stats,
-                f"died and woke in the clinic, patched together ({bill} Digi bill)"
-                if bill
-                else "died and woke in the clinic; too broke to bill",
-            )
-            from sage.world.counters import count
-
-            await count(server, name, stats, "deaths")
-            respawn_room = server.world.respawn_room
-            if server.content_loader.get_room(respawn_room) is None:
-                respawn_room = state.persona.spawn_room
-            await server.redis.set_player_stats(name, stats)
-            await server.redis.set_player_location(name, respawn_room)
-            state.goal_commands = []
-            state.goal_label = None
-            state.last_hp = stats["hp"]
-            state.last_action = "respawn: clinic"
-            state.last_action_at = time.time()
-            state.pov.append(
-                {
-                    "at": time.time(),
-                    "kind": "body",
-                    "prompt": "[reflex] death",
-                    "response": f"respawn {respawn_room}",
-                }
-            )
-            del state.pov[:-20]
-            from sage.telemetry import heat, log_event
-
-            log_event(
-                "agent_death",
-                agent=state.persona.id,
-                room=room_id,
-                respawn=respawn_room,
-                bill=bill,
-                digi=int(stats.get("digi", 0) or 0),
-            )
-            await heat(server.redis, "deaths", room_id)
-            logger.info("Agent %s died; respawned in %s", state.persona.id, respawn_room)
+            await self._respawn(state, stats, room_id)
             return
 
         # Feelings: event detection + decay (deterministic, cheap).
-        from sage.agents import feelings as fx
-
         hp_now = int(stats.get("hp", 1))
         if state.last_hp is not None and hp_now < state.last_hp:
             fx.on_hurt(
                 stats, state.persona, (state.last_hp - hp_now) / max(1, stats.get("max_hp", 1))
             )
         state.last_hp = hp_now
-        room_players = await server.redis.get_room_players(room_id)
+        room_players = await api.rooms.players(room_id)
         for other in room_players:
             if other != name:
                 fx.on_company(stats, state.persona, other)
         fx.decay_tick(stats, state.persona)
         # Decay always mutates, so one unconditional write per tick.
-        await server.redis.set_player_stats(name, stats)
+        await api.characters.save_stats(name, stats)
 
-        # Entities + hostility
-        entity_states = []
-        for eid in await server.redis.get_room_entities(room_id):
-            es = await server.redis.get_entity_state(eid)
-            if es:
-                entity_states.append(es)
+        entity_states = await api.rooms.entities(room_id)
 
         def tags_of(template_id: str):
-            tmpl = server.content_loader.get_entity_template(template_id)
-            return tmpl.tags if tmpl else set()
+            template = api.content.entity_template(template_id)
+            return template.tags if template else set()
 
-        inventory = await server.redis.get_player_inventory(name)
+        inventory = await api.inventory.get(name)
         consumables = []
         for it in inventory:
-            tmpl = server.content_loader.get_item_template(it.get("template", ""))
-            if tmpl and tmpl.heal > 0:
-                consumables.append(it.get("name", tmpl.name))
-
-        from sage.effects.engine import find_effects
+            template = api.content.item_template(it.get("template", ""))
+            if template and template.heal > 0:
+                consumables.append(it.get("name", template.name))
 
         equipped_ids = {
             (it or {}).get("id") for it in (stats.get("equipment") or {}).values() if it
@@ -420,15 +292,14 @@ class AgentManager:
         # doesn't become a walking warehouse).
         floor_valuables: list[str] = []
         if len(inventory) < 14:
-            for iid in await server.redis.get_room_items(room_id):
-                iid = iid.decode() if isinstance(iid, bytes) else iid
-                istate = await server.redis.get_item_state(iid)
-                if istate and int(istate.get("value", 0) or 0) > 0:
-                    floor_valuables.append(istate.get("name", ""))
+            for item in await api.rooms.items(room_id):
+                if int(item.get("value", 0) or 0) > 0:
+                    floor_valuables.append(item.get("name", ""))
                 if len(floor_valuables) >= 3:
                     break
 
         now = time.time()
+        shop = self._shop_at(room_id)
         ctx = BodyContext(
             hp=int(stats.get("hp", 1)),
             max_hp=int(stats.get("max_hp", 1)),
@@ -436,26 +307,20 @@ class AgentManager:
             exits=list(room.exits.keys()),
             hostiles=hostiles_in(entity_states, tags_of),
             consumables=consumables,
-            resting=bool(find_effects(stats, "body.resting")),
+            resting=bool(api.effects.find(stats, "body.resting")),
             goal_commands=list(state.goal_commands),
             next_routine_direction=self._routine_direction(state, room_id),
             wander_ready=now >= state.next_wander_at,
-            in_buying_shop=bool(
-                (shop := self._shop_at(room_id)) is not None
-                and shop.buys
-                and shop.owner != state.persona.name
-            ),
+            in_buying_shop=bool(shop is not None and shop.buys and shop.owner != name),
             sellable_count=sellable_count,
             floor_valuables=floor_valuables,
             hungry=float((stats.get("feelings", {}).get("needs", {}) or {}).get("hunger", 0.0))
             > 0.7,
         )
-        # Deterministic life goals first (survival never waits on an LLM):
-        # starving -> buy food; homeless + flush -> rent a room; exhausted
-        # with a home -> go sleep in it; evenings pull the warm toward the pub.
+        # Deterministic life goals first (survival never waits on an LLM).
         if not ctx.hostiles and not state.goal_commands and time.time() >= state.next_life_goal_at:
             lodging_desk = (
-                await self._lodging_choice(int(stats.get("digi", 0) or 0))
+                await self._lodging_choice(api.wallet.balance(stats))
                 if not stats.get("home_room")
                 else None
             )
@@ -463,24 +328,19 @@ class AgentManager:
             if life is not None:
                 state.next_life_goal_at = time.time() + 120.0
                 state.goal_label, state.goal_commands = life
-                from sage.agents.feelings import remember
-
-                remember(stats, f"needed to {state.goal_label}")
-                from sage.telemetry import log_event
-
-                log_event(
+                fx.remember(stats, f"needed to {state.goal_label}")
+                api.telemetry.event(
                     "life_goal",
                     agent=state.persona.id,
                     room=room_id,
                     goal=state.goal_label,
                     commands=len(state.goal_commands),
                 )
-                await server.redis.set_player_stats(name, stats)
+                await api.characters.save_stats(name, stats)
                 ctx.goal_commands = list(state.goal_commands)
 
-        # The brain (voice, pub banter, intent) runs as a background task: the
-        # LLM used to be awaited inline, freezing this agent's slice of the
-        # tick for the whole generation. The Body keeps acting meanwhile.
+        # The brain (voice, banter, intent) runs as a background task so a slow generation
+        # never freezes this agent's slice of the tick. The Body keeps acting meanwhile.
         agent_names = {a.persona.name for a in self.agents.values()}
         brain_busy = state.brain_task is not None and not state.brain_task.done()
         if not ctx.hostiles and not brain_busy:
@@ -490,13 +350,13 @@ class AgentManager:
                 self._think(
                     state,
                     room_id=room_id,
-                    social_room=room_id.startswith("aipub:"),
+                    social_room=room_id.split(":")[0] in self.social_zones,
                     players_present=players_present,
                     banter_with=state.rng.choice(others)
                     if others and state.rng.random() < 0.08
                     else None,
                     # With nobody around, still plan now and then so the brain
-                    # isn't idle all night (0 intents in the first soak).
+                    # isn't idle all night.
                     want_intent=not state.goal_commands
                     and (bool(players_present) or state.rng.random() < IDLE_INTENT_CHANCE),
                 )
@@ -508,51 +368,87 @@ class AgentManager:
         if reason == "goal" and state.goal_commands:
             state.goal_commands.pop(0)
             if not state.goal_commands:
-                from sage.agents import feelings as fx2
-
-                fx2.on_goal_done(stats, state.persona)
+                fx.on_goal_done(stats, state.persona)
                 if state.goal_label:
-                    fx2.remember(stats, f"finished: {state.goal_label}")
-                from sage.world.counters import count
-
-                await count(server, name, stats, "goals_completed")
+                    fx.remember(stats, f"finished: {state.goal_label}")
+                await api.counters.count(name, stats, "goals_completed")
                 state.goal_label = None
-                await server.redis.set_player_stats(name, stats)
+                await api.characters.save_stats(name, stats)
         if reason == "wander":
             lo, hi = WANDER_COOLDOWN_S
             state.next_wander_at = now + state.rng.uniform(lo, hi)
         state.last_action = f"{reason}: {command}"
         state.last_action_at = now
-        from sage.telemetry import heat, log_event
-
-        log_event(
+        api.telemetry.event(
             "agent_action",
             agent=state.persona.id,
             room=room_id,
             reason=reason,
             command=command,
             hp=int(stats.get("hp", 0)),
-            digi=int(stats.get("digi", 0) or 0),
+            money=api.wallet.balance(stats),
         )
-        await heat(server.redis, "presence", room_id)
-        await heat(server.redis, f"presence:{state.persona.id}", room_id)
+        await api.telemetry.heat("presence", room_id)
+        await api.telemetry.heat(f"presence:{state.persona.id}", room_id)
         state.pov.append(
             {"at": now, "kind": "body", "prompt": f"[reflex] {reason}", "response": command}
         )
         del state.pov[:-20]
-        await server.dispatcher.dispatch(state.session, command)
+        await api.sessions.dispatch(state.session, command)
 
         # Post-action feelings: eating settles hunger; sleeping in your own
         # rented room beats any bench.
         if reason == "eat" or command == "rest":
-            from sage.agents import feelings as fx3
-
-            post_stats = await server.redis.get_player_stats(name)
+            post_stats = await api.characters.stats(name)
             if reason == "eat":
-                fx3.on_ate(post_stats, state.persona)
+                fx.on_ate(post_stats, state.persona)
             if command == "rest" and post_stats.get("home_room") == room_id:
-                fx3.on_slept_home(post_stats, state.persona)
-            await server.redis.set_player_stats(name, post_stats)
+                fx.on_slept_home(post_stats, state.persona)
+            await api.characters.save_stats(name, post_stats)
+
+    async def _respawn(self, state: AgentState, stats: dict[str, Any], room_id: str) -> None:
+        """Death: wake where the world's respawn policy says, billed like a player."""
+        api = self.api
+        name = state.persona.name
+        api.effects.clear_on_death(stats)
+        plan = api.resolvers.get("death.respawn")(api.world, stats, api.wallet.balance(stats))
+        stats["hp"] = plan.hp
+        bill = api.wallet.take_up_to(stats, plan.bill) if api.wallet.enabled else 0
+        currency = api.wallet.name() if api.wallet.enabled else ""
+        fx.remember(
+            stats,
+            api.t("agents.memory.died_billed", bill=bill, currency=currency)
+            if bill
+            else api.t("agents.memory.died_free"),
+        )
+        await api.counters.count(name, stats, "deaths")
+        respawn_room = plan.room_id if api.content.room(plan.room_id) else state.persona.spawn_room
+        await api.characters.save_stats(name, stats)
+        await api.characters.move(name, respawn_room)
+        state.goal_commands = []
+        state.goal_label = None
+        state.last_hp = stats["hp"]
+        state.last_action = "respawn"
+        state.last_action_at = time.time()
+        state.pov.append(
+            {
+                "at": time.time(),
+                "kind": "body",
+                "prompt": "[reflex] death",
+                "response": f"respawn {respawn_room}",
+            }
+        )
+        del state.pov[:-20]
+        api.telemetry.event(
+            "agent_death",
+            agent=state.persona.id,
+            room=room_id,
+            respawn=respawn_room,
+            bill=bill,
+            money=api.wallet.balance(stats),
+        )
+        await api.telemetry.heat("deaths", room_id)
+        logger.info("Agent %s died; respawned in %s", state.persona.id, respawn_room)
 
     async def _think(
         self,
@@ -577,38 +473,27 @@ class AgentManager:
                 )
                 if intent and not state.goal_commands:
                     name = state.persona.name
-                    stats = await self.server.redis.get_player_stats(name)
-                    here = await self.server.redis.get_player_location(name) or room_id
+                    stats = await self.api.characters.stats(name)
+                    here = await self.api.state.location(name) or room_id
                     await self._apply_intent(state, intent, here, stats)
         except Exception as exc:
             logger.warning("Agent brain pass failed for %s: %s", state.persona.id, exc)
 
     # ------------------------------------------------------------------
-    # Intent (M4) — compile brain goals into Body scripts
+    # Other plugins' services (optional dependencies)
     # ------------------------------------------------------------------
 
-    def _known_rooms(self, state: AgentState) -> list[str]:
-        """Room slugs the agent can path to (its zone's walked exits map)."""
-        zone = state.persona.spawn_zone()
-        return sorted(r.split(":")[-1] for r in self._exits_map(zone))
+    def _service(self, name: str) -> Any:
+        try:
+            return self.api.services.get(name)
+        except Exception:
+            return None
 
-    def _service(self, name: str):
-        """A plugin's service, or None when the world doesn't enable that plugin.
-
-        Transitional: engine code reads plugin services by name until agents are a plugin
-        themselves (phase-3 plan) and declare the dependencies.
-        """
-        entry = getattr(getattr(self.server, "plugins", None), "services", {}).get(name)
-        return entry[1] if entry else None
-
-    def _factions(self):
-        return self._service("factions")
-
-    def _shop_at(self, room_id: str | None):
+    def _shop_at(self, room_id: str | None) -> Any:
         shops = self._service("shop")
         return shops.at(room_id) if shops else None
 
-    async def _lodging_choice(self, digi: int) -> str | None:
+    async def _lodging_choice(self, money: int) -> str | None:
         """Desk room with a free (or lapsed) bed this agent can afford, cheapest first."""
         lodgings = self._service("lodging")
         if lodgings is None:
@@ -624,31 +509,31 @@ class AgentManager:
                 lodging = lodgings.at(rid)
                 if (
                     lodging
-                    and digi >= lodging.price + 10
+                    and money >= lodging.price + 10
                     and lodgings.free_rooms(lodging, rentals, now)
                 ):
                     options.append((lodging.price, rid))
         return min(options)[1] if options else None
+
+    # ------------------------------------------------------------------
+    # Life goals
+    # ------------------------------------------------------------------
 
     def _life_goal(
         self,
         state: AgentState,
         stats: dict[str, Any],
         room_id: str,
-        ctx,
-        inventory,
+        ctx: BodyContext,
+        inventory: list[dict[str, Any]],
         lodging_desk: str | None = None,
-    ):
+    ) -> tuple[str, list[str]] | None:
         """Deterministic needs-driven goals, most urgent first. (label, commands) or None."""
-        from sage.agents.body import route_path
-        from sage.world.clock import day_phase
-
-        factions = self._factions()
-
+        factions = self._service("factions")
         zone = state.persona.spawn_zone()
         exits_of = self._exits_map(zone)
         needs = (stats.get("feelings", {}) or {}).get("needs", {}) or {}
-        digi = int(stats.get("digi", 0) or 0)
+        money = self.api.wallet.balance(stats)
         home = stats.get("home_room")
         hp_frac = int(stats.get("hp", 1)) / max(1, int(stats.get("max_hp", 1)))
         hunger = float(needs.get("hunger", 0))
@@ -660,32 +545,30 @@ class AgentManager:
             return (label, [*path, *then])
 
         # 1. Wounded: get somewhere safe and heal before anything else. Home if
-        #    you have one, else the clinic; the Body's rest reflex takes over in
-        #    a safe room. (Overnight Cutter fought, fled, and walked straight
-        #    back in: 25 deaths.)
+        #    you have one, else the respawn room; the Body's rest reflex takes over
+        #    in a safe room.
         if hp_frac < 0.5:
-            current = self.server.content_loader.get_room(room_id)
+            current = self.api.content.room(room_id)
             if current is None or current.type != "safe":
-                g = go("retreat to heal", home or self.server.world.respawn_room)
+                g = go("retreat to heal", home or self.api.world.respawn_room)
                 if g:
                     return g
 
         # 2. Starving with nothing to eat: buy if you can, forage if you can't.
-        #    (Old Pell sat at hunger 1.0 all night with 6 Digi.)
         if hunger > 0.85 and not ctx.consumables:
-            if digi >= 12:
-                seller = self._shop_finder(zone, buying=False)("ration")
+            if money >= 12 and self.food_item:
+                seller = self._shop_finder(zone, buying=False)(self.food_item)
                 if seller:
-                    g = go("buy food (starving)", seller, ["buy ration"])
+                    g = go("buy food (starving)", seller, [f"buy {self.food_item}"])
                     if g:
                         return g
-            spot = self._search_room_finder(zone)("ration_pack")
+            spot = self._search_room_finder(zone)(self.forage_item) if self.forage_item else None
             if spot:
                 g = go("forage for food", spot, ["search", "search"])
                 if g:
                     return g
 
-        # 3. Pack nearly full of loot: go sell it (7 of 8 agents sat at the cap).
+        # 3. Pack nearly full of loot: go sell it.
         sellable = sum(1 for it in inventory if int(it.get("value", 0) or 0) > 0)
         if len(inventory) >= INVENTORY_SOFT_CAP and sellable:
             buyer = self._shop_finder(zone, buying=True, exclude_owner=state.persona.name)()
@@ -716,25 +599,19 @@ class AgentManager:
             elif mission.get("kind") == "kill" and hp_frac >= 0.7:
                 hunt_room = self._entity_room_finder(zone)(target.lower())
                 if hunt_room and hunt_room != room_id:
-                    # Arriving is enough: the fight reflex and the combat
-                    # mission hook do the rest.
+                    # Arriving is enough: the fight reflex and the kill event do the rest.
                     g = go(f"hunt {self._entity_name(target)}s (contract)", hunt_room)
                     if g:
                         mission["trips"] = trips + 1
                         return g
-        elif float(needs.get("purpose", 0)) > 0.8 and hp_frac >= 0.7:
-            hiring = (
-                [
-                    f
-                    for f in factions.registry().all()
-                    if f.offers_missions() and factions.will_deal(stats, f)
-                ]
-                if factions
-                else []
-            )
+        elif float(needs.get("purpose", 0)) > 0.8 and hp_frac >= 0.7 and factions:
+            hiring = [
+                f
+                for f in factions.registry().all()
+                if f.offers_missions() and factions.will_deal(stats, f)
+            ]
             if hiring:
-                # Spread work across factions; overnight every contract went to
-                # whichever faction happened to load first.
+                # Spread work across factions instead of the first one loaded.
                 faction = state.rng.choice(hiring)
                 return (f"take work: {faction.name}", [f"missions accept {faction.id}"])
 
@@ -746,7 +623,7 @@ class AgentManager:
 
         # 6. Lease nearly up and can pay: renew at the desk that let the room.
         home_until = float(stats.get("home_until", 0) or 0)
-        if home and 0 < home_until - time.time() < 10 * 60 and digi >= 25:
+        if home and 0 < home_until - time.time() < 10 * 60 and money >= 25:
             desk = self._desk_for(zone, home)
             if desk:
                 g = go("renew my lease", desk, ["rent"])
@@ -759,25 +636,30 @@ class AgentManager:
             if g:
                 return g
 
-        # 8. Evening: the warm-hearted drift toward the pub now and then.
+        # 8. Evening: the warm-hearted drift toward the world's evening room now and then.
         if (
-            day_phase() == "evening"
+            self.evening_room
+            and self.api.clock.phase() == "evening"
             and state.persona.temperament.warmth > 0.5
-            and not room_id.startswith("aipub:")
+            and room_id.split(":")[0] != self.evening_room.split(":")[0]
             and state.rng.random() < 0.04
         ):
-            g = go("evening at the AIpub", "aipub:main_bar")
+            room = self.api.content.room(self.evening_room)
+            g = go(
+                f"spend the evening at {room.name if room else self.evening_room}",
+                self.evening_room,
+            )
             if g:
                 return g
         return None
 
     def _entity_name(self, template_id: str) -> str:
-        tmpl = self.server.content_loader.get_entity_template(template_id)
-        return tmpl.name if tmpl else template_id.replace("_", " ")
+        template = self.api.content.entity_template(template_id)
+        return template.name if template else template_id.replace("_", " ")
 
     def _item_name(self, template_id: str) -> str:
-        tmpl = self.server.content_loader.get_item_template(template_id)
-        return tmpl.name if tmpl else template_id.replace("_", " ")
+        template = self.api.content.item_template(template_id)
+        return template.name if template else template_id.replace("_", " ")
 
     def _desk_for(self, zone: str, rented_room: str) -> str | None:
         lodgings = self._service("lodging")
@@ -795,10 +677,9 @@ class AgentManager:
         return find
 
     def _shop_finder(self, zone: str, *, buying: bool, exclude_owner: str = ""):
-        """buying=True: () -> the best-paying room whose shop buys (never the
-        agent's own till). buying=False: (item substring) -> the cheapest room
-        selling a match. Comparison-shopping, not first-found: overnight the
-        first-found AIpub took every food sale and Meri's store sold nothing."""
+        """buying=True: () -> the best-paying room whose shop buys (never the agent's own till).
+        buying=False: (item substring) -> the cheapest room selling a match. Comparison-shopping,
+        not first-found, so one shop doesn't take every sale."""
 
         def find_buyer() -> str | None:
             best = None
@@ -820,8 +701,8 @@ class AgentManager:
                 if shop is None:
                     continue
                 for entry in shop.sells:
-                    tmpl = self.server.content_loader.get_item_template(entry.template)
-                    hay = f"{entry.template} {tmpl.name if tmpl else ''}".lower()
+                    template = self.api.content.item_template(entry.template)
+                    hay = f"{entry.template} {template.name if template else ''}".lower()
                     if item in hay and (best is None or entry.price < best[0]):
                         best = (entry.price, room_id)
             return best[1] if best else None
@@ -835,25 +716,30 @@ class AgentManager:
             if not target:
                 return None
             for room_id in self._exits_map(zone):
-                room = self.server.content_loader.get_room(room_id)
+                room = self.api.content.room(room_id)
                 if room is None:
                     continue
                 for spawn in getattr(room, "entity_spawns", []) or []:
-                    template = getattr(spawn, "template", "")
-                    tmpl = self.server.content_loader.get_entity_template(template)
-                    hay = f"{template} {tmpl.name if tmpl else ''}".lower()
+                    template_id = getattr(spawn, "template", "")
+                    template = self.api.content.entity_template(template_id)
+                    hay = f"{template_id} {template.name if template else ''}".lower()
                     if target in hay:
                         return room_id
             return None
 
         return find
 
+    # ------------------------------------------------------------------
+    # Intent — compile brain goals into Body scripts
+    # ------------------------------------------------------------------
+
+    def _known_rooms(self, state: AgentState) -> list[str]:
+        """Room slugs the agent can path to (its zone's walked exits map)."""
+        return sorted(r.split(":")[-1] for r in self._exits_map(state.persona.spawn_zone()))
+
     async def _apply_intent(
         self, state: AgentState, intent: dict[str, str], room_id: str, stats: dict[str, Any]
     ) -> None:
-        from sage.agents.brain import compile_goal
-        from sage.agents.feelings import remember
-
         zone = state.persona.spawn_zone()
         compiled = compile_goal(
             intent,
@@ -863,14 +749,13 @@ class AgentManager:
             self._entity_room_finder(zone),
             buyer_room_finder=self._shop_finder(zone, buying=True),
             seller_room_finder=self._shop_finder(zone, buying=False),
+            default_buy=self.food_item,
         )
         why = intent.get("why") or "no reason given"
         if compiled is None:
-            remember(stats, f"considered {intent['goal']} {intent['target']} but let it go")
-            from sage.telemetry import log_event
-
+            fx.remember(stats, f"considered {intent['goal']} {intent['target']} but let it go")
             # Parsed but unrealizable (e.g. hunt -> a room): a brain-quality metric.
-            log_event(
+            self.api.telemetry.event(
                 "intent_rejected",
                 agent=state.persona.id,
                 room=room_id,
@@ -881,12 +766,12 @@ class AgentManager:
             label, commands = compiled
             state.goal_label = label
             state.goal_commands = commands
-            remember(stats, f"decided to {label} — {why}")
+            fx.remember(stats, f"decided to {label} — {why}")
             logger.info("Agent %s intent: %s (%s)", state.persona.id, label, why)
-            from sage.telemetry import log_event
-
-            log_event("intent", agent=state.persona.id, room=room_id, goal=label, why=why)
-        await self.server.redis.set_player_stats(state.persona.name, stats)
+            self.api.telemetry.event(
+                "intent", agent=state.persona.id, room=room_id, goal=label, why=why
+            )
+        await self.api.characters.save_stats(state.persona.name, stats)
 
     # ------------------------------------------------------------------
     # Routine navigation
@@ -908,23 +793,21 @@ class AgentManager:
         return route_step(current_room, target_id, self._exits_map(zone))
 
     def _exits_map(self, zone: str) -> dict[str, dict[str, str]]:
-        """room_id -> {direction: destination} for a zone, walked via the loader."""
-        cache_key = f"agents:exits:{zone}"
-        cached = self.server.content_loader._cache.get(cache_key)
-        if cached is not None:
-            return cached
+        """room_id -> {direction: destination} for a zone, walked from every agent anchor in it.
+
+        Rebuilt when any zone's room files change, so edited maps apply without a restart.
+        """
+        stamp = self._rooms_stamp()
+        cached = self._exit_maps.get(zone)
+        if cached is not None and cached[0] == stamp:
+            return cached[1]
         exits_of: dict[str, dict[str, str]] = {}
-        # BFS outward from every known agent anchor in this zone.
-        seeds = [
-            p.spawn_room
-            for p in self.server.content_loader.get_agent_registry().all()
-            if p.spawn_zone() == zone
-        ]
+        seeds = [p.spawn_room for p in self.registry().all() if p.spawn_zone() == zone]
         queue = list(dict.fromkeys(seeds))
         seen = set(queue)
         while queue:
             room_id = queue.pop()
-            room = self.server.content_loader.get_room(room_id)
+            room = self.api.content.room(room_id)
             if room is None:
                 continue
             exits_of[room_id] = {d: ex.destination for d, ex in room.exits.items()}
@@ -932,5 +815,15 @@ class AgentManager:
                 if dest not in seen:
                     seen.add(dest)
                     queue.append(dest)
-        self.server.content_loader._cache[cache_key] = exits_of
+        self._exit_maps[zone] = (stamp, exits_of)
         return exits_of
+
+    def _rooms_stamp(self) -> tuple:
+        """Room files' mtimes, rescanned at most every few seconds (maps are read every tick)."""
+        now = time.monotonic()
+        if now - self._stamp_at >= 5.0:
+            zones = Path(self.api.world.content_dir) / "world" / "zones"
+            files = sorted(zones.glob("*/rooms/*.yaml")) if zones.is_dir() else []
+            self._stamp = tuple((str(f), f.stat().st_mtime_ns) for f in files)
+            self._stamp_at = now
+        return self._stamp

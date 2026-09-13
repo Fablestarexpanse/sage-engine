@@ -2,11 +2,10 @@
 
 import asyncio
 import random
-from pathlib import Path
 
-from sage.agents.body import BodyContext, decide, hostiles_in, route_step
-from sage.agents.registry import load_agents
-from sage.agents.session import AgentSession
+from sage_plugin_agents.body import BodyContext, decide, hostiles_in, route_step
+from sage_plugin_agents.registry import load_agents
+from sage_plugin_agents.session import AgentSession
 
 
 def _ctx(**overrides) -> BodyContext:
@@ -83,21 +82,22 @@ def test_hostiles_in_uses_template_tags():
 
 
 def test_agent_session_collects_perception():
-    s = AgentSession("sela_varn", "Sela Varn")
-    asyncio.run(s.send("You move north."))
+    s = AgentSession("pam", "Puppet Pam")
+    heard = "You move north."
+    asyncio.run(s.send(heard))
     asyncio.run(s.send_prompt())
     assert s.recent_perceptions() == ["You move north."]
-    assert s.player_id == "Sela Varn"
+    assert s.player_id == "Puppet Pam"
     assert s.protocol.is_connected
 
 
-def test_repo_personas_load():
-    reg = load_agents(Path("content"))
-    names = {p.name for p in reg.all()}
-    assert {"Sela Varn", "Brant Okoro", "Tessa Moke"} <= names
-    sela = reg.get("sela_varn")
-    # Gear is persona content (agents currently start empty-handed); only
-    # the shape is contract.
-    assert sela is not None and isinstance(sela.gear, dict)
-    assert set(sela.attributes) <= {"FRT", "RFX", "ACU", "RSV", "PRS"}
-    assert reg.get("Sela Varn") is sela
+def test_world_personas_all_load(tmp_path):
+    from tests.fakes import repo_world
+
+    agents_dir = repo_world().content_dir / "agents"
+    files = sorted(agents_dir.glob("*.yaml"))
+    reg = load_agents(agents_dir)
+    assert files and len(reg.all()) == len(files)  # nothing skipped as invalid
+    for persona in reg.all():
+        assert ":" in persona.spawn_room and isinstance(persona.gear, dict)
+        assert reg.get(persona.name) is persona

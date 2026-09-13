@@ -8,7 +8,7 @@ return to themselves. All pure functions for testability.
 
 from typing import Any
 
-from sage.agents.models import AgentPersonaModel
+from .models import AgentPersonaModel
 
 FEELINGS_KEY = "feelings"
 DECAY_RATE = 0.03  # per feelings tick (~2s): fraction of distance to baseline
@@ -85,7 +85,7 @@ def on_ate(stats: dict[str, Any], persona: AgentPersonaModel) -> None:
 
 
 def on_slept_home(stats: dict[str, Any], persona: AgentPersonaModel) -> None:
-    """Sleeping in your own rented room beats a bench in the clinic."""
+    """Sleeping in your own rented room beats any bench."""
     f = ensure_feelings(stats, persona)
     _nudge(f, valence=0.1, rest=-0.8, safety=-0.4, arousal=-0.15)
 

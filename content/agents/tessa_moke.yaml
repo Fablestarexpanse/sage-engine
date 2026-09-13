@@ -15,4 +15,4 @@ routine: [clinic, town_plaza, clinic, apothecary, market_square]
 gear: {}
 stats: {hp: 50, max_hp: 50}
 attributes: {FRT: 8, RFX: 10, ACU: 14, RSV: 12, PRS: 12}
-digi: 30
+money: 30

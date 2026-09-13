@@ -15,6 +15,7 @@ from sage.core.resolvers import Resolvers
 from sage.core.tick import TickManager
 from sage.plugins import PluginHost
 from sage.world.loader import ContentLoader
+from sage.world.slots import define_engine_slots
 from tests.fakes import FakeRedis
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -28,11 +29,11 @@ for _plugin_dir in sorted((REPO_ROOT / "plugins").iterdir()):
 
 @pytest.fixture
 def plugin_host():
-    """plugin_host(world, ids=None) -> PluginHost with those plugins loaded and lexicon active."""
+    """plugin_host(world, ids=None, server=None) -> PluginHost with plugins loaded, lexicon active."""
     hosts: list[PluginHost] = []
     previous = lexicon.active()
 
-    def build(world, plugin_ids: list[str] | None = None) -> PluginHost:
+    def build(world, plugin_ids: list[str] | None = None, server=None) -> PluginHost:
         if plugin_ids is not None:
             manifest = world.manifest.model_copy(deep=True)
             manifest.plugins = {pid: world.manifest.plugins.get(pid, ">=0") for pid in plugin_ids}
@@ -48,6 +49,8 @@ def plugin_host():
             plugins_root=REPO_ROOT / "plugins",
             trusted_roots=[REPO_ROOT / "plugins", REPO_ROOT / "worlds"],
         )
+        define_engine_slots(host.resolvers)
+        host.server = server
         host.load()
         lexicon.set_active(
             lexicon.build_lexicon(world.lexicon_dir, plugin_layers=host.lexicon_layers())

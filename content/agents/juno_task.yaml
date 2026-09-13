@@ -15,4 +15,4 @@ routine: [orchard, north_road, market_square, north_road, wild_meadow, forest_ed
 gear: {}
 stats: {hp: 55, max_hp: 55}
 attributes: {FRT: 12, RFX: 11, ACU: 10, RSV: 11, PRS: 9}
-digi: 25
+money: 25

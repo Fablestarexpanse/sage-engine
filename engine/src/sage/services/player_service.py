@@ -63,12 +63,12 @@ RESERVED_CHAR_NAMES = frozenset(
 )
 
 
-def reserved_name_reason(name: str, agent_names: set[str]) -> str | None:
+def reserved_name_reason(name: str, claimed_names: set[str]) -> str | None:
     """Why a character name can't be used, or None. Compares case-insensitively."""
     from sage.commands.registry import registry
 
     key = " ".join(name.split()).lower()
-    if key in agent_names:
+    if key in claimed_names:
         return "character_name_taken"
     if key in RESERVED_CHAR_NAMES or registry.get(key) is not None:
         return "character_name_reserved"
@@ -98,13 +98,9 @@ class PlayerService:
     def __init__(self, server: SageServer):
         self.server = server
 
-    def _agent_names(self) -> set[str]:
-        """Names other systems own (automated characters), lowercased."""
+    def _claimed_names(self) -> set[str]:
+        """Names plugins claim (automated characters), lowercased."""
         names: set[str] = set()
-        try:
-            names |= {p.name.lower() for p in self.server.content_loader.get_agent_registry().all()}
-        except Exception:
-            logger.debug("agent registry unavailable for name check", exc_info=True)
         for _owner, claim in getattr(getattr(self.server, "plugins", None), "name_claims", []):
             try:
                 names |= {n.lower() for n in claim()}
@@ -394,7 +390,7 @@ class PlayerService:
             if character is not None and character.account_id != account.id:
                 return {"ok": False, "error": "character_not_dev"}
             if character is None:
-                reason = reserved_name_reason(name, self._agent_names())
+                reason = reserved_name_reason(name, self._claimed_names())
                 if reason:
                     return {"ok": False, "error": reason}
                 character = await self._insert_character(
@@ -444,7 +440,7 @@ class PlayerService:
             if len(list(result.scalars().all())) >= MAX_CHARACTERS_PER_ACCOUNT:
                 return {"ok": False, "error": "character_limit"}
 
-            reason = reserved_name_reason(name, self._agent_names())
+            reason = reserved_name_reason(name, self._claimed_names())
             if reason:
                 return {"ok": False, "error": reason}
             taken = await db_session.execute(

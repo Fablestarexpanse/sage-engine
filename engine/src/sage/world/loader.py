@@ -2,7 +2,7 @@
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import Any, TypeVar
 
 import yaml
 from pydantic import BaseModel
@@ -10,9 +10,6 @@ from pydantic import BaseModel
 from sage.proficiencies.registry import ProficiencyRegistry
 from sage.proficiencies.registry_cache import ProficiencyRegistryCache
 from sage.world.models import EntityTemplate, ItemTemplate, RoomModel
-
-if TYPE_CHECKING:
-    from sage.agents.registry import AgentRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -146,17 +143,6 @@ class ContentLoader:
     def get_proficiency_registry(self) -> ProficiencyRegistry:
         """Delegate to the proficiencies package's own registry cache."""
         return self._proficiency_cache.get()
-
-    def get_agent_registry(self) -> "AgentRegistry":
-        """Load and cache agent personas from content/agents/."""
-        cache_key = "agents:registry"
-        if cache_key in self._cache:
-            return self._cache[cache_key]
-        from sage.agents.registry import load_agents
-
-        registry = load_agents(self.content_dir)
-        self._cache[cache_key] = registry
-        return registry
 
     def invalidate(self, file_path: Path):
         """Invalidate cache entries associated with a changed file."""

@@ -1,11 +1,11 @@
-"""AgentRegistry — loads content/agents/*.yaml (achievements/factions pattern)."""
+"""AgentRegistry — loads the world's content/agents/*.yaml."""
 
 import logging
 from pathlib import Path
 
 import yaml
 
-from sage.agents.models import AgentPersonaModel
+from .models import AgentPersonaModel
 
 logger = logging.getLogger(__name__)
 
@@ -28,8 +28,8 @@ class AgentRegistry:
         return self._by_id.get(agent_id) or self._by_name.get(agent_id)
 
 
-def load_agents(content_dir: Path) -> AgentRegistry:
-    agents_dir = Path(content_dir) / "agents"
+def load_agents(agents_dir: Path) -> AgentRegistry:
+    agents_dir = Path(agents_dir)
     results: list[AgentPersonaModel] = []
     if agents_dir.is_dir():
         for f in sorted(agents_dir.glob("*.yaml")):

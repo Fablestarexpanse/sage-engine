@@ -17,7 +17,6 @@ from sqlalchemy import select
 from sage import app, lexicon
 from sage.admin import content_browser
 from sage.admin.nexus import NexusApp
-from sage.agents.manager import AgentManager
 from sage.bootstrap import ensure_dev_defaults
 from sage.commands.registry import registry
 from sage.core.comfyui_persist import save_comfyui_toml
@@ -102,7 +101,6 @@ class SageServer:
         self.spawner = EntitySpawnManager(self)
         self.ambient = AmbientManager(self)
         self.effects = EffectsManager(self)
-        self.agent_manager = AgentManager(self)
         self.hot_reloader = HotReloader(self._on_file_changed)
         self.dispatcher = CommandDispatcher(events=self.events)
         self.plugins = PluginHost(
@@ -374,7 +372,6 @@ class SageServer:
         self.tick_manager.register(self.spawner.on_tick)
         self.tick_manager.register(self.ambient.on_tick)
         self.tick_manager.register(self.effects.on_tick)
-        self.tick_manager.register(self.agent_manager.on_tick)
         self.tick_manager.register(self.persistence.on_tick)
 
         # 3. HotReloader — watches content/ and commands/; safe to start any time after step 1
@@ -781,42 +778,22 @@ class SageServer:
 
     def _define_engine_resolvers(self) -> None:
         """Engine resolver slots and their defaults (contracts catalog #4)."""
-        from sage.world.death import default_death_check, default_respawn
-
-        self.resolvers.define("death.check", default_death_check)
-        self.resolvers.define("death.respawn", default_respawn)
-
         from sage.proficiencies.field_gain import skill_level, skill_used
-        from sage.world.progression import (
-            SKILL_LEVEL,
-            SKILL_USED,
-            default_skill_level,
-            default_skill_used,
-        )
+        from sage.proficiencies.state_helpers import seed_attributes, skill_sheet, total_levels
+        from sage.world import progression
+        from sage.world.slots import define_engine_slots
 
-        self.resolvers.define(SKILL_USED, default_skill_used)
-        self.resolvers.define(SKILL_LEVEL, default_skill_level)
+        define_engine_slots(self.resolvers)
         # Transitional: the proficiency system is still engine code and answers for every world
         # until it moves into a world progression plugin (phase-3 plan), which will provide these.
-        self.resolvers.provide(SKILL_USED, skill_used, owner="proficiencies")
-        self.resolvers.provide(SKILL_LEVEL, skill_level, owner="proficiencies")
-
-        from sage.proficiencies.state_helpers import seed_attributes, skill_sheet, total_levels
-        from sage.world.progression import (
-            SEED_ATTRIBUTES,
-            SKILL_SHEET,
-            TOTAL_LEVELS,
-            default_seed_attributes,
-            default_skill_sheet,
-            default_total_levels,
-        )
-
-        self.resolvers.define(SEED_ATTRIBUTES, default_seed_attributes)
-        self.resolvers.define(TOTAL_LEVELS, default_total_levels)
-        self.resolvers.define(SKILL_SHEET, default_skill_sheet)
-        self.resolvers.provide(SEED_ATTRIBUTES, seed_attributes, owner="proficiencies")
-        self.resolvers.provide(TOTAL_LEVELS, total_levels, owner="proficiencies")
-        self.resolvers.provide(SKILL_SHEET, skill_sheet, owner="proficiencies")
+        for slot, fn in (
+            (progression.SKILL_USED, skill_used),
+            (progression.SKILL_LEVEL, skill_level),
+            (progression.SEED_ATTRIBUTES, seed_attributes),
+            (progression.TOTAL_LEVELS, total_levels),
+            (progression.SKILL_SHEET, skill_sheet),
+        ):
+            self.resolvers.provide(slot, fn, owner="proficiencies")
 
     async def reload_lexicon_overrides(self) -> None:
         """Re-read active Nexus lexicon edits and rebuild the live lexicon (no restart)."""

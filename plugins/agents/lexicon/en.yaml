@@ -1,0 +1,18 @@
+agents:
+  memory:
+    died_billed: "died, and recovering cost {bill} {currency}"
+    died_free: "died; too broke to be billed for recovering"
+  prompt:
+    setting: "a character in a MUD"
+    none_recorded: "none recorded"
+    nothing_notable: "nothing notable"
+    nobody: "nobody"
+    no_goods: "nothing worth selling"
+    no_rooms: "nowhere new"
+    world_notes: "Shops buy and sell goods; searching the wilds finds sellable things.\nGoals and their targets: wander_to -> a room from the list above; hunt -> a creature you have seen; buy -> an item a shop sells; rest/scavenge/sell/idle -> empty."
+    banter_place: "a busy common room"
+    voice_system: "You voice one MUD character. Output only their spoken words."
+    intent_system: "You decide one MUD character's next goal. Output only a single JSON object."
+    voice: "You are {name}, {setting}. Stay strictly in character.\nHard facts about you (never contradict): {facts}.\nYou want: {wants}. You fear: {fears}. Speech style: {speech}.\nRight now you feel {mood}.\nYou remember: {memories}\nRecently: {recent}\n{speaker} just said to you: \"{message}\"\nReply with ONLY the words you speak aloud — one short line, no quotes, no narration, no stage directions."
+    intent: "You are {name}, {setting}.\nHard facts (never contradict): {facts}.\nYou want: {wants}. You fear: {fears}.\nYou feel {mood}. Present with you: {people}.\nYou carry {money} {currency}. Sellable goods on you: {carrying}.\nYou remember: {memories}\nRecently: {recent}\nRooms you know: {rooms}.\n{world_notes}"
+    banter: "You are {name} in {place}. You feel {mood}. Speech style: {speech}.\nYou remember: {memories}\n{other} is here. Say ONE short line of small talk to them that includes the name {other_first}. Output only the spoken words."
