@@ -393,7 +393,7 @@ function AuthSignInForm({ onLoggedIn }) {
         setBusy(false);
         return;
       }
-      onLoggedIn(mapPlayAuthPayload(res), "");
+      onLoggedIn(mapPlayAuthPayload(res), "", res.character_id);
     } catch (err) {
       setError(err.message || "Network error — is the Nexus running?");
     }
@@ -642,9 +642,9 @@ function AuthRegisterForm({ onLoggedIn }) {
 function PlayAuthFlow({ onLoggedIn }) {
   const route = useHashAuthRoute();
   const finish = useCallback(
-    (payload, pw) => {
+    (payload, pw, autoCharacterId) => {
       window.location.hash = "#/";
-      onLoggedIn(payload, pw);
+      onLoggedIn(payload, pw, autoCharacterId);
     },
     [onLoggedIn]
   );
@@ -2024,7 +2024,10 @@ export default function App() {
     setAuth((a) => (a ? { ...a, characters: chars } : a));
   }, []);
 
-  const onLoggedIn = useCallback((a, pw) => {
+  // Dev login names its character up front; skip the chooser for it.
+  const devAutoCharacterRef = useRef(null);
+  const onLoggedIn = useCallback((a, pw, autoCharacterId) => {
+    devAutoCharacterRef.current = autoCharacterId ?? null;
     passwordRef.current = pw;
     setAuth(a);
     setEchoEconomy({
@@ -2149,6 +2152,25 @@ export default function App() {
     },
     [auth]
   );
+
+  useEffect(() => {
+    if (step !== "choose" || !auth || devAutoCharacterRef.current == null) return;
+    const ch = (auth.characters || []).find((c) => c.id === devAutoCharacterRef.current);
+    devAutoCharacterRef.current = null;
+    if (!ch) return;
+    onChosen({
+      characterId: ch.id,
+      characterName: ch.name,
+      password: "",
+      portraitUrl: ch.portrait_url ?? null,
+      digiBalance: typeof ch.digi_balance === "number" ? ch.digi_balance : 0,
+      pvpEnabled: Boolean(ch.pvp_enabled),
+      reputation: typeof ch.reputation === "number" ? ch.reputation : 0,
+      lastSceneImageUrl: ch.last_scene_image_url ?? null,
+      characterStats: ch.stats ?? null,
+      resonanceLevelsTotal: typeof ch.resonance_levels_total === "number" ? ch.resonance_levels_total : null,
+    });
+  }, [step, auth, onChosen]);
 
   useEffect(() => {
     if (step !== "play" || !playSession) return undefined;

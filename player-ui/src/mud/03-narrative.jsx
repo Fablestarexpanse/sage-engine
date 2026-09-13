@@ -921,6 +921,17 @@ export function NarrativePanel({
   useEffect(() => {
     if (scrollRef.current && stickToBottomRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [lines]);
+  // Content can grow after the lines effect (late layout, merged lines), so
+  // also follow DOM changes while pinned to the bottom.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || typeof MutationObserver === "undefined") return undefined;
+    const obs = new MutationObserver(() => {
+      if (stickToBottomRef.current) el.scrollTop = el.scrollHeight;
+    });
+    obs.observe(el, { childList: true, subtree: true, characterData: true });
+    return () => obs.disconnect();
+  }, []);
   useEffect(() => {
     if (!sceneGen || !openSceneGallerySignal) return;
     setGalleryModalKey((k) => k + 1);
