@@ -1,8 +1,8 @@
 # SAGE decoupling — decision log
 
-NEXT: Contracts approved. Stage 2a: phase 01 CI baseline DONE (first GitHub run green,
-branch pushed). Phase 02 live test tier doc ready: `docs/dev/milestones/M2-sage-decoupling/phase-02-live-test-tier.md`.
-Then phases 03 (invariant ratchet) and 04 (license report); docs written after 02 review.
+NEXT: Contracts approved. Stage 2a: phase 01 CI baseline DONE, phase 02 live test tier DONE
+(CI jobs python/worldforge/live green on 142add9). Next: architect writes phase 03 invariant ratchet
+(denylist + player-string scanner, per-file baseline), then phase 04 license report.
 Review page (private): https://claude.ai/code/artifact/2d488113-1ca9-4f45-b993-ac0253e0670c
 
 Append-only. One entry per ruling or decision, newest last. Owner rulings are binding; architect
