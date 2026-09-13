@@ -96,9 +96,19 @@ Test suites: server **150** pytest, WorldForge **34** vitest — all green.
       attribute spread + starting wallet (persona `attributes` + `digi`);
       all 8 restarted with distinct sheets (Aldo PRS 15 / 120 Digi,
       Pell RSV 15 / 15 Digi, ...)
-- [ ] E2: hunger need + food buying; AIpub apartment rent + own-bed sleep;
-      coarse day cycle in routines
-- [ ] E3: faction missions as agent work; budgeted agent-to-agent talk
+- [x] E2: hunger need (rises ~20min; eating settles it; Body eats when
+      hungry); rent command at the AIpub bar (15 Digi, 2 apartments, Redis
+      rentals hash + home_room; own-bed sleep restores more); 40-min world
+      day cycle; deterministic life goals (starving→buy food, homeless+40
+      Digi→rent, exhausted→sleep at home, evening pub drift), throttled
+      2min. Verified: Aldo + Meri rented unprompted; full pub refuses
+- [x] E3a: budgeted agent-to-agent pub talk — an idle agent in the AIpub may
+      open ONE exchange with another agent (5min/agent + 10min/pair
+      cooldowns, one reply via pending-key, replies never re-trigger).
+      Verified live: Juno opened on Old Pell; Pell answered with a weather
+      report, exactly one exchange
+- [ ] E3b: faction missions as agent work (accept/progress via player
+      commands; purpose need satisfied by completion)
 
 ### worldforge-mcp gaps found building Tidegate Isle
 - [ ] create_room(from_room, from_dir) positions the room but does NOT create

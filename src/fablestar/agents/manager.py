@@ -414,21 +414,30 @@ class AgentManager:
             > 0.7,
         )
         # Voice first: being spoken to outranks reflexes short of combat.
+        social_room = room_id.startswith("aipub:")
         if not ctx.hostiles:
             try:
-                if await self.brain.maybe_voice(state):
+                if await self.brain.maybe_voice(state, social_ok=social_room):
                     return
             except Exception as exc:
                 logger.warning("Agent voice failed for %s: %s", state.persona.id, exc)
 
+        # Pub society: idle agents in the AIpub sometimes open one budgeted
+        # exchange with another agent (hard cooldowns live in the brain).
+        agent_names_all = {s.persona.name for s in self.agents.values()}
+        if social_room and not ctx.hostiles and not state.goal_commands:
+            others = [p for p in room_players if p != name and p in agent_names_all]
+            if others and state.rng.random() < 0.08:
+                try:
+                    if await self.brain.maybe_banter(state, state.rng.choice(others)):
+                        return
+                except Exception as exc:
+                    logger.warning("Agent banter failed for %s: %s", state.persona.id, exc)
+
         # Deterministic life goals first (survival never waits on an LLM):
         # starving -> buy food; homeless + flush -> rent a room; exhausted
         # with a home -> go sleep in it; evenings pull the warm toward the pub.
-        if (
-            not ctx.hostiles
-            and not state.goal_commands
-            and time.time() >= state.next_life_goal_at
-        ):
+        if not ctx.hostiles and not state.goal_commands and time.time() >= state.next_life_goal_at:
             life = self._life_goal(state, stats, room_id, ctx)
             if life is not None:
                 state.next_life_goal_at = time.time() + 120.0

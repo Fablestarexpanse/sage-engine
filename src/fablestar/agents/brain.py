@@ -24,6 +24,9 @@ logger = logging.getLogger(__name__)
 
 VOICE_COOLDOWN_S = 20.0
 VOICE_MAX_CHARS = 200
+# Agent-to-agent chat is an infinite-loop hazard: hard budgets only.
+BANTER_INIT_COOLDOWN_S = 300.0  # one opener per agent per 5 min
+BANTER_PAIR_COOLDOWN_S = 600.0  # one exchange per pair per 10 min
 INTENT_COOLDOWN_S = 90.0
 INTENT_GOALS = ("wander_to", "hunt", "rest", "talk", "scavenge", "sell", "buy", "idle")
 _JSON_BLOB = re.compile(r"\{.*\}", re.DOTALL)
@@ -42,11 +45,16 @@ def sanitize_utterance(text: str) -> str:
 
 
 def addressed_line(
-    perceptions: list[str], agent_name: str, known_agent_names: set[str]
+    perceptions: list[str],
+    agent_name: str,
+    known_agent_names: set[str],
+    allow_agent_speakers: bool = False,
 ) -> tuple[str, str] | None:
     """
-    Most recent say line from a NON-agent speaker that mentions this agent
-    (first name or full name, case-insensitive). Returns (speaker, message).
+    Most recent say line that mentions this agent (first or full name,
+    case-insensitive). Agent speakers are ignored unless allow_agent_speakers
+    (social rooms), so the world never chats itself into a loop by default.
+    Returns (speaker, message).
     """
     first = agent_name.split()[0].lower()
     full = agent_name.lower()
@@ -55,7 +63,9 @@ def addressed_line(
         if not m:
             continue
         speaker = m.group("speaker").strip()
-        if speaker == agent_name or speaker in known_agent_names or speaker == "You":
+        if speaker == agent_name or speaker == "You":
+            continue
+        if speaker in known_agent_names and not allow_agent_speakers:
             continue
         message = m.group("message")
         low = message.lower()
@@ -212,6 +222,9 @@ class AgentBrain:
         self.llm = self._build_client(server.config.agents_llm)
         self._last_voice_at: dict[str, float] = {}
         self._answered_lines: dict[str, tuple[str, str]] = {}
+        self._last_banter_at: dict[str, float] = {}
+        self._pair_last: dict[tuple[str, str], float] = {}
+        self._pair_reply_pending: dict[tuple[str, str], str] = {}
         self._last_intent_at: dict[str, float] = {}
         self._intent_busy = False  # budget: one intent generation at a time
 
@@ -255,8 +268,12 @@ class AgentBrain:
     def enabled(self) -> bool:
         return bool(self.server.config.agents_llm.enabled)
 
-    async def maybe_voice(self, state: "AgentState") -> bool:
-        """Reply if a player addressed this agent recently. Returns True on speech."""
+    def _pair_key(self, a: str, b: str) -> tuple[str, str]:
+        return (a, b) if a <= b else (b, a)
+
+    async def maybe_voice(self, state: "AgentState", social_ok: bool = False) -> bool:
+        """Reply if someone addressed this agent recently. Agent speakers only
+        count in social rooms (social_ok) and burn the pair budget."""
         if not self.enabled:
             return False
         agent_id = state.persona.id
@@ -264,10 +281,22 @@ class AgentBrain:
         if now - self._last_voice_at.get(agent_id, 0.0) < VOICE_COOLDOWN_S:
             return False
         known = {s.persona.name for s in self.server.agent_manager.agents.values()}
-        hit = addressed_line(state.session.recent_perceptions(10), state.persona.name, known)
+        hit = addressed_line(
+            state.session.recent_perceptions(10),
+            state.persona.name,
+            known,
+            allow_agent_speakers=social_ok,
+        )
         if hit is None:
             return False
         speaker, message = hit
+        if speaker in known:
+            # Agent speaker: reply exactly once, and only to a pending opener
+            # this banter budget created. Replies never re-trigger.
+            key = self._pair_key(state.persona.name, speaker)
+            if self._pair_reply_pending.get(key) != state.persona.name:
+                return False
+            del self._pair_reply_pending[key]
         # The same perception line lingers in the buffer past the cooldown —
         # never answer one address twice.
         if self._answered_lines.get(agent_id) == (speaker, message):
@@ -298,6 +327,55 @@ class AgentBrain:
         self._record(state, prompt, reply)
         await self.server.dispatcher.dispatch(state.session, f"say {reply}")
         return True
+
+    async def maybe_banter(self, state: "AgentState", other_name: str) -> bool:
+        """Open one budgeted exchange with another agent in a social room."""
+        if not self.enabled or self._intent_busy:
+            return False
+        me = state.persona.name
+        now = time.monotonic()
+        if now - self._last_banter_at.get(me, 0.0) < BANTER_INIT_COOLDOWN_S:
+            return False
+        key = self._pair_key(me, other_name)
+        if now - self._pair_last.get(key, 0.0) < BANTER_PAIR_COOLDOWN_S:
+            return False
+        # Claim budgets before the slow call.
+        self._last_banter_at[me] = now
+        self._pair_last[key] = now
+        self._intent_busy = True
+        try:
+            from fablestar.agents.feelings import mood_word, recall
+
+            stats = await self.server.redis.get_player_stats(me)
+            p = state.persona
+            other_first = other_name.split()[0]
+            prompt = (
+                f"You are {p.name} in the AIpub on Tidegate Isle. "
+                f"You feel {mood_word(stats, p)}. Speech style: {p.speech}.\n"
+                f"You remember: {' / '.join(recall(stats, 4)) or 'nothing notable'}\n"
+                f"{other_name} is here. Say ONE short line of pub small talk to them "
+                f"that includes the name {other_first}. Output only the spoken words."
+            )
+            try:
+                raw = await self.llm.generate_or_raise(
+                    prompt,
+                    system_prompt="You voice one MUD character. Output only their spoken words.",
+                    max_tokens=60,
+                )
+            except LLMGenerationError as exc:
+                logger.info("Banter unavailable for %s: %s", me, exc)
+                return False
+            line = sanitize_utterance(raw)
+            if not line:
+                return False
+            if other_first.lower() not in line.lower():
+                line = f"{other_first}, {line}"
+            self._record(state, prompt, line, kind="banter")
+            self._pair_reply_pending[key] = other_name
+            await self.server.dispatcher.dispatch(state.session, f"say {line}")
+            return True
+        finally:
+            self._intent_busy = False
 
     async def maybe_intent(
         self, state: "AgentState", players_present: list[str], known_rooms: list[str]
