@@ -92,12 +92,34 @@ def build_shops_router(server: "FablestarServer") -> APIRouter:
                         "price": entry.price,
                     }
                 )
+            secondhand = []
+            if shop.buys:
+                from fablestar.commands.shop import resale_price, secondhand_stock
+
+                try:
+                    shelf = await secondhand_stock(server.redis, room_id)
+                except Exception:
+                    shelf = {}
+                for tid, count in sorted(shelf.items()):
+                    tmpl = server.content_loader.get_item_template(tid)
+                    if tmpl is None:
+                        continue
+                    secondhand.append(
+                        {
+                            "template": tid,
+                            "name": tmpl.name,
+                            "count": count,
+                            "price": resale_price(tmpl, shop),
+                        }
+                    )
             rows.append(
                 {
                     "room_id": room_id,
                     "shop_name": shop.name,
                     "owner": owner,
                     "stock": stock,
+                    "secondhand": secondhand,
+                    "stock_cap": shop.stock_cap,
                     "buys": shop.buys,
                     "buy_rate": shop.buy_rate,
                     "sold_count": sold_count,

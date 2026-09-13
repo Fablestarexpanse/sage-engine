@@ -97,6 +97,20 @@ export default function ShopsTab() {
               {!shop.stock.length && <span style={{ color: COLORS.textMuted }}>sells nothing (buyer only)</span>}
               {shop.buys && <div style={{ color: COLORS.textMuted, marginTop: 3 }}>buys most goods at {Math.round(shop.buy_rate * 100)}% of value</div>}
             </div>
+            {shop.buys && (
+              <>
+                <div style={{ ...label, marginTop: 10 }}>Secondhand shelf <span style={{ textTransform: "none" }}>(cap {shop.stock_cap} per item)</span></div>
+                <div style={{ fontSize: 11, color: COLORS.text }}>
+                  {(shop.secondhand ?? []).map((s) => (
+                    <div key={s.template}>
+                      {s.name} <b>x{s.count}</b> — {s.price} Digi each
+                      {s.count >= shop.stock_cap && <span style={{ color: COLORS.warning }}> · full</span>}
+                    </div>
+                  ))}
+                  {!(shop.secondhand ?? []).length && <span style={{ color: COLORS.textMuted }}>empty — nothing bought in yet</span>}
+                </div>
+              </>
+            )}
           </div>
 
           <div style={{ ...card, padding: 12 }}>

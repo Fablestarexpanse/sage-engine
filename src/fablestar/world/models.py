@@ -61,6 +61,11 @@ class ShopModel(BaseModel):
     sells: list[ShopStockModel] = Field(default_factory=list)
     buys: bool = False
     buy_rate: float = Field(default=0.5, gt=0, le=1.0)
+    # Goods a buying shop takes in go onto a secondhand shelf and resell at
+    # template value * resale_rate (never below the buy price + 1).
+    resale_rate: float = Field(default=1.0, gt=0)
+    # Max secondhand units per item type; the shop stops buying that item when full.
+    stock_cap: int = Field(default=20, ge=0)
     # Agent persona id of the shopkeeper, when an agent runs this shop.
     owner: str = ""
 

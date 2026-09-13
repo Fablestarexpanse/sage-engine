@@ -30,6 +30,26 @@ def _buy_price(template, shop) -> int:
     return max(1, int(int(template.value or 0) * shop.buy_rate))
 
 
+def resale_price(template, shop) -> int:
+    """Secondhand shelf price: value * resale_rate, always above what the shop paid."""
+    return max(_buy_price(template, shop) + 1, int(int(template.value or 0) * shop.resale_rate))
+
+
+def _stock_key(room_id: str) -> str:
+    return f"shopstock:{room_id}"
+
+
+async def secondhand_stock(redis, room_id: str) -> dict[str, int]:
+    """template id -> units on the secondhand shelf (zero/negative entries dropped)."""
+    raw = await redis.client.hgetall(_stock_key(room_id))
+    out = {}
+    for k, v in (raw or {}).items():
+        k = k.decode() if isinstance(k, bytes) else k
+        if int(v) > 0:
+            out[k] = int(v)
+    return out
+
+
 LEDGER_CAP = 200
 
 
@@ -106,7 +126,7 @@ async def browse(session: Session, args: list[str]):
     player_id = session.player_id
     if not player_id:
         return
-    shop, _ = await _shop_here(player_id)
+    shop, shop_room_id = await _shop_here(player_id)
     if shop is None:
         await session.send("Nobody here is selling anything.")
         return
@@ -119,6 +139,16 @@ async def browse(session: Session, args: list[str]):
             name = template.name if template else entry.template
             lines.append(f"  {name} — {entry.price} Digi (buy {name.split()[0].lower()})")
     if shop.buys:
+        used = await secondhand_stock(app_instance.redis, shop_room_id)
+        if used:
+            lines.append("Secondhand:")
+            for tid, count in sorted(used.items()):
+                template = app_instance.content_loader.get_item_template(tid)
+                if template is None:
+                    continue
+                lines.append(
+                    f"  {template.name} x{count} — {resale_price(template, shop)} Digi each"
+                )
         pct = int(shop.buy_rate * 100)
         lines.append(f"Buying: most goods at {pct}% of value (sell <item>).")
     if not shop.sells and not shop.buys:
@@ -138,37 +168,58 @@ async def buy(session: Session, args: list[str]):
         await session.send("Buy what? Try 'browse' to see the stock.")
         return
     shop, shop_room_id = await _shop_here(player_id)
-    if shop is None or not shop.sells:
+    if shop is None or not (shop.sells or shop.buys):
         await session.send("Nobody here is selling anything.")
         return
     if _is_owner(shop, player_id):
         await session.send("It's your own stock. Taking it off the shelf isn't buying.")
         return
 
+    loader = app_instance.content_loader
+    redis = app_instance.redis
     wanted = " ".join(args).lower()
-    entry = None
-    for e in shop.sells:
-        template = app_instance.content_loader.get_item_template(e.template)
-        name = (template.name if template else e.template).lower()
-        if wanted in name or wanted in e.template:
-            entry = e
-            break
-    if entry is None:
+
+    def matches(template_id: str) -> bool:
+        template = loader.get_item_template(template_id)
+        name = (template.name if template else template_id).lower()
+        return wanted in name or wanted in template_id
+
+    # Cheapest match across fixed stock and the secondhand shelf (a used
+    # blade at 18 must beat a new one at 25).
+    offers: list[tuple[int, object, bool]] = []
+    entry = next((e for e in shop.sells if matches(e.template)), None)
+    if entry is not None:
+        fixed = loader.get_item_template(entry.template)
+        if fixed is not None:
+            offers.append((entry.price, fixed, False))
+    if shop.buys:
+        shelf = await secondhand_stock(redis, shop_room_id)
+        tid = next((t for t in sorted(shelf) if matches(t)), None)
+        used = loader.get_item_template(tid) if tid else None
+        if used is not None:
+            offers.append((resale_price(used, shop), used, True))
+    template, price, from_shelf = None, 0, False
+    if offers:
+        price, template, from_shelf = min(offers, key=lambda o: o[0])
+    if template is None:
         await session.send(f"No '{wanted}' for sale here. Try 'browse'.")
         return
-    template = app_instance.content_loader.get_item_template(entry.template)
-    if template is None:
-        await session.send("That stock is mislabeled. The shopkeep apologizes.")
+
+    stats = await redis.get_player_stats(player_id)
+    if _wallet(stats) < price:
+        await session.send(f"The {template.name} costs {price} Digi; you carry {_wallet(stats)}.")
         return
 
-    stats = await app_instance.redis.get_player_stats(player_id)
-    if _wallet(stats) < entry.price:
-        await session.send(
-            f"The {template.name} costs {entry.price} Digi; you carry {_wallet(stats)}."
-        )
-        return
+    if from_shelf:
+        # Atomic reserve: two buyers can't both take the last unit.
+        left = await redis.client.hincrby(_stock_key(shop_room_id), template.id, -1)
+        if left < 0:
+            await redis.client.hincrby(_stock_key(shop_room_id), template.id, 1)
+            await session.send(f"Someone just bought the last {template.name}.")
+            return
 
-    stats["digi"] = _wallet(stats) - entry.price
+    entry_price = price
+    stats["digi"] = _wallet(stats) - price
     granted = await _record_trade(stats, "purchases")
     inv = await app_instance.redis.get_player_inventory(player_id)
     inv.append(
@@ -182,7 +233,7 @@ async def buy(session: Session, args: list[str]):
     )
     await app_instance.redis.set_player_stats(player_id, stats)
     await app_instance.redis.set_player_inventory(player_id, inv)
-    await _ledger(shop_room_id, "sale", player_id, template.name, entry.price)
+    await _ledger(shop_room_id, "sale", player_id, template.name, entry_price)
     from fablestar.telemetry import heat, log_event
 
     log_event(
@@ -190,13 +241,13 @@ async def buy(session: Session, args: list[str]):
         direction="buy",
         actor=player_id,
         item=template.id,
-        price=entry.price,
+        price=entry_price,
         room=shop_room_id,
     )
     await heat(app_instance.redis, "trades", shop_room_id)
-    await _keeper_till(shop, player_id, entry.price)
+    await _keeper_till(shop, player_id, entry_price)
     await session.send(
-        f"You buy the {template.name} for {entry.price} Digi ({stats['digi']} left)."
+        f"You buy the {template.name} for {entry_price} Digi ({stats['digi']} left)."
     )
     from fablestar.achievements.engine import announcement
 
@@ -236,13 +287,13 @@ async def sell(session: Session, args: list[str]):
         return template is not None and int(template.value or 0) > 0
 
     if wanted == "all":
-        to_sell = [it for it in inv if sellable(it)]
+        candidates = [it for it in inv if sellable(it)]
     else:
         match = next(
             (it for it in inv if wanted in it.get("name", "").lower() and sellable(it)), None
         )
-        to_sell = [match] if match else []
-    if not to_sell:
+        candidates = [match] if match else []
+    if not candidates:
         await session.send(
             "Nothing they'd pay for."
             if wanted == "all"
@@ -250,18 +301,36 @@ async def sell(session: Session, args: list[str]):
         )
         return
 
+    # Goods go onto the secondhand shelf until it holds stock_cap of that item;
+    # past that the shop is overstocked: it still buys (so packs never clog)
+    # but at half its rate, and the unit is scrapped rather than shelved.
+    shelf = await secondhand_stock(app_instance.redis, shop_room_id)
+    to_sell = candidates
+    overstock_ids: set[str] = set()
+    for it in to_sell:
+        tid = it.get("template", "")
+        if shelf.get(tid, 0) >= shop.stock_cap:
+            overstock_ids.add(it.get("id"))
+        else:
+            shelf[tid] = shelf.get(tid, 0) + 1
+
     total = 0
     sold_names = []
     sold_ids = set()
     for it in to_sell:
         template = app_instance.content_loader.get_item_template(it.get("template", ""))
-        price = _buy_price(template, shop)
+        overstocked = it.get("id") in overstock_ids
+        price = (
+            max(1, _buy_price(template, shop) // 2) if overstocked else _buy_price(template, shop)
+        )
         total += price
         sold_ids.add(it.get("id"))
         sold_names.append(it.get("name", template.id))
         await _record_trade(stats, "sales")
         await _ledger(shop_room_id, "purchase", player_id, it.get("name", template.id), price)
         await _keeper_till(shop, player_id, -price)
+        if not overstocked:
+            await app_instance.redis.client.hincrby(_stock_key(shop_room_id), template.id, 1)
 
     stats["digi"] = _wallet(stats) + total
     await app_instance.redis.set_player_stats(player_id, stats)
@@ -281,6 +350,8 @@ async def sell(session: Session, args: list[str]):
     await heat(app_instance.redis, "trades", shop_room_id)
     summary = ", ".join(sold_names[:4]) + ("…" if len(sold_names) > 4 else "")
     await session.send(f"You sell {summary} for {total} Digi ({stats['digi']} carried).")
+    if overstock_ids:
+        await session.send("The shelves are overflowing — some of that went for half price.")
 
 
 @command("wallet", aliases=["digi", "money"])
