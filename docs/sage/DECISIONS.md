@@ -1,10 +1,11 @@
 # SAGE decoupling — decision log
 
-NEXT: Stage 2a in PR #7. 2b done (branch sage/stage-2b). Stage 2c on branch sage/stage-2c:
-phase 05 world packages, 06 lexicon, 07 events/resolvers/tick jobs, 08 plugin loader DONE (+ tick race fix).
-In progress: phase 09 skeleton second world `rivermoot` + world-private `levels` plugin + per-world
-boot smoke test in the live tier. Then: plugin migrations, world_overrides + Nexus lexicon editing,
-import-boundary check. Ratchet 2186/169. Review page: https://claude.ai/code/artifact/2d488113-1ca9-4f45-b993-ac0253e0670c
+NEXT: Stage 2a in PR #7. 2b on sage/stage-2b. Stage 2c on sage/stage-2c: phases 05 world packages,
+06 lexicon, 07 events/resolvers/tick jobs, 08 plugin loader, 09 Rivermoot + levels plugin + per-world
+live smoke DONE (brief's success test met: second world plays on unchanged engine). Remaining 2c:
+plugin-owned migrations (alembic branches, uninstall), world_overrides + Nexus lexicon/MOTD editing,
+import-boundary check (invariant 1). Then Phase 3. Ratchet 2186/169.
+Review page: https://claude.ai/code/artifact/2d488113-1ca9-4f45-b993-ac0253e0670c
 
 Append-only. One entry per ruling or decision, newest last. Owner rulings are binding; architect
 decisions are proposals until the Phase 1 review approves them.
@@ -31,3 +32,4 @@ decisions are proposals until the Phase 1 review approves them.
 | 2026-09-13 | Owner | G.2–G.10 answered; **"looks good" = PHASE1_CONTRACTS.md approved** with the amendments above. Hard stop lifted. | Brief §5. |
 | 2026-09-13 | Architect | Stage 2b renames done as four commits (package → `sage`; Python tree → `engine/`; clients/tools → `engine/clients`, `engine/tools`; identity strings). Compatibility for one release: `FABLESTAR_*` env vars (deprecation warning), `fablestar` console script, and a browser-storage migration from `fablestar_*` to `sage_*` keys. The ratchet baseline was raised only for those shims (`engine/clients/*/src/storageMigration.js`, `engine/tests/test_config_env.py`, 22 hits) while 111 hits dropped elsewhere; delete the shims and their baseline entries next release. World branding in the player client (title, "FABLESTAR" header, "Connected to Fablestar Expanse") stays for Phase 3 lexicon/theme work. | Contracts F.1; brief §8 incremental, playable at every commit. |
 | 2026-09-13 | Architect | WorldForge Tauri identifier changed `com.fablestar.worldforge` → `com.sage.worldforge` (productName "SAGE WorldForge"). One-way for local app data: WorldForge forgets its saved content folder once; exe auto-detect (now 8 levels) finds the repo, else pick the folder again. | Engine tool identity; flagged in F.1. |
+| 2026-09-13 | Architect | Second reference world named **Rivermoot** (slug `rivermoot`); stat keys `mgt`/`wts`/`nrv` (not common English words, so the invariant ratchet can auto-deny them in engine code); world-private `levels` plugin. License of `worlds/rivermoot/` left undecided (NOTICE) — owner question. | G.9 delegated; brief §6. |
