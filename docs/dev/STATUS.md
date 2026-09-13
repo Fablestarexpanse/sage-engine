@@ -132,6 +132,22 @@ Test suites: server **150** pytest, WorldForge **34** vitest — all green.
       Verified live: Aldo Vex earned the world's first level (traversal 1)
       by walking his errands. Revisit if you want option (b)/(c) instead
 
+- [x] World fleshing pass (owner ask): sci-fi arsenal — pulse pistol
+      (ammo-fed: consumes a charge_cell per shot, dry weapon adds nothing,
+      "clicks empty"), shock baton, scrap plate armor; food variety
+      (kelp bread, dried gullwing, stim shot); drop materials (drone core,
+      crab chitin, hound pelt, the Warden's lens). New mobs: grey gullwing
+      (neutral — ignores you unless you start it), razor crab + rust hound
+      (aggro), and the Cave Warden — a 60-hp boss construct guarding the
+      tide caves' humming thing, dropping its lens. Spawns across meadow/
+      shore/beach/forest/pier/orchard/caves; chandlery sells the arsenal,
+      grocers the food; factions hire against the new fauna (dockworkers:
+      hounds + crabs; union wants drone cores + chitin). Density 2.23.
+      Verified live: bought pistol + one cell (broke after), first shot
+      hit for 10, "That was your last charge cell", follow-ups clicked
+      empty at fist damage; two crabs killed, both dropped chitin;
+      gullwings coexisted peacefully; the Warden spawned in the caves
+
 ### worldforge-mcp gaps found building Tidegate Isle
 - [ ] create_room(from_room, from_dir) positions the room but does NOT create
       the exit — every link needs a separate connect_rooms call; either add

@@ -1,0 +1,9 @@
+id: dried_gullwing
+name: dried gullwing strips
+type: consumable
+description: Salted strips of shore-bird. Chewy, salty, keeps forever. Old Pell
+  swears by them; everyone else just swears.
+value: 3
+weight: 0.2
+heal: 5
+tags: [food]

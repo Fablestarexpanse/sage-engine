@@ -26,8 +26,11 @@ features:
     respawn_s: 900
     chance: 0.45
 entity_spawns:
+- template: rust_hound
+  chance: 0.4
+  max_count: 1
 - template: scrap_drone
-  chance: 0.15
+  chance: 0.1
   max_count: 1
 hazards: []
 tags: []

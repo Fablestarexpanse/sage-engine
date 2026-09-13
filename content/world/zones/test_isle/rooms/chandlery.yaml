@@ -41,9 +41,15 @@ ambient:
 shop:
   name: The Chandlery
   sells:
-  - template: padded_vest
+  - template: pulse_pistol
+    price: 60
+  - template: shock_baton
     price: 35
-  - template: power_cell
-    price: 18
+  - template: charge_cell
+    price: 4
+  - template: scrap_plate
+    price: 45
+  - template: padded_vest
+    price: 30
   buys: true
   buy_rate: 0.35

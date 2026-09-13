@@ -1,0 +1,11 @@
+id: pulse_pistol
+name: pulse pistol
+type: weapon
+description: A dock-security sidearm with the serial number filed off. Spits a hot
+  blue bolt per charge cell and complains quietly between shots.
+value: 45
+weight: 1.2
+slot: weapon
+attack: 6
+ammo: charge_cell
+tags: [weapon, ballistic, scifi]

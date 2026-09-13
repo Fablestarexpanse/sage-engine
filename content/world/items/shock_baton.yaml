@@ -1,0 +1,10 @@
+id: shock_baton
+name: shock baton
+type: weapon
+description: A meter of insulated alloy with a capacitor head. No ammo, no mercy,
+  no subtlety.
+value: 30
+weight: 1.5
+slot: weapon
+attack: 4
+tags: [weapon, melee]

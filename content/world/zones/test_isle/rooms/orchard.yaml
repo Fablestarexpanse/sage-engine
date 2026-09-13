@@ -25,7 +25,10 @@ features:
     max_finds: 3
     respawn_s: 700
     chance: 0.6
-entity_spawns: []
+entity_spawns:
+- template: gullwing
+  chance: 0.3
+  max_count: 1
 hazards: []
 tags: []
 name: Windfall Orchard

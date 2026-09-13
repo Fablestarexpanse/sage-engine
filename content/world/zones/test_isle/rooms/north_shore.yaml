@@ -19,7 +19,13 @@ exits:
     destination: test_isle:cliff_path
     description: ''
 features: []
-entity_spawns: []
+entity_spawns:
+- template: gullwing
+  chance: 0.5
+  max_count: 2
+- template: razor_crab
+  chance: 0.35
+  max_count: 1
 hazards: []
 tags: []
 name: North Shore

@@ -26,7 +26,10 @@ features:
     max_finds: 2
     respawn_s: 900
     chance: 0.45
-entity_spawns: []
+entity_spawns:
+- template: gullwing
+  chance: 0.3
+  max_count: 1
 hazards: []
 tags: []
 name: Fishing Pier

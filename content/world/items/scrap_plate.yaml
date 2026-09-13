@@ -1,0 +1,10 @@
+id: scrap_plate
+name: scrap plate harness
+type: armor
+description: Drone hull sections riveted to webbing. Heavier than the padded vest
+  and twice as reassuring.
+value: 40
+weight: 4.0
+slot: armor
+defense: 3
+tags: [armor]

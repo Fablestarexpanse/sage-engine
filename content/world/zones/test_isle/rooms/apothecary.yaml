@@ -39,5 +39,7 @@ ambient:
 shop:
   name: The Apothecary
   sells:
+  - template: stim_shot
+    price: 18
   - template: ration_pack
     price: 10

@@ -25,7 +25,10 @@ features:
     max_finds: 2
     respawn_s: 1000
     chance: 0.5
-entity_spawns: []
+entity_spawns:
+- template: cave_warden
+  chance: 1.0
+  max_count: 1
 hazards:
 - id: warm_thing
   type: radiation

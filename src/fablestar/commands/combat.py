@@ -98,6 +98,33 @@ async def attack(session: Session, args: list[str]):
     except Exception as exc:
         logger.warning("Equipment bonuses skipped: %s", exc)
 
+    # Ammo-fed weapons: consume one round per attack; dry weapons contribute
+    # nothing (you're swinging a very expensive club).
+    ammo_note = None
+    weapon_item = (player_stats.get("equipment") or {}).get("weapon")
+    if weapon_item:
+        weapon_tmpl = app_instance.content_loader.get_item_template(weapon_item.get("template", ""))
+        if weapon_tmpl and weapon_tmpl.ammo:
+            inv = await app_instance.redis.get_player_inventory(player_id)
+            round_item = next((it for it in inv if it.get("template") == weapon_tmpl.ammo), None)
+            ammo_tmpl = app_instance.content_loader.get_item_template(weapon_tmpl.ammo)
+            ammo_name = ammo_tmpl.name if ammo_tmpl else weapon_tmpl.ammo
+            if round_item is None:
+                player_attack -= weapon_tmpl.attack
+                ammo_note = f"Your {weapon_tmpl.name} clicks empty — no {ammo_name} left."
+            else:
+                await app_instance.redis.set_player_inventory(
+                    player_id, [it for it in inv if it.get("id") != round_item.get("id")]
+                )
+                remaining = sum(
+                    1
+                    for it in inv
+                    if it.get("template") == weapon_tmpl.ammo
+                    and it.get("id") != round_item.get("id")
+                )
+                if remaining == 0:
+                    ammo_note = f"That was your last {ammo_name}."
+
     async with _entity_lock(target_id):
         # Re-read under the lock: another attacker may have hit (or killed)
         # the target between the room search above and now.
@@ -211,6 +238,8 @@ async def attack(session: Session, args: list[str]):
             )
 
     await session.send(f"\r\n{narration}")
+    if ammo_note:
+        await session.send(ammo_note)
 
     # --- Post-combat cleanup ---
     if entity_dead:

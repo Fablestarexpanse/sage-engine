@@ -41,6 +41,12 @@ shop:
   sells:
   - template: ration_pack
     price: 8
+  - template: kelp_bread
+    price: 7
+  - template: dried_gullwing
+    price: 4
   - template: power_cell
     price: 20
+  - template: charge_cell
+    price: 5
   owner: meri_harrow

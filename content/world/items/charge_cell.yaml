@@ -1,0 +1,8 @@
+id: charge_cell
+name: charge cell
+type: ammo
+description: A thumb-sized energy cell, one shot's worth of stored lightning.
+  Pulse weapons eat them like candy.
+value: 3
+weight: 0.1
+tags: [ammo, power]

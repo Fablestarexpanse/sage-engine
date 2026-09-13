@@ -32,6 +32,9 @@ entity_spawns:
 - template: scrap_drone
   chance: 0.3
   max_count: 1
+- template: razor_crab
+  chance: 0.4
+  max_count: 1
 hazards: []
 tags: []
 name: Scrap Beach

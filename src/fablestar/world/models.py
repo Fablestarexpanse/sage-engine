@@ -115,6 +115,9 @@ class ItemTemplate(BaseModel):
     slot: str | None = None  # equipment slot: "weapon" | "armor" (None = not equippable)
     attack: int = 0  # attack bonus while equipped
     defense: int = 0  # defense bonus while equipped
+    # Ammo-fed weapon: item template consumed one per attack; without a round
+    # in inventory the weapon's attack bonus does not apply (dry fire).
+    ammo: str | None = None
     tags: set[str] = Field(default_factory=set)
 
 
