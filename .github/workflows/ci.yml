@@ -41,8 +41,8 @@ jobs:
 
       - name: SAGE invariant ratchet
         run: |
-          python -m ruff check scripts/sage_invariants.py
-          python -m ruff format --check scripts/sage_invariants.py
+          python -m ruff check scripts/sage_invariants.py scripts/license_report.py
+          python -m ruff format --check scripts/sage_invariants.py scripts/license_report.py
           python scripts/sage_invariants.py check
 
       - name: Test
@@ -117,3 +117,28 @@ jobs:
 
       - name: Live tests (Postgres + Redis)
         run: python -m pytest -q -m live
+
+  licenses:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements.lock
+
+      - name: Install runtime dependencies only
+        run: python -m pip install -r requirements.lock
+
+      - name: License report and policy
+        run: python scripts/license_report.py --require-cargo --out license-report.md
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: license-report
+          path: license-report.md
+          if-no-files-found: ignore

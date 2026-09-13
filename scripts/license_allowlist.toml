@@ -1,0 +1,8 @@
+# Shipped dependencies whose license the policy in scripts/license_report.py would reject
+# (strong copyleft or unidentified) but that the owner has reviewed and accepted.
+# Every entry needs a reason. Weak copyleft (MPL, EPL, LGPL) is reported, never blocked.
+#
+# [[allow]]
+# ecosystem = "npm"          # python | npm | cargo
+# name = "package-name"
+# reason = "why this is acceptable for a commercial FSL-licensed engine"
