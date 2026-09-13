@@ -1,6 +1,7 @@
 """Item commands — get, drop, inventory, and examine."""
 
 import logging
+import time
 
 from fablestar.commands.registry import command
 from fablestar.network.session import Session
@@ -21,7 +22,7 @@ async def _find_first_named(ids, fetch_state, target_name: str, *, require_alive
     return None, None
 
 
-@command("inventory", aliases=["i", "inv"])
+@command("inventory", aliases=["i", "inv", "equipment", "gear"])
 async def inventory(session: Session, args: list[str]):
     """List your carried inventory."""
     from fablestar.app import app_instance
@@ -247,6 +248,7 @@ async def drop(session: Session, args: list[str]):
         "description": found_item.get("description", ""),
         "value": found_item.get("value", 0),
         "weight": 0.0,
+        "dropped_at": int(time.time()),
     }
     await app_instance.redis.set_item_state(item_id, floor_state)
     await app_instance.redis.add_item_to_room(item_id, room_id)

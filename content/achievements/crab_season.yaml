@@ -1,0 +1,8 @@
+id: crab_season
+name: Crab Season
+story: ate well and shelled out nothing
+level: minor
+criteria:
+  kills.razor_crab: 10
+category: [combat]
+instructions: Kill 10 razor crabs.

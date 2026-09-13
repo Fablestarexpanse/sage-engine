@@ -39,6 +39,7 @@ class BodyContext:
     in_buying_shop: bool = False  # this room's shop buys goods
     sellable_count: int = 0  # unequipped items with value > 0
     hungry: bool = False  # hunger need past threshold
+    floor_valuables: list[str] = field(default_factory=list)  # item names worth taking
 
 
 def decide(ctx: BodyContext, rng: random.Random | None = None) -> tuple[str, str | None]:
@@ -57,6 +58,9 @@ def decide(ctx: BodyContext, rng: random.Random | None = None) -> tuple[str, str
     # Merchant instinct: standing in a shop that buys while carrying goods.
     if ctx.in_buying_shop and ctx.sellable_count > 0:
         return ("sell", "sell all")
+    # Nobody leaves money on the floor: pick up valuable drops when safe.
+    if ctx.floor_valuables:
+        return ("loot", f"take {ctx.floor_valuables[0]}")
     if ctx.goal_commands:
         return ("goal", ctx.goal_commands[0])
     if ctx.next_routine_direction and ctx.wander_ready:

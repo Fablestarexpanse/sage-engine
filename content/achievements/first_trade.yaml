@@ -1,0 +1,8 @@
+id: first_trade
+name: Cost of Living
+story: made your first honest trade
+level: minor
+criteria:
+  trades: 1
+category: [economy]
+instructions: Buy or sell anything at a shop.

@@ -228,9 +228,15 @@ class AgentBrain:
         self._last_intent_at: dict[str, float] = {}
         self._intent_busy = False  # budget: one intent generation at a time
 
-    @staticmethod
-    def _build_client(config):
+    def _build_client(self, config):
         if (config.primary_backend or "").lower().strip() == "embedded":
+            # Shared server instance: narration and agent brains use ONE
+            # loaded GGUF instead of two copies in RAM.
+            getter = getattr(self.server, "embedded_llm", None)
+            if callable(getter):
+                shared = getter()
+                shared.reconfigure(config)
+                return shared
             from fablestar.agents.embedded_llm import EmbeddedLLM
 
             return EmbeddedLLM(config)

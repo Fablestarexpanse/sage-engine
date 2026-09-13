@@ -225,9 +225,7 @@ def build_admin_ops_router(server: FablestarServer) -> APIRouter:
     @router.get("/status", response_model=ServerStatus)
     async def get_status():
         human_sessions = sum(
-            1
-            for s in server.session_manager.sessions.values()
-            if not getattr(s, "is_agent", False)
+            1 for s in server.session_manager.sessions.values() if not getattr(s, "is_agent", False)
         )
         return ServerStatus(
             is_running=server.tick_manager.is_running,

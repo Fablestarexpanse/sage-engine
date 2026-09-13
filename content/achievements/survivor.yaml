@@ -1,0 +1,8 @@
+id: survivor
+name: Died Once, Billed Twice
+story: found out what the clinic charges
+level: minor
+criteria:
+  deaths: 1
+category: [survival]
+instructions: Die and wake in the clinic.

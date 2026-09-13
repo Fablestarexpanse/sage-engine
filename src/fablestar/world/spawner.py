@@ -14,6 +14,9 @@ logger = logging.getLogger(__name__)
 
 # Check spawns every 20 ticks (~5 seconds at 4Hz)
 SPAWN_CHECK_INTERVAL = 20
+# Floor items rot: sweep every ~2 min, delete drops older than 30 min.
+LITTER_SWEEP_INTERVAL = 480
+LITTER_TTL_S = 30 * 60
 
 
 class EntitySpawnManager:
@@ -45,6 +48,36 @@ class EntitySpawnManager:
 
         for room_id in occupied_rooms:
             await self._check_spawns(room_id)
+
+        if tick_count % LITTER_SWEEP_INTERVAL == 0:
+            await self._sweep_litter()
+
+    async def _sweep_litter(self):
+        """Delete floor items past their TTL so the world doesn't silt up."""
+        import time as _time
+
+        now = int(_time.time())
+        removed = 0
+        try:
+            async for key in self.server.redis.client.scan_iter(match="room:*:items", count=200):
+                key_str = key.decode() if isinstance(key, bytes) else key
+                room_id = key_str[len("room:") : -len(":items")]
+                for iid in await self.server.redis.get_room_items(room_id):
+                    iid = iid.decode() if isinstance(iid, bytes) else iid
+                    state = await self.server.redis.get_item_state(iid)
+                    if state is None:
+                        # Orphaned reference — clear it either way.
+                        await self.server.redis.remove_item_from_room(iid, room_id)
+                        continue
+                    dropped_at = int(state.get("dropped_at", 0) or 0)
+                    if dropped_at and now - dropped_at > LITTER_TTL_S:
+                        await self.server.redis.remove_item_from_room(iid, room_id)
+                        await self.server.redis.delete_item_state(iid)
+                        removed += 1
+        except Exception:
+            logger.debug("litter sweep failed", exc_info=True)
+        if removed:
+            logger.info("Litter sweep: %d stale floor items reclaimed by the tide", removed)
 
     # ------------------------------------------------------------------
     # Internal spawn logic
@@ -145,6 +178,8 @@ class EntitySpawnManager:
         if not tmpl:
             return None
         item_id = f"{template_id}_{uuid.uuid4().hex[:8]}"
+        import time as _time
+
         item_state: ItemState = {
             "id": item_id,
             "template": template_id,
@@ -153,6 +188,7 @@ class EntitySpawnManager:
             "description": tmpl.description,
             "value": tmpl.value,
             "weight": tmpl.weight,
+            "dropped_at": int(_time.time()),
         }
         await self.server.redis.set_item_state(item_id, item_state)
         await self.server.redis.add_item_to_room(item_id, room_id)

@@ -31,7 +31,7 @@ def _parse_proficiency_id(args: list[str]) -> str:
     return ".".join(a.strip() for a in args if a.strip())
 
 
-@command("score", aliases=["sheet", "conduit"])
+@command("score", aliases=["sheet", "conduit", "stats"])
 async def score_cmd(session: Session, args: list[str]):
     """Show conduit attributes, resonance total, and top proficiencies."""
     from fablestar.app import app_instance

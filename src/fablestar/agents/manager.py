@@ -394,6 +394,18 @@ class AgentManager:
             if it.get("id") not in equipped_ids and int(it.get("value", 0) or 0) > 0
         )
 
+        # Valuable drops on the floor (looted when safe; capped so an agent
+        # doesn't become a walking warehouse).
+        floor_valuables: list[str] = []
+        if len(inventory) < 14:
+            for iid in await server.redis.get_room_items(room_id):
+                iid = iid.decode() if isinstance(iid, bytes) else iid
+                istate = await server.redis.get_item_state(iid)
+                if istate and int(istate.get("value", 0) or 0) > 0:
+                    floor_valuables.append(istate.get("name", ""))
+                if len(floor_valuables) >= 3:
+                    break
+
         now = time.time()
         ctx = BodyContext(
             hp=int(stats.get("hp", 1)),
@@ -408,6 +420,7 @@ class AgentManager:
             wander_ready=now >= state.next_wander_at,
             in_buying_shop=bool(room.shop is not None and room.shop.buys),
             sellable_count=sellable_count,
+            floor_valuables=floor_valuables,
             hungry=float((stats.get("feelings", {}).get("needs", {}) or {}).get("hunger", 0.0))
             > 0.7,
         )

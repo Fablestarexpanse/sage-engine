@@ -91,6 +91,10 @@ class FablestarServer:
 
         # LLM Subsystems
         self.llm_client = LLMClient(self.config.llm)
+        # One shared in-process GGUF serves narration AND agent brains when
+        # either selects the "embedded" backend (model loads once).
+        self._embedded_llm = None
+        self.llm_client.embedded_getter = self.embedded_llm
         self.prompt_manager = PromptManager()
 
         # Domain services (each reads config/db through this server so live
@@ -429,6 +433,7 @@ class FablestarServer:
 
     async def _bootstrap_session(self, session: Session, character: _CharSnapshot):
         """Link the session, seed Redis from the character record, and send the opening view."""
+        await self.session_manager.kick_existing(character.name)
         self.session_manager.link_player(session.id, character.name)
 
         from fablestar.proficiencies.state_helpers import (
@@ -561,6 +566,14 @@ class FablestarServer:
             await session.send(json.dumps(snapshot) + "\r\n")
         except Exception:
             logger.debug("character_snapshot push failed for %s", player_id, exc_info=True)
+
+    def embedded_llm(self):
+        """Lazy shared EmbeddedLLM (config from agents_llm: model_path etc.)."""
+        if self._embedded_llm is None:
+            from fablestar.agents.embedded_llm import EmbeddedLLM
+
+            self._embedded_llm = EmbeddedLLM(self.config.agents_llm)
+        return self._embedded_llm
 
     def _zone_map(self, current_room_id: str, visited: set[str]) -> dict | None:
         """

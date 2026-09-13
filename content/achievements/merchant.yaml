@@ -1,0 +1,8 @@
+id: merchant
+name: Merchant of Tidegate
+story: turned the island's junk into a living
+level: small
+criteria:
+  trades: 25
+category: [economy]
+instructions: Complete 25 shop trades.

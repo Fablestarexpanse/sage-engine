@@ -97,6 +97,10 @@ class LLMClient:
         # Circuit breaker: after a connection failure, fast-fail generation for
         # this many seconds instead of paying connect-retry latency per command.
         self._breaker_open_until: float = 0.0
+        # When primary_backend == "embedded", this callable returns the shared
+        # in-process EmbeddedLLM (set by the server; one GGUF serves narration
+        # and agent brains alike).
+        self.embedded_getter = None
 
     def _openai_base_url(self) -> str:
         backend = (self.config.primary_backend or "lm_studio").lower().strip()
@@ -201,6 +205,30 @@ class LLMClient:
             return False, None, f"Invalid JSON from {list_url}: {e}", [], None
 
     async def _build_status_dict(self, list_timeout: float) -> dict[str, Any]:
+        if (self.config.primary_backend or "").lower().strip() == "embedded":
+            embedded = self.embedded_getter() if self.embedded_getter else None
+            est = embedded.status() if embedded else {}
+            ok = bool(est.get("model_file_exists"))
+            model_name = (est.get("model_path") or "").split("/")[-1].split("\\")[-1] or None
+            return {
+                "connected": ok,
+                "latency_ms": None,
+                "error": None if ok else "embedded model file not found",
+                "primary_backend": "embedded",
+                "base_url": "embedded (in-server)",
+                "chat_model": model_name,
+                "chat_model_auto": False,
+                "detected_model": model_name,
+                "detected_model_source": "embedded",
+                "models_align": True if ok else None,
+                "model_known": ok,
+                "temperature": self.config.temperature,
+                "timeout_seconds": self.config.timeout_seconds,
+                "models": [{"id": model_name}] if model_name else [],
+                "model_count": 1 if model_name else 0,
+                "server_hint": None,
+                "cached": False,
+            }
         ok, latency_ms, err, models, hint = await self.probe_connection(list_timeout=list_timeout)
         active = self.config.chat_model
         ids = [str(m["id"]) for m in models if m.get("id")]
@@ -275,6 +303,14 @@ class LLMClient:
         (structured generation, API responses). Narration paths that want a
         graceful in-fiction fallback should call generate() instead.
         """
+        if (self.config.primary_backend or "").lower().strip() == "embedded":
+            embedded = self.embedded_getter() if self.embedded_getter else None
+            if embedded is None:
+                raise LLMGenerationError("embedded backend selected but not available")
+            return await embedded.generate_or_raise(
+                prompt, system_prompt=system_prompt, max_tokens=max_tokens
+            )
+
         now = time.monotonic()
         if now < self._breaker_open_until:
             raise LLMGenerationError(

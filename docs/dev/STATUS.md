@@ -161,6 +161,31 @@ Test suites: server **150** pytest, WorldForge **34** vitest — all green.
       'charge cell x3' from one dead cell, plate from 3 chitin, strip
       plate back to chitin, equipped pistol refused
 
+### Playtest punch list (2026-09-12, owner-ordered: most→least important)
+- [x] 1. Agents loot their kills (Body 'loot' reflex, inventory-capped) +
+      floor litter decays after 30 min (spawner sweep; drops timestamped).
+      Verified: 'Aldo Vex — loot: take sealed ration pack'
+- [x] 2. Single session per character — new login kicks the old socket with
+      a farewell line (kick-war with the auto-reconnecting player-ui tab
+      found and understood: sign out the tab when probing)
+- [x] 3. Embedded backend for the MAIN narration LLM — llm.toml
+      primary_backend="embedded" routes look/combat prose through the SAME
+      shared in-process GGUF the agent brains use (one model in RAM);
+      status endpoints report the embedded model. Agent sessions skip
+      narration entirely (their fight/look prose flooded the model and
+      stalled ticks 30s+ — found live, fixed)
+- [x] 4. Narration is now fire-and-forget and labeled 'The scene: ...' —
+      look answers instantly with the deterministic description
+- [x] 5. Achievements 4 → 17 (economy, crafting, living, survival, boss,
+      per-mob, scavenging, missions milestones)
+- [ ] 6. Rep-repair path (donate/fine) so a hated faction isn't a dead end
+- [x] 7. help <command> shows that command's help + aliases
+- [x] 8. `map`/`chart` text command — zone chart with @/*/? markers
+- [x] 9. `stats` → score, `equipment`/`gear` → inventory aliases
+- [ ] 10. chat_message notice field rename (collides with plain text lines
+      in raw clients)
+- [ ] 11. Warden group-fight test once anyone can afford a loadout
+
 ### worldforge-mcp gaps found building Tidegate Isle
 - [ ] create_room(from_room, from_dir) positions the room but does NOT create
       the exit — every link needs a separate connect_rooms call; either add

@@ -1,0 +1,8 @@
+id: artificer
+name: Artificer
+story: could build a life out of a scrap heap
+level: small
+criteria:
+  crafted: 15
+category: [crafting]
+instructions: Craft 15 items.

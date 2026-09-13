@@ -221,21 +221,31 @@ async def attack(session: Session, args: list[str]):
             f"Player remaining HP: {player_stats.get('hp', 0)}\n"
         )
 
-    try:
-        prompt = app_instance.prompt_manager.render(
-            "combat_narration",
-            narration_facts=narration_facts,
+    # Agents fight constantly and read nothing — generating prose for them
+    # floods the LLM (with the embedded backend it can stall the tick loop).
+    if getattr(session, "is_agent", False):
+        narration = (
+            f"You strike {entity_name} for {damage_dealt} damage. It falls."
+            if entity_dead
+            else f"You hit {entity_name} for {damage_dealt} damage. "
+            f"It strikes back for {counter_damage}."
         )
-        narration = await app_instance.llm_client.generate_or_raise(prompt, max_tokens=200)
-    except Exception as e:
-        logger.warning(f"Combat narration failed: {e}")
-        if entity_dead:
-            narration = f"You strike {entity_name} for {damage_dealt} damage. It falls."
-        else:
-            narration = (
-                f"You hit {entity_name} for {damage_dealt} damage. "
-                f"It strikes back for {counter_damage}."
+    else:
+        try:
+            prompt = app_instance.prompt_manager.render(
+                "combat_narration",
+                narration_facts=narration_facts,
             )
+            narration = await app_instance.llm_client.generate_or_raise(prompt, max_tokens=200)
+        except Exception as e:
+            logger.warning(f"Combat narration failed: {e}")
+            if entity_dead:
+                narration = f"You strike {entity_name} for {damage_dealt} damage. It falls."
+            else:
+                narration = (
+                    f"You hit {entity_name} for {damage_dealt} damage. "
+                    f"It strikes back for {counter_damage}."
+                )
 
     await session.send(f"\r\n{narration}")
     if ammo_note:

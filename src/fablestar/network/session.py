@@ -86,6 +86,27 @@ class SessionManager:
             return self.sessions.get(session_id)
         return None
 
+    async def kick_existing(self, player_id: str) -> bool:
+        """One session per character: close any live session already playing it."""
+        old_id = self.player_to_session.get(player_id)
+        if not old_id or old_id not in self.sessions:
+            return False
+        old = self.sessions[old_id]
+        try:
+            await old.send("\r\nThis character just signed in from another connection. Goodbye.")
+        except Exception:
+            pass
+        # Don't touch Redis room state — the new session inherits the same
+        # character position; only the old socket dies.
+        self.player_to_session.pop(player_id, None)
+        try:
+            await old.close()
+        except Exception:
+            pass
+        self.sessions.pop(old_id, None)
+        logger.info("Kicked prior session %s for %s (new login)", old_id, player_id)
+        return True
+
     def link_player(self, session_id: str, player_id: str):
         """Link a session to a player ID once authenticated."""
         if session_id in self.sessions:
