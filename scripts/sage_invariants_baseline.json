@@ -1,6 +1,6 @@
 {
   "totals": {
-    "denylist": 2188,
+    "denylist": 2187,
     "player_literals": 177
   },
   "denylist": {
@@ -36,7 +36,7 @@
     "engine/pyproject.toml": 1,
     "engine/scripts/ensure_test_user.py": 10,
     "engine/src/sage/admin/admin_security.py": 1,
-    "engine/src/sage/admin/content_browser.py": 8,
+    "engine/src/sage/admin/content_browser.py": 9,
     "engine/src/sage/admin/player_accounts.py": 28,
     "engine/src/sage/admin/routes/admin_ops.py": 3,
     "engine/src/sage/admin/routes/agents.py": 12,
@@ -85,7 +85,6 @@
     "engine/src/sage/state/models.py": 12,
     "engine/src/sage/state/persistence.py": 3,
     "engine/src/sage/state/state_types.py": 12,
-    "engine/src/sage/world/defaults.py": 2,
     "engine/src/sage/world/models.py": 9,
     "engine/tests/live/test_persistence_live.py": 2,
     "engine/tests/test_admin_security.py": 4,

@@ -185,6 +185,20 @@ class StubSession:
         self.closed = True
 
 
+def repo_world():
+    """The world package whose content is the repository's content/ tree.
+
+    During the SAGE transition engine tests read that content directly.
+    """
+    from sage.world.package import available_worlds, load_world_package
+
+    for world_id in available_worlds(ROOT / "worlds"):
+        world = load_world_package(ROOT / "worlds" / world_id)
+        if world.content_dir == (ROOT / "content").resolve():
+            return world
+    raise RuntimeError("no world package points at the repository content/ tree")
+
+
 def make_fake_server() -> SimpleNamespace:
     """A SageServer stand-in with the attributes command handlers touch."""
     from sage.parser.dispatcher import CommandDispatcher
@@ -193,6 +207,7 @@ def make_fake_server() -> SimpleNamespace:
     server = SimpleNamespace()
     server.redis = FakeRedis()
     server.content_loader = FakeContentLoader()
+    server.world = repo_world()
     server.config = SimpleNamespace(server=SimpleNamespace(proficiency_combat_hybrid=True))
     server.dispatcher = CommandDispatcher()
     server.session_manager = SimpleNamespace(

@@ -16,16 +16,30 @@ import yaml
 logger = logging.getLogger(__name__)
 
 CONTENT_WORLD = Path("content/world")
-ZONES_ROOT = Path("content/world/zones")
-ITEMS_DIR = Path("content/world/items")
-GLYPHS_DIR = Path("content/world/glyphs")
-SYSTEMS_DIR = Path("content/world/systems")
-SHIPS_DIR = Path("content/world/ships")
-GALAXY_FILE = Path("content/world/galaxy.yaml")
+ZONES_ROOT = CONTENT_WORLD / "zones"
+ITEMS_DIR = CONTENT_WORLD / "items"
+GLYPHS_DIR = CONTENT_WORLD / "glyphs"
+SYSTEMS_DIR = CONTENT_WORLD / "systems"
+SHIPS_DIR = CONTENT_WORLD / "ships"
+GALAXY_FILE = CONTENT_WORLD / "galaxy.yaml"
 POSITIONS_FILENAME = ".positions.json"
 _POSITIONS_DOC_KEYS = frozenset(
     {"version", "positions", "notes", "reference_image", "muted_edges", "floors"}
 )
+
+
+def set_content_root(content_dir: Path) -> None:
+    """Point the live content paths at the running world's content directory.
+
+    The galaxy/system/ship and glyph browsers keep their defaults: those surfaces have no
+    content or runtime and are slated for deletion (docs/sage/DECISIONS.md, owner G.3).
+    """
+    global CONTENT_WORLD, ZONES_ROOT, ITEMS_DIR, PROFICIENCIES_CATALOG_JSON
+    root = Path(content_dir)
+    CONTENT_WORLD = root / "world"
+    ZONES_ROOT = CONTENT_WORLD / "zones"
+    ITEMS_DIR = CONTENT_WORLD / "items"
+    PROFICIENCIES_CATALOG_JSON = root / "proficiencies" / "catalog.json"
 
 
 def _is_safe_segment(segment: str) -> bool:

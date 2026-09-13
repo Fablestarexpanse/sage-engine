@@ -25,6 +25,9 @@ class ServerConfig(BaseModel):
     """Players connect via WebSocket on `websocket_port` (Nexus /play). Telnet is not used."""
 
     websocket_port: int = 4001
+    # World package to run from worlds_dir (a directory name). Optional when only one exists.
+    world: str | None = None
+    worlds_dir: str = "worlds"
     max_connections: int = 100
     tick_rate: float = 0.25  # 4 ticks per second
     dev_mode: bool = False

@@ -20,7 +20,6 @@ from sage.services._shared import (
 )
 from sage.services.play_tokens import issue_play_token
 from sage.state.models import Account, Character
-from sage.world.defaults import START_ROOM
 
 if TYPE_CHECKING:
     from sage.server import SageServer
@@ -325,7 +324,7 @@ class PlayerService:
         character = Character(
             account_id=account_id,
             name=name,
-            room_id=START_ROOM,
+            room_id=self.server.world.start_room,
             portrait_url=portrait_url,
             portrait_prompt=portrait_prompt,
             digi_balance=int(self.server.config.server.starting_digi_balance),

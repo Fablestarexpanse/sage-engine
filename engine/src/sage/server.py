@@ -15,12 +15,13 @@ from typing import Any
 from sqlalchemy import select
 
 from sage import app
+from sage.admin import content_browser
 from sage.admin.nexus import NexusApp
 from sage.agents.manager import AgentManager
 from sage.bootstrap import ensure_dev_defaults
 from sage.commands.registry import registry
 from sage.core.comfyui_persist import save_comfyui_toml
-from sage.core.config import ComfyUIConfig, Config, LLMConfig, load_config
+from sage.core.config import ComfyUIConfig, Config, LLMConfig, load_config, resolve_project_root
 from sage.core.llm_persist import save_llm_toml
 from sage.core.tick import TickManager
 from sage.effects.manager import EffectsManager
@@ -40,6 +41,7 @@ from sage.state.postgres import PostgresState
 from sage.state.redis_client import RedisState
 from sage.world.ambient import AmbientManager
 from sage.world.loader import ContentLoader
+from sage.world.package import select_world
 from sage.world.spawner import EntitySpawnManager
 
 logger = logging.getLogger(__name__)
@@ -77,12 +79,18 @@ class SageServer:
 
     def __init__(self, config: Config | None = None):
         self.config = config or load_config()
+        # The world package this deployment runs (docs/sage/PHASE1_CONTRACTS.md Part B).
+        self.project_root = resolve_project_root()
+        self.world = select_world(
+            self.project_root / self.config.server.worlds_dir, self.config.server.world
+        )
         self.tick_manager = TickManager(tick_rate=self.config.server.tick_rate)
         self.session_manager = SessionManager()
         self.redis = RedisState(self.config.redis)
         self.db = PostgresState(self.config.database)
         self.persistence = PersistenceManager(self)
-        self.content_loader = ContentLoader()
+        self.content_loader = ContentLoader(self.world.content_dir)
+        content_browser.set_content_root(self.world.content_dir)
         self.spawner = EntitySpawnManager(self)
         self.ambient = AmbientManager(self)
         self.effects = EffectsManager(self)
@@ -98,7 +106,7 @@ class SageServer:
         # either selects the "embedded" backend (model loads once).
         self._embedded_llm = None
         self.llm_client.embedded_getter = self.embedded_llm
-        self.prompt_manager = PromptManager()
+        self.prompt_manager = PromptManager(self.world.prompts_dir)
 
         # Domain services (each reads config/db through this server so live
         # settings updates are always observed)
@@ -299,6 +307,14 @@ class SageServer:
     async def startup(self):
         """Initialize and start all sub-systems."""
         logger.info("SAGE engine starting up...")
+        manifest = self.world.manifest.world
+        logger.info(
+            "World: %s (%s %s) from %s",
+            manifest.id,
+            manifest.name,
+            manifest.version,
+            self.world.root,
+        )
 
         # 0. State stores — Redis must be ready before EntitySpawnManager and PersistenceManager
         await self.redis.connect()
@@ -333,7 +349,12 @@ class SageServer:
 
         # 3. HotReloader — watches content/ and commands/; safe to start any time after step 1
         await self.hot_reloader.start(
-            ["content", str(PACKAGE_DIR / "commands"), "config", "prompts"]
+            [
+                str(self.world.content_dir),
+                str(PACKAGE_DIR / "commands"),
+                str(self.project_root / "config"),
+                str(self.world.prompts_dir),
+            ]
         )
 
         # 4. NexusApp (FastAPI HTTP + WebSocket) — requires command registry (step 1) to be ready
@@ -475,12 +496,11 @@ class SageServer:
         respawn_bill = 0
         if int(norm_stats.get("hp", 1)) <= 0:
             from sage.effects.engine import clear_on_death
-            from sage.world.defaults import RESPAWN_ROOM
 
             clear_on_death(norm_stats)
             norm_stats["hp"] = max(1, int(norm_stats.get("max_hp", 20)) // 2)
-            if self.content_loader.get_room(RESPAWN_ROOM) is not None:
-                character.room_id = RESPAWN_ROOM
+            if self.content_loader.get_room(self.world.respawn_room) is not None:
+                character.room_id = self.world.respawn_room
             # Clinic bill (down to zero) — dying has a price on Tidegate.
             bill = min(int(character.digi_balance or 0), 10)
             character.digi_balance = int(character.digi_balance or 0) - bill
@@ -490,15 +510,13 @@ class SageServer:
         # A character saved in a room that no longer exists (zone deleted or
         # renamed) wakes at the world start instead of a void.
         if self.content_loader.get_room(character.room_id) is None:
-            from sage.world.defaults import START_ROOM
-
             logger.info(
                 "Character %s was in missing room %s; moving to %s",
                 character.name,
                 character.room_id,
-                START_ROOM,
+                self.world.start_room,
             )
-            character.room_id = START_ROOM
+            character.room_id = self.world.start_room
 
         # In-game wallet: the DB column is the durable copy; the stats blob is
         # what shop commands spend from (PersistenceManager mirrors it back).
@@ -619,9 +637,8 @@ class SageServer:
             cached = self.content_loader._cache.get(cache_key)
             if cached is None:
                 import json as _json
-                from pathlib import Path
 
-                rooms_dir = Path("content/world/zones") / zone / "rooms"
+                rooms_dir = self.world.zones_dir / zone / "rooms"
                 if not rooms_dir.is_dir():
                     return None
                 positions = {}
@@ -704,10 +721,11 @@ class SageServer:
         """Handle hot-reload requests from the watcher."""
         logger.info(f"Hot-reload triggered for: {path}")
 
-        if "content" in path.parts:
+        world = getattr(self, "world", None)
+        if world is not None and path.resolve().is_relative_to(world.content_dir):
             self.content_loader.invalidate(path)
 
-        if "prompts" in path.parts:
+        if world is not None and path.resolve().is_relative_to(world.prompts_dir):
             self.prompt_manager.reload()
 
         if "commands" in path.parts:

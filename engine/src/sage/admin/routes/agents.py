@@ -3,7 +3,6 @@
 import logging
 import time
 import uuid
-from pathlib import Path
 from typing import TYPE_CHECKING, Annotated
 
 import yaml
@@ -19,8 +18,6 @@ if TYPE_CHECKING:
     from sage.server import SageServer
 
 logger = logging.getLogger(__name__)
-
-AGENTS_DIR = Path("content") / "agents"
 
 
 class TeleportBody(BaseModel):
@@ -419,7 +416,7 @@ def build_agents_router(server: "SageServer") -> APIRouter:
         persona = server.content_loader.get_agent_registry().get(agent_id)
         if persona is None:
             raise HTTPException(status_code=404, detail="agent_not_found")
-        path = AGENTS_DIR / f"{persona.id}.yaml"
+        path = server.world.content_dir / "agents" / f"{persona.id}.yaml"
         if not path.exists():
             raise HTTPException(status_code=404, detail="persona_file_missing")
         return {"id": persona.id, "yaml_text": path.read_text(encoding="utf-8")}
@@ -444,7 +441,9 @@ def build_agents_router(server: "SageServer") -> APIRouter:
 
         from sage.admin.content_browser import _atomic_write_text
 
-        _atomic_write_text(AGENTS_DIR / f"{persona.id}.yaml", body.yaml_text)
+        _atomic_write_text(
+            server.world.content_dir / "agents" / f"{persona.id}.yaml", body.yaml_text
+        )
         server.content_loader._cache.pop("agents:registry", None)
         # Running agent picks the edit up on restart; report which applies.
         running = persona.id in manager.agents

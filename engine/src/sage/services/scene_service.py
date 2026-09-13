@@ -441,8 +441,8 @@ class SceneService:
             logger.warning("ComfyUI area image failed: %s", e, exc_info=True)
             return {"ok": False, "error": "comfyui_failed", "detail": str(e)}
         if bundle:
-            zones_root = Path("content/world/zones").resolve()
-            room_art_dir = Path("content/world/zones") / zid / "rooms" / "art" / rslug
+            zones_root = self.server.world.zones_dir.resolve()
+            room_art_dir = self.server.world.zones_dir / zid / "rooms" / "art" / rslug
             room_art_dir.mkdir(parents=True, exist_ok=True)
             gen_name = f"gen_{uuid.uuid4().hex[:12]}.png"
             dest = (room_art_dir / gen_name).resolve()

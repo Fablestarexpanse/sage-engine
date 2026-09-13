@@ -15,13 +15,11 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-ZONES_DIR = Path("content") / "world" / "zones"
 
-
-def _all_room_ids() -> list[str]:
+def _all_room_ids(zones_dir: Path) -> list[str]:
     out = []
-    if ZONES_DIR.exists():
-        for zdir in sorted(ZONES_DIR.iterdir()):
+    if zones_dir.exists():
+        for zdir in sorted(zones_dir.iterdir()):
             rooms = zdir / "rooms"
             if rooms.is_dir():
                 out.extend(f"{zdir.name}:{f.stem}" for f in sorted(rooms.glob("*.yaml")))
@@ -38,7 +36,7 @@ def build_shops_router(server: "SageServer") -> APIRouter:
         rows = []
         agent_manager = getattr(server, "agent_manager", None)
         agents_by_id = agent_manager.agents if agent_manager else {}
-        for room_id in _all_room_ids():
+        for room_id in _all_room_ids(server.world.zones_dir):
             room = server.content_loader.get_room(room_id)
             if room is None or room.shop is None:
                 continue
