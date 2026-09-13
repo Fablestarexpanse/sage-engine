@@ -43,7 +43,9 @@ def setup(api: PluginAPI) -> None:
         block = await api.state.get(session.player_id, BLOCK)
         needed = int(block.get("level", 1)) * per_level
         await session.send(
-            api.t("levels.status", level=block.get("level", 1), xp=block.get("xp", 0), needed=needed)
+            api.t(
+                "levels.status", level=block.get("level", 1), xp=block.get("xp", 0), needed=needed
+            )
         )
 
     api.events.subscribe(EntityKilled, on_kill)
