@@ -1,0 +1,25 @@
+id: test_isle:south_road
+zone: test_isle
+type: corridor
+depth: 1
+description:
+  base: A cobbled road climbing gently from the harbor into town, worn smooth by cart wheels and boot
+    heels. Lantern posts lean at friendly angles, and the smell of the sea gives way to woodsmoke.
+exits:
+  south:
+    destination: test_isle:harbor_docks
+    description: ''
+  north:
+    destination: test_isle:town_plaza
+    description: ''
+features: []
+entity_spawns: []
+hazards: []
+tags: []
+name: South Road
+ambient:
+  min_interval: 45
+  max_interval: 110
+  lines:
+  - A handcart clatters past, smelling of fish and ambition.
+  - A lantern post ticks as its metal cools.

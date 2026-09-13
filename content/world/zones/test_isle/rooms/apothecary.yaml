@@ -1,0 +1,38 @@
+id: test_isle:apothecary
+zone: test_isle
+type: chamber
+depth: 1
+description:
+  base: Drying herbs hang in bundles from every beam, and rows of stoppered bottles glow amber in the
+    window light. Remedies for burns, chills, radiation itch, and heartbreak — effectiveness varies by
+    ailment.
+exits:
+  south:
+    destination: test_isle:market_east
+    description: ''
+features:
+- id: remedy_shelf
+  name: remedy shelves
+  keywords:
+  - remedies
+  - bottles
+  - herbs
+  - shelf
+  description: 'Stoppered rows: burn salve, chill tonic, rad-itch paste. The heartbreak shelf is nearly
+    empty again.'
+  search:
+    items:
+    - ration_pack
+    max_finds: 1
+    respawn_s: 1800
+    chance: 0.3
+entity_spawns: []
+hazards: []
+tags: []
+name: The Apothecary
+ambient:
+  min_interval: 50
+  max_interval: 130
+  lines:
+  - A kettle mutters over a low flame.
+  - Dried herbs whisper against the beam when the door moves.

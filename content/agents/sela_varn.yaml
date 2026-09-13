@@ -1,9 +1,9 @@
 id: sela_varn
 name: Sela Varn
-spawn_room: starter_zone:market_row
+spawn_room: test_isle:scrap_beach
 enabled: true
 temperament: {warmth: 0.8, caution: 0.3, ambition: 0.6, humor: 0.7}
-wants: enough Digi to buy passage off-station before her sister does
+wants: enough Digi for mainland passage before her sister earns it first
 fears: being forgotten
 speech: clipped, dry, swears in Drift cant when startled
 baseline_mood: {valence: 0.2, arousal: 0.4}
@@ -11,6 +11,6 @@ hard_facts:
   - "profession: salvager"
   - "faction: salvage_union"
   - "cannot read glyphs"
-routine: [market_row, plaza, cargo_bay, plaza]
+routine: [scrap_beach, north_shore, wild_meadow, market_square, pawn_shop, market_square, wild_meadow, north_shore]
 gear: {weapon: scrap_blade}
 stats: {hp: 60, max_hp: 60}

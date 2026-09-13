@@ -56,14 +56,18 @@ def test_find_chance_negative_level_ignored():
     assert find_chance(0.5, -50) == 0.5
 
 
-def test_entrance_search_profile_references_real_items():
-    entrance = yaml.safe_load(
-        Path("content/world/zones/starter_zone/rooms/entrance.yaml").read_text(encoding="utf-8")
-    )
-    room = RoomModel(**entrance)
-    searchables = [f for f in room.features if f.search]
-    assert searchables, "entrance should have at least one searchable feature"
-    for f in searchables:
-        for item_id in f.search.items:
-            path = Path("content/world/items") / f"{item_id}.yaml"
-            assert path.exists(), f"search profile references missing item {item_id}"
+def test_world_search_profiles_reference_real_items():
+    """Every search profile in every shipped zone points at a real item."""
+    room_files = sorted(Path("content/world/zones").glob("*/rooms/*.yaml"))
+    assert room_files, "no world rooms found"
+    searchable_count = 0
+    for rf in room_files:
+        room = RoomModel(**yaml.safe_load(rf.read_text(encoding="utf-8")))
+        for f in room.features:
+            if not f.search:
+                continue
+            searchable_count += 1
+            for item_id in f.search.items:
+                path = Path("content/world/items") / f"{item_id}.yaml"
+                assert path.exists(), f"{rf.name}: search references missing item {item_id}"
+    assert searchable_count, "world should ship at least one searchable feature"

@@ -1,0 +1,28 @@
+id: test_isle:market_east
+zone: test_isle
+type: corridor
+depth: 1
+description:
+  base: The quieter market lane. Herb bundles scent the air from the apothecary to the north, while rope
+    and lamp-oil smells drift from the chandlery to the south.
+exits:
+  west:
+    destination: test_isle:market_square
+    description: ''
+  north:
+    destination: test_isle:apothecary
+    description: ''
+  south:
+    destination: test_isle:chandlery
+    description: ''
+features: []
+entity_spawns: []
+hazards: []
+tags: []
+name: East Market Lane
+ambient:
+  min_interval: 50
+  max_interval: 120
+  lines:
+  - Herb-smell and lamp-oil-smell negotiate in the middle of the lane.
+  - The chandler's bench hammer taps out a patient rhythm.

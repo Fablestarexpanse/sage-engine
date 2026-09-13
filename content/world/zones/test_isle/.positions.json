@@ -1,0 +1,191 @@
+{
+  "version": 2,
+  "positions": {
+    "ferry_landing": {
+      "x": 400.0,
+      "y": 600.0,
+      "width": 176,
+      "height": 108
+    },
+    "harbor_docks": {
+      "x": 400.0,
+      "y": 470.0,
+      "width": 176,
+      "height": 108
+    },
+    "warehouse": {
+      "x": 180.0,
+      "y": 470.0,
+      "width": 176,
+      "height": 108
+    },
+    "fisherman_row": {
+      "x": 620.0,
+      "y": 470.0,
+      "width": 176,
+      "height": 108
+    },
+    "fishing_pier": {
+      "x": 840.0,
+      "y": 470.0,
+      "width": 176,
+      "height": 108
+    },
+    "south_road": {
+      "x": 400.0,
+      "y": 340.0,
+      "width": 176,
+      "height": 108
+    },
+    "town_plaza": {
+      "x": 400.0,
+      "y": 210.0,
+      "width": 176,
+      "height": 108
+    },
+    "clinic": {
+      "x": 840.0,
+      "y": 210.0,
+      "width": 176,
+      "height": 108
+    },
+    "market_square": {
+      "x": 400.0,
+      "y": 80.0,
+      "width": 176,
+      "height": 108
+    },
+    "market_west": {
+      "x": 180.0,
+      "y": 80.0,
+      "width": 176,
+      "height": 108
+    },
+    "market_east": {
+      "x": 620.0,
+      "y": 80.0,
+      "width": 176,
+      "height": 108
+    },
+    "general_store": {
+      "x": 180.0,
+      "y": -50.0,
+      "width": 176,
+      "height": 108
+    },
+    "pawn_shop": {
+      "x": 180.0,
+      "y": 210.0,
+      "width": 176,
+      "height": 108
+    },
+    "apothecary": {
+      "x": 620.0,
+      "y": -50.0,
+      "width": 176,
+      "height": 108
+    },
+    "chandlery": {
+      "x": 620.0,
+      "y": 210.0,
+      "width": 176,
+      "height": 108
+    },
+    "north_road": {
+      "x": 400.0,
+      "y": -50.0,
+      "width": 176,
+      "height": 108
+    },
+    "orchard": {
+      "x": -40.0,
+      "y": -50.0,
+      "width": 176,
+      "height": 108
+    },
+    "wild_meadow": {
+      "x": 400.0,
+      "y": -180.0,
+      "width": 176,
+      "height": 108
+    },
+    "forest_edge": {
+      "x": 180.0,
+      "y": -180.0,
+      "width": 176,
+      "height": 108
+    },
+    "drone_gulch": {
+      "x": 620.0,
+      "y": -180.0,
+      "width": 176,
+      "height": 108
+    },
+    "north_shore": {
+      "x": 400.0,
+      "y": -310.0,
+      "width": 176,
+      "height": 108
+    },
+    "tide_caves": {
+      "x": 180.0,
+      "y": -310.0,
+      "width": 176,
+      "height": 108
+    },
+    "scrap_beach": {
+      "x": 620.0,
+      "y": -310.0,
+      "width": 176,
+      "height": 108
+    },
+    "cliff_path": {
+      "x": 400.0,
+      "y": -440.0,
+      "width": 176,
+      "height": 108
+    },
+    "old_lighthouse": {
+      "x": 620.0,
+      "y": -440.0,
+      "width": 176,
+      "height": 108
+    },
+    "lighthouse_lamp": {
+      "x": 620.0,
+      "y": -440.0,
+      "width": 176,
+      "height": 108
+    }
+  },
+  "notes": [],
+  "muted_edges": [],
+  "floors": {
+    "ferry_landing": 0,
+    "harbor_docks": 0,
+    "warehouse": 0,
+    "fisherman_row": 0,
+    "fishing_pier": 0,
+    "south_road": 0,
+    "town_plaza": 0,
+    "clinic": 0,
+    "market_square": 0,
+    "market_west": 0,
+    "market_east": 0,
+    "general_store": 0,
+    "pawn_shop": 0,
+    "apothecary": 0,
+    "chandlery": 0,
+    "north_road": 0,
+    "orchard": 0,
+    "wild_meadow": 0,
+    "forest_edge": 0,
+    "drone_gulch": 0,
+    "north_shore": 0,
+    "tide_caves": 0,
+    "scrap_beach": 0,
+    "cliff_path": 0,
+    "old_lighthouse": 0,
+    "lighthouse_lamp": 1
+  }
+}

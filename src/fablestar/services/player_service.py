@@ -19,6 +19,7 @@ from fablestar.services._shared import (
 )
 from fablestar.services.play_tokens import issue_play_token
 from fablestar.state.models import Account, Character
+from fablestar.world.defaults import START_ROOM
 
 if TYPE_CHECKING:
     from fablestar.server import FablestarServer
@@ -294,7 +295,7 @@ class PlayerService:
             character = Character(
                 account_id=account_id,
                 name=name,
-                room_id="starter_zone:entrance",
+                room_id=START_ROOM,
                 portrait_url=p_url,
                 portrait_prompt=pp,
                 digi_balance=start_digi,

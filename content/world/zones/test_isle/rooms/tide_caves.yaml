@@ -1,0 +1,43 @@
+id: test_isle:tide_caves
+zone: test_isle
+type: danger
+depth: 3
+description:
+  base: Sea-carved galleries that flood to the ceiling at high tide. Phosphorescent weed smears the walls
+    with cold light, and something half-buried in the back chamber hums with a warmth rock shouldn't have.
+exits:
+  east:
+    destination: test_isle:north_shore
+    description: ''
+features:
+- id: buried_hum
+  name: half-buried humming thing
+  keywords:
+  - thing
+  - hum
+  - buried
+  - weed
+  description: Smooth curved metal under a century of weed, warm to within an arm's length. Best appreciated
+    briefly.
+  search:
+    items:
+    - power_cell
+    max_finds: 2
+    respawn_s: 1000
+    chance: 0.5
+entity_spawns: []
+hazards:
+- id: warm_thing
+  type: radiation
+  severity: 1
+  description: The half-buried thing in the back chamber hums, and your skin prickles with a warmth that
+    isn't the air.
+tags: []
+name: Tide Caves
+ambient:
+  min_interval: 30
+  max_interval: 70
+  lines:
+  - The hum shifts a half-tone, as if noticing.
+  - Water claps somewhere deeper in the galleries.
+  - Phosphorescent weed brightens where your shadow passes.

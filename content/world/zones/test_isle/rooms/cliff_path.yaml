@@ -1,0 +1,25 @@
+id: test_isle:cliff_path
+zone: test_isle
+type: corridor
+depth: 2
+description:
+  base: A goat-track switchbacking up the headland, wind trying its best to file you off it. Below, surf
+    smashes white against black rock; above, the old lighthouse leans into the weather.
+exits:
+  south:
+    destination: test_isle:north_shore
+    description: ''
+  east:
+    destination: test_isle:old_lighthouse
+    description: ''
+features: []
+entity_spawns: []
+hazards: []
+tags: []
+name: Cliff Path
+ambient:
+  min_interval: 35
+  max_interval: 90
+  lines:
+  - The wind leans on you, patient and impartial.
+  - Far below, surf detonates against black rock.

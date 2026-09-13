@@ -1,0 +1,28 @@
+id: test_isle:market_west
+zone: test_isle
+type: corridor
+depth: 1
+description:
+  base: A narrow lane of flagstones between shopfronts. The general store's bell rings to the north; Aldo's
+    three-ball pawn sign creaks to the south.
+exits:
+  east:
+    destination: test_isle:market_square
+    description: ''
+  north:
+    destination: test_isle:general_store
+    description: ''
+  south:
+    destination: test_isle:pawn_shop
+    description: ''
+features: []
+entity_spawns: []
+hazards: []
+tags: []
+name: West Market Lane
+ambient:
+  min_interval: 50
+  max_interval: 120
+  lines:
+  - Harrow's shop bell rings for nobody in particular.
+  - Aldo's pawn sign creaks on its last honest hinge.

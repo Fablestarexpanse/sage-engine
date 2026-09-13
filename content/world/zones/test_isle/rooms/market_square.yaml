@@ -1,0 +1,47 @@
+id: test_isle:market_square
+zone: test_isle
+type: hub
+depth: 1
+description:
+  base: 'Tidegate''s trading ground: awnings, barrows, and shouting. Shopfronts line the lanes east and
+    west — the general store, the chandlery, the apothecary, and Aldo''s pawn shop, each convinced it''s
+    the only honest business on the island.'
+exits:
+  south:
+    destination: test_isle:town_plaza
+    description: ''
+  west:
+    destination: test_isle:market_west
+    description: ''
+  east:
+    destination: test_isle:market_east
+    description: ''
+  north:
+    destination: test_isle:north_road
+    description: ''
+features:
+- id: barrows
+  name: trader barrows
+  keywords:
+  - barrows
+  - barrow
+  - awnings
+  - stalls
+  description: Barrows of produce, salvage, and maybes. Prices float with the ferry schedule.
+  search:
+    items:
+    - ration_pack
+    max_finds: 2
+    respawn_s: 1500
+    chance: 0.3
+entity_spawns: []
+hazards: []
+tags: []
+name: Market Square
+ambient:
+  min_interval: 35
+  max_interval: 95
+  lines:
+  - A trader bellows "FRESH — well, RECENT — FISH!"
+  - Coins change hands; both parties look pleased, so someone's wrong.
+  - An awning snaps in the sea wind.

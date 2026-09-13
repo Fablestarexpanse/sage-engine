@@ -445,13 +445,26 @@ class FablestarServer:
         respawned = False
         if int(norm_stats.get("hp", 1)) <= 0:
             from fablestar.effects.engine import clear_on_death
+            from fablestar.world.defaults import RESPAWN_ROOM
 
             clear_on_death(norm_stats)
             norm_stats["hp"] = max(1, int(norm_stats.get("max_hp", 20)) // 2)
-            respawn_room = "starter_zone:medbay"
-            if self.content_loader.get_room(respawn_room) is not None:
-                character.room_id = respawn_room
+            if self.content_loader.get_room(RESPAWN_ROOM) is not None:
+                character.room_id = RESPAWN_ROOM
             respawned = True
+
+        # A character saved in a room that no longer exists (zone deleted or
+        # renamed) wakes at the world start instead of a void.
+        if self.content_loader.get_room(character.room_id) is None:
+            from fablestar.world.defaults import START_ROOM
+
+            logger.info(
+                "Character %s was in missing room %s; moving to %s",
+                character.name,
+                character.room_id,
+                START_ROOM,
+            )
+            character.room_id = START_ROOM
 
         # Seed Redis with the character's current state
         await self.redis.set_player_location(character.name, character.room_id)

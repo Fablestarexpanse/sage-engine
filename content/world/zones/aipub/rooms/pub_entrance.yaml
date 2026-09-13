@@ -3,9 +3,8 @@ zone: aipub
 type: hub
 depth: 1
 description:
-  base: The entrance to the AiPub. A battered neon sign flickers blue and white above
-    a heavy pressure-sealed door. The hum of conversation and the smell of synth-ale
-    drift out from inside.
+  base: The entrance to the AiPub. A battered neon sign flickers blue and white above a heavy pressure-sealed
+    door. The hum of conversation and the smell of synth-ale drift out from inside.
 exits:
   north:
     destination: aipub:main_bar
@@ -13,6 +12,9 @@ exits:
   west:
     destination: starter_zone:station_street
     description: The dockside street runs west toward the arrival bay.
+  east:
+    destination: test_isle:town_plaza
+    description: The pub door opens onto Tidegate Plaza and its dry fountain.
 features: []
 entity_spawns: []
 hazards: []

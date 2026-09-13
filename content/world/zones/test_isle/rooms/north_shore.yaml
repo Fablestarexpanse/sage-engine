@@ -1,0 +1,31 @@
+id: test_isle:north_shore
+zone: test_isle
+type: corridor
+depth: 2
+description:
+  base: A shingle beach hammered by cold surf, driftwood bleached bone-white in tangled heaps. West, dark
+    cave mouths breathe at the tideline; east, the sand glitters wrong where wreckage washes in.
+exits:
+  south:
+    destination: test_isle:wild_meadow
+    description: ''
+  west:
+    destination: test_isle:tide_caves
+    description: ''
+  east:
+    destination: test_isle:scrap_beach
+    description: ''
+  north:
+    destination: test_isle:cliff_path
+    description: ''
+features: []
+entity_spawns: []
+hazards: []
+tags: []
+name: North Shore
+ambient:
+  min_interval: 30
+  max_interval: 80
+  lines:
+  - Surf hammers in, drags shingle out with a long rattle.
+  - Spray salts your lips even this far up the beach.

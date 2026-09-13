@@ -1,0 +1,40 @@
+id: test_isle:chandlery
+zone: test_isle
+type: chamber
+depth: 1
+description:
+  base: 'Ship supplies wall to wall: coiled rope, tallow candles, lamp oil, canvas, and hooks in a hundred
+    sizes. It smells like a ship that never has to sink. The chandler repairs gear at the back bench for
+    a fair-ish rate.'
+exits:
+  north:
+    destination: test_isle:market_east
+    description: ''
+features:
+- id: gear_wall
+  name: wall of ship supplies
+  keywords:
+  - rope
+  - candles
+  - oil
+  - canvas
+  - hooks
+  - gear
+  description: Rope by the fathom, candles by the pound, hooks by the argument. The repair bench at back
+    smells of hot tar.
+  search:
+    items:
+    - power_cell
+    max_finds: 1
+    respawn_s: 1800
+    chance: 0.25
+entity_spawns: []
+hazards: []
+tags: []
+name: The Chandlery
+ambient:
+  min_interval: 50
+  max_interval: 130
+  lines:
+  - The chandler tests a rope with a grunt of professional distrust.
+  - Tallow scent thickens near the candle crates.

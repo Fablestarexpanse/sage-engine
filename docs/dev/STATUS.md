@@ -46,6 +46,39 @@ Test suites: server **150** pytest, WorldForge **34** vitest — all green.
 
 ## Needs doing
 
+### Tidegate Isle era (2026-09-12: starter_zone deleted, owner call)
+- [x] Agents = computer-controlled players: conduit proficiency block seeded at
+      spawn (same leveling engine), counters tracked (kills, deaths,
+      goals_completed, items_used + per-template for "most used item");
+      agents Lv + K/D in the admin watch table, full metrics in the detail
+      drawer. Agents excluded from admin player/session lists and counts
+      (Agents tab is their home; in-world they remain players)
+- [x] Tidegate Isle (test_isle, 26 rooms): harbor/ferry arrival, town plaza,
+      market with 4 shops (general store, pawn/salvage, apothecary,
+      chandlery), clinic (safe respawn), orchard/meadow/forest, drone gulch +
+      scrap beach + tide caves (hostiles/salvage/radiation), lighthouse with
+      floor-1 lamp room. Cross-zone: town_plaza west <-> aipub:pub_entrance
+      (the AIpub, with apartments upstairs for rent/living tests). Density
+      1.92, validate_zone clean. START_ROOM/RESPAWN_ROOM constants in
+      world/defaults.py; characters saved in deleted rooms auto-relocate
+- [x] World Builder: Export PNG button renders the whole zone graph
+      (html-to-image over the React Flow viewport)
+- [ ] Economy systems for the island: vendor NPCs / buy-sell at the shops,
+      room rent at the AIpub apartments, Digi sinks/sources (spaces exist,
+      systems next)
+
+### worldforge-mcp gaps found building Tidegate Isle
+- [ ] create_room(from_room, from_dir) positions the room but does NOT create
+      the exit — every link needs a separate connect_rooms call; either add
+      link=True or document loudly
+- [ ] No collision check: two rooms can land on the same canvas x/y silently
+      (hit twice; had to set_room_position manually)
+- [ ] No MCP way to write features/search profiles, entity_spawns, hazards, or
+      ambient blocks — gameplay content still needs direct YAML edits
+- [ ] No cross-zone exit tool (set_exit is same-zone only) — AIpub link was a
+      manual YAML edit
+- [ ] No delete_zone / rename_zone tool (starter_zone removal was rm -rf)
+
 ### Player-UI wiring (from 2026-09-12 live playtest — panels are still mockups)
 - [x] Wire side panels to server state: character_snapshot now pushed after every
       command + effect tick (location/effects/inventory added); LOCATION, VITALS,

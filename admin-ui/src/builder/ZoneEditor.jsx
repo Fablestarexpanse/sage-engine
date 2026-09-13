@@ -13,7 +13,10 @@ import {
   MarkerType,
   useReactFlow,
   ReactFlowProvider,
+  getNodesBounds,
+  getViewportForBounds,
 } from "@xyflow/react";
+import { toPng } from "html-to-image";
 import "@xyflow/react/dist/style.css";
 import axios from "axios";
 import RoomNode from "./RoomNode.jsx";
@@ -190,6 +193,39 @@ function ZoneEditorInner({ zoneId, onSync, forwardedRef, navigateRoomSlug, onNav
 
   const validate = () => {
     setIssues(runZoneValidation(rf.getNodes(), rf.getEdges(), extExits));
+  };
+
+  const exportPng = async () => {
+    // Render the whole graph (not just the visible viewport) to a PNG download.
+    const nodes = rf.getNodes();
+    if (!nodes.length) return;
+    const bounds = getNodesBounds(nodes);
+    const pad = 60;
+    const width = Math.min(8192, Math.ceil(bounds.width + pad * 2));
+    const height = Math.min(8192, Math.ceil(bounds.height + pad * 2));
+    const viewport = getViewportForBounds(bounds, width, height, 0.1, 2, pad);
+    const el = document.querySelector(".react-flow__viewport");
+    if (!el) return;
+    try {
+      const dataUrl = await toPng(el, {
+        width,
+        height,
+        backgroundColor: COLORS.bgPanel || "#101014",
+        style: {
+          width: `${width}px`,
+          height: `${height}px`,
+          transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
+        },
+        filter: (node) => !node?.classList?.contains("react-flow__minimap"),
+      });
+      const a = document.createElement("a");
+      a.download = `${zoneId || "zone"}-map.png`;
+      a.href = dataUrl;
+      a.click();
+    } catch (e) {
+      console.error("PNG export failed", e);
+      window.alert(`PNG export failed: ${e?.message || e}`);
+    }
   };
 
   const focusRoomBySearch = () => {
@@ -546,6 +582,9 @@ function ZoneEditorInner({ zoneId, onSync, forwardedRef, navigateRoomSlug, onNav
                   </button>
                   <button type="button" style={btn} onClick={() => loadGraph()}>
                     Reload
+                  </button>
+                  <button type="button" style={btn} onClick={exportPng}>
+                    Export PNG
                   </button>
                 </div>
               </Panel>

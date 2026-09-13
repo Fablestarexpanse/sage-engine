@@ -1,0 +1,31 @@
+id: test_isle:clinic
+zone: test_isle
+type: safe
+depth: 1
+description:
+  base: 'A whitewashed room that smells of antiseptic and chamomile. Two diagnostic beds, a dispensary
+    arm salvaged from a station medbay, and a hand-lettered sign: YOU BREAK IT, WE PATCH IT. The safest
+    place on the island to close your eyes.'
+exits:
+  west:
+    destination: test_isle:town_plaza
+    description: ''
+features:
+- id: dispensary
+  name: salvaged dispensary arm
+  keywords:
+  - dispensary
+  - arm
+  - beds
+  description: A station-grade medbay arm bolted to a timber frame. It gives an encouraging whir when
+    patients wake.
+entity_spawns: []
+hazards: []
+tags: []
+name: Tidegate Clinic
+ambient:
+  min_interval: 50
+  max_interval: 120
+  lines:
+  - The dispensary arm whirs through its idle self-check.
+  - Chamomile steam curls off a pot kept always warm.

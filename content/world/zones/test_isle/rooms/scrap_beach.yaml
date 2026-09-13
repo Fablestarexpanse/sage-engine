@@ -1,0 +1,43 @@
+id: test_isle:scrap_beach
+zone: test_isle
+type: chamber
+depth: 2
+description:
+  base: 'The current dumps the sea''s garbage here: hull plating, tangled cable, cargo pods split like
+    mussel shells. Every tide restocks it. Salvagers call it the island''s only honest paycheck.'
+exits:
+  west:
+    destination: test_isle:north_shore
+    description: ''
+features:
+- id: tide_wrack
+  name: fresh tide-wrack
+  keywords:
+  - wrack
+  - scrap
+  - plating
+  - cable
+  - pods
+  description: 'This tide''s delivery: split cargo pods, cable nests, plating dulled by salt. First pick
+    goes to whoever''s cold enough to wade.'
+  search:
+    items:
+    - power_cell
+    - scrap_blade
+    - ration_pack
+    max_finds: 4
+    respawn_s: 600
+    chance: 0.6
+entity_spawns:
+- template: scrap_drone
+  chance: 0.3
+  max_count: 1
+hazards: []
+tags: []
+name: Scrap Beach
+ambient:
+  min_interval: 30
+  max_interval: 80
+  lines:
+  - A cargo pod knocks against rock with the swell, again, again.
+  - Salt wind sings through a nest of stripped cable.

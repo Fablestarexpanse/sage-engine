@@ -1,0 +1,39 @@
+id: test_isle:fishing_pier
+zone: test_isle
+type: alcove
+depth: 1
+description:
+  base: A long timber pier reaching out over deep green water. Bait buckets, tackle crates, and one stubborn
+    old chair face the open sea. On a clear day you can see the mainland; on most days you can't.
+exits:
+  west:
+    destination: test_isle:fisherman_row
+    description: ''
+features:
+- id: bait_buckets
+  name: bait buckets and tackle crates
+  keywords:
+  - bait
+  - buckets
+  - tackle
+  - crates
+  - chair
+  description: Buckets of yesterday's bait and crates of borrowed-forever tackle. The chair is Old Pell's;
+    everyone knows.
+  search:
+    items:
+    - ration_pack
+    max_finds: 2
+    respawn_s: 900
+    chance: 0.45
+entity_spawns: []
+hazards: []
+tags: []
+name: Fishing Pier
+ambient:
+  min_interval: 35
+  max_interval: 95
+  lines:
+  - A line zings out and plops somewhere beyond the swell.
+  - The pier timbers flex and creak with the tide.
+  - Far out, something big rolls without showing itself.
