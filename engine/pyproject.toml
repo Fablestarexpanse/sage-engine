@@ -14,6 +14,8 @@ dependencies = [
     "bcrypt>=4.1.0",
     "fastapi>=0.109.0",
     "uvicorn>=0.27.0",
+    # uvicorn needs a WebSocket implementation to serve /ws/play and the admin sockets.
+    "websockets>=13.0",
     "alembic>=1.13.0",
     "python-multipart>=0.0.9",
     "httpx>=0.26.0",
