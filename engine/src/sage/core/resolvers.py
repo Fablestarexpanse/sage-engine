@@ -47,8 +47,11 @@ class Resolvers:
         entry.provider, entry.provided_by = fn, owner
 
     def withdraw(self, owner: str) -> None:
-        for entry in self._slots.values():
-            if entry.provided_by == owner:
+        """Remove everything owner did: its provisions, and the slots it defined."""
+        for slot, entry in list(self._slots.items()):
+            if entry.defined_by == owner:
+                del self._slots[slot]
+            elif entry.provided_by == owner:
                 entry.provider = entry.provided_by = None
 
     def get(self, slot: str) -> Callable[..., Any]:

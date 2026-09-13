@@ -33,6 +33,7 @@ from sage.llm.prompts import PromptManager
 from sage.maestro.director import MaestroDirector
 from sage.network.session import Session, SessionManager
 from sage.parser.dispatcher import CommandDispatcher
+from sage.plugins import PluginHost
 from sage.services._shared import resolve_play_account
 from sage.services.economy import EconomyService
 from sage.services.player_service import PlayerService
@@ -103,6 +104,16 @@ class SageServer:
         self.agent_manager = AgentManager(self)
         self.hot_reloader = HotReloader(self._on_file_changed)
         self.dispatcher = CommandDispatcher(events=self.events)
+        self.plugins = PluginHost(
+            world=self.world,
+            registry=registry,
+            events=self.events,
+            resolvers=self.resolvers,
+            tick_manager=self.tick_manager,
+            redis=self.redis,
+            plugins_root=self.project_root / "plugins",
+            trusted_roots=[self.project_root / "plugins", self.project_root / "worlds"],
+        )
         self.nexus = NexusApp(self)
 
         # LLM Subsystems
@@ -345,6 +356,10 @@ class SageServer:
         registry.load_module_strict("sage.commands.crafting")
         registry.load_module_strict("sage.commands.admin")
 
+        # 1b. The world's plugins, after engine commands so verb conflicts are caught.
+        self.plugins.load()
+        self.lexicon = self._build_lexicon()
+
         # 2. Tick handlers — must be registered before the tick loop starts in step 4
         self.tick_manager.register(self.spawner.on_tick)
         self.tick_manager.register(self.ambient.on_tick)
@@ -378,6 +393,7 @@ class SageServer:
 
         self.hot_reloader.stop()
         self.tick_manager.stop()
+        self.plugins.teardown()
         await self.redis.disconnect()
         await self.db.close()
 
@@ -738,7 +754,10 @@ class SageServer:
 
     def _build_lexicon(self) -> lexicon.Lexicon:
         """World strings over engine defaults; installed for Session.say and lexicon.t."""
-        built = lexicon.build_lexicon(self.world.lexicon_dir, self.world.manifest.world.locale)
+        plugin_layers = self.plugins.lexicon_layers() if hasattr(self, "plugins") else []
+        built = lexicon.build_lexicon(
+            self.world.lexicon_dir, self.world.manifest.world.locale, plugin_layers=plugin_layers
+        )
         lexicon.set_active(built)
         return built
 
