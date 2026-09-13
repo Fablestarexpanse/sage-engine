@@ -493,7 +493,7 @@ Brief decision 4 asks for an early license audit ahead of a possible paid releas
 
 | Finding | Where | Note |
 |---|---|---|
-| **No LICENSE file**; `pyproject.toml` declares MIT | repo root | Owner decision: a private repo with a paid release in mind probably should not declare MIT. |
+| ~~**No LICENSE file**; `pyproject.toml` declares MIT~~ | repo root | **Resolved 2026-09-13:** engine licensed `FSL-1.1-ALv2` (`engine/LICENSE`), Fablestar content proprietary (`NOTICE`). |
 | `elkjs@0.11.1` **EPL-2.0** — direct dependency | `admin-ui`, `worldforge` | Weak copyleft; fine to use unmodified and bundled, but modifications must be released. Flag for any commercial distribution of WorldForge. |
 | MPL-2.0 transitives | `lightningcss` (admin-ui, player-ui build toolchain); `cssparser`, `selectors`, `dtoa-short`, `option-ext` (WorldForge Rust); `certifi` (Python) | File-level copyleft; normally fine unmodified. |
 | CC-BY-4.0 | `caniuse-lite` (build-time data) | Attribution. |

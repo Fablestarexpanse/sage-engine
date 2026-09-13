@@ -225,7 +225,7 @@ stat.frt.name: Fortitude
 created_at, note)`, unique on `(kind, key, version)`. Kinds: `lexicon`, `prompt`, `style`,
 `param`. There is no `world_id` column — see B.8.
 
-### B.8 One world per deployment, one database per world (proposal — owner question G.2)
+### B.8 One world per deployment, one database per world (owner-approved 2026-09-13)
 
 Locked decision 2 rules out `world_id` columns. The brief also wants switching worlds to be a
 config change plus a restart. On a single database, a switch would show world A's characters
@@ -602,24 +602,29 @@ Each gets its own announced commit, never bundled with other changes.
 
 ## Part G — Questions for the owner
 
+**Answered 2026-09-13** (details in `docs/sage/DECISIONS.md`): **2** yes, one database per world ·
+**3** not needed at this time, delete when reached · **5** rename approved, official name
+"SAGE - Synthetic Agent Game Engine" · **8** engine under `FSL-1.1-ALv2`, Fablestar content
+proprietary (`engine/LICENSE`, `NOTICE`). **Still open:** 1, 4, 6, 7, 9, 10.
+
 1. **WorldForge spec.** The brief says WorldForge is specced but unbuilt; the repo's WorldForge
    is built and you've ruled it's the map tool. Is there a separate WorldForge spec (vault or
    Cursor prompt) whose features should become this app's roadmap?
-2. **One database per world (B.8)?** It's the only way to honour "no `world_id` columns" and
+2. ~~**One database per world (B.8)?**~~ **Answered: yes.** It's the only way to honour "no `world_id` columns" and
    "switch worlds with config + restart" together.
-3. **Glyphs, ships, star systems, galaxy.** No content or runtime exists. Delete now, or does
+3. ~~**Glyphs, ships, star systems, galaxy.**~~ **Answered: not needed at this time; delete.** No content or runtime exists. Delete now, or does
    the vault's Fablestar design need them (then: Fablestar plugin content types)?
 4. **Epitaph systems.** Proposal: ambient and effects stay engine (genre-neutral, used by both
    worlds); search, hazards, factions/missions, crafting, maestro become first-party plugins.
    Agree?
-5. **Package rename and compatibility window (F.1).** OK to rename to `sage` in Phase 2b, with
+5. ~~**Package rename and compatibility window (F.1).**~~ **Answered: approved; name "SAGE - Synthetic Agent Game Engine".** OK to rename to `sage` in Phase 2b, with
    `FABLESTAR_*` env aliases for one release?
 6. **Deprecate the admin-ui World Builder (D.E)?** Remote builders would then need the
    WorldForge desktop app pointed at Nexus.
 7. **Tests:** does "don't mock the database" still hold? The current suite is hermetic. Proposal:
    hermetic unit tests stay; Phase 2a adds a live Postgres/Redis job for migrations, plugin
    uninstall and the world smoke tests.
-8. **License.** `pyproject.toml` declares MIT and there is no LICENSE file. With a paid release
+8. ~~**License.**~~ **Answered: FSL-1.1-ALv2 for the engine; Fablestar proprietary.** `pyproject.toml` declares MIT and there is no LICENSE file. With a paid release
    in mind, should the engine be marked proprietary until you decide? (elkjs EPL-2.0 is fine
    unmodified.)
 9. **Second world.** Proposal for the skeleton: low-fantasy river town, attributes Might / Wits /
