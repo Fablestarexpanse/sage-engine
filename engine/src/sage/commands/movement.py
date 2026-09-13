@@ -69,17 +69,6 @@ def move_to(direction: str):
         # 3. Update location, telling both rooms
         await _announce(app_instance, room_id, player_id, f"{player_id} leaves {direction}.")
         await app_instance.redis.set_player_location(player_id, target_room_id)
-        from sage.core.events import RoomEntered, emit
-
-        await emit(
-            app_instance,
-            RoomEntered(
-                player_id=player_id,
-                room_id=target_room_id,
-                from_room_id=room_id,
-                direction=direction,
-            ),
-        )
         arrival = OPPOSITE.get(direction)
         await _announce(
             app_instance,
@@ -113,25 +102,19 @@ def move_to(direction: str):
 
         visit_lines = await visit_for_player(app_instance, player_id, target_room_id)
 
-        # Room hazards roll against the player on entry (best-effort).
-        hazard_messages: list[str] = []
-        target_room = app_instance.content_loader.get_room(target_room_id)
-        if target_room and target_room.hazards:
-            try:
-                from sage.effects.hazards import HAZARD_RESIST_LEAF, apply_room_hazards
+        # What entering means beyond the move (hazards, ...) is up to RoomEntered subscribers.
+        from sage.core.events import RoomEntered, emit
 
-                stats = await app_instance.redis.get_player_stats(player_id)
-                hazard_messages = apply_room_hazards(stats, target_room)
-                await app_instance.redis.set_player_stats(player_id, stats)
-                await try_field_gain_for_player(player_id, HAZARD_RESIST_LEAF, chance=0.15)
-            except Exception as exc:
-                logger.warning("Hazard application skipped: %s", exc)
+        entered = RoomEntered(
+            player_id=player_id, room_id=target_room_id, from_room_id=room_id, direction=direction
+        )
+        await emit(app_instance, entered)
 
         # 4. Describe new room
         await session.send(f"You move {direction}.")
         session.look_narrate = first_visit
         await app_instance.dispatcher.dispatch(session, "look")
-        for msg in hazard_messages:
+        for msg in entered.messages:
             await session.send(f"\r\n{msg}")
         for line in visit_lines:
             await session.send(f"\r\n{line}")

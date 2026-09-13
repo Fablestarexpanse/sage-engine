@@ -26,13 +26,6 @@ class EntitySpawnModel(BaseModel):
     max_count: int = 1
 
 
-class HazardModel(BaseModel):
-    id: str
-    type: str
-    severity: int
-    description: str
-
-
 class AmbientModel(BaseModel):
     """Occasional atmosphere lines shown to players in the room (Epitaph 'room chats')."""
 
@@ -55,7 +48,6 @@ class RoomModel(BaseModel):
     exits: dict[str, ExitModel] = Field(default_factory=dict)
     features: list[FeatureModel] = Field(default_factory=list)
     entity_spawns: list[EntitySpawnModel] = Field(default_factory=list)
-    hazards: list[HazardModel] = Field(default_factory=list)
     ambient: AmbientModel | None = None
     tags: set[str] = Field(default_factory=set)
 

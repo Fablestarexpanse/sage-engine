@@ -2,8 +2,9 @@
 
 NEXT: Phase 3 on sage/phase-3 (plan: docs/dev/milestones/M2-sage-decoupling/phase-3-plan.md).
 3.1 achievements, 3.2 wallet, 3.3 factions, 3.4 content extensions + plugin admin routes, 3.5 shop and
-lodging, 3.6 search and crafting (+ progression slots), 3.7 maestro: DONE. Next: 3.8 effects API in
-engine; hazards -> plugins/hazards. Dev DB at n7o8p9q0r1s2. Ratchet 2123/114.
+lodging, 3.6 search and crafting (+ progression slots), 3.7 maestro, 3.8 hazards: DONE. Next: 3.9 agents
+-> plugins/agents (largest step; uses factions/shop/lodging/search services). Dev DB at n7o8p9q0r1s2.
+Ratchet 2119/114. Commit 9a831ea does not boot (be48da3 completes it).
 Open owner questions: Rivermoot license; PRs for sage/stage-2b and sage/stage-2c.
 Review page: https://claude.ai/code/artifact/2d488113-1ca9-4f45-b993-ac0253e0670c
 

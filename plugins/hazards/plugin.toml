@@ -1,0 +1,14 @@
+# Hazards: rooms with a `hazards:` list roll each hazard against a character on entry; a failed
+# resist applies a damage-over-time effect scaled by severity.
+[plugin]
+id = "hazards"
+name = "Hazards"
+version = "1.0.0"
+engine = ">=0.2,<0.3"
+entry = "sage_plugin_hazards.main:setup"
+first_party = true
+
+[touches]
+events_subscribe = ["RoomEntered"]
+content_extensions = ["room.hazards"]
+lexicon_prefix = "hazards."

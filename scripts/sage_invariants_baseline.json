@@ -1,6 +1,6 @@
 {
   "totals": {
-    "denylist": 2123,
+    "denylist": 2119,
     "player_literals": 114
   },
   "denylist": {
@@ -50,7 +50,6 @@
     "engine/src/sage/commands/proficiency.py": 41,
     "engine/src/sage/core/comfyui_persist.py": 4,
     "engine/src/sage/core/config.py": 10,
-    "engine/src/sage/effects/hazards.py": 2,
     "engine/src/sage/network/play_messages.py": 5,
     "engine/src/sage/proficiencies/__init__.py": 1,
     "engine/src/sage/proficiencies/bonus.py": 35,
@@ -86,7 +85,6 @@
     "engine/tests/test_command_integration.py": 4,
     "engine/tests/test_commands.py": 3,
     "engine/tests/test_config_env.py": 6,
-    "engine/tests/test_effects.py": 2,
     "engine/tests/test_play_tokens.py": 1,
     "engine/tests/test_player_accounts_patch.py": 12,
     "engine/tests/test_proficiencies.py": 37,

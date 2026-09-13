@@ -38,10 +38,13 @@ class CommandExecuted(Event):
 
 @dataclass
 class RoomEntered(Event):
+    """A character arrived in a room; subscribers may add lines shown after the room."""
+
     player_id: str
     room_id: str
     from_room_id: str | None
     direction: str | None = None
+    messages: list[str] = field(default_factory=list)
 
 
 @dataclass

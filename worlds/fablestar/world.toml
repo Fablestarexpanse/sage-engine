@@ -28,6 +28,7 @@ lodging = "^1"
 search = "^1"
 crafting = "^1"
 maestro = "^1"
+hazards = "^1"
 
 [params]
 # Tidegate clinic bills up to 10 Digi on respawn; half health on waking.
@@ -40,6 +41,7 @@ maestro = "^1"
 "crafting.default_skill" = "fabrication.materials.composites"
 "crafting.deconstruct_skill" = "fabrication.salvage.disassembly"
 "maestro.mercy_item" = "ration_pack"
+"hazards.resist_skill" = "traversal.survival.hazard_resist"
 
 [transition]
 # Content and prompts still live at the repository root until Phase 3 moves them in here.

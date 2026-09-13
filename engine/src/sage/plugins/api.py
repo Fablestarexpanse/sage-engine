@@ -81,9 +81,11 @@ class _Tick:
 
 def _engine_service_keys(world: Any) -> set[str]:
     """Stats keys engine services write on a plugin's behalf (wallet, counters)."""
+    from sage.effects.engine import EFFECTS_KEY
     from sage.world.counters import COUNTERS_KEY, VISITED_KEY
 
-    return {COUNTERS_KEY, VISITED_KEY, *(c.key for c in getattr(world, "currencies", []) or [])}
+    currencies = (c.key for c in getattr(world, "currencies", []) or [])
+    return {COUNTERS_KEY, VISITED_KEY, EFFECTS_KEY, *currencies}
 
 
 class _State:
@@ -422,6 +424,28 @@ class _Items:
         return item
 
 
+class _Effects:
+    """Timed effects on a stats blob (sage.effects.engine): damage/heal over time and flags."""
+
+    def __init__(self, api: PluginAPI):
+        self._api = api
+
+    def make(self, classification: str, **kwargs: Any) -> dict[str, Any]:
+        from sage.effects.engine import make_effect
+
+        return make_effect(classification, **kwargs)
+
+    def apply(self, stats: dict[str, Any], effect: dict[str, Any]) -> None:
+        from sage.effects.engine import apply_effect
+
+        apply_effect(stats, effect)
+
+    def find(self, stats: dict[str, Any], classification: str) -> list[dict[str, Any]]:
+        from sage.effects.engine import find_effects
+
+        return find_effects(stats, classification)
+
+
 class PluginAPI:
     def __init__(self, host: Any, record: Any):
         self._host = host
@@ -445,6 +469,7 @@ class PluginAPI:
         self.sessions = _Sessions(self)
         self.entities = _Entities(self)
         self.items = _Items(self)
+        self.effects = _Effects(self)
 
     @property
     def world(self) -> Any:
