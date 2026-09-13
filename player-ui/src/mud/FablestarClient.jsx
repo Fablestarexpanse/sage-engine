@@ -88,7 +88,10 @@ export default function FablestarClient({
   const { sx, sy, layoutKey } = useWorkspaceScale();
 
   const preset = PRESETS[layout];
-  const conduitLocation = useMemo(() => lastRoomTitleHint(narrativeLines || []), [narrativeLines]);
+  const narrativeLocationHint = useMemo(() => lastRoomTitleHint(narrativeLines || []), [narrativeLines]);
+  // Server-pushed location wins; the narrative-scrape hint is the legacy fallback.
+  const conduitLocation =
+    session?.liveLocation?.name || session?.liveLocation?.id || narrativeLocationHint;
   const toggleCollapse = (id) => setCollapsed(p => ({ ...p, [id]: !p[id] }));
   const bringToFront = (id) => setFocusStack(p => [...p.filter(x => x !== id), id]);
   const getZ = (id) => { const i = focusStack.indexOf(id); return i === -1 ? 1 : i + 2; };
@@ -192,13 +195,14 @@ export default function FablestarClient({
         gameCurrencyLabel={gameCurrencyDisplayName}
         pvpEnabled={session?.pvpEnabled}
         reputation={session?.reputation}
+        effects={session?.liveEffects ?? null}
       />
     ) },
     { id: "map", title: "Map — Sector 7", icon: "🗺", accent: T.glyph.cyan, minW: 220, minH: 160, content: <MiniMap/> },
     { id: "glyphs", title: "Glyph Loadout", icon: "✦", accent: T.glyph.violet, minW: 320, minH: 70, content: <GlyphBar/> },
-    { id: "inventory", title: "Inventory", icon: "◻", accent: T.glyph.amber, minW: 200, minH: 180, content: <InventoryPanel onContextMenu={openCtx}/> },
+    { id: "inventory", title: "Inventory", icon: "◻", accent: T.glyph.amber, minW: 200, minH: 180, content: <InventoryPanel onContextMenu={openCtx} items={session?.liveInventory ?? null}/> },
     { id: "social", title: "Comms", icon: "💬", accent: T.glyph.cyan, minW: 220, minH: 140, badge: (notifications.tells||0)+(notifications.guild||0), content: <SocialPanel unreadCounts={notifications}/> },
-    { id: "afflictions", title: "Effects", icon: "⊘", accent: T.glyph.crimson, minW: 200, minH: 180, content: <AfflictionTracker/> },
+    { id: "afflictions", title: "Effects", icon: "⊘", accent: T.glyph.crimson, minW: 200, minH: 180, content: <AfflictionTracker effects={session?.liveEffects ?? null}/> },
     { id: "quests", title: "Quest Journal", icon: "📖", accent: T.glyph.emerald, minW: 260, minH: 250, content: <QuestJournal gameCurrencyLabel={gameCurrencyDisplayName} /> },
     { id: "target", title: "Target", icon: "⎯", accent: T.glyph.amber, minW: 220, minH: 180, content: <TargetPanel/> },
     { id: "stats", title: "Session Stats", icon: "📊", accent: T.text.info, minW: 200, minH: 200, content: <SessionStats/> },
@@ -219,10 +223,31 @@ export default function FablestarClient({
     { id: "keybinds", title: "Keybinds", icon: "⌨", accent: T.text.muted, minW: 240, minH: 280, content: <KeybindManager/> },
     { id: "triggers", title: "Triggers", icon: "⚡", accent: T.glyph.amber, minW: 260, minH: 260, content: <TriggerBuilder/> },
     { id: "quickactions", title: "Quick Actions", icon: "▶", accent: T.glyph.cyan, minW: 200, minH: 60, content: <QuickActions/> },
-  ], [narrativeLines, openCtx, sendCommand, focusProficienciesPanel, notifications, session?.characterName, session?.username, session?.portraitImageUrl, session?.digiBalance, session?.pvpEnabled, session?.reputation, session?.characterStats, session?.resonanceLevelsTotal, sceneImageUrl, sceneGenerating, sceneRoomLabel, sceneDownloadBaseName, sceneGen, conduitLocation, gameCurrencyDisplayName, narrativeBackdropUrl, narrativeBackdropSource, openSceneGallerySignal]);
+  ], [narrativeLines, openCtx, sendCommand, focusProficienciesPanel, notifications, session?.characterName, session?.username, session?.portraitImageUrl, session?.digiBalance, session?.pvpEnabled, session?.reputation, session?.characterStats, session?.resonanceLevelsTotal, session?.liveEffects, session?.liveInventory, sceneImageUrl, sceneGenerating, sceneRoomLabel, sceneDownloadBaseName, sceneGen, conduitLocation, gameCurrencyDisplayName, narrativeBackdropUrl, narrativeBackdropSource, openSceneGallerySignal]);
 
   return (
     <GameCmdContext.Provider value={{ sendCommand, focusProficienciesPanel }}>
+    {!wsConnected && (
+      <div
+        role="alert"
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 9999,
+          padding: "6px 14px",
+          textAlign: "center",
+          background: T.glyph.crimson,
+          color: "#fff",
+          fontFamily: T.font.body,
+          fontSize: 12,
+          letterSpacing: "0.06em",
+        }}
+      >
+        Connection to the station lost — reconnecting…
+      </div>
+    )}
     <div style={{
       flex: 1,
       width: "100%",

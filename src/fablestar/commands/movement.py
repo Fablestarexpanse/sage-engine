@@ -1,7 +1,11 @@
 """Movement commands — cardinal and vertical directions, all delegating to move_to()."""
 
+import logging
+
 from fablestar.commands.registry import command
 from fablestar.network.session import Session
+
+logger = logging.getLogger(__name__)
 
 
 def move_to(direction: str):
@@ -41,9 +45,32 @@ def move_to(direction: str):
 
         await try_field_gain_for_player(player_id, "traversal.navigation.pathfinding", chance=0.12)
 
+        # Unique-room exploration counter (best-effort, writes only on first visit).
+        from fablestar.achievements.engine import announcement, record_room_visit_for_player
+
+        granted = await record_room_visit_for_player(player_id, target_room_id)
+
+        # Room hazards roll against the player on entry (best-effort).
+        hazard_messages: list[str] = []
+        target_room = app_instance.content_loader.get_room(target_room_id)
+        if target_room and target_room.hazards:
+            try:
+                from fablestar.effects.hazards import HAZARD_RESIST_LEAF, apply_room_hazards
+
+                stats = await app_instance.redis.get_player_stats(player_id)
+                hazard_messages = apply_room_hazards(stats, target_room)
+                await app_instance.redis.set_player_stats(player_id, stats)
+                await try_field_gain_for_player(player_id, HAZARD_RESIST_LEAF, chance=0.15)
+            except Exception as exc:
+                logger.warning("Hazard application skipped: %s", exc)
+
         # 4. Describe new room
         await session.send(f"You move {direction}.")
         await app_instance.dispatcher.dispatch(session, "look")
+        for msg in hazard_messages:
+            await session.send(f"\r\n{msg}")
+        for ach in granted:
+            await session.send(f"\r\n{announcement(ach)}")
 
     return _direction_handler
 

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import axios from "axios";
 import WorldBuilderPage from "./builder/WorldBuilderPage.jsx";
 import PlayerAccountsTab from "./PlayerAccountsTab.jsx";
+import AgentsTab from "./AgentsTab.jsx";
 import ProficienciesPage from "./ProficienciesPage.jsx";
 import { useAdminTheme } from "./AdminThemeContext.jsx";
 import { API_BASE, WS_BASE } from "./apiConfig.js";
@@ -16,7 +17,7 @@ const LS_ADMIN_TOKEN = "fablestar_admin_token";
 /** Tool ids enforced by Nexus (see fablestar.admin.admin_security.NAV_TOOL_IDS). */
 const ALL_ADMIN_TOOLS = [
   "dashboard", "forge", "operations", "players", "world", "entities",
-  "items", "glyphs", "skills", "locations", "builder", "server", "content", "settings", "team",
+  "items", "glyphs", "skills", "locations", "builder", "agents", "server", "content", "settings", "team",
 ];
 
 function adminWsBase() {
@@ -3123,10 +3124,17 @@ const NAV_ITEMS = [
   { id: "content", label: "Content Library", icon: <Icons.Content />, anyOf: ["content", "world", "locations", "entities", "items", "glyphs"] },
   { id: "skills", label: "Skills catalog", icon: <Icons.Skills /> },
   { id: "builder", label: "World Builder", icon: <Icons.Map /> },
+  { id: "agents", label: "Agents", icon: <Icons.Players /> },
   { id: "server", label: "Server", icon: <Icons.Server /> },
   { id: "settings", label: "Settings", icon: <Icons.Settings /> },
   { id: "team", label: "Team & access", icon: <Icons.Players />, headOnly: true },
 ];
+
+const AgentsPage = () => (
+  <div style={{ display: "grid", gap: 16 }}>
+    <AgentsTab />
+  </div>
+);
 
 const PAGES = {
   dashboard: DashboardPage,
@@ -3136,6 +3144,7 @@ const PAGES = {
   content: ContentLibraryPage,
   skills: ProficienciesPage,
   builder: WorldBuilderPage,
+  agents: AgentsPage,
   server: ServerPage,
   settings: SettingsPlaceholderPage,
   team: StaffTeamPage,

@@ -14,6 +14,9 @@ exits:
   east:
     destination: aipub:pub_entrance
     description: The AiPub's flickering neon sign hangs over a pressure-sealed door.
+  north:
+    destination: starter_zone:plaza
+    description: The street opens onto the concourse plaza.
 features: []
 entity_spawns: []
 hazards: []

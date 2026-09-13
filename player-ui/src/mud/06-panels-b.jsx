@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { usePlayTheme } from "../PlayThemeContext.jsx";
 import { ReputationThermometer } from "../ReputationThermometer.jsx";
 import { PORTRAIT_ASPECT_RATIO_CSS } from "../portraitProfile.js";
@@ -121,6 +121,8 @@ export function CharacterPanel({
   gameCurrencyLabel = "Digi",
   pvpEnabled = null,
   reputation = null,
+  /** Server-pushed live effects: [{name, description, debuff, seconds_left}] or null. */
+  effects = null,
   /** Large Conduit portrait; set false when the cutout is shown behind Narrative instead. */
   showHeroPortrait = true,
 }) {
@@ -311,6 +313,29 @@ export function CharacterPanel({
           <div style={{ height: 1, margin: "6px 0", background: T.border.subtle }} />
           <Bar label="Madness" val={s.madness} max={s.madnessMax} color={T.glyph.amber} icon="⊘" />
         </>}
+        {tab === "effects" && (
+          <div>
+            {!(effects && effects.length) ? (
+              <div style={{ fontSize: 10, fontFamily: T.font.body, color: T.text.muted, padding: "6px 2px" }}>
+                Nothing ails or aids you.
+              </div>
+            ) : (
+              effects.map((e, i) => (
+                <div key={i} style={{ marginBottom: 6, padding: "5px 7px", background: T.bg.surface, borderRadius: T.radius.sm, border: `1px solid ${e.debuff ? T.glyph.crimson + "40" : T.glyph.emerald + "40"}` }}>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span style={{ fontSize: 11, fontFamily: T.font.body, color: e.debuff ? T.glyph.crimson : T.glyph.emerald }}>{e.name}</span>
+                    <span style={{ fontSize: 9, fontFamily: T.font.mono, color: T.text.muted }}>
+                      {e.seconds_left == null ? "∞" : `${e.seconds_left}s`}
+                    </span>
+                  </div>
+                  {e.description ? (
+                    <div style={{ fontSize: 9, fontFamily: T.font.body, color: T.text.muted, marginTop: 2 }}>{e.description}</div>
+                  ) : null}
+                </div>
+              ))
+            )}
+          </div>
+        )}
         {tab === "stats" && (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4 }}>
             {(ca
@@ -374,15 +399,33 @@ export function GlyphBar() {
   );
 }
 
-export function InventoryPanel({ onContextMenu }) {
+export function InventoryPanel({ onContextMenu, items: liveItems = null }) {
   const { T } = usePlayTheme();
   const [filter, setFilter] = useState("all");
-  const items = [
-    { name: "Fractured Glyph-Shard", type: "material", rarity: "rare", icon: "◇", qty: 1 },
-    { name: "Stabilizing Tincture", type: "consumable", rarity: "common", icon: "⬡", qty: 3 },
-  ];
+  // Server inventory entries ({id, template, name, value, ...}) grouped by name into qty rows.
+  // Until the first server snapshot arrives (liveItems === null) the panel shows an empty state,
+  // never invented demo items.
+  const items = useMemo(() => {
+    const grouped = new Map();
+    for (const it of liveItems || []) {
+      const name = it?.name || it?.template || "unknown item";
+      const prev = grouped.get(name);
+      if (prev) prev.qty += 1;
+      else grouped.set(name, { name, type: "material", rarity: "common", icon: "◻", qty: 1 });
+    }
+    return [...grouped.values()];
+  }, [liveItems]);
   const rc = { common: T.text.secondary, uncommon: T.glyph.emerald, rare: T.glyph.cyan, epic: T.glyph.violet, legendary: T.glyph.amber };
   const filtered = filter === "all" ? items : items.filter(i => i.type === filter);
+  if (!items.length) {
+    return (
+      <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", padding: 10 }}>
+        <span style={{ fontSize: 10, fontFamily: T.font.body, color: T.text.muted }}>
+          {liveItems === null ? "Waiting for server…" : "You are carrying nothing."}
+        </span>
+      </div>
+    );
+  }
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <div style={{ display: "flex", padding: "3px 4px", gap: 3, borderBottom: `1px solid ${T.border.subtle}` }}>

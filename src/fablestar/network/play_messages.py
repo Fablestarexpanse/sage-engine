@@ -37,13 +37,23 @@ class PlayError(TypedDict):
     error: str
 
 
-class CharacterSnapshotNotice(TypedDict):
-    """First WebSocket line after successful auth (client renders the sheet)."""
+class CharacterSnapshotNotice(TypedDict, total=False):
+    """Live character state pushed on auth and after every command / effect tick.
+
+    The client wires side panels (vitals, location, effects, inventory) from
+    this — panels must never invent state the server didn't send.
+    """
 
     client_notice: Literal["character_snapshot"]
     character_name: str
     stats: dict[str, Any]
     resonance_levels_total: int
+    # {"id": "zone:slug", "name": "Display Name" | None}
+    location: dict[str, Any]
+    # [{"name", "description", "debuff", "seconds_left" (None = indefinite)}]
+    effects: list[dict[str, Any]]
+    # InventoryItem dicts: [{"id", "template", "name", "description", "value"}]
+    inventory: list[dict[str, Any]]
 
 
 class CharacterPayload(TypedDict):

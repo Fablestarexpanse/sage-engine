@@ -86,6 +86,18 @@ async def attack(session: Session, args: list[str]):
         player_stats, hybrid_legacy=hybrid
     )
 
+    # Worn gear adds flat bonuses on top of proficiency/stat math.
+    try:
+        from fablestar.items.equipment import equipment_bonuses
+
+        eq_attack, eq_defense = equipment_bonuses(
+            player_stats, app_instance.content_loader.get_item_template
+        )
+        player_attack += eq_attack
+        player_defense_rating += eq_defense
+    except Exception as exc:
+        logger.warning("Equipment bonuses skipped: %s", exc)
+
     async with _entity_lock(target_id):
         # Re-read under the lock: another attacker may have hit (or killed)
         # the target between the room search above and now.
@@ -121,6 +133,50 @@ async def attack(session: Session, args: list[str]):
     except Exception as exc:
         logger.warning("Combat proficiency gain skipped: %s", exc)
 
+    # Achievement counters: total kills plus per-template kills.
+    newly_granted = []
+    faction_messages: list[str] = []
+    if entity_dead:
+        try:
+            from fablestar.achievements.engine import record_counter
+
+            ach_registry = app_instance.content_loader.get_achievement_registry()
+            newly_granted += record_counter(player_stats, ach_registry, "kills")
+            template_id = target_state.get("template", "")
+            if template_id:
+                newly_granted += record_counter(player_stats, ach_registry, f"kills.{template_id}")
+        except Exception as exc:
+            logger.warning("Achievement counters skipped: %s", exc)
+
+        # Faction reputation consequences of the kill.
+        try:
+            from fablestar.factions.engine import apply_kill_reputation
+
+            faction_messages = apply_kill_reputation(
+                player_stats,
+                app_instance.content_loader.get_faction_registry(),
+                target_state.get("template", ""),
+                target_state.get("faction", ""),
+            )
+        except Exception as exc:
+            logger.warning("Faction reputation skipped: %s", exc)
+
+        # Active kill-mission progress (completion pays out immediately).
+        try:
+            from fablestar.achievements.engine import record_counter
+            from fablestar.factions.missions import record_kill
+
+            fac_registry = app_instance.content_loader.get_faction_registry()
+            mission_msgs, completed = record_kill(
+                player_stats, fac_registry, target_state.get("template", "")
+            )
+            faction_messages += mission_msgs
+            if completed:
+                ach_registry = app_instance.content_loader.get_achievement_registry()
+                newly_granted += record_counter(player_stats, ach_registry, "missions_completed")
+        except Exception as exc:
+            logger.warning("Mission progress skipped: %s", exc)
+
     await app_instance.redis.set_player_stats(player_id, player_stats)
 
     # --- LLM narrates the exchange ---
@@ -143,7 +199,7 @@ async def attack(session: Session, args: list[str]):
             "combat_narration",
             narration_facts=narration_facts,
         )
-        narration = await app_instance.llm_client.generate(prompt, max_tokens=200)
+        narration = await app_instance.llm_client.generate_or_raise(prompt, max_tokens=200)
     except Exception as e:
         logger.warning(f"Combat narration failed: {e}")
         if entity_dead:
@@ -170,6 +226,15 @@ async def attack(session: Session, args: list[str]):
                 await session.send(f"{entity_name} drops: {', '.join(drop_names)}.")
         else:
             await session.send(f"{entity_name} is dead.")
+
+    for msg in faction_messages:
+        await session.send(f"\r\n{msg}")
+
+    if newly_granted:
+        from fablestar.achievements.engine import announcement
+
+        for ach in newly_granted:
+            await session.send(f"\r\n{announcement(ach)}")
 
     if player_stats.get("hp", 1) <= 0:
         await session.send("\r\nYou have been slain. Disconnecting...")

@@ -100,11 +100,19 @@ class LLMConfig(BaseModel):
         return normalize_openai_compatible_base(v)
 
 
+class AgentsLLMConfig(LLMConfig):
+    """Separate endpoint for agent brains so thinking never competes with narration."""
+
+    enabled: bool = False
+
+
 class Config(BaseModel):
     server: ServerConfig = Field(default_factory=ServerConfig)
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     redis: RedisConfig = Field(default_factory=RedisConfig)
     llm: LLMConfig = Field(default_factory=LLMConfig)
+    # Loaded from config/agents_llm.toml (section name = file stem).
+    agents_llm: AgentsLLMConfig = Field(default_factory=AgentsLLMConfig)
     comfyui: ComfyUIConfig = Field(default_factory=ComfyUIConfig)
 
 

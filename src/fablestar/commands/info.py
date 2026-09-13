@@ -25,7 +25,8 @@ async def look(session: Session, args: list[str]):
 
     room = app_instance.content_loader.get_room(room_id)
     if room:
-        await session.send(f"\r\n[ {room.id} ]")
+        header = f"{room.name} [ {room.id} ]" if room.name else f"[ {room.id} ]"
+        await session.send(f"\r\n{header}")
 
         # 1. Generate Observations (Facts)
         observation_block = build_room_fact_block(room, {"time_of_day": "Eternal Night"})
@@ -35,7 +36,7 @@ async def look(session: Session, args: list[str]):
             prompt = app_instance.prompt_manager.render(
                 "room_description", observation_block=observation_block
             )
-            narration = await app_instance.llm_client.generate(prompt)
+            narration = await app_instance.llm_client.generate_or_raise(prompt)
             clean_narration = validator.sanitize(narration)
             await session.send(clean_narration)
         except Exception as e:
@@ -45,6 +46,12 @@ async def look(session: Session, args: list[str]):
         if room.exits:
             exits_str = ", ".join(room.exits.keys())
             await session.send(f"Exits: {exits_str}")
+
+        # 4b. Other players and agents present (deterministic)
+        room_players = await app_instance.redis.get_room_players(room_id)
+        others = sorted(p for p in room_players if p != session.player_id)
+        if others:
+            await session.send(f"Also here: {', '.join(others)}")
 
         # 5. Show live entities (deterministic — no LLM)
         entity_ids = await app_instance.redis.get_room_entities(room_id)
@@ -81,4 +88,5 @@ async def help_cmd(session: Session, args: list[str]):
         if cmd is None:
             continue
         doc = cmd.handler.__doc__ or "No description."
-        await session.send(f"{cmd_name.ljust(10)} - {doc.splitlines()[0]}")
+        label = cmd_name if not cmd.aliases else f"{cmd_name} ({', '.join(cmd.aliases)})"
+        await session.send(f"{label.ljust(26)} - {doc.splitlines()[0]}")

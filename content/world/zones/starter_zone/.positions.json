@@ -12,12 +12,54 @@
       "y": 300.0,
       "width": 176,
       "height": 108
+    },
+    "plaza": {
+      "x": 400.0,
+      "y": 170.0,
+      "width": 176,
+      "height": 108
+    },
+    "market_row": {
+      "x": 180.0,
+      "y": 170.0,
+      "width": 176,
+      "height": 108
+    },
+    "storage_alcove": {
+      "x": 180.0,
+      "y": 40.0,
+      "width": 176,
+      "height": 108
+    },
+    "cargo_bay": {
+      "x": 620.0,
+      "y": 170.0,
+      "width": 176,
+      "height": 108
+    },
+    "maintenance_shaft": {
+      "x": 620.0,
+      "y": 40.0,
+      "width": 176,
+      "height": 108
+    },
+    "medbay": {
+      "x": 400.0,
+      "y": 40.0,
+      "width": 176,
+      "height": 108
     }
   },
   "notes": [],
   "muted_edges": [],
   "floors": {
     "entrance": 0,
-    "station_street": 0
+    "station_street": 0,
+    "plaza": 0,
+    "market_row": 0,
+    "storage_alcove": 0,
+    "cargo_bay": 0,
+    "maintenance_shaft": 0,
+    "medbay": 0
   }
 }

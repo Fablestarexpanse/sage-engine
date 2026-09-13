@@ -46,6 +46,20 @@ Test suites: server **150** pytest, WorldForge **34** vitest — all green.
 
 ## Needs doing
 
+### Player-UI wiring (from 2026-09-12 live playtest — panels are still mockups)
+- [x] Wire side panels to server state: character_snapshot now pushed after every
+      command + effect tick (location/effects/inventory added); LOCATION, VITALS,
+      INVENTORY, EFFECTS render live server state (verified in client + ws probe).
+      Still fake: MAP / GLYPH LOADOUT / COMMS placeholders
+- [ ] Remove the demo "Corroded Junction" intro block pinned above the real narrative log
+- [x] Disconnect UX: "Connection to the station lost — reconnecting…" banner +
+      2.5s auto-reconnect (verified live: kill server → banner, restart → clears)
+- [x] `examine` dead ends now list the room's examinable features (or say nothing
+      rewards a look); help lists aliases ("attack (a, kill, hit)")
+- Command-input letter pooling: could not reproduce with a real keyboard — the
+      "swsenwseachievements" artifact came from automation typing into an
+      unfocused page; CommandInput already clears on send. Watch for it in play
+
 ### Near-term (small)
 - [ ] **README screenshots** — capture `docs/screenshots/player-client.png` and
       `worldforge-map-tool.png` (instructions in `docs/screenshots/README.md`)
@@ -64,11 +78,62 @@ Test suites: server **150** pytest, WorldForge **34** vitest — all green.
       following the existing PlayerAccountsTab pattern)
 - [ ] `content_browser.py` package split (deferred as not-yet-friction)
 
+### Agent NPCs (headless players — plan: .claude/plans, 2026-09-12)
+- [x] M1 bodies: AgentSession (Session + NullProtocol, dispatcher-only actions),
+      Body reflexes (flee/fight/eat/rest/goal/wander w/ BFS routing), 3 personas
+      in content/agents/*.yaml; ghost-room + look-players prerequisite fixes
+- [x] M2 feelings + admin: deterministic mood/needs/bonds w/ baseline decay;
+      /admin/agents API (list/detail/POV/restart/enable/teleport/give/persona
+      GET+PUT) + Agents tab in admin-ui (watch table, drawer, YAML editor)
+- [x] M3 voice: separate agents_llm.toml endpoint + own circuit breaker;
+      reply gate (addressed by non-agent, 20s cooldown), sanitizer; degrade
+      verified live (dead endpoint → '[no reply]' in POV, body unaffected).
+      Positive path awaits a real local model in config/agents_llm.toml
+- [ ] M4 intent: wake queue → JSON goals compiled to Body scripts; memory ring
+      into prompts (needs the brain endpoint running to tune)
+- Phase 2 (explicitly later): pgvector memories + reflection, bonds→long goals,
+      trading, LOD scheduler for dozens+, world chronicle feed, PG agent_state
+      durability (agents currently reset to persona on server restart)
+
 ### Game content / product (the actual game)
+- [x] Player command surface v1 complete (2026-09-12 audit): use/eat, rest
+      (safe-room heal-over-time), who, tell, emote, equip/unequip with
+      weapon/armor slots feeding combat bonuses; canonical hp/max_hp seeded
+      at bootstrap. Two gear items in the alcove search pool. (8 equip tests)
+- [ ] Glyph runtime (cast/inscribe) — glyph content exists, no engine yet
+- [ ] Party/channels backing for the Comms panel; real map data for Map panel
 - [ ] Flip `proficiency_combat_hybrid = false` once all 12 combat domains have
       leaf coverage, then delete the legacy stat path (pre-1.0 milestone)
 - [ ] Build out real zones/content (starter_zone currently minimal after
       test-content cleanup)
+
+Epitaph-derived roadmap (design + priorities in `docs/design/EPITAPH_LESSONS.md`):
+- [x] Achievements system — YAML criteria counters, tiers, counters in player stats blob;
+      `achievements` command, kill + unique-room hooks, 3 starter achievements (10 tests)
+- [x] Room chats / ambient events — `ambient:` block on rooms (lines + intervals),
+      AmbientManager on tick loop, occupied rooms only, no immediate repeats (7 tests)
+- [x] Effects framework — dot/hot/flag effects with merge/expiry/survive-death,
+      EffectsManager tick processing, `effects` command; room hazards now apply
+      DoT on entry with `hazard_resist` proficiency checks (13 tests)
+- [x] Search/scavenge profiles — `search:` block on features (item pool, shared
+      per-window find cap via Redis TTL), `search` command with anomaly_scan
+      perception bonus + field gains + `scavenged` counter (7 tests)
+- [x] Faction data model v1 — content/factions/*.yaml, per-player rep in stats blob,
+      kill penalties (own faction) + kill rewards (enemies list), standing-crossing
+      announcements, `factions` command; 2 dock factions live (8 tests). Deferred:
+      teaching, shops, encounter behaviour (need NPC AI / shop systems first)
+- [x] Faction missions (missions half of the split) — generated kill/collect
+      contracts from faction config, one active, kill progress in combat,
+      collect turn-in consumes inventory, mission_rep + missions_completed
+      counter + Contractor achievement; `missions` command (10 tests).
+      Hand-crafted puzzle quests + `questsense`: deliberately NOT planned for
+      now (owner call 2026-09-12) — missions cover advancement; revisit post-1.0
+- [x] Maestro event director — 30s consideration windows, per-player cooldowns,
+      roulette over module interests with heavy do-nothing weight; modules:
+      ambush (spawn-capable room + healthy player), mercy (supplies when hurt),
+      dread (atmosphere). Live-verified ambush + dread firings (7 tests).
+      LLM-narrated variants: later, modules are the hook point
+- [ ] Feature-density check in WorldForge Validate / `validate_zone` (small)
 - [ ] UX niceties parked from the audit: redo, delete-key, bulk multi-select
       actions, keyboard-shortcut discoverability
 

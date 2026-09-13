@@ -1,0 +1,34 @@
+id: starter_zone:plaza
+zone: starter_zone
+type: hub
+depth: 1
+description:
+  base: A broad octagonal plaza at the heart of the district, ringed by shuttered
+    kiosks and a dry ornamental fountain someone has filled with spare cabling. Holo-signs
+    point west to the market row, east to the cargo docks, and north to the medbay.
+exits:
+  south:
+    destination: starter_zone:station_street
+    description: The street opens onto the concourse plaza.
+  west:
+    destination: starter_zone:market_row
+    description: Tarp-covered stalls crowd the lane west.
+  east:
+    destination: starter_zone:cargo_bay
+    description: Heavy blast doors stand wedged half-open toward the cargo docks.
+  north:
+    destination: starter_zone:medbay
+    description: Clean white light spills from the medbay's open doors.
+features: []
+entity_spawns: []
+hazards: []
+ambient:
+  min_interval: 50
+  max_interval: 130
+  lines:
+    - The dry fountain gurgles once, hopefully, then gives up.
+    - A holo-sign stutters through its directions loop and freezes on the medbay arrow.
+    - Somewhere overhead, a cargo tram rattles across the district.
+    - A kiosk shutter bangs in a draft that shouldn't exist this deep in the station.
+tags: []
+name: Concourse Plaza

@@ -16,15 +16,18 @@ from sqlalchemy import select
 
 from fablestar import app
 from fablestar.admin.nexus import NexusApp
+from fablestar.agents.manager import AgentManager
 from fablestar.bootstrap import ensure_dev_defaults
 from fablestar.commands.registry import registry
 from fablestar.core.comfyui_persist import save_comfyui_toml
 from fablestar.core.config import ComfyUIConfig, Config, LLMConfig, load_config
 from fablestar.core.llm_persist import save_llm_toml
 from fablestar.core.tick import TickManager
+from fablestar.effects.manager import EffectsManager
 from fablestar.hot_reload import HotReloader
 from fablestar.llm.client import LLMClient
 from fablestar.llm.prompts import PromptManager
+from fablestar.maestro.director import MaestroDirector
 from fablestar.network.session import Session, SessionManager
 from fablestar.parser.dispatcher import CommandDispatcher
 from fablestar.services._shared import resolve_play_account
@@ -35,6 +38,7 @@ from fablestar.state.models import Character
 from fablestar.state.persistence import PersistenceManager
 from fablestar.state.postgres import PostgresState
 from fablestar.state.redis_client import RedisState
+from fablestar.world.ambient import AmbientManager
 from fablestar.world.loader import ContentLoader
 from fablestar.world.spawner import EntitySpawnManager
 
@@ -75,6 +79,10 @@ class FablestarServer:
         self.persistence = PersistenceManager(self)
         self.content_loader = ContentLoader()
         self.spawner = EntitySpawnManager(self)
+        self.ambient = AmbientManager(self)
+        self.effects = EffectsManager(self)
+        self.maestro = MaestroDirector(self)
+        self.agent_manager = AgentManager(self)
         self.hot_reloader = HotReloader(self._on_file_changed)
         self.dispatcher = CommandDispatcher()
         self.nexus = NexusApp(self)
@@ -296,10 +304,19 @@ class FablestarServer:
         registry.load_module_strict("fablestar.commands.combat")
         registry.load_module_strict("fablestar.commands.items")
         registry.load_module_strict("fablestar.commands.proficiency")
+        registry.load_module_strict("fablestar.commands.achievements")
+        registry.load_module_strict("fablestar.commands.effects")
+        registry.load_module_strict("fablestar.commands.search")
+        registry.load_module_strict("fablestar.commands.factions")
+        registry.load_module_strict("fablestar.commands.missions")
         registry.load_module_strict("fablestar.commands.admin")
 
         # 2. Tick handlers — must be registered before the tick loop starts in step 4
         self.tick_manager.register(self.spawner.on_tick)
+        self.tick_manager.register(self.ambient.on_tick)
+        self.tick_manager.register(self.effects.on_tick)
+        self.tick_manager.register(self.maestro.on_tick)
+        self.tick_manager.register(self.agent_manager.on_tick)
         self.tick_manager.register(self.persistence.on_tick)
 
         # 3. HotReloader — watches content/ and commands/; safe to start any time after step 1
@@ -412,36 +429,98 @@ class FablestarServer:
         from fablestar.proficiencies.state_helpers import (
             ensure_proficiency_block,
             migrate_legacy_stats,
-            total_proficiency_levels,
         )
 
         norm_stats = migrate_legacy_stats(dict(character.stats))
         ensure_proficiency_block(norm_stats)
+        # Canonical vitals: nothing else seeds them, and every consumer was
+        # falling back to a different default (combat 20, client bar 100).
+        norm_stats.setdefault("max_hp", 100)
+        norm_stats.setdefault("hp", int(norm_stats["max_hp"]))
         character.stats = norm_stats
+
+        # Death recovery: a character persisted at 0 hp wakes in the medbay at
+        # half health with death-bound effects cleared, instead of logging in
+        # as a corpse that dies to the first breeze.
+        respawned = False
+        if int(norm_stats.get("hp", 1)) <= 0:
+            from fablestar.effects.engine import clear_on_death
+
+            clear_on_death(norm_stats)
+            norm_stats["hp"] = max(1, int(norm_stats.get("max_hp", 20)) // 2)
+            respawn_room = "starter_zone:medbay"
+            if self.content_loader.get_room(respawn_room) is not None:
+                character.room_id = respawn_room
+            respawned = True
 
         # Seed Redis with the character's current state
         await self.redis.set_player_location(character.name, character.room_id)
         await self.redis.set_player_stats(character.name, norm_stats)
         await self.redis.set_player_inventory(character.name, character.inventory)
 
-        try:
-            reg = self.content_loader.get_proficiency_registry()
-            total_lv = total_proficiency_levels(norm_stats, registry=reg)
-        except Exception:
-            total_lv = total_proficiency_levels(norm_stats)
-        from fablestar.network.play_messages import CharacterSnapshotNotice
+        if respawned:
+            await session.send(
+                "\r\nYou wake on a diagnostic bed, patched together and aching. "
+                "The dispensary arm gives you an encouraging whir."
+            )
 
-        snapshot: CharacterSnapshotNotice = {
-            "client_notice": "character_snapshot",
-            "character_name": character.name,
-            "stats": norm_stats,
-            "resonance_levels_total": total_lv,
-        }
-        await session.send(json.dumps(snapshot) + "\r\n")
+        await self.push_character_snapshot(session)
 
         # Initial look
         await self.dispatcher.dispatch(session, "look")
         await session.send_prompt()
+
+    async def push_character_snapshot(self, session: Session) -> None:
+        """Send the live character_snapshot notice that drives the client side panels."""
+        import time as _time
+
+        from fablestar.effects.engine import ensure_effects
+        from fablestar.network.play_messages import CharacterSnapshotNotice
+        from fablestar.proficiencies.state_helpers import total_proficiency_levels
+
+        player_id = session.player_id
+        if not player_id:
+            return
+        try:
+            stats = await self.redis.get_player_stats(player_id)
+            inventory = await self.redis.get_player_inventory(player_id)
+            room_id = await self.redis.get_player_location(player_id)
+            room = self.content_loader.get_room(room_id) if room_id else None
+
+            try:
+                reg = self.content_loader.get_proficiency_registry()
+                total_lv = total_proficiency_levels(stats, registry=reg)
+            except Exception:
+                total_lv = total_proficiency_levels(stats)
+
+            now = _time.time()
+            effects = [
+                {
+                    "name": e.get("name", "?"),
+                    "description": e.get("description", ""),
+                    "debuff": bool(e.get("debuff", True)),
+                    "seconds_left": (
+                        None if e.get("expires_at") is None else max(0, int(e["expires_at"] - now))
+                    ),
+                }
+                for e in ensure_effects(stats)
+            ]
+
+            snapshot: CharacterSnapshotNotice = {
+                "client_notice": "character_snapshot",
+                "character_name": player_id,
+                "stats": stats,
+                "resonance_levels_total": total_lv,
+                "location": {
+                    "id": room_id or "",
+                    "name": room.name if room and room.name else None,
+                },
+                "effects": effects,
+                "inventory": list(inventory),
+            }
+            await session.send(json.dumps(snapshot) + "\r\n")
+        except Exception:
+            logger.debug("character_snapshot push failed for %s", player_id, exc_info=True)
 
     async def run_session_loop(self, session: Session):
         """Main input/output loop for a single session: authenticate → bootstrap → command loop."""
@@ -459,6 +538,8 @@ class FablestarServer:
 
                 if line:
                     await self.dispatcher.dispatch(session, line)
+                    # Keep the client's side panels in sync after every command.
+                    await self.push_character_snapshot(session)
 
                 await session.send_prompt()
 
@@ -468,6 +549,14 @@ class FablestarServer:
             # Final sync to DB before the session tears down
             if session.player_id:
                 await self.persistence.sync_character(session.player_id)
+                # Ghost fix: leaving the game must leave the room too, or the
+                # room's player set keeps a phantom occupant forever.
+                try:
+                    room_id = await self.redis.get_player_location(session.player_id)
+                    if room_id:
+                        await self.redis.remove_player_from_room(session.player_id, room_id)
+                except Exception:
+                    logger.debug("Room-set cleanup failed for %s", session.player_id, exc_info=True)
             await self.session_manager.destroy_session(session.id)
 
     async def _on_file_changed(self, path: Path):

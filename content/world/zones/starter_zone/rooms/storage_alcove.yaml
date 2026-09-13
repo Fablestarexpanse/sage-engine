@@ -1,0 +1,32 @@
+id: starter_zone:storage_alcove
+zone: starter_zone
+type: alcove
+depth: 1
+description:
+  base: A dead-end alcove behind the market stalls, stacked floor to ceiling with sealed shipping crates.
+    The manifest slate by the door has been wiped — nobody is coming back for this lot.
+exits:
+  south:
+    destination: starter_zone:market_row
+    description: A gap between stalls leads back to a storage alcove.
+features:
+- id: shipping_crates
+  name: sealed shipping crates
+  keywords:
+  - crates
+  - crate
+  - boxes
+  - manifest
+  description: Sealed crates stacked in tight columns. The customs tags are months out of date.
+  search:
+    items:
+    - power_cell
+    - scrap_blade
+    - padded_vest
+    max_finds: 3
+    respawn_s: 900
+    chance: 0.5
+entity_spawns: []
+hazards: []
+tags: []
+name: Storage Alcove

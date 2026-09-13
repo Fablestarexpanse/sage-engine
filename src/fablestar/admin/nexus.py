@@ -45,6 +45,7 @@ from fablestar.admin.route_helpers import (
     rate_limit_exceeded_handler,
 )
 from fablestar.admin.routes.admin_ops import build_admin_ops_router
+from fablestar.admin.routes.agents import build_agents_router
 from fablestar.admin.routes.content import build_content_router
 from fablestar.admin.routes.forge import build_forge_router
 from fablestar.admin.routes.llm_comfyui import build_llm_comfyui_router
@@ -147,6 +148,7 @@ class NexusApp:
         self.app.include_router(build_world_router(self.server))
         self.app.include_router(build_forge_router(self.server))
         self.app.include_router(build_llm_comfyui_router(self.server))
+        self.app.include_router(build_agents_router(self.server))
 
         # Presence + log WebSockets live here — they use NexusApp connection state.
 

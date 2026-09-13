@@ -167,6 +167,32 @@ export function runZoneValidation(nodes, edges, opts = {}) {
     }
   });
 
+  // Feature density (Epitaph/Griffin metric, docs/design/EPITAPH_LESSONS.md B5):
+  // gameplay draws (features + spawns + hazards + ambient) per room. Below 0.5
+  // the zone is mostly empty corridors — warn, don't error.
+  if (nodes.length > 1) {
+    let draws = 0;
+    nodes.forEach((n) => {
+      const raw = n.data?.raw || {};
+      draws += Array.isArray(raw.features) ? raw.features.length : 0;
+      draws += Array.isArray(raw.entity_spawns) ? raw.entity_spawns.length : 0;
+      draws += Array.isArray(raw.hazards) ? raw.hazards.length : 0;
+      if (raw.ambient && Array.isArray(raw.ambient.lines) && raw.ambient.lines.length) draws += 1;
+    });
+    const density = draws / nodes.length;
+    if (density < 0.5) {
+      issues.push({
+        level: "warn",
+        msg: `Low feature density: ${density.toFixed(2)} (${draws} draws / ${nodes.length} rooms; aim ≥ 0.5 — add features, spawns, hazards or ambient)`,
+      });
+    } else {
+      issues.push({
+        level: "info",
+        msg: `Feature density ${density.toFixed(2)} (${draws} draws / ${nodes.length} rooms)`,
+      });
+    }
+  }
+
   // Features missing description
   nodes.forEach((n) => {
     const feats = n.data?.raw?.features;

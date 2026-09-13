@@ -98,6 +98,7 @@ class EntitySpawnManager:
             "defense": stats.get("defense", 1),
             "alive": True,
             "loot": list(tmpl.loot),
+            "faction": tmpl.faction or "",
         }
         await self.server.redis.set_entity_state(entity_id, state)
         await self.server.redis.add_entity_to_room(entity_id, room_id)

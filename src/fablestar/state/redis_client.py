@@ -32,6 +32,7 @@ class RedisState:
         "combat": "combat:{id}",
         "entity_state": "entity:{id}:state",
         "item_state": "item:{id}:state",
+        "search_finds": "search:{room_id}:{feature_id}:finds",
     }
 
     def __init__(self, config: RedisConfig):
@@ -182,6 +183,21 @@ class RedisState:
     async def delete_item_state(self, item_id: str):
         key = self._get_key("item_state", id=item_id)
         await self.client.delete(key)
+
+    # --- Search / Scavenge Methods ---
+
+    async def get_search_finds(self, room_id: str, feature_id: str) -> int:
+        key = self._get_key("search_finds", room_id=room_id, feature_id=feature_id)
+        val = await self.client.get(key)
+        return int(val) if val else 0
+
+    async def incr_search_finds(self, room_id: str, feature_id: str, ttl_s: float) -> int:
+        """Count one successful find; the key expires so the feature restocks itself."""
+        key = self._get_key("search_finds", room_id=room_id, feature_id=feature_id)
+        count = await self.client.incr(key)
+        if count == 1:
+            await self.client.expire(key, int(ttl_s))
+        return int(count)
 
     async def get_room_items(self, room_id: str) -> set[str]:
         key = self._get_key("room_items", id=room_id)

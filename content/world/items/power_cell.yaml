@@ -1,0 +1,7 @@
+id: power_cell
+name: depleted power cell
+type: component
+description: A standard power cell, mostly drained. Still worth something to the right buyer.
+value: 12
+weight: 0.8
+tags: [component, power]

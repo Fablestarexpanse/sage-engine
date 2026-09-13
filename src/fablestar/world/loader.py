@@ -2,7 +2,7 @@
 
 import logging
 from pathlib import Path
-from typing import Any, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 import yaml
 from pydantic import BaseModel
@@ -10,6 +10,11 @@ from pydantic import BaseModel
 from fablestar.proficiencies.registry import ProficiencyRegistry
 from fablestar.proficiencies.registry_cache import ProficiencyRegistryCache
 from fablestar.world.models import EntityTemplate, ItemTemplate, RoomModel
+
+if TYPE_CHECKING:
+    from fablestar.achievements.registry import AchievementRegistry
+    from fablestar.agents.registry import AgentRegistry
+    from fablestar.factions.registry import FactionRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -125,6 +130,39 @@ class ContentLoader:
     def get_proficiency_registry(self) -> ProficiencyRegistry:
         """Delegate to the proficiencies package's own registry cache."""
         return self._proficiency_cache.get()
+
+    def get_achievement_registry(self) -> "AchievementRegistry":
+        """Load and cache the achievement registry from content/achievements/."""
+        cache_key = "achievements:registry"
+        if cache_key in self._cache:
+            return self._cache[cache_key]
+        from fablestar.achievements.registry import load_achievements
+
+        registry = load_achievements(self.content_dir)
+        self._cache[cache_key] = registry
+        return registry
+
+    def get_agent_registry(self) -> "AgentRegistry":
+        """Load and cache agent personas from content/agents/."""
+        cache_key = "agents:registry"
+        if cache_key in self._cache:
+            return self._cache[cache_key]
+        from fablestar.agents.registry import load_agents
+
+        registry = load_agents(self.content_dir)
+        self._cache[cache_key] = registry
+        return registry
+
+    def get_faction_registry(self) -> "FactionRegistry":
+        """Load and cache the faction registry from content/factions/."""
+        cache_key = "factions:registry"
+        if cache_key in self._cache:
+            return self._cache[cache_key]
+        from fablestar.factions.registry import load_factions
+
+        registry = load_factions(self.content_dir)
+        self._cache[cache_key] = registry
+        return registry
 
     def invalidate(self, file_path: Path):
         """Invalidate cache entries associated with a changed file."""

@@ -1,0 +1,10 @@
+id: scrap_blade
+name: scrap-forged blade
+type: equipment
+description: A drone manipulator arm ground down to an edge and wrapped in insulation
+  tape. Ugly, unbalanced, and better than fists.
+value: 18
+weight: 1.2
+slot: weapon
+attack: 2
+tags: [weapon, salvage]

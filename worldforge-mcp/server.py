@@ -491,12 +491,10 @@ def _floor_label(n: int) -> str:
     return f"F{n}" if n > 0 else f"B{abs(n)}"
 
 
-def _auto_position(
-    zone_id: str, slug: str, from_room: str, from_dir: str
-) -> tuple[float, float] | None:
+def _auto_position(zone_id: str, from_room: str, from_dir: str) -> tuple[float, float] | None:
     """
-    Compute a canvas position for `slug` by taking `from_room`'s position and
-    applying the direction offset.  Returns (x, y) or None if from_room has no position.
+    Compute a canvas position by taking `from_room`'s position and applying
+    the direction offset.  Returns (x, y) or None if from_room has no position.
     """
     doc = _read_positions(zone_id)
     parent_pos = doc["positions"].get(from_room)

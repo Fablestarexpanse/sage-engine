@@ -3,16 +3,27 @@ import { Tooltip } from "./01-primitives.jsx";
 import { GameCmdContext } from "./00-ctx.jsx";
 import { usePlayTheme } from "../PlayThemeContext.jsx";
 
-export function AfflictionTracker() {
+export function AfflictionTracker({ effects = null }) {
   const { T } = usePlayTheme();
-  const afflictions = [
-    { name: "Fablestar Scrutiny", cat: "permanent", icon: "⊗", dur: "∞", desc: "The labyrinth is aware of you", color: T.glyph.crimson },
-    { name: "Minor Fracture", cat: "physical", icon: "🦴", dur: "12s", desc: "Left arm mobility reduced", color: T.glyph.amber },
-  ];
-  const buffs = [
-    { name: "Ward of Stillness", cat: "glyph", icon: "◇", dur: "3 rnd", desc: "Suppresses nearby entities", color: T.glyph.cyan },
-    { name: "Glyphsight", cat: "passive", icon: "◈", dur: "∞", desc: "Reveals hidden inscriptions", color: T.glyph.violet },
-  ];
+  // Server-pushed live effects only ({name, description, debuff, seconds_left}) —
+  // no invented demo entries.
+  const live = effects || [];
+  const fmtDur = (s) => (s == null ? "∞" : `${s}s`);
+  const afflictions = live
+    .filter((e) => e.debuff)
+    .map((e) => ({ name: e.name, icon: "⊘", dur: fmtDur(e.seconds_left), desc: e.description || "", color: T.glyph.crimson }));
+  const buffs = live
+    .filter((e) => !e.debuff)
+    .map((e) => ({ name: e.name, icon: "◈", dur: fmtDur(e.seconds_left), desc: e.description || "", color: T.glyph.emerald }));
+  if (!live.length) {
+    return (
+      <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", padding: 10 }}>
+        <span style={{ fontSize: 10, fontFamily: T.font.body, color: T.text.muted }}>
+          {effects === null ? "Waiting for server…" : "Nothing ails or aids you."}
+        </span>
+      </div>
+    );
+  }
   return (
     <div style={{ height: "100%", overflow: "auto", padding: 6 }}>
       {afflictions.length > 0 && (

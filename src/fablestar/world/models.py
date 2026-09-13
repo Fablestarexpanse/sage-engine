@@ -9,12 +9,22 @@ class ExitModel(BaseModel):
     one_way: bool = False
 
 
+class SearchModel(BaseModel):
+    """Scavenge profile on a feature — what searching it can yield."""
+
+    items: list[str] = Field(min_length=1)  # item template ids
+    max_finds: int = Field(default=1, ge=1)  # per respawn window (shared by all players)
+    respawn_s: float = Field(default=600.0, gt=0)
+    chance: float = Field(default=0.7, ge=0.0, le=1.0)  # base find chance per attempt
+
+
 class FeatureModel(BaseModel):
     id: str
     name: str
     keywords: list[str]
     description: str
     interaction: str | None = "examine"
+    search: SearchModel | None = None
 
 
 class EntitySpawnModel(BaseModel):
@@ -30,9 +40,18 @@ class HazardModel(BaseModel):
     description: str
 
 
+class AmbientModel(BaseModel):
+    """Occasional atmosphere lines shown to players in the room (Epitaph 'room chats')."""
+
+    lines: list[str] = Field(min_length=1)
+    min_interval: float = Field(default=45.0, gt=0)
+    max_interval: float = Field(default=120.0, gt=0)
+
+
 class RoomModel(BaseModel):
     id: str
     zone: str
+    name: str | None = None  # display name (WorldForge writes it; falls back to the id)
     type: str
     depth: int = 1
     group: str | None = None
@@ -41,6 +60,7 @@ class RoomModel(BaseModel):
     features: list[FeatureModel] = Field(default_factory=list)
     entity_spawns: list[EntitySpawnModel] = Field(default_factory=list)
     hazards: list[HazardModel] = Field(default_factory=list)
+    ambient: AmbientModel | None = None
     tags: set[str] = Field(default_factory=set)
 
 
@@ -63,6 +83,7 @@ class EntityTemplate(BaseModel):
     )
     tags: set[str] = Field(default_factory=set)
     loot: list[str] = Field(default_factory=list)  # item template IDs it may drop
+    faction: str | None = None  # faction id (content/factions/) that owns this entity
 
 
 class ItemTemplate(BaseModel):
@@ -72,6 +93,10 @@ class ItemTemplate(BaseModel):
     description: str = ""
     value: int = 0
     weight: float = 0.0
+    heal: int = 0  # hp restored when consumed via `use` (0 = not consumable)
+    slot: str | None = None  # equipment slot: "weapon" | "armor" (None = not equippable)
+    attack: int = 0  # attack bonus while equipped
+    defense: int = 0  # defense bonus while equipped
     tags: set[str] = Field(default_factory=set)
 
 

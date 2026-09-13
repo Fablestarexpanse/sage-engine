@@ -15,6 +15,10 @@ from fablestar.core.openai_util import normalize_openai_compatible_base
 logger = logging.getLogger(__name__)
 
 
+# Seconds of fast-fail after a connection failure/timeout; a success resets it.
+BREAKER_COOLDOWN_S = 30.0
+
+
 class LLMGenerationError(Exception):
     """LLM generation failed (timeout, transport error, or empty response)."""
 
@@ -90,6 +94,9 @@ class LLMClient:
         self._probe_lock = asyncio.Lock()
         self._status_cache: dict[str, Any] | None = None
         self._status_cache_at: float = 0.0
+        # Circuit breaker: after a connection failure, fast-fail generation for
+        # this many seconds instead of paying connect-retry latency per command.
+        self._breaker_open_until: float = 0.0
 
     def _openai_base_url(self) -> str:
         backend = (self.config.primary_backend or "lm_studio").lower().strip()
@@ -113,6 +120,7 @@ class LLMClient:
         self.timeout = config.timeout_seconds
         self._status_cache = None
         self._status_cache_at = 0.0
+        self._breaker_open_until = 0.0
         logger.info(
             "LLM client reconfigured: backend=%s base=%s model=%s",
             config.primary_backend,
@@ -267,6 +275,13 @@ class LLMClient:
         (structured generation, API responses). Narration paths that want a
         graceful in-fiction fallback should call generate() instead.
         """
+        now = time.monotonic()
+        if now < self._breaker_open_until:
+            raise LLMGenerationError(
+                f"LLM circuit open for {self._breaker_open_until - now:.0f}s more "
+                "(recent connection failure)"
+            )
+
         model = await self.effective_chat_model()
         try:
             logger.info("LLM request model=%s base=%s", model, self._openai_base_url())
@@ -285,11 +300,14 @@ class LLMClient:
             )
         except TimeoutError as e:
             logger.warning("LLM request timed out.")
+            self._breaker_open_until = time.monotonic() + BREAKER_COOLDOWN_S
             raise LLMGenerationError("LLM request timed out") from e
         except Exception as e:
             logger.error("LLM Error: %s", e)
+            self._breaker_open_until = time.monotonic() + BREAKER_COOLDOWN_S
             raise LLMGenerationError(f"LLM request failed: {e}") from e
 
+        self._breaker_open_until = 0.0
         result = response.choices[0].message.content
         if not result or not result.strip():
             raise LLMGenerationError("LLM returned an empty response")

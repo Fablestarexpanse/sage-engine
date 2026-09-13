@@ -1,0 +1,10 @@
+id: padded_vest
+name: padded work vest
+type: equipment
+description: A dockworker's impact vest, foam panels compressed by years of cargo
+  shifts. It has stopped worse than drone claws.
+value: 14
+weight: 2.0
+slot: armor
+defense: 1
+tags: [armor, salvage]

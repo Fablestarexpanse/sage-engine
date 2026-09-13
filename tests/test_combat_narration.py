@@ -27,7 +27,7 @@ ROOM = "starter_zone:entrance"
 
 
 class _FakeLLM:
-    async def generate(self, prompt: str, max_tokens: int = 250) -> str:
+    async def generate_or_raise(self, prompt: str, max_tokens: int = 250) -> str:
         return "The stalker crumples in a spray of static."
 
 

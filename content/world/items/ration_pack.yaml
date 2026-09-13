@@ -1,0 +1,8 @@
+id: ration_pack
+name: sealed ration pack
+type: consumable
+description: A vacuum-sealed station ration. The label promises "chicken-adjacent flavour".
+value: 5
+weight: 0.4
+heal: 8
+tags: [food]
