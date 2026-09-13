@@ -186,7 +186,7 @@ export function CharacterPanel({
         </div>
       ) : (
         <div
-          className={portraitImageUrl ? "fablestar-portrait-stage" : undefined}
+          className={portraitImageUrl ? "sage-portrait-stage" : undefined}
           style={
             portraitImageUrl
               ? {
@@ -207,12 +207,12 @@ export function CharacterPanel({
                 }
           }
         >
-          {portraitImageUrl ? <div className="fablestar-portrait-aurora" aria-hidden /> : null}
+          {portraitImageUrl ? <div className="sage-portrait-aurora" aria-hidden /> : null}
           {portraitImageUrl ? (
             <img
               src={portraitImageUrl}
               alt=""
-              className="fablestar-portrait-cutout fablestar-portrait-cutout--hero"
+              className="sage-portrait-cutout sage-portrait-cutout--hero"
               style={{
                 position: "absolute",
                 inset: 0,

@@ -5,9 +5,9 @@ import axios from "axios";
 import { useAdminTheme } from "./AdminThemeContext.jsx";
 import { WS_BASE } from "./apiConfig.js";
 
-const LS_ADMIN_TOKEN = "fablestar_admin_token";
+const LS_ADMIN_TOKEN = "sage_admin_token";
 
-/** Tool ids enforced by Nexus (see fablestar.admin.admin_security.NAV_TOOL_IDS). */
+/** Tool ids enforced by Nexus (see sage.admin.admin_security.NAV_TOOL_IDS). */
 const ALL_ADMIN_TOOLS = [
   "dashboard", "forge", "operations", "players", "world", "entities",
   "items", "glyphs", "skills", "locations", "builder", "agents", "shops", "server", "content", "settings", "team",

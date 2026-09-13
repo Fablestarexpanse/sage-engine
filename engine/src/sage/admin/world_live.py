@@ -17,7 +17,7 @@ async def _count_keys(client, match: str) -> int:
 
 async def build_world_live_snapshot(redis_client) -> dict[str, Any]:
     """
-    Scan Redis for keys matching FableStar conventions. May be expensive on large DBs;
+    Scan Redis for keys matching the engine's key conventions. May be expensive on large DBs;
     intended for local / low-scale ops.
     """
     if redis_client is None:

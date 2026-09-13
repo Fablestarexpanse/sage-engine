@@ -1,11 +1,24 @@
 """TOML config loading — merges all config/*.toml files into a single Config object."""
 
+import logging
 import os
 import tomllib
 from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, Field, SecretStr, field_validator
+
+logger = logging.getLogger(__name__)
+
+ENV_PREFIX = "SAGE_"
+# Pre-rename prefix, accepted for one release (docs/sage/PHASE1_CONTRACTS.md F.1).
+LEGACY_ENV_PREFIX = "FABLESTAR_"
+
+
+def env_setting(name: str) -> str:
+    """A named SAGE_<name> environment variable, falling back to the legacy prefix."""
+    value = os.environ.get(ENV_PREFIX + name, "").strip()
+    return value or os.environ.get(LEGACY_ENV_PREFIX + name, "").strip()
 
 
 class ServerConfig(BaseModel):
@@ -26,7 +39,7 @@ class ServerConfig(BaseModel):
     proficiency_combat_hybrid: bool = True
     # When True, Nexus admin/content/forge/llm routes require a staff JWT (see /admin/auth/login).
     admin_auth_required: bool = True
-    # HS256 secret; prefer env FABLESTAR_ADMIN_JWT_SECRET in production.
+    # HS256 secret; prefer env SAGE_ADMIN_JWT_SECRET in production.
     admin_jwt_secret: str | None = None
     # Allowed CORS origins for the admin and player UIs. Defaults to localhost dev ports.
     cors_origins: list[str] = Field(
@@ -140,16 +153,26 @@ def load_config(config_dir: str = "config") -> Config:
                 section_data = tomllib.load(f)
                 data[section_name] = section_data
 
-    # Environment variables can override (e.g., FABLESTAR_SERVER__WEBSOCKET_PORT=8001)
-    # This is a simplified version of env override
-    for key, value in os.environ.items():
-        if key.startswith("FABLESTAR_"):
-            parts = key[10:].lower().split("__")
-            if len(parts) == 2:
-                section, field = parts
-                if section not in data:
-                    data[section] = {}
-                data[section][field] = value
+    # Environment overrides: SAGE_<SECTION>__<FIELD>=value (e.g. SAGE_SERVER__WEBSOCKET_PORT=8001).
+    # Legacy FABLESTAR_ keys apply first so a SAGE_ key for the same setting wins.
+    legacy_keys = []
+    for prefix in (LEGACY_ENV_PREFIX, ENV_PREFIX):
+        for key, value in os.environ.items():
+            if not key.startswith(prefix):
+                continue
+            parts = key[len(prefix) :].lower().split("__")
+            if len(parts) != 2:
+                continue
+            section, field = parts
+            data.setdefault(section, {})[field] = value
+            if prefix == LEGACY_ENV_PREFIX:
+                legacy_keys.append(key)
+    if legacy_keys:
+        logger.warning(
+            "Deprecated environment variables %s: rename the FABLESTAR_ prefix to SAGE_ "
+            "(support ends next release).",
+            ", ".join(sorted(legacy_keys)),
+        )
 
     return Config(**data)
 
@@ -158,10 +181,10 @@ def resolve_project_root() -> Path:
     """
     Base directory for repo-relative paths (config/*.json, content/, data/).
 
-    Order: FABLESTAR_PROJECT_ROOT env, cwd if it contains config/, else walk upward
+    Order: SAGE_PROJECT_ROOT env, cwd if it contains config/, else walk upward
     from this package until a config/ directory is found, else cwd.
     """
-    env = (os.environ.get("FABLESTAR_PROJECT_ROOT") or "").strip()
+    env = env_setting("PROJECT_ROOT")
     if env:
         return Path(env).expanduser().resolve()
     cwd = Path.cwd().resolve()

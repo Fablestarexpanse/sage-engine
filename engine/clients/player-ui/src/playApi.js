@@ -46,7 +46,7 @@ function authFields(username, password) {
 async function handlePlayResponse(r) {
   if (r.status === 502 || r.status === 503) {
     throw new Error(
-      `HTTP ${r.status}: Nexus is not running or not reachable. On Windows: start Docker Desktop and wait until it is ready, then in the repo root run: docker compose up -d redis postgres — then: python -m fablestar (Nexus on port 8001).`
+      `HTTP ${r.status}: Nexus is not running or not reachable. On Windows: start Docker Desktop and wait until it is ready, then in the repo root run: docker compose up -d redis postgres — then: python -m sage (Nexus on port 8001).`
     );
   }
   if (r.status === 404) {
@@ -59,8 +59,8 @@ async function handlePlayResponse(r) {
     }
     throw new Error(
       detail === "Not Found"
-        ? "This Nexus process does not know that route (HTTP 404). Stop any old python -m fablestar on this port and start it again from the current project (python -m fablestar) so /play routes match your client."
-        : "Player route not found (HTTP 404). Restart Nexus from the project root: python -m fablestar — an old process on the port will be missing newer /play routes."
+        ? "This Nexus process does not know that route (HTTP 404). Stop any old python -m sage on this port and start it again from the current project (python -m sage) so /play routes match your client."
+        : "Player route not found (HTTP 404). Restart Nexus from the project root: python -m sage — an old process on the port will be missing newer /play routes."
     );
   }
   let data;
@@ -156,7 +156,7 @@ export async function playFetchProficiencyCatalog() {
   const health = await handlePlayResponse(hr);
   if (!health || health.proficiency_catalog !== true) {
     throw new Error(
-      "The skill picker is not available on this Nexus build. Stop the server and start it again from this project: python -m fablestar."
+      "The skill picker is not available on this Nexus build. Stop the server and start it again from this project: python -m sage."
     );
   }
   const r = await fetch(`${base()}/play/proficiencies/catalog`);
@@ -232,8 +232,8 @@ function playHttpError(r, data) {
     const detail = typeof data?.detail === "string" ? data.detail : "";
     throw new Error(
       detail === "Not Found"
-        ? "This Nexus process does not know that route (HTTP 404). Stop any old python -m fablestar on this port and start it again from the current project (python -m fablestar) so /play routes match your client."
-        : "Player route not found (HTTP 404). Restart Nexus from the project root: python -m fablestar — an old process on the port will be missing newer /play routes."
+        ? "This Nexus process does not know that route (HTTP 404). Stop any old python -m sage on this port and start it again from the current project (python -m sage) so /play routes match your client."
+        : "Player route not found (HTTP 404). Restart Nexus from the project root: python -m sage — an old process on the port will be missing newer /play routes."
     );
   }
   const msg = data?.detail

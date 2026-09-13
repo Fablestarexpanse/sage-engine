@@ -12,7 +12,7 @@ from sage.core.toml_persist import toml_str as _toml_string
 def save_llm_toml(llm: LLMConfig, path: Path | None = None) -> Path:
     target = path or Path("config/llm.toml")
     lines = [
-        "# Auto-written by Fablestar Nexus (admin UI). Safe to edit by hand.",
+        "# Auto-written by SAGE Nexus (admin UI). Safe to edit by hand.",
         f"primary_backend = {_toml_string(llm.primary_backend)}",
         f"lm_studio_url = {_toml_string(llm.lm_studio_url)}",
         f"lm_studio_key = {_toml_string(llm.lm_studio_key)}",

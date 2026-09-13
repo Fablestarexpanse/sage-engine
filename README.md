@@ -98,7 +98,7 @@ On PowerShell, set the env vars first (`$env:VITE_NEXUS_PORT="8001"`) and then r
 
 ## Configuration
 
-TOML files in `config/` are merged at startup; live files are gitignored — copy from the `*.example.toml` files. Environment variables override with the `FABLESTAR_` prefix and double-underscore nesting (e.g. `FABLESTAR_SERVER__WEBSOCKET_PORT=8001`).
+TOML files in `config/` are merged at startup; live files are gitignored — copy from the `*.example.toml` files. Environment variables override with the `SAGE_` prefix and double-underscore nesting (e.g. `SAGE_SERVER__WEBSOCKET_PORT=8001`); `FABLESTAR_` still works for one release.
 
 Key `server.toml` settings:
 

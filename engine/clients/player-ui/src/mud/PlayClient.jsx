@@ -56,7 +56,7 @@ const PRESETS = {
     visible: ["narrative","character","map","glyphs","inventory","social"] },
 };
 
-export default function FablestarClient({
+export default function PlayClient({
   session,
   onSignOut,
   narrativeLines,
@@ -313,7 +313,7 @@ export default function FablestarClient({
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: 8, paddingLeft: 12, borderLeft: `1px solid ${T.border.dim}` }}>
             {session.portraitImageUrl ? (
               <div
-                className="fablestar-portrait-stage"
+                className="sage-portrait-stage"
                 style={{
                   width: 26,
                   aspectRatio: PORTRAIT_ASPECT_RATIO_CSS,
@@ -323,11 +323,11 @@ export default function FablestarClient({
                   overflow: "hidden",
                 }}
               >
-                <div className="fablestar-portrait-aurora fablestar-portrait-aurora--thumb" aria-hidden />
+                <div className="sage-portrait-aurora sage-portrait-aurora--thumb" aria-hidden />
                 <img
                   src={session.portraitImageUrl}
                   alt=""
-                  className="fablestar-portrait-cutout fablestar-portrait-cutout--thumb"
+                  className="sage-portrait-cutout sage-portrait-cutout--thumb"
                   style={{
                     position: "relative",
                     width: "100%",

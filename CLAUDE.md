@@ -271,7 +271,7 @@ Important `server.toml` keys:
 - `cors_origins` — list of allowed origins (default: localhost dev ports)
 - `proficiency_combat_hybrid` — blends old stat combat with proficiency system
 
-Environment overrides: `FABLESTAR_` prefix, double-underscore nesting, e.g. `FABLESTAR_SERVER__WEBSOCKET_PORT=8001`.
+Environment overrides: `SAGE_` prefix, double-underscore nesting, e.g. `SAGE_SERVER__WEBSOCKET_PORT=8001`. The pre-rename `FABLESTAR_` prefix still works for one release and logs a deprecation warning.
 
 ---
 

@@ -85,7 +85,9 @@ class TestStaffJwt(unittest.TestCase):
         # Ensure the env-var override does not leak into these tests
         import unittest.mock as mock
 
-        patcher = mock.patch.dict("os.environ", {"FABLESTAR_ADMIN_JWT_SECRET": ""})
+        patcher = mock.patch.dict(
+            "os.environ", {"SAGE_ADMIN_JWT_SECRET": "", "FABLESTAR_ADMIN_JWT_SECRET": ""}
+        )
         patcher.start()
         self.addCleanup(patcher.stop)
 

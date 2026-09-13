@@ -636,7 +636,7 @@ const AiForgePage = () => {
             AI Forge
           </h2>
           <p style={{ margin: "4px 0 0", fontSize: 13, color: COLORS.textMuted, fontFamily: "'DM Sans', sans-serif" }}>
-            LLM-powered content generation for every system in the Fablestar
+            LLM-powered content generation for every system in your world
           </p>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>

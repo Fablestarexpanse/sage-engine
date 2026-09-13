@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Fablestar WorldForger",
+  "productName": "SAGE WorldForge",
   "version": "0.2.0",
-  "identifier": "com.fablestar.worldforge",
+  "identifier": "com.sage.worldforge",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://127.0.0.1:1420",
@@ -14,7 +14,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Fablestar WorldForger",
+        "title": "SAGE WorldForge",
         "width": 1400,
         "height": 900,
         "minWidth": 1100,

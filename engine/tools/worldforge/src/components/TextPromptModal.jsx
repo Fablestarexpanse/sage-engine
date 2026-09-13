@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTheme } from "../ThemeContext.jsx";
 
 /**
- * Centered themed prompt (replaces window.prompt) for Fablestar WorldForger.
+ * Centered themed prompt (replaces window.prompt) for SAGE WorldForge.
  */
 export default function TextPromptModal({
   open,

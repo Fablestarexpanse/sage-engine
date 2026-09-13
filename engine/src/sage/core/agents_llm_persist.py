@@ -12,7 +12,7 @@ from sage.core.toml_persist import toml_str as _toml_string
 def save_agents_llm_toml(cfg: AgentsLLMConfig, path: Path | None = None) -> Path:
     target = path or Path("config/agents_llm.toml")
     lines = [
-        "# Auto-written by Fablestar Nexus (admin Agents panel). Safe to edit by hand.",
+        "# Auto-written by SAGE Nexus (admin Agents panel). Safe to edit by hand.",
         f"enabled = {'true' if cfg.enabled else 'false'}",
         f"primary_backend = {_toml_string(cfg.primary_backend)}",
         f"lm_studio_url = {_toml_string(cfg.lm_studio_url)}",

@@ -9,7 +9,7 @@ import { useAdminTheme } from "./AdminThemeContext.jsx";
 import { API_BASE, WS_BASE } from "./apiConfig.js";
 
 // ═══════════════════════════════════════════════════════════════
-// FABLESTAR MUD — WORLD ADMINISTRATION CONSOLE v2
+// SAGE NEXUS — WORLD ADMINISTRATION CONSOLE v2
 // Backend management interface with integrated AI Forge
 // ═══════════════════════════════════════════════════════════════
 import { LS_ADMIN_TOKEN, ALL_ADMIN_TOOLS, adminPresenceWsUrl, sendWsAuthToken, Icons } from "./adminCommon.jsx";
@@ -48,7 +48,7 @@ const LoginScreen = ({ onLoggedIn }) => {
         setErr(
           "Cannot reach Nexus (HTTP " +
             status +
-            "). Start Docker Desktop, then from the repo root: docker compose up -d redis postgres — then: python -m fablestar (port 8001 must match this UI)."
+            "). Start Docker Desktop, then from the repo root: docker compose up -d redis postgres — then: python -m sage (port 8001 must match this UI)."
         );
       } else {
         setErr(ex.response?.data?.detail || ex.message || "Login failed");
@@ -75,7 +75,7 @@ const LoginScreen = ({ onLoggedIn }) => {
       <form onSubmit={submit} style={{
         background: COLORS.bgCard, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: 32, width: "min(400px, 92vw)",
       }}>
-        <h1 style={{ margin: "0 0 8px", fontSize: 20, color: COLORS.accent, fontFamily: "'Space Grotesk', sans-serif" }}>Fablestar Admin</h1>
+        <h1 style={{ margin: "0 0 8px", fontSize: 20, color: COLORS.accent, fontFamily: "'Space Grotesk', sans-serif" }}>SAGE Nexus</h1>
         <p style={{ margin: "0 0 20px", fontSize: 13, color: COLORS.textMuted }}>Sign in with a staff account. Ask a head admin for credentials. Username and password are case-sensitive.</p>
         <label style={{ display: "block", fontSize: 11, color: COLORS.textMuted, marginBottom: 6 }}>Username</label>
         <input autoComplete="username" value={user} onChange={(e) => setUser(e.target.value)} style={{ ...inp, marginBottom: 14 }} />
@@ -198,7 +198,7 @@ export default function App() {
       localStorage.removeItem(LS_ADMIN_TOKEN);
       window.location.reload();
     };
-    window.addEventListener("fablestar-admin-unauthorized", onAuthLost);
+    window.addEventListener("sage-admin-unauthorized", onAuthLost);
     const reqId = axios.interceptors.request.use((cfg) => {
       const t = localStorage.getItem(LS_ADMIN_TOKEN);
       if (t) cfg.headers.Authorization = `Bearer ${t}`;
@@ -210,14 +210,14 @@ export default function App() {
         if (err.response?.status === 401) {
           const auth = err.config?.headers?.Authorization;
           if (typeof auth === "string" && auth.startsWith("Bearer ") && localStorage.getItem(LS_ADMIN_TOKEN)) {
-            window.dispatchEvent(new Event("fablestar-admin-unauthorized"));
+            window.dispatchEvent(new Event("sage-admin-unauthorized"));
           }
         }
         return Promise.reject(err);
       }
     );
     return () => {
-      window.removeEventListener("fablestar-admin-unauthorized", onAuthLost);
+      window.removeEventListener("sage-admin-unauthorized", onAuthLost);
       axios.interceptors.request.eject(reqId);
       axios.interceptors.response.eject(resId);
     };
@@ -395,7 +395,7 @@ export default function App() {
               <circle cx="12" cy="12" r="3" stroke={COLORS.accent} strokeWidth="1.5" />
               <path d="M12 2v7M12 15v7M2 7l7 5M15 12l7 5M22 7l-7 5M9 12L2 17" stroke={COLORS.accent} strokeWidth="0.5" opacity="0.4" />
             </svg>
-            FABLESTAR
+            SAGE NEXUS
           </div>
           <div style={{ fontSize: 10, color: COLORS.textDim, fontFamily: "'JetBrains Mono', monospace", marginTop: 4, letterSpacing: "0.08em", textTransform: "uppercase" }}>Admin Console</div>
         </div>

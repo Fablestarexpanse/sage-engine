@@ -26,7 +26,7 @@ from mcp.server.fastmcp import FastMCP
 mcp = FastMCP(
     "WorldForge",
     instructions="""
-WorldForge map-building tools for Fablestar MUD.
+WorldForge map-building tools for SAGE worlds.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 THE FUNDAMENTAL MUD MAP RULE

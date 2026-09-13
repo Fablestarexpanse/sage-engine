@@ -301,7 +301,7 @@ function ZoneEditorInner({
   const pushConnectionDebug = useCallback((kind, detail) => {
     if (!connectionDebugLog) return;
     const row = { t: new Date().toISOString(), kind, detail };
-    console.info("[Fablestar WorldForger connection]", kind, detail);
+    console.info("[SAGE WorldForge connection]", kind, detail);
     connectionDebugLinesRef.current = [row, ...connectionDebugLinesRef.current].slice(0, 80);
     setConnectionDebugLines([...connectionDebugLinesRef.current]);
   }, [connectionDebugLog]);
@@ -1968,7 +1968,7 @@ function ZoneEditorInner({
             background: connectionDebugLog ? `${COLORS.info}33` : COLORS.bgCard,
             borderColor: connectionDebugLog ? COLORS.info : COLORS.border,
           }}
-          title="Log each door-drag to the console ([Fablestar WorldForger connection]) and to the panel on the map. Also in Settings."
+          title="Log each door-drag to the console ([SAGE WorldForge connection]) and to the panel on the map. Also in Settings."
           onClick={() => setConnectionDebugLog(!connectionDebugLog)}
         >
           Conn debug

@@ -8,10 +8,10 @@ import {
   playMediaUrl,
 } from "../playApi.js";
 
-const LS_PORTRAIT_BACKDROP_ON = "fablestar_narrative_portrait_backdrop_on";
-const LS_PORTRAIT_BACKDROP_OPACITY = "fablestar_narrative_portrait_backdrop_opacity";
-const LS_PORTRAIT_BACKDROP_SCALE = "fablestar_narrative_portrait_backdrop_scale";
-const LS_PORTRAIT_BACKDROP_X_OFFSET = "fablestar_narrative_portrait_backdrop_x_offset";
+const LS_PORTRAIT_BACKDROP_ON = "sage_narrative_portrait_backdrop_on";
+const LS_PORTRAIT_BACKDROP_OPACITY = "sage_narrative_portrait_backdrop_opacity";
+const LS_PORTRAIT_BACKDROP_SCALE = "sage_narrative_portrait_backdrop_scale";
+const LS_PORTRAIT_BACKDROP_X_OFFSET = "sage_narrative_portrait_backdrop_x_offset";
 
 function readPortraitBackdropOnFromLs() {
   try {
@@ -705,7 +705,7 @@ function SceneArtModal({ onClose, lines, sceneGen }) {
         {busyS ? (
           <p role="status" style={{ fontSize: 11, color: T.text.accent, margin: "0 0 8px", display: "flex", alignItems: "center", gap: 8 }}>
             <span
-              className="fablestar-portrait-spin"
+              className="sage-portrait-spin"
               style={{
                 width: 14,
                 height: 14,
@@ -1359,7 +1359,7 @@ export function CommandInput({ onSubmitCommand }) {
   const [histIdx, setHistIdx] = useState(-1);
   const [suggestions, setSuggestions] = useState([]);
   const inputRef = useRef(null);
-  // Mirrors the server's command registry (fablestar/commands); keep in sync when adding commands.
+  // Mirrors the server's command registry (engine/src/sage/commands); keep in sync when adding commands.
   const CMDS = ["achievements","attack","bonus","browse","buy","cap","craft","deconstruct","down","drop","east","effects","emote","equip","examine","factions","flee","help","inventory","lock","look","lower","map","missions","north","northeast","northwest","prof","quit","raise","recipes","rent","rest","say","score","search","sell","south","southeast","southwest","take","tell","unequip","up","use","wallet","west","who"];
   const handleKey = (e) => {
     if (e.key === "Enter" && value.trim()) {

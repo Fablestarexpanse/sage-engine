@@ -2,7 +2,7 @@ from logging.config import fileConfig
 from sqlalchemy import pool
 from alembic import context
 
-# Fablestar internal imports
+# SAGE engine imports
 from sage.state.postgres import Base
 from sage.state.models import Account, Character # Ensure models are imported for metadata
 from sage.core.config import load_config
@@ -28,7 +28,7 @@ target_metadata = Base.metadata
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode."""
-    # Load URL from Fablestar config
+    # Load URL from SAGE config
     fs_config = load_config()
     password_part = f":{fs_config.database.password}" if fs_config.database.password else ""
     url = f"postgresql+asyncpg://{fs_config.database.user}{password_part}@{fs_config.database.host}:{fs_config.database.port}/{fs_config.database.database}"
@@ -49,7 +49,7 @@ def run_migrations_online() -> None:
     import asyncio
     from sqlalchemy.ext.asyncio import create_async_engine
 
-    # Load URL from Fablestar config
+    # Load URL from SAGE config
     fs_config = load_config()
     password_part = f":{fs_config.database.password}" if fs_config.database.password else ""
     url = f"postgresql+asyncpg://{fs_config.database.user}{password_part}@{fs_config.database.host}:{fs_config.database.port}/{fs_config.database.database}"

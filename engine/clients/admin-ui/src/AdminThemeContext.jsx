@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { ADMIN_THEMES } from "./adminTheme.js";
 
-const LS_KEY = "fablestar_admin_ui_theme";
+const LS_KEY = "sage_admin_ui_theme";
 
 const Ctx = createContext(null);
 

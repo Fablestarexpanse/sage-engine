@@ -95,10 +95,10 @@ jobs:
     env:
       # Throwaway service-container credentials, not secrets.
       SAGE_LIVE_TESTS: "1"
-      FABLESTAR_DATABASE__HOST: localhost
-      FABLESTAR_DATABASE__USER: sage
-      FABLESTAR_DATABASE__PASSWORD: sage-ci
-      FABLESTAR_REDIS__HOST: localhost
+      SAGE_DATABASE__HOST: localhost
+      SAGE_DATABASE__USER: sage
+      SAGE_DATABASE__PASSWORD: sage-ci
+      SAGE_REDIS__HOST: localhost
     steps:
       - uses: actions/checkout@v4
 

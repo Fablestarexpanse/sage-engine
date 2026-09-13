@@ -51,8 +51,8 @@ def live_db_name() -> str:
 @pytest.fixture(scope="session")
 def live_config(live_db_name: str) -> Iterator[Config]:
     overrides = {
-        "FABLESTAR_DATABASE__DATABASE": live_db_name,
-        "FABLESTAR_REDIS__DB": str(LIVE_REDIS_DB),
+        "SAGE_DATABASE__DATABASE": live_db_name,
+        "SAGE_REDIS__DB": str(LIVE_REDIS_DB),
     }
     previous = {key: os.environ.get(key) for key in overrides}
     os.environ.update(overrides)

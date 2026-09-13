@@ -1,6 +1,6 @@
 # WorldForge
 
-Tauri desktop map editor for Fablestar zones — visual room graph with exits,
+Tauri desktop map editor for SAGE world zones — visual room graph with exits,
 floors, stamps (reusable room groups), groups/notes, and editors for entities,
 items, glyphs, ships, and the galaxy map. Writes YAML directly into
 `content/world/`; the running server hot-reloads the changes.

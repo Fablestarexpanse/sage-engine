@@ -158,7 +158,7 @@ export default function Sidebar({
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
             <path d="M12 2L22 8v8L12 22 2 16V8L12 2z" stroke={COLORS.accent} strokeWidth="1.5" fill={`${COLORS.accent}22`} />
           </svg>
-          <span style={{ fontWeight: 700, fontSize: 15, color: COLORS.text, fontFamily: "'Space Grotesk', sans-serif" }}>Fablestar WorldForger</span>
+          <span style={{ fontWeight: 700, fontSize: 15, color: COLORS.text, fontFamily: "'Space Grotesk', sans-serif" }}>SAGE WorldForge</span>
         </div>
         {worldRoot ? (
           <div style={{ marginBottom: 6 }}>

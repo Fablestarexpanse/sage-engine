@@ -71,7 +71,7 @@ class NexusApp:
 
     def __init__(self, server: SageServer):
         self.server = server
-        self.app = FastAPI(title="Fablestar Nexus API")
+        self.app = FastAPI(title="SAGE Nexus API")
         self._active_sockets: list[WebSocket] = []
         self._admin_ws_sockets: list[WebSocket] = []
         self._admin_presence: dict[str, dict[str, Any]] = {}

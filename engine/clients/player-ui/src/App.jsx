@@ -19,7 +19,7 @@ import {
   getPlayToken,
 } from "./playApi.js";
 import { ChargenProficienciesStep } from "./ChargenProficienciesStep.jsx";
-import FablestarClient from "./mud/FablestarClient.jsx";
+import PlayClient from "./mud/PlayClient.jsx";
 import { GmBadge } from "./GmBadge.jsx";
 import { DEFAULT_NARRATIVE } from "./mud/03-narrative.jsx";
 import { PORTRAIT_ASPECT_RATIO_CSS } from "./portraitProfile.js";
@@ -789,7 +789,7 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
   const thumb = (c) =>
     c.portrait_url ? (
       <div
-        className="fablestar-portrait-stage"
+        className="sage-portrait-stage"
         style={{
           width: 44,
           aspectRatio: PORTRAIT_ASPECT_RATIO_CSS,
@@ -799,11 +799,11 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
           flexShrink: 0,
         }}
       >
-        <div className="fablestar-portrait-aurora fablestar-portrait-aurora--thumb" aria-hidden />
+        <div className="sage-portrait-aurora sage-portrait-aurora--thumb" aria-hidden />
         <img
           src={playMediaUrl(c.portrait_url)}
           alt=""
-          className="fablestar-portrait-cutout fablestar-portrait-cutout--thumb"
+          className="sage-portrait-cutout sage-portrait-cutout--thumb"
           style={{
             position: "relative",
             width: "100%",
@@ -871,7 +871,7 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
       const next = res.characters || [];
       if (next.some((x) => x.id === c.id)) {
         setDeleteErr(
-          "The server did not remove this character. Restart Nexus from the current project (python -m fablestar) so character delete is supported."
+          "The server did not remove this character. Restart Nexus from the current project (python -m sage) so character delete is supported."
         );
         return;
       }
@@ -1185,7 +1185,7 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
             Close
           </button>
           <div
-            className="fablestar-portrait-stage"
+            className="sage-portrait-stage"
             onMouseDown={(e) => e.stopPropagation()}
             style={{
               position: "relative",
@@ -1197,11 +1197,11 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
               boxShadow: `0 0 0 1px rgba(0,0,0,0.4), ${T.shadow.glow}`,
             }}
           >
-            <div className="fablestar-portrait-aurora fablestar-portrait-aurora--lightbox" aria-hidden />
+            <div className="sage-portrait-aurora sage-portrait-aurora--lightbox" aria-hidden />
             <img
               src={playMediaUrl(pendingPortraitUrl, portraitPreviewBust)}
               alt="Portrait full size"
-              className="fablestar-portrait-cutout fablestar-portrait-cutout--lightbox"
+              className="sage-portrait-cutout sage-portrait-cutout--lightbox"
               style={{
                 position: "relative",
                 display: "block",
@@ -1444,7 +1444,7 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
               </div>
               <div
                 className={
-                  !portraitGenerating && pendingPortraitUrl ? "fablestar-portrait-stage" : undefined
+                  !portraitGenerating && pendingPortraitUrl ? "sage-portrait-stage" : undefined
                 }
                 style={{
                   flex: "0 0 auto",
@@ -1481,7 +1481,7 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
                     }}
                   >
                     <div
-                      className="fablestar-portrait-spin"
+                      className="sage-portrait-spin"
                       style={{
                         width: 44,
                         height: 44,
@@ -1509,7 +1509,7 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
                   </div>
                 ) : pendingPortraitUrl ? (
                   <>
-                    <div className="fablestar-portrait-aurora fablestar-portrait-aurora--thumb" aria-hidden />
+                    <div className="sage-portrait-aurora sage-portrait-aurora--thumb" aria-hidden />
                     <button
                       type="button"
                       key={portraitPreviewBust}
@@ -1531,7 +1531,7 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
                       <img
                         src={playMediaUrl(pendingPortraitUrl, portraitPreviewBust)}
                         alt="Portrait preview"
-                        className="fablestar-portrait-cutout fablestar-portrait-cutout--thumb"
+                        className="sage-portrait-cutout sage-portrait-cutout--thumb"
                         style={{
                           width: "100%",
                           height: "100%",
@@ -1924,7 +1924,7 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
             </div>
             {selectedCharacter?.portrait_url ? (
               <div
-                className="fablestar-portrait-stage"
+                className="sage-portrait-stage"
                 style={{
                   width: "100%",
                   aspectRatio: PORTRAIT_ASPECT_RATIO_CSS,
@@ -1933,11 +1933,11 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
                   overflow: "hidden",
                 }}
               >
-                <div className="fablestar-portrait-aurora fablestar-portrait-aurora--thumb" aria-hidden />
+                <div className="sage-portrait-aurora sage-portrait-aurora--thumb" aria-hidden />
                 <img
                   src={playMediaUrl(selectedCharacter.portrait_url)}
                   alt={selectedCharacter.name ? `Portrait: ${selectedCharacter.name}` : "Character portrait"}
-                  className="fablestar-portrait-cutout fablestar-portrait-cutout--hero"
+                  className="sage-portrait-cutout sage-portrait-cutout--hero"
                   style={{
                     position: "relative",
                     width: "100%",
@@ -2434,7 +2434,7 @@ export default function App() {
 
     return (
       <div style={appShell}>
-        <FablestarClient
+        <PlayClient
           sceneGenerating={sceneGenerating}
           session={{
             username: playSession.username,

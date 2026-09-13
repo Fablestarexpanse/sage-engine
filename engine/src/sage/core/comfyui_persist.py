@@ -12,7 +12,7 @@ from sage.core.toml_persist import toml_str as _toml_str
 def save_comfyui_toml(cfg: ComfyUIConfig, path: Path | None = None) -> Path:
     target = path or Path("config/comfyui.toml")
     lines = [
-        "# Auto-written by Fablestar Nexus (admin UI). Safe to edit by hand.",
+        "# Auto-written by SAGE Nexus (admin UI). Safe to edit by hand.",
         f"enabled = {str(cfg.enabled).lower()}",
         f"base_url = {_toml_str(cfg.base_url)}",
         "",

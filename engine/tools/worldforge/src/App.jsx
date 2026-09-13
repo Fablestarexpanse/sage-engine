@@ -30,9 +30,9 @@ function Welcome({ onOpen }) {
         padding: 32,
       }}
     >
-      <h1 style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 28, marginBottom: 8 }}>Fablestar WorldForger</h1>
+      <h1 style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 28, marginBottom: 8 }}>SAGE WorldForge</h1>
       <p style={{ color: COLORS.textMuted, marginBottom: 24, textAlign: "center", maxWidth: 420 }}>
-        Dedicated world builder for Fablestar. Opens your repository&apos;s <code style={{ color: COLORS.accent }}>content/world</code> directly.
+        Dedicated world builder for SAGE worlds. Opens your repository&apos;s <code style={{ color: COLORS.accent }}>content/world</code> directly.
       </p>
       <button
         type="button"
@@ -48,10 +48,10 @@ function Welcome({ onOpen }) {
           cursor: "pointer",
         }}
       >
-        Open Fablestar folder
+        Open world folder
       </button>
       <p style={{ marginTop: 20, fontSize: 12, color: COLORS.textDim, textAlign: "center" }}>
-        Choose the root of your FablestarExpanseMUD repository (the folder that contains <code>content</code>).
+        Choose your project folder (the one that contains <code>content</code>).
       </p>
     </div>
   );

@@ -30,7 +30,7 @@ API_WORKFLOW = {
 @pytest.fixture
 def root(tmp_path, monkeypatch):
     (tmp_path / "config").mkdir()
-    monkeypatch.setenv("FABLESTAR_PROJECT_ROOT", str(tmp_path))
+    monkeypatch.setenv("SAGE_PROJECT_ROOT", str(tmp_path))
     return tmp_path
 
 

@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { PLAY_THEMES } from "./theme.js";
 
-const LS_KEY = "fablestar_player_ui_theme";
+const LS_KEY = "sage_player_ui_theme";
 
 const Ctx = createContext(null);
 

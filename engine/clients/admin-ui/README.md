@@ -1,4 +1,4 @@
-# Fablestar Admin Console
+# SAGE Nexus Admin Console
 
 React (Vite) admin console for the Nexus server — dashboard, Content Library
 (zones/rooms/entities/items/glyphs), World Builder graph editor, AI Forge,

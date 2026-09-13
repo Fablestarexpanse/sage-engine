@@ -1,1 +1,1 @@
-"""Fablestar MUD engine — server package root."""
+"""SAGE - Synthetic Agent Game Engine: server package root."""

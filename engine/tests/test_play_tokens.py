@@ -20,7 +20,9 @@ def _server(secret: str = "unit-test-secret-0123456789abcdef0123456789abcdef") -
 
 class TestPlayTokens(unittest.TestCase):
     def setUp(self) -> None:
-        patcher = mock.patch.dict("os.environ", {"FABLESTAR_ADMIN_JWT_SECRET": ""})
+        patcher = mock.patch.dict(
+            "os.environ", {"SAGE_ADMIN_JWT_SECRET": "", "FABLESTAR_ADMIN_JWT_SECRET": ""}
+        )
         patcher.start()
         self.addCleanup(patcher.stop)
         self.server = _server()

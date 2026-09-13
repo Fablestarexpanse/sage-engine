@@ -71,7 +71,7 @@ def _snapshot_from_orm(character: Any) -> _CharSnapshot:
 
 class SageServer:
     """
-    Main orchestration class for the Fablestar MUD Platform.
+    Main orchestration class for the SAGE engine.
     Ties together core systems and manages the server lifecycle.
     """
 
@@ -298,7 +298,7 @@ class SageServer:
 
     async def startup(self):
         """Initialize and start all sub-systems."""
-        logger.info("Fablestar MUD Platform starting up...")
+        logger.info("SAGE engine starting up...")
 
         # 0. State stores — Redis must be ready before EntitySpawnManager and PersistenceManager
         await self.redis.connect()
@@ -346,7 +346,7 @@ class SageServer:
 
     async def shutdown(self):
         """Gracefully stop all sub-systems."""
-        logger.info("Fablestar MUD Platform shutting down...")
+        logger.info("SAGE engine shutting down...")
 
         self.hot_reloader.stop()
         self.tick_manager.stop()

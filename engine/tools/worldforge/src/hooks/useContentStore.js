@@ -278,7 +278,7 @@ async function loadYamlDir(worldRoot, subdir) {
 /**
  * Resolve the actual world root from whatever folder the user picked.
  * Tries several common layouts so it doesn't matter which level they click:
- *   picked/content/world/zones  → project root  (FableStarExpanseMUD/)
+ *   picked/content/world/zones  → project root
  *   picked/world/zones          → content root   (content/)
  *   picked/zones                → world root     (content/world/)
  * Returns null if none found.
