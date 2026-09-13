@@ -336,6 +336,11 @@ class SageServer:
         # 0. State stores — Redis must be ready before EntitySpawnManager and PersistenceManager
         await self.redis.connect()
 
+        # 0b. The world's plugins are validated first, and the database must already carry every
+        #     core and plugin migration (contracts C.3 step 4: never auto-migrate on boot).
+        plugin_records = self.plugins.discover()
+        await self._require_migrated(plugin_records)
+
         # 0a. Bootstrap dev accounts (requires Postgres; best-effort, never fatal)
         await ensure_dev_defaults(self.db, self.config)
 
@@ -357,7 +362,7 @@ class SageServer:
         registry.load_module_strict("sage.commands.admin")
 
         # 1b. The world's plugins, after engine commands so verb conflicts are caught.
-        self.plugins.load()
+        self.plugins.load(plugin_records)
         self.lexicon = self._build_lexicon()
 
         # 2. Tick handlers — must be registered before the tick loop starts in step 4
@@ -744,6 +749,29 @@ class SageServer:
                 except Exception:
                     logger.debug("Room-set cleanup failed for %s", session.player_id, exc_info=True)
             await self.session_manager.destroy_session(session.id)
+
+    async def _require_migrated(self, plugin_records) -> None:
+        from sage.plugins.migrations import (
+            alembic_config,
+            pending_heads_async,
+            unexpected_tables_async,
+        )
+        from sage.state.postgres import Base
+
+        cfg = alembic_config([r.path for r in plugin_records])
+        pending = await pending_heads_async(cfg, self.db.url)
+        if pending:
+            raise RuntimeError(
+                f"Database {self.config.database.database!r} is missing migrations "
+                f"(unapplied heads: {', '.join(pending)}). Run: python -m sage db upgrade"
+            )
+        strays = await unexpected_tables_async(
+            self.db.url, Base.metadata.tables.keys(), [r.id for r in plugin_records]
+        )
+        if strays:
+            logger.warning(
+                "Tables owned by neither the engine nor an enabled plugin: %s", ", ".join(strays)
+            )
 
     def _define_engine_resolvers(self) -> None:
         """Engine resolver slots and their defaults (contracts catalog #4)."""

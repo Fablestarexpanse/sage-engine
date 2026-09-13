@@ -282,7 +282,7 @@ Environment overrides: `SAGE_` prefix, double-underscore nesting, e.g. `SAGE_SER
 docker compose up -d redis postgres
 
 # 2. Run migrations
-python -m alembic -c engine/alembic.ini upgrade head
+python -m sage db upgrade
 
 # 3. (Optional) Bootstrap head admin
 python engine/scripts/bootstrap_admin.py --username admin --password 'your-password'
@@ -330,11 +330,11 @@ Zone write permissions are controlled by `AdminStaff.permissions.zones` — `["*
 
 ## Database migrations
 
-Alembic manages schema: `engine/alembic/versions/`. After changing SQLAlchemy models in `state/models.py`:
+Alembic manages schema: `engine/alembic/versions/`. The core chain is labelled `sage_core`; plugins with tables ship their own branch (`plg_<id>`, tables `plg_<id>_*`) in `<plugin>/migrations/versions/`. The server refuses to start while any core or enabled-plugin migration is unapplied — run `python -m sage db upgrade` (or `db status` to list them). `python -m sage plugin uninstall <id> [--purge-state]` drops a plugin's tables, optionally its character state, and its `world.toml` entry. After changing SQLAlchemy models in `state/models.py`:
 
 ```bash
-python -m alembic -c engine/alembic.ini revision --autogenerate -m "describe change"
-python -m alembic -c engine/alembic.ini upgrade head
+python -m alembic -c engine/alembic.ini revision --autogenerate -m "describe change"   # core schema only
+python -m sage db upgrade
 ```
 
 ---

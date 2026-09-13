@@ -40,8 +40,12 @@ class PluginHost:
     state_owners: dict[str, str] = field(default_factory=dict)
     loaded: list[PluginRecord] = field(default_factory=list)
 
-    def load(self) -> list[PluginRecord]:
-        for record in discover(self.world, self.plugins_root, self.trusted_roots):
+    def discover(self) -> list[PluginRecord]:
+        """Validated, dependency-ordered records for the world's enabled plugins (no imports)."""
+        return discover(self.world, self.plugins_root, self.trusted_roots)
+
+    def load(self, records: list[PluginRecord] | None = None) -> list[PluginRecord]:
+        for record in records if records is not None else self.discover():
             trust_banner(record)
             record.lexicon = load_lexicon_layer(record)
             api = PluginAPI(self, record)

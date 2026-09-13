@@ -35,9 +35,9 @@ agents-embedded = ["llama-cpp-python>=0.3.0"]
 dev = ["ruff==0.12.7", "pytest==9.0.3"]
 
 [project.scripts]
-sage = "sage.__main__:main"
+sage = "sage.cli:run"
 # Deprecated alias for one release (docs/sage/PHASE1_CONTRACTS.md F.1).
-fablestar = "sage.__main__:main"
+fablestar = "sage.cli:run"
 
 [tool.setuptools.package-data]
 sage = ["lexicon/*.yaml"]
