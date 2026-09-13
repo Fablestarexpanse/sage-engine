@@ -29,8 +29,7 @@ scrolled up and follows when at bottom, focus stays on the input.
 
 ## Follow-ups (not done)
 
-- **Narrow screens:** at 390px wide the three-column play layout squeezes (Conduit panel clipped, scene column
-  a sliver). No horizontal page scroll, but it isn't a usable phone layout. Needs a design decision.
+- ~~Narrow screens~~ — owner ruling 2026-09-13: phones are not a supported target; tablets are. Tablet (768x1024) checked: all panels visible, no horizontal scroll, top bar a little crowded.
 - Death / respawn path still untested by QA.
 - Chargen float/bool starter allocation still untested.
 - Tab completion list is static; drifts when commands are added (a server-provided list would fix that).
