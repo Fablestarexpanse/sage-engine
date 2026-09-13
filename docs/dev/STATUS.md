@@ -112,8 +112,19 @@ Test suites: server **150** pytest, WorldForge **34** vitest — all green.
       per-shop transaction ledger (Redis capped list written by buy/sell)
       with sold/bought totals. shop.owner links a persona id; Meri owns
       the general store, Aldo the pawn shop
-- [ ] E3b: faction missions as agent work (accept/progress via player
-      commands; purpose need satisfied by completion)
+- [x] E3b: faction missions as agent work — missions pay Digi now
+      (FactionModel.mission_pay; dockworkers 15, salvage union 10); life
+      goals: purpose > 0.8 with no contract → `missions accept`, active
+      kill contract → walk to the target's spawn room (fight reflex + the
+      combat mission hook finish it), active collect contract → walk to a
+      room whose search profiles yield the item and search, deliver when
+      carrying enough. Keeper tills: sales pay into the owner-agent's
+      wallet, buy-backs draw from it (floored at 0, skipped for
+      self-trades). Verified live: Brant and Old Pell both took
+      dockworker kill contracts and marched on the drone gulch; Juno
+      completed a mission and banked the pay
+- [ ] Owner call still open: proficiency depth gate (XP flat until then) —
+      docs/design/AGENT_LIFE_ROADMAP.md item 9
 
 ### worldforge-mcp gaps found building Tidegate Isle
 - [ ] create_room(from_room, from_dir) positions the room but does NOT create

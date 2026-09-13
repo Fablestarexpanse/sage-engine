@@ -52,6 +52,28 @@ async def _ledger(room_id: str, kind: str, actor: str, item: str, price: int) ->
         logger.debug("shop ledger skipped", exc_info=True)
 
 
+async def _keeper_till(shop, actor: str, delta: int) -> None:
+    """Move shop money through the keeper's own wallet when an agent owns it.
+
+    delta > 0: the shop took money in (a sale); delta < 0: it paid out.
+    Payouts floor at zero — the house covers a broke keeper rather than
+    blocking trade. Skipped when the keeper trades at their own counter.
+    """
+    from fablestar.app import app_instance
+
+    if not getattr(shop, "owner", ""):
+        return
+    try:
+        persona = app_instance.content_loader.get_agent_registry().get(shop.owner)
+        if persona is None or persona.name == actor:
+            return
+        stats = await app_instance.redis.get_player_stats(persona.name)
+        stats["digi"] = max(0, int(stats.get("digi", 0) or 0) + delta)
+        await app_instance.redis.set_player_stats(persona.name, stats)
+    except Exception:
+        logger.debug("keeper till skipped", exc_info=True)
+
+
 async def _record_trade(stats, kind: str) -> list:
     from fablestar.app import app_instance
 
@@ -149,6 +171,7 @@ async def buy(session: Session, args: list[str]):
     await app_instance.redis.set_player_stats(player_id, stats)
     await app_instance.redis.set_player_inventory(player_id, inv)
     await _ledger(shop_room_id, "sale", player_id, template.name, entry.price)
+    await _keeper_till(shop, player_id, entry.price)
     await session.send(
         f"You buy the {template.name} for {entry.price} Digi ({stats['digi']} left)."
     )
@@ -212,6 +235,7 @@ async def sell(session: Session, args: list[str]):
         sold_names.append(it.get("name", template.id))
         await _record_trade(stats, "sales")
         await _ledger(shop_room_id, "purchase", player_id, it.get("name", template.id), price)
+        await _keeper_till(shop, player_id, -price)
 
     stats["digi"] = _wallet(stats) + total
     await app_instance.redis.set_player_stats(player_id, stats)

@@ -6,3 +6,4 @@ enemies: [scrap_drone]
 enemy_kill_rep: 4
 mission_rep: 12
 tags: [docks, labour]
+mission_pay: 15

@@ -115,7 +115,14 @@ def _complete(
     messages = [f"Mission complete: {describe_mission(mission, registry)}"]
     if faction is not None:
         crossing = adjust_rep(stats, faction, faction.mission_rep)
-        messages.append(f"{faction.name} credits your account ({faction.mission_rep:+d} rep).")
+        pay = int(getattr(faction, "mission_pay", 0) or 0)
+        if pay > 0:
+            stats["digi"] = int(stats.get("digi", 0) or 0) + pay
+            messages.append(
+                f"{faction.name} credits your account ({faction.mission_rep:+d} rep, +{pay} Digi)."
+            )
+        else:
+            messages.append(f"{faction.name} credits your account ({faction.mission_rep:+d} rep).")
         if crossing:
             messages.append(crossing)
     return messages

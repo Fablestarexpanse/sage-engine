@@ -438,7 +438,7 @@ class AgentManager:
         # starving -> buy food; homeless + flush -> rent a room; exhausted
         # with a home -> go sleep in it; evenings pull the warm toward the pub.
         if not ctx.hostiles and not state.goal_commands and time.time() >= state.next_life_goal_at:
-            life = self._life_goal(state, stats, room_id, ctx)
+            life = self._life_goal(state, stats, room_id, ctx, inventory)
             if life is not None:
                 state.next_life_goal_at = time.time() + 120.0
                 state.goal_label, state.goal_commands = life
@@ -518,9 +518,10 @@ class AgentManager:
         zone = state.persona.spawn_zone()
         return sorted(r.split(":")[-1] for r in self._exits_map(zone))
 
-    def _life_goal(self, state: AgentState, stats: dict[str, Any], room_id: str, ctx):
+    def _life_goal(self, state: AgentState, stats: dict[str, Any], room_id: str, ctx, inventory):
         """Deterministic needs-driven goals. Returns (label, commands) or None."""
         from fablestar.agents.body import route_path
+        from fablestar.factions.missions import active_mission
         from fablestar.world.clock import day_phase
 
         zone = state.persona.spawn_zone()
@@ -536,6 +537,39 @@ class AgentManager:
                 path = route_path(room_id, seller, exits_of)
                 if path is not None:
                     return ("buy food (starving)", [*path, "buy ration"])
+
+        # Work: progress the active faction contract, or take one when the
+        # purpose need bites. Rewards pay Digi, which feeds everything else.
+        mission = active_mission(stats)
+        if mission:
+            target = str(mission.get("target", ""))
+            if mission.get("kind") == "collect":
+                have = sum(1 for it in inventory if it.get("template") == target)
+                if have >= int(mission.get("count", 0)):
+                    return (f"deliver {target}", ["missions complete"])
+                spot = self._search_room_finder(zone)(target)
+                if spot:
+                    path = route_path(room_id, spot, exits_of)
+                    if path is not None:
+                        return (f"gather {target}", [*path, "search"])
+            elif mission.get("kind") == "kill":
+                hunt_room = self._entity_room_finder(zone)(target.lower())
+                if hunt_room and hunt_room != room_id:
+                    path = route_path(room_id, hunt_room, exits_of)
+                    if path:
+                        # Arriving is enough — the fight reflex and the
+                        # mission kill hook do the rest.
+                        return (f"hunt {target} (contract)", path)
+        elif float(needs.get("purpose", 0)) > 0.8:
+            from fablestar.factions.missions import will_deal
+
+            registry = self.server.content_loader.get_faction_registry()
+            faction = next(
+                (f for f in registry.all() if f.offers_missions() and will_deal(stats, f)),
+                None,
+            )
+            if faction is not None:
+                return (f"take work: {faction.name}", [f"missions accept {faction.id}"])
 
         # Homeless with savings: rent a room above the AIpub.
         if not home and digi >= 40:
@@ -561,6 +595,21 @@ class AgentManager:
             if path is not None:
                 return ("evening at the AIpub", path)
         return None
+
+    def _search_room_finder(self, zone: str):
+        """item template -> a room whose search profiles can yield it."""
+
+        def find(template_id: str) -> str | None:
+            for room_id in self._exits_map(zone):
+                room = self.server.content_loader.get_room(room_id)
+                if room is None:
+                    continue
+                for feature in room.features:
+                    if feature.search and template_id in feature.search.items:
+                        return room_id
+            return None
+
+        return find
 
     def _shop_finder(self, zone: str, *, buying: bool):
         """buying=True: () -> a room whose shop buys. buying=False: (item substring)
