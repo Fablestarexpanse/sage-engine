@@ -151,9 +151,8 @@ def build_agents_router(server: "FablestarServer") -> APIRouter:
         }
         most_used = max(used, key=used.get) if used else None
         try:
-            levels = total_proficiency_levels(
-                stats, registry=server.content_loader.get_proficiency_registry()
-            )
+            # No registry: count branch fundamentals too, not just leaves.
+            levels = total_proficiency_levels(stats)
         except Exception:
             levels = 0
         return {

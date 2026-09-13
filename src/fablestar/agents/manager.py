@@ -252,9 +252,7 @@ class AgentManager:
 
             counters = stats.get("counters") if isinstance(stats.get("counters"), dict) else {}
             try:
-                levels = total_proficiency_levels(
-                    stats, registry=self.server.content_loader.get_proficiency_registry()
-                )
+                levels = total_proficiency_levels(stats)
             except Exception:
                 levels = 0
             log = stats.get(self.PROGRESS_KEY)

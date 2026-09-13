@@ -123,8 +123,14 @@ Test suites: server **150** pytest, WorldForge **34** vitest — all green.
       self-trades). Verified live: Brant and Old Pell both took
       dockworker kill contracts and marched on the drone gulch; Juno
       completed a mission and banked the pay
-- [ ] Owner call still open: proficiency depth gate (XP flat until then) —
-      docs/design/AGENT_LIFE_ROADMAP.md item 9
+- [x] Depth-gate bootstrap (owner said continue; smallest-change option):
+      a field gain blocked by the branch-investment gate now trains the
+      deepest ungated ANCESTOR instead — combat rises to 10, opening
+      combat.melee, which rises to 15, opening the leaves; fundamentals
+      never train past the next gate. Investment rule preserved; agent
+      Levels metric counts branch levels so bootstrap progress shows.
+      Verified live: Aldo Vex earned the world's first level (traversal 1)
+      by walking his errands. Revisit if you want option (b)/(c) instead
 
 ### worldforge-mcp gaps found building Tidegate Isle
 - [ ] create_room(from_room, from_dir) positions the room but does NOT create

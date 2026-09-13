@@ -84,12 +84,14 @@ class TestEngine(unittest.TestCase):
         prof["combat"] = {"level": 10, "state": "raise", "peak": 10}
         prof["combat.melee"] = {"level": 14, "state": "raise", "peak": 14}
         prof["combat.melee.blades"] = {"level": 0, "state": "raise", "peak": 0}
+        # Gated attempt trains the branch instead of dead-ending (2026-09-12).
         r = self.engine.try_field_gain(stats, "combat.melee.blades", field_success=True)
-        self.assertFalse(r.ok)
-        self.assertEqual(r.message, "depth_gate")
-        prof["combat.melee"]["level"] = 15
+        self.assertTrue(r.ok)
+        self.assertEqual(r.message, "parent_gained")
+        self.assertEqual(prof["combat.melee"]["level"], 15)
         r2 = self.engine.try_field_gain(stats, "combat.melee.blades", field_success=True)
         self.assertTrue(r2.ok)
+        self.assertEqual(r2.message, "gained")
 
     def test_decay_floor(self) -> None:
         stats = ensure_proficiency_block({})
@@ -150,3 +152,42 @@ class TestCharacterHelpers(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestFieldGainGateBootstrap(unittest.TestCase):
+    """Gated leaf attempts train the ancestor chain until each gate opens."""
+
+    def setUp(self) -> None:
+        reg = ProficiencyRegistry(leaf_definitions_from_builtin_rows())
+        self.engine = ProficiencyEngine(reg)
+        self.stats: dict = {}
+        ensure_proficiency_block(self.stats)
+
+    def _level(self, pid: str) -> int:
+        return int(self.stats["conduit"]["proficiencies"].get(pid, {}).get("level", 0))
+
+    def test_gated_leaf_trains_root_first(self) -> None:
+        res = self.engine.try_field_gain(self.stats, "combat.melee.blades", field_success=True)
+        self.assertTrue(res.ok)
+        self.assertEqual(res.message, "parent_gained")
+        self.assertEqual(self._level("combat"), 1)
+        self.assertEqual(self._level("combat.melee.blades"), 0)
+
+    def test_chain_opens_tier_by_tier(self) -> None:
+        # Root to 10 opens combat.melee; melee to 15 opens the leaf.
+        for _ in range(10):
+            self.engine.try_field_gain(self.stats, "combat.melee.blades", field_success=True)
+        self.assertEqual(self._level("combat"), 10)
+        for _ in range(15):
+            self.engine.try_field_gain(self.stats, "combat.melee.blades", field_success=True)
+        self.assertEqual(self._level("combat.melee"), 15)
+        res = self.engine.try_field_gain(self.stats, "combat.melee.blades", field_success=True)
+        self.assertTrue(res.ok)
+        self.assertEqual(res.message, "gained")
+        self.assertEqual(self._level("combat.melee.blades"), 1)
+
+    def test_parents_never_train_past_the_gate(self) -> None:
+        for _ in range(40):
+            self.engine.try_field_gain(self.stats, "combat.melee.blades", field_success=True)
+        self.assertEqual(self._level("combat"), 10)
+        self.assertEqual(self._level("combat.melee"), 15)

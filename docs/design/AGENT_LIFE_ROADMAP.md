@@ -85,7 +85,10 @@ Nobody — player or agent — can gain a proficiency leaf in the field:
 `try_field_gain` hits `depth_gate` because a tier-3 leaf needs its parent
 branch at 15, and no in-game path raises parent branches at all. 68 drone
 kills = 0 levels. The XP chart will stay flat until this is decided.
-**Owner decision needed:** either (a) parents auto-raise as the sum/max of
+**Resolved 2026-09-12** (owner said "continue"; smallest change shipped):
+gated field gains now train the deepest ungated ancestor, so fundamentals
+rise until each gate opens. Original options kept for the record —
+**Owner decision was:** either (a) parents auto-raise as the sum/max of
 their leaves, (b) waive the gate below some tier, or (c) ship the archive
 spending flow that raises branches. (a) is the smallest change that makes
 field play progress.
