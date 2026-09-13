@@ -14,7 +14,7 @@ import time
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
-from sage.llm.client import LLMClient, LLMGenerationError
+from sage.llm.client import LLMGenerationError
 
 if TYPE_CHECKING:
     from sage.agents.manager import AgentState
@@ -226,7 +226,6 @@ def compile_goal(
 class AgentBrain:
     def __init__(self, server: "SageServer"):
         self.server = server
-        self.llm = self._build_client(server.config.agents_llm)
         self._last_voice_at: dict[str, float] = {}
         self._answered_lines: dict[str, tuple[str, str]] = {}
         self._last_banter_at: dict[str, float] = {}
@@ -235,51 +234,13 @@ class AgentBrain:
         self._last_intent_at: dict[str, float] = {}
         self._intent_busy = False  # budget: one intent generation at a time
 
-    def _build_client(self, config):
-        if (config.primary_backend or "").lower().strip() == "embedded":
-            # Shared server instance: narration and agent brains use ONE
-            # loaded GGUF instead of two copies in RAM.
-            getter = getattr(self.server, "embedded_llm", None)
-            if callable(getter):
-                shared = getter()
-                shared.reconfigure(config)
-                return shared
-            from sage.agents.embedded_llm import EmbeddedLLM
-
-            return EmbeddedLLM(config)
-        return LLMClient(config)
-
-    def reconfigure(self, config) -> None:
-        """Apply new brain settings live (admin panel save)."""
-        self.server.config.agents_llm = config
-        current_embedded = type(self.llm).__name__ == "EmbeddedLLM"
-        want_embedded = (config.primary_backend or "").lower().strip() == "embedded"
-        if current_embedded != want_embedded:
-            self.llm = self._build_client(config)
-        elif want_embedded:
-            self.llm.reconfigure(config)
-        else:
-            self.llm.reconfigure(config)
-
-    def status(self) -> dict:
-        cfg = self.server.config.agents_llm
-        base = {
-            "enabled": bool(cfg.enabled),
-            "backend": cfg.primary_backend,
-            "chat_model": cfg.chat_model,
-            "lm_studio_url": cfg.lm_studio_url,
-            "ollama_url": cfg.ollama_url,
-            "model_path": cfg.model_path,
-            "temperature": cfg.temperature,
-            "timeout_seconds": cfg.timeout_seconds,
-        }
-        if hasattr(self.llm, "status"):
-            base["embedded"] = self.llm.status()
-        return base
+    @property
+    def llm(self):
+        return self.server.llm_profile.client
 
     @property
     def enabled(self) -> bool:
-        return bool(self.server.config.agents_llm.enabled)
+        return self.server.llm_profile.enabled
 
     def _pair_key(self, a: str, b: str) -> tuple[str, str]:
         return (a, b) if a <= b else (b, a)

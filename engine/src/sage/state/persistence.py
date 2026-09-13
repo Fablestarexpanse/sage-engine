@@ -22,6 +22,8 @@ class PersistenceManager:
     def __init__(self, server: "SageServer"):
         self.server = server
         self.flush_interval_ticks = 240  # Every 60 seconds at 4Hz
+        # Plugins persisting their own characters on the same cadence (api.persistence).
+        self.flush_hooks: list = []
 
     async def flush_all(self):
         """Perform a full synchronization of active world state/players."""
@@ -33,6 +35,11 @@ class PersistenceManager:
             agent_manager = getattr(self.server, "agent_manager", None)
             if agent_manager is not None:
                 await agent_manager.flush_all()
+            for hook in list(self.flush_hooks):
+                try:
+                    await hook()
+                except Exception:
+                    logger.exception("Persistence: flush hook %s failed", hook)
         except Exception:
             logger.exception("Persistence: flush_all failed; game loop continues")
             return

@@ -13,6 +13,7 @@ if TYPE_CHECKING:
 from sage.proficiencies.models import ConduitAttributes, ProficiencyStatsBlock
 
 CONDUIT_KEY = "conduit"
+ATTRIBUTES_KEY = "conduit_attributes"
 
 
 def _default_conduit_dict() -> dict[str, Any]:
@@ -25,11 +26,16 @@ def ensure_proficiency_block(stats: MutableMapping[str, Any]) -> MutableMapping[
         stats[CONDUIT_KEY] = _default_conduit_dict()
     block = stats[CONDUIT_KEY]
     block.setdefault("version", 1)
-    block.setdefault("conduit_attributes", ConduitAttributes().model_dump())
+    block.setdefault(ATTRIBUTES_KEY, ConduitAttributes().model_dump())
     block.setdefault("proficiencies", {})
     block.setdefault("archive_domain_spent", {})
     block.setdefault("combat_hybrid_legacy", True)
     return stats
+
+
+def proficiency_block(stats: MutableMapping[str, Any]) -> dict[str, Any]:
+    """The character's proficiency block, created with defaults when missing."""
+    return ensure_proficiency_block(stats)[CONDUIT_KEY]
 
 
 def migrate_legacy_stats(stats: dict[str, Any]) -> dict[str, Any]:
@@ -37,7 +43,7 @@ def migrate_legacy_stats(stats: dict[str, Any]) -> dict[str, Any]:
     out = deepcopy(stats)
     if any(k in out for k in ("strength", "dexterity", "intelligence", "perception")):
         ensure_proficiency_block(out)
-        ca = out[CONDUIT_KEY]["conduit_attributes"]
+        ca = proficiency_block(out)[ATTRIBUTES_KEY]
         s = int(out.get("strength", 10))
         d = int(out.get("dexterity", 10))
         i = int(out.get("intelligence", 10))
@@ -58,8 +64,7 @@ def total_proficiency_levels(
     registry: ProficiencyRegistry | None = None,
 ) -> int:
     """Sum levels for catalog leaves only (internal prefix nodes excluded unless listed)."""
-    ensure_proficiency_block(stats)
-    prof = stats[CONDUIT_KEY]["proficiencies"]
+    prof = proficiency_block(stats)["proficiencies"]
     if leaf_ids is None:
         if registry is not None:
             leaf_ids = list(registry.leaf_ids)
@@ -109,3 +114,42 @@ def combat_attack_defense_from_stats(
 
 def decay_floor_for_peak(peak: int) -> int:
     return math.floor(0.75 * float(peak))
+
+
+# Progression slot providers (sage.world.progression) while proficiencies are engine code.
+
+
+def seed_attributes(stats: dict[str, Any], attributes: dict[str, int]) -> None:
+    """progression.seed_attributes: a new character's attribute spread (unknown keys ignored)."""
+    attrs = proficiency_block(stats)[ATTRIBUTES_KEY]
+    for key, value in attributes.items():
+        if key in attrs:
+            attrs[key] = int(value)
+
+
+def total_levels(stats: dict[str, Any]) -> int:
+    """progression.total_levels: every proficiency level summed."""
+    try:
+        return int(total_proficiency_levels(stats))
+    except Exception:
+        return 0
+
+
+def skill_sheet(stats: dict[str, Any]) -> dict[str, Any]:
+    """progression.skill_sheet: attribute spread plus leaf levels, highest first."""
+    block = proficiency_block(deepcopy(stats))
+    profs = block["proficiencies"]
+    leaves = sorted(
+        (
+            {
+                "id": pid,
+                "level": int(p.get("level", 0)),
+                "peak": int(p.get("peak", 0)),
+                "state": p.get("state", ""),
+            }
+            for pid, p in profs.items()
+            if isinstance(p, dict)
+        ),
+        key=lambda r: (-r["level"], -r["peak"], r["id"]),
+    )
+    return {"attributes": block[ATTRIBUTES_KEY], "leaves": leaves}

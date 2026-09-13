@@ -43,6 +43,8 @@ class PluginHost:
     extensions: ContentExtensions = field(default_factory=ContentExtensions)
     services: dict[str, tuple[str, Any]] = field(default_factory=dict)
     state_owners: dict[str, str] = field(default_factory=dict)
+    # (owner, () -> names) — character names players may not take.
+    name_claims: list[tuple[str, Any]] = field(default_factory=list)
     loaded: list[PluginRecord] = field(default_factory=list)
 
     def discover(self) -> list[PluginRecord]:

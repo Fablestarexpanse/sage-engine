@@ -99,11 +99,18 @@ class PlayerService:
         self.server = server
 
     def _agent_names(self) -> set[str]:
+        """Names other systems own (automated characters), lowercased."""
+        names: set[str] = set()
         try:
-            return {p.name.lower() for p in self.server.content_loader.get_agent_registry().all()}
+            names |= {p.name.lower() for p in self.server.content_loader.get_agent_registry().all()}
         except Exception:
             logger.debug("agent registry unavailable for name check", exc_info=True)
-            return set()
+        for _owner, claim in getattr(getattr(self.server, "plugins", None), "name_claims", []):
+            try:
+                names |= {n.lower() for n in claim()}
+            except Exception:
+                logger.debug("name claim by %s failed", _owner, exc_info=True)
+        return names
 
     # ------------------------------------------------------------------
     # Shared response building

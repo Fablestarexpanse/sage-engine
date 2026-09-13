@@ -504,3 +504,85 @@ def test_plugin_redis_keys_stay_inside_declared_prefixes(tmp_path, host_for):
     write_plugin(reserved, "pokes", COUNTER, touches='redis_prefixes = ["player"]')
     with pytest.raises(PluginError, match="reserved for the engine"):
         read_manifest(reserved / "pokes")
+
+
+PUPPETEER = """
+from sage.api import PluginAPI, VirtualSession
+
+
+def setup(api: PluginAPI) -> None:
+    api.characters.claim_names(lambda: ["Puppet Pam"])
+
+    async def flush():
+        api.log.info("flushed")
+
+    api.persistence.on_flush(flush)
+
+    async def spawn(session, args):
+        pam = VirtualSession("Puppet Pam")
+        api.sessions.attach(pam)
+        await api.characters.place("Puppet Pam", {"hp": 5}, [], "town:gate")
+        stats = await api.characters.stats("Puppet Pam")
+        stats["hp"] = 4
+        await api.characters.save_stats("Puppet Pam", stats)
+        await api.sessions.dispatch(pam, "wave")
+
+    async def scribble(session, args):
+        await api.characters.save_stats("hero", {"hp": 0})
+
+    api.commands.register("spawn", spawn)
+    api.commands.register("scribble", scribble)
+"""
+
+
+def test_plugins_run_virtual_characters_they_place(tmp_path, host_for):
+    from types import SimpleNamespace
+
+    from tests.fakes import StubSession
+
+    write_plugin(
+        tmp_path / "plugins", "puppets", PUPPETEER, touches='commands = ["spawn", "scribble"]'
+    )
+    host = host_for({"puppets": "^1"})
+    dispatched: list[tuple[str, str]] = []
+
+    async def dispatch(session, line):
+        dispatched.append((session.player_id, line))
+
+    flush_hooks: list = []
+    host.server = SimpleNamespace(
+        session_manager=SimpleNamespace(sessions={}, player_to_session={}),
+        dispatcher=SimpleNamespace(dispatch=dispatch),
+        persistence=SimpleNamespace(flush_hooks=flush_hooks),
+    )
+    host.load()
+    asyncio.run(host.registry.get("spawn").handler(StubSession("admin"), []))
+
+    manager = host.server.session_manager
+    session_id = manager.player_to_session["Puppet Pam"]
+    assert manager.sessions[session_id].virtual is True
+    assert host.redis.stats["Puppet Pam"] == {"hp": 4}
+    assert host.redis.locations["Puppet Pam"] == "town:gate"
+    assert dispatched == [("Puppet Pam", "wave")]
+    assert len(flush_hooks) == 1
+    assert [sorted(fn()) for _, fn in host.name_claims] == [["Puppet Pam"]]
+
+    with pytest.raises(PluginError, match="did not place"):
+        asyncio.run(host.registry.get("scribble").handler(StubSession("admin"), []))
+
+    host.teardown()
+    assert manager.player_to_session == {} and flush_hooks == [] and host.name_claims == []
+
+
+def test_progression_slot_defaults_let_a_world_run_without_progression():
+    from sage.world.progression import (
+        default_seed_attributes,
+        default_skill_sheet,
+        default_total_levels,
+    )
+
+    stats: dict = {}
+    default_seed_attributes(stats, {"might": 3})
+    assert stats == {"might": 3}
+    assert default_total_levels(stats) == 0
+    assert default_skill_sheet(stats) == {"attributes": {}, "leaves": []}

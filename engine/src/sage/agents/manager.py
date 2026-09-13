@@ -107,16 +107,11 @@ class AgentManager:
             stats.setdefault("max_hp", stats.get("hp", 60))
             stats.setdefault("hp", stats["max_hp"])
             stats["is_agent"] = True
-            # Agents are computer-controlled players: same conduit attribute
-            # and proficiency blocks, so they level through the same engine.
-            from sage.proficiencies.state_helpers import ensure_proficiency_block
+            # Agents are computer-controlled players: the world's progression seeds their
+            # attribute spread the way it does a new player's.
+            from sage.world.progression import SEED_ATTRIBUTES
 
-            ensure_proficiency_block(stats)
-            if persona.attributes:
-                attrs = stats["conduit"]["conduit_attributes"]
-                for key, value in persona.attributes.items():
-                    if key in attrs:
-                        attrs[key] = int(value)
+            self.server.resolvers.get(SEED_ATTRIBUTES)(stats, dict(persona.attributes))
             stats.setdefault("counters", {})
             stats.setdefault("digi", int(persona.digi))
 
@@ -253,13 +248,10 @@ class AgentManager:
     def _append_progress_sample(self, stats: dict[str, Any]) -> None:
         """Time-series sample for the admin XP-progression chart (flush cadence)."""
         try:
-            from sage.proficiencies.state_helpers import total_proficiency_levels
+            from sage.world.progression import TOTAL_LEVELS
 
             counters = stats.get("counters") if isinstance(stats.get("counters"), dict) else {}
-            try:
-                levels = total_proficiency_levels(stats)
-            except Exception:
-                levels = 0
+            levels = int(self.server.resolvers.get(TOTAL_LEVELS)(stats))
             log = stats.get(self.PROGRESS_KEY)
             if not isinstance(log, list):
                 log = []

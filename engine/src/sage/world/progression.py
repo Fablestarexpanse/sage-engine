@@ -11,6 +11,9 @@ from typing import Any
 
 SKILL_USED = "progression.skill_used"
 SKILL_LEVEL = "progression.skill_level"
+SEED_ATTRIBUTES = "progression.seed_attributes"
+TOTAL_LEVELS = "progression.total_levels"
+SKILL_SHEET = "progression.skill_sheet"
 
 
 async def default_skill_used(player_id: str, skill: str, chance: float) -> None:
@@ -21,3 +24,19 @@ async def default_skill_used(player_id: str, skill: str, chance: float) -> None:
 def default_skill_level(stats: dict[str, Any], skill: str) -> int:
     """(stats, skill) -> level. Default: 0."""
     return 0
+
+
+def default_seed_attributes(stats: dict[str, Any], attributes: dict[str, int]) -> None:
+    """(stats, {attribute: value}): set a new character's attributes. Default: top-level keys."""
+    for key, value in attributes.items():
+        stats[key] = int(value)
+
+
+def default_total_levels(stats: dict[str, Any]) -> int:
+    """(stats) -> a single progress number for dashboards. Default: 0."""
+    return 0
+
+
+def default_skill_sheet(stats: dict[str, Any]) -> dict[str, Any]:
+    """(stats) -> {"attributes": {...}, "leaves": [{id, level, peak, state}]} for admin views."""
+    return {"attributes": {}, "leaves": []}

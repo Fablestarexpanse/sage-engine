@@ -38,18 +38,6 @@ class PersonaBody(BaseModel):
     yaml_text: str
 
 
-class BrainSettingsBody(BaseModel):
-    enabled: bool | None = None
-    primary_backend: str | None = None  # lm_studio | ollama | embedded
-    lm_studio_url: str | None = None
-    ollama_url: str | None = None
-    chat_model: str | None = None
-    model_path: str | None = None
-    embedded_ctx: int | None = None
-    temperature: float | None = None
-    timeout_seconds: float | None = None
-
-
 def build_agents_router(server: "SageServer") -> APIRouter:
     router = APIRouter()
 
@@ -84,64 +72,9 @@ def build_agents_router(server: "SageServer") -> APIRouter:
             raise HTTPException(status_code=404, detail="agent_not_found")
         return state
 
-    @router.get("/admin/agents-llm")
-    async def brain_settings_get(
-        _ctx: Annotated[AdminContext, Depends(require_tool("agents"))],
-    ):
-        return manager._m.brain.status()
-
-    @router.put("/admin/agents-llm")
-    async def brain_settings_put(
-        body: BrainSettingsBody,
-        _ctx: Annotated[AdminContext, Depends(require_tool("agents"))],
-    ):
-        from sage.core.agents_llm_persist import save_agents_llm_toml
-        from sage.core.config import AgentsLLMConfig
-
-        current = server.config.agents_llm.model_dump()
-        patch = body.model_dump(exclude_unset=True, exclude_none=True)
-        if "primary_backend" in patch and patch["primary_backend"] not in (
-            "lm_studio",
-            "ollama",
-            "embedded",
-        ):
-            raise HTTPException(status_code=400, detail="unknown_backend")
-        current.update(patch)
-        try:
-            new_cfg = AgentsLLMConfig(**current)
-        except Exception as exc:
-            raise HTTPException(status_code=400, detail=f"invalid_settings: {exc}") from exc
-        save_agents_llm_toml(new_cfg)
-        manager._m.brain.reconfigure(new_cfg)
-        return manager._m.brain.status()
-
-    @router.post("/admin/agents-llm/test")
-    async def brain_settings_test(
-        _ctx: Annotated[AdminContext, Depends(require_tool("agents"))],
-    ):
-        """One-shot generation to prove the configured brain answers."""
-        from sage.llm.client import LLMGenerationError
-
-        brain = manager._m.brain
-        started = time.time()
-        try:
-            reply = await brain.llm.generate_or_raise(
-                "Say exactly one short in-character line as a weary space-station "
-                "dockworker greeting a stranger.",
-                system_prompt="Output only the spoken line.",
-                max_tokens=60,
-            )
-            return {
-                "ok": True,
-                "reply": reply[:300],
-                "latency_s": round(time.time() - started, 2),
-            }
-        except LLMGenerationError as exc:
-            return {"ok": False, "error": str(exc), "latency_s": round(time.time() - started, 2)}
-
     def _agent_metrics(stats: dict) -> dict:
         """Play-data metrics for the watch table and detail drawer."""
-        from sage.proficiencies.state_helpers import total_proficiency_levels
+        from sage.world.progression import TOTAL_LEVELS
 
         counters = stats.get("counters") if isinstance(stats.get("counters"), dict) else {}
         used = {
@@ -150,11 +83,7 @@ def build_agents_router(server: "SageServer") -> APIRouter:
             if k.startswith("items_used.")
         }
         most_used = max(used, key=used.get) if used else None
-        try:
-            # No registry: count branch fundamentals too, not just leaves.
-            levels = total_proficiency_levels(stats)
-        except Exception:
-            levels = 0
+        levels = int(server.resolvers.get(TOTAL_LEVELS)(stats))
         return {
             "digi": server.wallet.balance(stats),
             "trades": int(counters.get("trades", 0)),
@@ -167,28 +96,9 @@ def build_agents_router(server: "SageServer") -> APIRouter:
         }
 
     def _skills_sheet(stats: dict) -> dict:
-        """Character-sheet view of the conduit block: attributes + leaf levels."""
-        conduit = stats.get("conduit") if isinstance(stats.get("conduit"), dict) else {}
-        profs = (
-            conduit.get("proficiencies") if isinstance(conduit.get("proficiencies"), dict) else {}
-        )
-        leaves = sorted(
-            (
-                {
-                    "id": pid,
-                    "level": int(p.get("level", 0)),
-                    "peak": int(p.get("peak", 0)),
-                    "state": p.get("state", ""),
-                }
-                for pid, p in profs.items()
-                if isinstance(p, dict)
-            ),
-            key=lambda r: (-r["level"], -r["peak"], r["id"]),
-        )
-        return {
-            "attributes": conduit.get("conduit_attributes", {}),
-            "leaves": leaves,
-        }
+        from sage.world.progression import SKILL_SHEET
+
+        return server.resolvers.get(SKILL_SHEET)(stats)
 
     @router.get("/admin/heatmaps")
     async def heatmaps(
@@ -305,7 +215,12 @@ def build_agents_router(server: "SageServer") -> APIRouter:
             "id": state.persona.id,
             "name": name,
             "room_id": await server.redis.get_player_location(name),
-            "stats": {k: v for k, v in stats.items() if k not in ("conduit", "progress_log")},
+            # Blocks (progression, feelings, ...) have their own panels; scalars only here.
+            "stats": {
+                k: v
+                for k, v in stats.items()
+                if not isinstance(v, dict | list) and k != "progress_log"
+            },
             "progress": stats.get("progress_log") or [],
             "feelings": stats.get(FEELINGS_KEY),
             "mood": mood_word(stats, state.persona),

@@ -126,6 +126,10 @@ class SageServer:
         # either selects the "embedded" backend (model loads once).
         self._embedded_llm = None
         self.llm_client.embedded_getter = self.embedded_llm
+        # Secondary LLM profile (config/agents_llm.toml) for character speech and plans.
+        from sage.llm.profiles import LLMProfile
+
+        self.llm_profile = LLMProfile(self)
         self.prompt_manager = PromptManager(self.world.prompts_dir)
         from sage.lexicon.overrides import LexiconOverrides
 
@@ -651,7 +655,7 @@ class SageServer:
     def embedded_llm(self):
         """Lazy shared EmbeddedLLM (config from agents_llm: model_path etc.)."""
         if self._embedded_llm is None:
-            from sage.agents.embedded_llm import EmbeddedLLM
+            from sage.llm.embedded import EmbeddedLLM
 
             self._embedded_llm = EmbeddedLLM(self.config.agents_llm)
         return self._embedded_llm
@@ -796,6 +800,23 @@ class SageServer:
         # until it moves into a world progression plugin (phase-3 plan), which will provide these.
         self.resolvers.provide(SKILL_USED, skill_used, owner="proficiencies")
         self.resolvers.provide(SKILL_LEVEL, skill_level, owner="proficiencies")
+
+        from sage.proficiencies.state_helpers import seed_attributes, skill_sheet, total_levels
+        from sage.world.progression import (
+            SEED_ATTRIBUTES,
+            SKILL_SHEET,
+            TOTAL_LEVELS,
+            default_seed_attributes,
+            default_skill_sheet,
+            default_total_levels,
+        )
+
+        self.resolvers.define(SEED_ATTRIBUTES, default_seed_attributes)
+        self.resolvers.define(TOTAL_LEVELS, default_total_levels)
+        self.resolvers.define(SKILL_SHEET, default_skill_sheet)
+        self.resolvers.provide(SEED_ATTRIBUTES, seed_attributes, owner="proficiencies")
+        self.resolvers.provide(TOTAL_LEVELS, total_levels, owner="proficiencies")
+        self.resolvers.provide(SKILL_SHEET, skill_sheet, owner="proficiencies")
 
     async def reload_lexicon_overrides(self) -> None:
         """Re-read active Nexus lexicon edits and rebuild the live lexicon (no restart)."""

@@ -15,6 +15,7 @@ from sage.core.events import (
     SessionStarted,
 )
 from sage.lexicon import t
+from sage.network.virtual import VirtualSession
 from sage.plugins.api import PluginAPI
 from sage.plugins.manifest import PluginError
 from sage.telemetry import log_event
@@ -33,6 +34,7 @@ __all__ = [
     "RoomEntered",
     "SessionEnded",
     "SessionStarted",
+    "VirtualSession",
     "Wallet",
     "WalletError",
     "log_event",

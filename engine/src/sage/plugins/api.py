@@ -342,6 +342,11 @@ class _Telemetry:
 
         await heat(self._api._host.redis, map_name, key, by)
 
+    async def read_heatmaps(self, names: list[str]) -> dict[str, dict[str, int]]:
+        from sage.telemetry import read_heatmaps
+
+        return await read_heatmaps(self._api._host.redis, names)
+
 
 class _Progression:
     """Report skill use to the world's progression provider (sage.world.progression)."""
@@ -354,6 +359,21 @@ class _Progression:
             from sage.world.progression import SKILL_USED
 
             await self._api._host.resolvers.get(SKILL_USED)(player_id, skill, chance)
+
+    def seed_attributes(self, stats: dict[str, Any], attributes: dict[str, int]) -> None:
+        from sage.world.progression import SEED_ATTRIBUTES
+
+        self._api._host.resolvers.get(SEED_ATTRIBUTES)(stats, attributes)
+
+    def total_levels(self, stats: dict[str, Any]) -> int:
+        from sage.world.progression import TOTAL_LEVELS
+
+        return int(self._api._host.resolvers.get(TOTAL_LEVELS)(stats))
+
+    def sheet(self, stats: dict[str, Any]) -> dict[str, Any]:
+        from sage.world.progression import SKILL_SHEET
+
+        return self._api._host.resolvers.get(SKILL_SHEET)(stats)
 
     def skill_level(self, stats: dict[str, Any], skill: str | None) -> int:
         if not skill:
@@ -379,6 +399,23 @@ class _Sessions:
         push = getattr(self._api._host.server, "push_character_snapshot", None)
         if push is not None:
             await push(session)
+
+    def attach(self, session: Any) -> None:
+        """Register a (virtual) session so the world treats its character as connected."""
+        manager = self._api._host.server.session_manager
+        manager.sessions[session.id] = session
+        manager.player_to_session[session.player_id] = session.id
+        self._api._cleanup.append(lambda: self.detach(session.player_id))
+
+    def detach(self, player_id: str) -> None:
+        manager = self._api._host.server.session_manager
+        session_id = manager.player_to_session.pop(player_id, None)
+        if session_id is not None:
+            manager.sessions.pop(session_id, None)
+
+    async def dispatch(self, session: Any, line: str) -> None:
+        """Run a command line as that session typed it."""
+        await self._api._host.server.dispatcher.dispatch(session, line)
 
 
 class _Entities:
@@ -445,6 +482,121 @@ class _Effects:
 
         return find_effects(stats, classification)
 
+    def clear_on_death(self, stats: dict[str, Any]) -> None:
+        from sage.effects.engine import clear_on_death
+
+        clear_on_death(stats)
+
+
+class _Characters:
+    """Characters a plugin runs itself (automated characters): it owns their whole stats blob."""
+
+    def __init__(self, api: PluginAPI):
+        self._api = api
+        self._owned: set[str] = set()
+
+    def claim_names(self, names: Callable[[], Any]) -> None:
+        """Player character creation refuses every name names() returns."""
+        claims = self._api._host.name_claims
+        entry = (self._api.id, names)
+        claims.append(entry)
+        self._api._cleanup.append(lambda: entry in claims and claims.remove(entry))
+
+    async def place(
+        self, name: str, stats: dict[str, Any], inventory: list[Any], room_id: str
+    ) -> None:
+        """Put an owned character into hot state (stats, inventory, location)."""
+        self._owned.add(name)
+        redis = self._api._host.redis
+        await redis.set_player_stats(name, stats)
+        await redis.set_player_inventory(name, inventory)
+        await redis.set_player_location(name, room_id)
+
+    async def remove(self, name: str) -> None:
+        """Take an owned character out of its room (hot state is left for the next place)."""
+        redis = self._api._host.redis
+        room_id = await redis.get_player_location(name)
+        if room_id:
+            await redis.remove_player_from_room(name, room_id)
+        self._owned.discard(name)
+
+    def _check(self, name: str) -> None:
+        if name not in self._owned:
+            raise PluginError(f"plugin {self._api.id} writes character {name!r} it did not place")
+
+    async def stats(self, name: str) -> dict[str, Any]:
+        return await self._api._host.redis.get_player_stats(name)
+
+    async def save_stats(self, name: str, stats: dict[str, Any]) -> None:
+        self._check(name)
+        await self._api._host.redis.set_player_stats(name, stats)
+
+    async def move(self, name: str, room_id: str) -> None:
+        self._check(name)
+        await self._api._host.redis.set_player_location(name, room_id)
+
+
+class _Rooms:
+    """Who and what is in a room right now."""
+
+    def __init__(self, api: PluginAPI):
+        self._api = api
+
+    async def players(self, room_id: str) -> list[str]:
+        return [_text(p) for p in await self._api._host.redis.get_room_players(room_id)]
+
+    async def entities(self, room_id: str) -> list[dict[str, Any]]:
+        redis = self._api._host.redis
+        states = [await redis.get_entity_state(e) for e in await redis.get_room_entities(room_id)]
+        return [s for s in states if s]
+
+    async def items(self, room_id: str) -> list[dict[str, Any]]:
+        redis = self._api._host.redis
+        states = [await redis.get_item_state(_text(i)) for i in await redis.get_room_items(room_id)]
+        return [s for s in states if s]
+
+
+def _text(value: Any) -> str:
+    return value.decode() if isinstance(value, bytes) else value
+
+
+class _Persistence:
+    def __init__(self, api: PluginAPI):
+        self._api = api
+
+    def on_flush(self, hook: Callable[[], Any]) -> None:
+        """Run an async hook on the engine's persistence cadence and at shutdown."""
+        hooks = self._api._host.server.persistence.flush_hooks
+        hooks.append(hook)
+        self._api._cleanup.append(lambda: hook in hooks and hooks.remove(hook))
+
+    def session(self) -> Any:
+        """An async SQLAlchemy session for the plugin's own plg_<id>_* tables."""
+        return self._api._host.server.db.session_factory()
+
+
+class _Ai:
+    def __init__(self, api: PluginAPI):
+        self._api = api
+
+    def profile(self, name: str = "agents_llm") -> Any:
+        """The named LLM profile (sage.llm.profiles.LLMProfile); generate() raises on failure."""
+        return self._api._host.server.llm_profile
+
+
+class _Equipment:
+    def equip(self, stats: dict[str, Any], inventory: list, item: dict, template: Any) -> Any:
+        from sage.items.equipment import equip_item
+
+        return equip_item(stats, inventory, item, template)
+
+
+class _Clock:
+    def phase(self) -> str:
+        from sage.world.clock import day_phase
+
+        return day_phase()
+
 
 class PluginAPI:
     def __init__(self, host: Any, record: Any):
@@ -470,6 +622,12 @@ class PluginAPI:
         self.entities = _Entities(self)
         self.items = _Items(self)
         self.effects = _Effects(self)
+        self.characters = _Characters(self)
+        self.rooms = _Rooms(self)
+        self.persistence = _Persistence(self)
+        self.ai = _Ai(self)
+        self.equipment = _Equipment()
+        self.clock = _Clock()
 
     @property
     def world(self) -> Any:
