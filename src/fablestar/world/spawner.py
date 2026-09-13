@@ -89,7 +89,7 @@ class EntitySpawnManager:
             return
 
         for spawn_def in room.entity_spawns:
-            current_count = await self._count_template_in_room(room_id, spawn_def.template)
+            current_count = await self.count_template_in_room(room_id, spawn_def.template)
             if current_count >= spawn_def.max_count:
                 continue
             if random.random() > spawn_def.chance:
@@ -98,7 +98,7 @@ class EntitySpawnManager:
             if entity_id:
                 logger.debug(f"Spawner: spawned {spawn_def.template} ({entity_id}) in {room_id}")
 
-    async def _count_template_in_room(self, room_id: str, template: str) -> int:
+    async def count_template_in_room(self, room_id: str, template: str) -> int:
         entity_ids = await self.server.redis.get_room_entities(room_id)
         count = 0
         for eid in entity_ids:

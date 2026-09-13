@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import fablestar.commands.info  # noqa: F401 — registers look
+import fablestar.commands.info
 import fablestar.commands.items  # noqa: F401 — registers examine
 from fablestar.services.player_service import PlayerService, reserved_name_reason
 
