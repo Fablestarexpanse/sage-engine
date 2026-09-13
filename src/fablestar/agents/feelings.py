@@ -82,6 +82,25 @@ def decay_tick(stats: dict[str, Any], persona: AgentPersonaModel) -> None:
         f["needs"][need] = _clamp(f["needs"].get(need, 0.0) + rate, 0.0, 1.0)
 
 
+MEMORY_KEY = "agent_memories"
+MEMORY_CAP = 40
+
+
+def remember(stats: dict[str, Any], text: str) -> None:
+    """Append one notable event to the agent's memory ring (stats blob = durable)."""
+    ring = stats.get(MEMORY_KEY)
+    if not isinstance(ring, list):
+        ring = []
+        stats[MEMORY_KEY] = ring
+    ring.append(text[:200])
+    del ring[:-MEMORY_CAP]
+
+
+def recall(stats: dict[str, Any], n: int = 10) -> list[str]:
+    ring = stats.get(MEMORY_KEY)
+    return list(ring[-n:]) if isinstance(ring, list) else []
+
+
 def mood_word(stats: dict[str, Any], persona: AgentPersonaModel) -> str:
     """One human word for the admin table and brain prompts."""
     f = ensure_feelings(stats, persona)

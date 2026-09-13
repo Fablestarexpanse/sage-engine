@@ -92,6 +92,36 @@ def route_step(
     return None
 
 
+def route_path(
+    current_room: str,
+    target_room: str,
+    exits_of: dict[str, dict[str, str]],
+    max_depth: int = 24,
+) -> list[str] | None:
+    """Full BFS direction list from current to target; None when unreachable."""
+    if current_room == target_room:
+        return []
+    seen = {current_room}
+    queue: list[tuple[list[str], str, int]] = []
+    for direction, dest in exits_of.get(current_room, {}).items():
+        if dest not in seen:
+            seen.add(dest)
+            queue.append(([direction], dest, 1))
+    i = 0
+    while i < len(queue):
+        path, node, depth = queue[i]
+        i += 1
+        if node == target_room:
+            return path
+        if depth >= max_depth:
+            continue
+        for direction, nxt in exits_of.get(node, {}).items():
+            if nxt not in seen:
+                seen.add(nxt)
+                queue.append(([*path, direction], nxt, depth + 1))
+    return None
+
+
 def hostiles_in(entities: list[dict[str, Any]], tags_of) -> list[str]:
     """Names of living entities whose template carries the 'hostile' tag."""
     out = []

@@ -263,7 +263,8 @@ class AgentManager:
                 stats, state.persona, (state.last_hp - hp_now) / max(1, stats.get("max_hp", 1))
             )
         state.last_hp = hp_now
-        for other in await server.redis.get_room_players(room_id):
+        room_players = await server.redis.get_room_players(room_id)
+        for other in room_players:
             if other != name:
                 fx.on_company(stats, state.persona, other)
         fx.decay_tick(stats, state.persona)
@@ -311,16 +312,33 @@ class AgentManager:
             except Exception as exc:
                 logger.warning("Agent voice failed for %s: %s", state.persona.id, exc)
 
+        # Intent: idle, unhurt-enough, no goal, a real player present -> ask
+        # the brain for a goal and compile it into a Body script.
+        agent_names = {s.persona.name for s in self.agents.values()}
+        players_present = [p for p in room_players if p != name and p not in agent_names]
+        if not ctx.hostiles and not state.goal_commands and players_present:
+            try:
+                intent = await self.brain.maybe_intent(
+                    state, players_present, self._known_rooms(state)
+                )
+                if intent:
+                    await self._apply_intent(state, intent, room_id, stats)
+            except Exception as exc:
+                logger.warning("Agent intent failed for %s: %s", state.persona.id, exc)
+            ctx.goal_commands = list(state.goal_commands)
+
         reason, command = decide(ctx, state.rng)
         if command is None:
             return
         if reason == "goal" and state.goal_commands:
             state.goal_commands.pop(0)
             if not state.goal_commands:
-                state.goal_label = None
                 from fablestar.agents import feelings as fx2
 
                 fx2.on_goal_done(stats, state.persona)
+                if state.goal_label:
+                    fx2.remember(stats, f"finished: {state.goal_label}")
+                state.goal_label = None
                 await server.redis.set_player_stats(name, stats)
         if reason == "wander":
             lo, hi = WANDER_COOLDOWN_S
@@ -332,6 +350,56 @@ class AgentManager:
         )
         del state.pov[:-20]
         await server.dispatcher.dispatch(state.session, command)
+
+    # ------------------------------------------------------------------
+    # Intent (M4) — compile brain goals into Body scripts
+    # ------------------------------------------------------------------
+
+    def _known_rooms(self, state: AgentState) -> list[str]:
+        """Room slugs the agent can path to (its zone's walked exits map)."""
+        zone = state.persona.spawn_zone()
+        return sorted(r.split(":")[-1] for r in self._exits_map(zone))
+
+    def _entity_room_finder(self, zone: str):
+        """target substring -> a room_id whose spawns include a matching template."""
+
+        def find(target: str) -> str | None:
+            if not target:
+                return None
+            for room_id in self._exits_map(zone):
+                room = self.server.content_loader.get_room(room_id)
+                if room is None:
+                    continue
+                for spawn in getattr(room, "entity_spawns", []) or []:
+                    template = getattr(spawn, "template", "")
+                    tmpl = self.server.content_loader.get_entity_template(template)
+                    hay = f"{template} {tmpl.name if tmpl else ''}".lower()
+                    if target in hay:
+                        return room_id
+            return None
+
+        return find
+
+    async def _apply_intent(
+        self, state: AgentState, intent: dict[str, str], room_id: str, stats: dict[str, Any]
+    ) -> None:
+        from fablestar.agents.brain import compile_goal
+        from fablestar.agents.feelings import remember
+
+        zone = state.persona.spawn_zone()
+        compiled = compile_goal(
+            intent, room_id, zone, self._exits_map(zone), self._entity_room_finder(zone)
+        )
+        why = intent.get("why") or "no reason given"
+        if compiled is None:
+            remember(stats, f"considered {intent['goal']} {intent['target']} but let it go")
+        else:
+            label, commands = compiled
+            state.goal_label = label
+            state.goal_commands = commands
+            remember(stats, f"decided to {label} — {why}")
+            logger.info("Agent %s intent: %s (%s)", state.persona.id, label, why)
+        await self.server.redis.set_player_stats(state.persona.name, stats)
 
     # ------------------------------------------------------------------
     # Routine navigation

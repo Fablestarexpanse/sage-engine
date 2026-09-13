@@ -100,8 +100,15 @@ Test suites: server **150** pytest, WorldForge **34** vitest — all green.
       models/, gitignored): admin Test brain ✓ 2.16s; live in-game reply
       ('Sela Varn says: "anythin needs doin?"' to an addressed say). M3 fully
       closed; no external LLM process needed for agent voices
-- [ ] M4 intent: wake queue → JSON goals compiled to Body scripts; memory ring
-      into prompts (needs the brain endpoint running to tune)
+- [x] M4 intent: when idle near a real player (90s/agent cooldown, one
+      generation in flight), the brain answers a JSON goal
+      (wander_to/hunt/rest/talk/scavenge/idle) parsed strictly and compiled
+      to a Body command script (BFS route_path for wander_to/hunt); memory
+      ring (agent_memories in stats blob, cap 40) feeds intent + voice
+      prompts and records decisions/completions; POV logs real intent
+      prompts. Verified live with embedded Qwen: Sela chose
+      '{"goal":"scavenge","why":"Find food to replenish health"}' → search
+      executed, goal cleared
 - [x] Durability: agent_state table (Alembic k4l5m6n7o8p9), flushed on the
       60s persistence cadence; spawn restores stats/inventory/room, admin
       Restart = reset-to-persona (row deleted). Verified: [restored] spawns
