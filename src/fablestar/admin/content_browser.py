@@ -324,9 +324,32 @@ def save_room_yaml_text(zone_id: str, room_slug: str, text: str) -> Path:
     """Write raw room YAML through the content seam (validated segments, atomic write)."""
     if not _is_safe_segment(zone_id) or not _is_safe_segment(room_slug):
         raise ValueError("invalid_slug")
+    validate_room_yaml_text(zone_id, room_slug, text)
     path = ZONES_ROOT / zone_id / "rooms" / f"{room_slug}.yaml"
     _atomic_write_text(path, text)
     return path
+
+
+def validate_room_yaml_text(zone_id: str, room_slug: str, text: str) -> None:
+    """Refuse room YAML the loader couldn't use; raises ValueError with a short reason."""
+    from pydantic import ValidationError
+
+    from fablestar.world.models import RoomModel
+
+    try:
+        data = yaml.safe_load(text)
+    except yaml.YAMLError as e:
+        raise ValueError(f"invalid_yaml: {e}") from None
+    if not isinstance(data, dict):
+        raise ValueError("invalid_yaml: top level must be a mapping")
+    try:
+        room = RoomModel.model_validate(data)
+    except ValidationError as e:
+        raise ValueError(
+            f"invalid_room: {e.error_count()} validation error(s): {e.errors()[0]['loc']} {e.errors()[0]['msg']}"
+        ) from None
+    if room.id != f"{zone_id}:{room_slug}":
+        raise ValueError(f"id_mismatch: expected {zone_id}:{room_slug}, got {room.id}")
 
 
 def save_template_yaml_text(kind: str, slug: str, text: str) -> Path:

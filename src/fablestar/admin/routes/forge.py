@@ -151,8 +151,9 @@ def build_forge_router(server: FablestarServer) -> APIRouter:
             file_path = await asyncio.to_thread(
                 content_browser.save_room_yaml_text, zone_id, room_filename, injection.yaml_content
             )
-        except ValueError:
-            raise HTTPException(status_code=400, detail="invalid_id") from None
+        except ValueError as e:
+            detail = "invalid_id" if str(e) == "invalid_slug" else str(e)
+            raise HTTPException(status_code=400, detail=detail) from None
         except OSError as e:
             logger.error(f"Forge: Failed to inject room: {e}")
             raise HTTPException(status_code=500, detail="write_failed")
