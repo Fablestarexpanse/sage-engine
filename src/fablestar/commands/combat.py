@@ -34,7 +34,7 @@ def _roll_damage(attacker_attack: int, defender_defense: int) -> int:
     return max(1, raw)
 
 
-@command("attack", aliases=["a", "kill", "hit"])
+@command("attack", aliases=["a", "k", "kill", "hit"])
 async def attack(session: Session, args: list[str]):
     """Attack an entity in the room. Usage: attack <target>"""
     from fablestar.app import app_instance

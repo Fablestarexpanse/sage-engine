@@ -116,6 +116,8 @@ class PlayerService:
         username = (username or "").strip()
         if len(username) < 2:
             return {"ok": False, "error": "username_too_short"}
+        if len(username) > 50:
+            return {"ok": False, "error": "username_too_long"}
         if len(password) < 4:
             return {"ok": False, "error": "password_too_short"}
         async with self.server.db.session_factory() as db_session:
