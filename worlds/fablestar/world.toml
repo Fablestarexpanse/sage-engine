@@ -25,12 +25,19 @@ achievements = "^1"
 factions = "^1"
 shop = "^1"
 lodging = "^1"
+search = "^1"
+crafting = "^1"
 
 [params]
 # Tidegate clinic bills up to 10 Digi on respawn; half health on waking.
 "engine.death.respawn_bill_max" = 10
 "engine.death.respawn_hp_fraction" = 0.5
 "shop.wallet_aliases" = ["digi", "money"]
+# Progression skill ids are Conduit proficiency leaves.
+"search.skill" = "interface.perception.anomaly_scan"
+"crafting.skills" = { weapon = "fabrication.weaponsmithing.energy_weapons", armor = "fabrication.armorcraft.plating", ammo = "fabrication.devices.utility_tools" }
+"crafting.default_skill" = "fabrication.materials.composites"
+"crafting.deconstruct_skill" = "fabrication.salvage.disassembly"
 
 [transition]
 # Content and prompts still live at the repository root until Phase 3 moves them in here.

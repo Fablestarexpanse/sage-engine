@@ -26,8 +26,8 @@ by owner G.4 ("every mechanic is a first-party plugin").
 | 3.3 | Factions + missions → `plugins/factions` (subscribe to `EntityKilled`); `PluginAPI` gains `counters`, `inventory`, `content.cached`, `state.edit` | done |
 | 3.4 | Engine seams shop/lodging need: content schema extensions (catalog #7, `api.content.extend`) and plugin admin HTTP routes (#9, `api.http.admin_router`) | done |
 | 3.5 | Shop → `plugins/shop` (done: `api.redis`, `api.telemetry`, `api.state.location`, `wallet.pay_later`); lodging → `plugins/lodging` (rent, `lease_sweep` tick job, service for agents) | done |
-| 3.6 | Crafting and search → `plugins/crafting`, `plugins/search` | next |
-| 3.7 | Maestro → `plugins/maestro` | todo |
+| 3.6 | Crafting and search → `plugins/crafting`, `plugins/search`; engine progression slots (`progression.skill_used/skill_level`, catalog #3) and `feature` content extensions | done |
+| 3.7 | Maestro → `plugins/maestro` | next |
 | 3.8 | Effects API in engine; hazards → `plugins/hazards` | todo |
 | 3.9 | Agents → `plugins/agents` (owner ruling); agent wallet reads (`stats["digi"]`, clinic bill, pending takings) move onto `api.wallet`, and the transitional `AgentManager._factions()` service lookup becomes a declared `depends` on `factions` | todo |
 | 3.10 | Conduit (proficiencies, FRT..PRS, combat resolver, chargen) → `worlds/fablestar/plugins/conduit` | todo |
@@ -76,3 +76,12 @@ by owner G.4 ("every mechanic is a first-party plugin").
   deploy (seconds) are lost. Admin Shops page now reads `/plugins/shop/admin/shops` and shows the
   world's currency name. `wallet` aliases come from `shop.wallet_aliases` (Fablestar: digi, money).
   Plugin Redis keys must use declared `redis_prefixes`; engine prefixes are reserved.
+- **3.6 progression slots.** Plugins report skill use by world-chosen skill ids
+  (`api.progression.skill_used(player, skill, chance)`, `skill_level(stats, skill)`); worlds map
+  activities to ids in params (`search.skill`, `crafting.skills`, `crafting.deconstruct_skill`).
+  The engine's proficiency system provides both slots for every world until it moves into a world
+  plugin. Real-run note: field gains were already dead in play (known depth-gate issue), so the
+  dev run shows no level change either way; hermetic tests prove the skill ids reach the slot.
+- Item `recipe`/`yields`/`scraps` and feature `search` are plugin extensions now; the engine's
+  ItemTemplate and FeatureModel no longer define them. `search:{room}:{feature}:finds` keys are the
+  search plugin's (`search` is no longer a reserved engine Redis prefix).

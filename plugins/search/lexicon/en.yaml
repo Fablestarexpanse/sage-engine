@@ -1,0 +1,8 @@
+search:
+  nowhere: "You are nowhere."
+  no_target: "You see no '{target}' here to search."
+  nothing_of_interest: "You rummage through the {feature} but find nothing of interest."
+  nothing_here: "You poke around, but there's nothing here worth searching."
+  picked_clean: "The {feature} has been picked clean. Maybe later."
+  empty: "You search the {feature} but come up empty this time."
+  found: "Tucked away in the {feature}, you find: {item}."

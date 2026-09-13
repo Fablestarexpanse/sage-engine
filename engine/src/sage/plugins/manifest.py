@@ -33,7 +33,7 @@ SUPPORTED_TOUCHES = (
 
 # Redis key prefixes the engine uses; plugins may not declare them.
 ENGINE_REDIS_PREFIXES = frozenset(
-    {"player", "room", "combat", "entity", "item", "search", "heat", "wallet_pending", "session"}
+    {"player", "room", "combat", "entity", "item", "heat", "wallet_pending", "session"}
 )
 REDIS_PREFIX_RE = re.compile(r"^[a-z][a-z0-9_]{1,31}$")
 

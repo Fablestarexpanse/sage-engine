@@ -214,7 +214,7 @@ class _Content:
         return DirCache(Path(self._api._host.world.content_dir) / subdir, loader, pattern)
 
     def extend(self, kind: str, name: str, model: type) -> None:
-        """Claim a YAML field on rooms, items or entities ("room", "shop", ShopModel)."""
+        """Claim a YAML field on rooms, features, items or entities ("room", "shop", ShopModel)."""
         from sage.world.extensions import ExtensionError
 
         host = self._api._host
@@ -237,6 +237,9 @@ class _Content:
 
     def room_ids(self) -> list[str]:
         return self._api._host.content.list_room_ids()
+
+    def item_template_ids(self) -> list[str]:
+        return self._api._host.content.list_item_template_ids()
 
     def item_template(self, template_id: str) -> Any:
         return self._api._host.content.get_item_template(template_id)
@@ -338,6 +341,26 @@ class _Telemetry:
         await heat(self._api._host.redis, map_name, key, by)
 
 
+class _Progression:
+    """Report skill use to the world's progression provider (sage.world.progression)."""
+
+    def __init__(self, api: PluginAPI):
+        self._api = api
+
+    async def skill_used(self, player_id: str, skill: str | None, chance: float = 1.0) -> None:
+        if skill:
+            from sage.world.progression import SKILL_USED
+
+            await self._api._host.resolvers.get(SKILL_USED)(player_id, skill, chance)
+
+    def skill_level(self, stats: dict[str, Any], skill: str | None) -> int:
+        if not skill:
+            return 0
+        from sage.world.progression import SKILL_LEVEL
+
+        return int(self._api._host.resolvers.get(SKILL_LEVEL)(stats, skill))
+
+
 class PluginAPI:
     def __init__(self, host: Any, record: Any):
         self._host = host
@@ -357,6 +380,7 @@ class PluginAPI:
         self.http = _Http(self)
         self.redis = _Redis(self)
         self.telemetry = _Telemetry(self)
+        self.progression = _Progression(self)
 
     @property
     def world(self) -> Any:

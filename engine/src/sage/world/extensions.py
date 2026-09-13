@@ -1,7 +1,7 @@
 """Content schema extensions (contracts catalog #7): plugin-owned fields on engine content models.
 
-Rooms, item templates and entity templates accept fields the engine does not define. A plugin
-claims one with ``api.content.extend("room", "shop", ShopModel)``; it then reads a validated
+Rooms, room features, item templates and entity templates accept fields the engine does not
+define. A plugin claims one with ``api.content.extend("room", "shop", ShopModel)``; it then reads a validated
 ``ShopModel`` for a room with ``api.content.extension(room, "room", "shop")``. A block that fails
 validation is logged once (with the content id) and reads as absent, so one bad YAML block
 cannot take a room down. Fields nobody claims are kept on the model (and so survive editor
@@ -15,7 +15,7 @@ from typing import Any
 
 from pydantic import BaseModel, ValidationError
 
-from sage.world.models import EntityTemplate, ItemTemplate, RoomModel
+from sage.world.models import EntityTemplate, FeatureModel, ItemTemplate, RoomModel
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +23,7 @@ KINDS: dict[str, type[BaseModel]] = {
     "room": RoomModel,
     "item": ItemTemplate,
     "entity": EntityTemplate,
+    "feature": FeatureModel,
 }
 
 _INVALID = object()

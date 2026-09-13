@@ -361,8 +361,6 @@ class SageServer:
         registry.load_module_strict("sage.commands.items")
         registry.load_module_strict("sage.commands.proficiency")
         registry.load_module_strict("sage.commands.effects")
-        registry.load_module_strict("sage.commands.search")
-        registry.load_module_strict("sage.commands.crafting")
         registry.load_module_strict("sage.commands.admin")
 
         # 1b. The world's plugins, after engine commands so verb conflicts are caught.
@@ -785,6 +783,21 @@ class SageServer:
 
         self.resolvers.define("death.check", default_death_check)
         self.resolvers.define("death.respawn", default_respawn)
+
+        from sage.proficiencies.field_gain import skill_level, skill_used
+        from sage.world.progression import (
+            SKILL_LEVEL,
+            SKILL_USED,
+            default_skill_level,
+            default_skill_used,
+        )
+
+        self.resolvers.define(SKILL_USED, default_skill_used)
+        self.resolvers.define(SKILL_LEVEL, default_skill_level)
+        # Transitional: the proficiency system is still engine code and answers for every world
+        # until it moves into a world progression plugin (phase-3 plan), which will provide these.
+        self.resolvers.provide(SKILL_USED, skill_used, owner="proficiencies")
+        self.resolvers.provide(SKILL_LEVEL, skill_level, owner="proficiencies")
 
     async def reload_lexicon_overrides(self) -> None:
         """Re-read active Nexus lexicon edits and rebuild the live lexicon (no restart)."""

@@ -9,22 +9,15 @@ class ExitModel(BaseModel):
     one_way: bool = False
 
 
-class SearchModel(BaseModel):
-    """Scavenge profile on a feature — what searching it can yield."""
-
-    items: list[str] = Field(min_length=1)  # item template ids
-    max_finds: int = Field(default=1, ge=1)  # per respawn window (shared by all players)
-    respawn_s: float = Field(default=600.0, gt=0)
-    chance: float = Field(default=0.7, ge=0.0, le=1.0)  # base find chance per attempt
-
-
 class FeatureModel(BaseModel):
+    # Unknown fields are kept: plugins claim them as content extensions (sage.world.extensions).
+    model_config = ConfigDict(extra="allow")
+
     id: str
     name: str
     keywords: list[str]
     description: str
     interaction: str | None = "examine"
-    search: SearchModel | None = None
 
 
 class EntitySpawnModel(BaseModel):
@@ -130,15 +123,6 @@ class ItemTemplate(BaseModel):
     # Ammo-fed weapon: item template consumed one per attack; without a round
     # in inventory the weapon's attack bonus does not apply (dry fire).
     ammo: str | None = None
-    # Crafting: inputs (template id -> count) consumed to craft this item.
-    # Empty dict = not craftable.
-    recipe: dict[str, int] = Field(default_factory=dict)
-    # How many of this item one craft produces (ammo batches etc.).
-    yields: int = 1
-    # Deconstruction outputs (template id -> count). Empty + no recipe = not
-    # deconstructable; empty WITH a recipe = half the recipe rounded down
-    # (minimum one of something).
-    scraps: dict[str, int] = Field(default_factory=dict)
     tags: set[str] = Field(default_factory=set)
 
 

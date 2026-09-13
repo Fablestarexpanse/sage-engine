@@ -795,14 +795,10 @@ class AgentManager:
         """item template -> a room whose search profiles can yield it."""
 
         def find(template_id: str) -> str | None:
-            for room_id in self._exits_map(zone):
-                room = self.server.content_loader.get_room(room_id)
-                if room is None:
-                    continue
-                for feature in room.features:
-                    if feature.search and template_id in feature.search.items:
-                        return room_id
-            return None
+            searches = self._service("search")
+            if searches is None:
+                return None
+            return searches.room_yielding(list(self._exits_map(zone)), template_id)
 
         return find
 

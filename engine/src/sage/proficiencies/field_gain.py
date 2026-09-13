@@ -33,3 +33,18 @@ async def try_field_gain_for_player(
         logger.warning(
             "Field proficiency gain failed for %s (%s)", player_id, leaf_id, exc_info=True
         )
+
+
+async def skill_used(player_id: str, skill: str, chance: float) -> None:
+    """progression.skill_used provider: a skill id is a proficiency leaf."""
+    await try_field_gain_for_player(player_id, skill, chance=chance)
+
+
+def skill_level(stats: dict, skill: str) -> int:
+    """progression.skill_level provider: the leaf's current level (0 when untrained)."""
+    from sage.proficiencies.engine import ProficiencyEngine
+
+    try:
+        return ProficiencyEngine(None)._level(dict(stats), skill)
+    except (TypeError, ValueError, AttributeError):
+        return 0
