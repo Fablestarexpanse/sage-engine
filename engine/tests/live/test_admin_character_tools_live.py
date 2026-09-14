@@ -324,3 +324,34 @@ def test_account_search_counts_characters_filters_and_pages_in_the_database(
 
 async def player_accounts_suspend(server, account_id):
     await character_tools.set_suspended(server, account_id, "search test")
+
+
+def test_references_and_search_read_saved_characters(live_config, migrated_database):
+    from sage.admin import references, search
+    from sage.admin.admin_security import AdminContext
+
+    async def go():
+        db = PostgresState(live_config.database)
+        try:
+            async with open_redis(live_config) as redis:
+                server = _server(live_config, db, redis)
+                server.lexicon = None
+                char_id, _ = await _character(db, redis, logged_in=True)
+                await character_tools.give_item(server, char_id, "bread_loaf")
+                await PersistenceManager(server).sync_character(NAME)
+
+                live = await references.live_references(server, "items", "bread_loaf")
+                assert [r["name"] for r in live["carried_by"]["rows"]] == [NAME]
+                assert (await references.live_references(server, "items", "no_such"))["carried_by"][
+                    "total"
+                ] == 0
+                room = await references.live_references(server, "rooms", "town:bridge")
+                assert room["saved_here"]["rows"][0]["href"] == f"#/characters/{char_id}"
+
+                found = await search.search(server, AdminContext.bypass(), "tool tes")
+                kinds = {g["kind"]: g for g in found["groups"]}
+                assert kinds["characters"]["results"][0]["href"] == f"#/characters/{char_id}"
+        finally:
+            await db.close()
+
+    asyncio.run(go())

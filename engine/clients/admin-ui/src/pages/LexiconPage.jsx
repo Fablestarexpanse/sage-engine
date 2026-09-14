@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import axios from "axios";
 import { useAdminTheme } from "../AdminThemeContext.jsx";
 import { API_BASE } from "../apiConfig.js";
+import { useHashParts } from "../listHooks.js";
 import { Badge, ActionButton, SearchBar, FetchErrorBanner } from "../adminCommon.jsx";
 
 // Keys most operators look for first; everything else is one search away.
@@ -45,6 +46,15 @@ const LexiconPage = () => {
       setHistory([]);
     }
   }, []);
+
+  // #/lexicon/<key> (from search) opens that line.
+  const [hashParts] = useHashParts();
+  const linkedKey = hashParts[0];
+  useEffect(() => {
+    const row = linkedKey && rows.find((r) => r.key === linkedKey);
+    if (!row || selected?.key === linkedKey) return;
+    Promise.resolve().then(() => { setQuery(linkedKey); open(row); });
+  }, [linkedKey, rows, selected?.key, open]);
 
   const refreshSelected = async (key) => {
     const { data } = await axios.get(`${API_BASE}/admin/lexicon`);

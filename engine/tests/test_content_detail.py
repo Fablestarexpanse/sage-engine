@@ -138,3 +138,25 @@ def test_a_changed_file_is_parsed_again(demo_copy):
     stat = path.stat()
     os.utime(path, ns=(stat.st_atime_ns, stat.st_mtime_ns + 1_000_000))
     assert content_browser.load_yaml(path)[0]["name"] == "green apple"
+
+
+def test_references_find_every_field_that_names_a_record(demo_copy):
+    from sage.admin import references, search
+
+    items = demo_copy / "items"
+    _write(items, "pelt", "id: pelt\nname: pelt\ntags: [fur]\n")
+    _write(items, "coat", "id: coat\nname: fur coat\nrecipe: {pelt: 2}\n")
+    _write(demo_copy / "entities", "wolf", "id: wolf\nname: wolf\nloot: [{template: pelt}]\n")
+    rows = references.content_references("pelt")
+    assert {(r["kind"], r["id"], r["field"]) for r in rows} == {
+        ("item", "coat", "recipe"),
+        ("creature", "wolf", "loot"),
+    }
+    assert next(r for r in rows if r["id"] == "wolf")["href"] == "#/content/creatures/wolf"
+    # The demo hub's exits name the rooms around it.
+    exits = references.content_references("start:commons")
+    assert exits and {r["field"] for r in exits} == {"exits"}
+
+    groups = search._content_groups("fur", 8, rooms=True, items=True, creatures=False)
+    by_kind = {g["kind"]: [r["id"] for r in g["results"]] for g in groups}
+    assert sorted(by_kind["items"]) == ["coat", "pelt"] and "entities" not in by_kind

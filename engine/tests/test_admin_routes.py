@@ -456,3 +456,16 @@ def test_tool_presets_use_only_tools_the_server_checks(client, server):
     r = client.get("/admin/staff/tool-presets", headers=_auth(server, 1))
     assert r.status_code == 200
     assert {p["id"] for p in r.json()} == set(TOOL_PRESETS)
+
+
+def test_references_are_gated_by_the_tool_for_that_kind(client, server):
+    staff = _auth(server, 2)  # dashboard only
+    assert client.get("/content/references/items/bread", headers=staff).status_code == 403
+    head = _auth(server, 1)
+    assert client.get("/content/references/spells/bread", headers=head).status_code == 404
+
+
+def test_search_needs_two_characters_and_skips_kinds_without_the_tool(client, server):
+    staff = _auth(server, 2)  # dashboard only: no players, content or lexicon groups
+    assert client.get("/admin/search?q=a", headers=staff).json()["groups"] == []
+    assert client.get("/admin/search?q=bread", headers=staff).json()["groups"] == []
