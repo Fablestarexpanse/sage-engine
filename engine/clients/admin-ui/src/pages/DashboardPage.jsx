@@ -82,19 +82,6 @@ const DashboardPage = () => {
 
   const occupiedRooms = new Set((sessions || []).map((p) => p.room_id).filter(Boolean)).size;
 
-  const onlineFromApi = sessions.map((p) => ({
-    id: p.session_id,
-    name: p.player_id || "guest",
-    level: "—",
-    class: p.state ?? "playing",
-    status: "online",
-    location: p.room_id || "—",
-    peer: typeof p.peer === "string" ? p.peer : JSON.stringify(p.peer ?? "—"),
-    lastSeen: "now",
-  }));
-
-  const onlineTableRows = onlineFromApi;
-
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
@@ -194,16 +181,16 @@ const DashboardPage = () => {
           </div>
         </div>
       </div>
-      <div style={{ background: COLORS.bgCard, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: "16px 18px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-          <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: COLORS.text, fontFamily: "'DM Sans', sans-serif" }}>Online Players</h3>
+      <div style={{ background: COLORS.bgCard, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: "14px 18px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        <div style={{ fontSize: 13, color: COLORS.text, fontFamily: "'DM Sans', sans-serif" }}>
+          <strong>{sessions.length}</strong> player session{sessions.length === 1 ? "" : "s"} online
+          {sessions.length > 0 && (
+            <span style={{ color: COLORS.textMuted, fontFamily: "'JetBrains Mono', monospace", fontSize: 12 }}>
+              {" · "}{sessions.slice(0, 6).map((p) => p.player_id || "guest").join(", ")}{sessions.length > 6 ? "…" : ""}
+            </span>
+          )}
         </div>
-        <DataTable columns={[
-          { label: "Player", render: row => (<div style={{ display: "flex", alignItems: "center", gap: 8 }}><StatusDot color={row.status === "online" ? COLORS.success : COLORS.warning} pulse={row.status === "online"} /><span style={{ fontWeight: 600 }}>{row.name}</span></div>) },
-          { label: "State", key: "class", mono: true },
-          { label: "Location", key: "location", mono: true, title: "room_id from Redis when logged in" },
-          { label: "Peer", key: "peer", mono: true },
-        ]} rows={onlineTableRows} />
+        <a href="#/players" style={{ fontSize: 12, color: COLORS.accent, fontFamily: "'DM Sans', sans-serif" }}>Open Players &amp; sessions</a>
       </div>
     </div>
   );

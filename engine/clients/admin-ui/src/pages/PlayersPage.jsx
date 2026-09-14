@@ -59,9 +59,9 @@ const PlayersPage = () => {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <div>
-        <h2 style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 700, color: COLORS.text, fontFamily: "'Space Grotesk', sans-serif" }}>Player Management</h2>
+        <h2 style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 700, color: COLORS.text, fontFamily: "'Space Grotesk', sans-serif" }}>Players &amp; sessions</h2>
         <p style={{ margin: 0, fontSize: 13, color: COLORS.textMuted, fontFamily: "'DM Sans', sans-serif", lineHeight: 1.55, maxWidth: 920 }}>
-          <strong style={{ color: COLORS.info }}>Live sessions</strong> refresh every few seconds. <strong style={{ color: COLORS.forge }}>Game accounts</strong> below: AI art credits, bundles, in-game GM crown, <strong style={{ color: COLORS.text }}>Nexus console access</strong> for this play username, and characters. Team tab is for staff-only tools.
+          <strong style={{ color: COLORS.info }}>Live sessions</strong> refresh every few seconds. <strong style={{ color: COLORS.forge }}>Game accounts</strong> below: AI art credits, bundles, in-game GM crown, <strong style={{ color: COLORS.text }}>Nexus console access</strong> for this play username, and characters. Staff accounts are under Team &amp; access.
         </p>
       </div>
 

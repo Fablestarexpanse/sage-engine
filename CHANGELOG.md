@@ -22,6 +22,11 @@ Versions built before the first publication have no conversion date.
 
 ## [Unreleased]
 
+- **Admin console navigation is grouped:** Overview, World, Players, Plugins, AI and System. Plugin pages sit under Plugins.
+- **One live sessions table:** it is on Players & sessions; the Dashboard shows a one-line summary and Operations no longer repeats it.
+- **Settings removed:** the empty page is gone; the theme toggle stays in the sidebar.
+- **Renamed:** Server is now "Server & AI models".
+
 - **Admin console: World & plugins page.**
   - **World package:** its name, id, version, path and room types.
   - **Content check:** the same check as `sage validate` (errors, warnings, notes), run from the console.

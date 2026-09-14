@@ -187,7 +187,7 @@ function StatBoard({ base }) {
     } catch (e) {
       setError(e.response?.data?.detail || e.message || "statboard API failed");
     }
-  }, []);
+  }, [base]);
   useEffect(() => {
     refresh();
     const t = setInterval(refresh, 5000);
@@ -289,7 +289,7 @@ export default function AgentsTab({ pluginBase: base = "/plugins/agents/admin" }
     } catch (e) {
       setError(e.response?.data?.detail || e.message || "agents API failed");
     }
-  }, []);
+  }, [base]);
 
   const loadDetail = useCallback(async (id) => {
     if (!id) return;
@@ -305,7 +305,7 @@ export default function AgentsTab({ pluginBase: base = "/plugins/agents/admin" }
     } catch {
       /* detail best-effort */
     }
-  }, []);
+  }, [base]);
 
   useEffect(() => {
     refresh();
