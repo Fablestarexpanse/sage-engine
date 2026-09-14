@@ -11,6 +11,7 @@ from typing import Any
 
 VALIDATE = "chargen.validate"
 SEED = "chargen.seed"
+OPTIONS = "chargen.options"
 
 
 def default_validate(choices: dict[str, Any]) -> tuple[str | None, dict[str, Any]]:
@@ -21,3 +22,8 @@ def default_validate(choices: dict[str, Any]) -> tuple[str | None, dict[str, Any
 def default_seed(stats: dict[str, Any], cleaned: dict[str, Any]) -> None:
     """(stats, cleaned): apply the allocation. Default: nothing."""
     return None
+
+
+def default_options() -> dict[str, Any]:
+    """() -> what a client may choose at creation (world-defined shape). Default: nothing."""
+    return {}

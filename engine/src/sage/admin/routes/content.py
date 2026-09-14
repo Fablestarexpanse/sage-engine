@@ -1,5 +1,5 @@
 """Content routes — /content/* YAML browsing/editing for zones, rooms, entities, items,
-systems, ships, glyphs, and the proficiency catalog."""
+systems, ships and glyphs."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any
 
-from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from sage.admin import content_browser
@@ -154,28 +154,6 @@ def build_content_router(server: SageServer) -> APIRouter:
         _ctx: Annotated[AdminContext, Depends(require_tool("glyphs"))],
     ):
         return content_browser.list_glyphs()
-
-    @router.get("/content/proficiencies/catalog")
-    async def content_proficiencies_catalog_get(
-        _ctx: Annotated[AdminContext, Depends(require_any_tool("content", "skills"))],
-    ):
-        try:
-            return content_browser.read_proficiency_catalog_document()
-        except FileNotFoundError:
-            raise HTTPException(status_code=404, detail="proficiency_catalog_missing")
-
-    @router.put("/content/proficiencies/catalog")
-    async def content_proficiencies_catalog_put(
-        _ctx: Annotated[AdminContext, Depends(require_any_tool("content", "skills"))],
-        body: dict[str, Any] = Body(...),
-    ):
-        try:
-            out = content_browser.write_proficiency_catalog_document(body)
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e)) from e
-        server.content_loader.invalidate(content_browser.PROFICIENCIES_CATALOG_JSON.resolve())
-        _mark_reloaded()
-        return out
 
     @router.get("/content/room/{zone_id}/{room_slug}/yaml")
     async def content_room_yaml(

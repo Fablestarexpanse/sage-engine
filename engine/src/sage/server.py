@@ -364,7 +364,6 @@ class SageServer:
         registry.load_module_strict("sage.commands.movement")
         registry.load_module_strict("sage.commands.combat")
         registry.load_module_strict("sage.commands.items")
-        registry.load_module_strict("sage.commands.proficiency")
         registry.load_module_strict("sage.commands.effects")
         registry.load_module_strict("sage.commands.admin")
 
@@ -771,13 +770,9 @@ class SageServer:
 
     def _define_engine_resolvers(self) -> None:
         """Engine resolver slots and their defaults (contracts catalog #4)."""
-        from sage.proficiencies.providers import provide_all
         from sage.world.slots import define_engine_slots
 
         define_engine_slots(self.resolvers)
-        # Transitional: the proficiency system is still engine code and answers for every world
-        # until it moves into a world progression plugin (phase-3 plan), which will provide these.
-        provide_all(self.resolvers, self)
 
     async def reload_lexicon_overrides(self) -> None:
         """Re-read active Nexus lexicon edits and rebuild the live lexicon (no restart)."""

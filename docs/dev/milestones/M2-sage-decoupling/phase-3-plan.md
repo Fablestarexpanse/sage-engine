@@ -30,8 +30,8 @@ by owner G.4 ("every mechanic is a first-party plugin").
 | 3.7 | Maestro → `plugins/maestro` (`api.sessions`, `api.entities`, `api.items`, `api.lexicon_keys`) | done |
 | 3.8 | Effects API in engine (`api.effects`); hazards → `plugins/hazards` over `RoomEntered` | done |
 | 3.9 | Agents → `plugins/agents` (owner ruling); agent wallet reads (`stats["digi"]`, clinic bill, pending takings) move onto `api.wallet`, and the transitional `AgentManager._factions()` service lookup becomes a declared `depends` on `factions` | done |
-| 3.10 | Conduit (proficiencies, FRT..PRS, combat resolver, chargen) → `worlds/fablestar/plugins/conduit` | next |
-| 3.11 | Combat, equipment, ambient, effects → first-party plugins (owner G.4) | todo |
+| 3.10 | Conduit (proficiencies, FRT..PRS, combat ratings, chargen) → `worlds/fablestar/plugins/conduit` | done |
+| 3.11 | Combat, equipment, ambient, effects → first-party plugins (owner G.4) | next |
 | 3.12 | Snapshot contributors (`api.snapshot.contribute`); `resonance_levels_total` out of the protocol | done |
 | 3.13 | Declarative client panels; remove Fablestar panels/branding from player-ui | todo |
 | 3.14 | Schema: JSONB state, `digi_balance`/`reputation`/`echo_credits` columns, retire `agent_state` (backfill → drop) | todo |
@@ -120,3 +120,12 @@ by owner G.4 ("every mechanic is a first-party plugin").
   a snapshot section. The snapshot and the character list now carry `sections`; the engine's own
   `progression` section is `{levels_total}` from the progression slot. The player client reads it
   from there (its panels still say Resonance until 3.13).
+- **3.10 Conduit.** The whole proficiency package, the `score/prof/cap/bonus/raise/lower/lock`
+  commands, catalog build scripts and their tests live in `worlds/fablestar/plugins/conduit`
+  (world-private, proprietary per NOTICE — no longer under the engine's FSL paths). It provides
+  every progression, chargen and `combat.ratings` slot; the engine's temporary providers are gone,
+  so a world without such a plugin runs on the slot defaults (Rivermoot). New engine pieces:
+  `chargen.options` behind public `GET /play/chargen/options` (the player client's skill picker
+  reads it, no plugin id in the client), `/plugins/conduit/admin/catalog` for the admin Skills page.
+  `server.proficiency_combat_hybrid` config became the world param `conduit.combat_hybrid`. World
+  plugin tests run with the suite (`pytest.ini` testpaths include `worlds`).

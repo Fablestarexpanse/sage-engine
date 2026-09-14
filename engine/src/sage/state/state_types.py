@@ -4,37 +4,10 @@ These document the shapes stored in Redis and in the Postgres JSON columns
 (Character.stats, Character.inventory). They are structural annotations only —
 neither store enforces them at runtime.
 
-Deliberate dual definitions: ``ConduitAttributes`` has a validated pydantic
-BaseModel twin of the same name in ``sage.proficiencies.models``, and
-``ProficiencyRow``'s validated twin there is named ``LeafRuntimeState``.
-The split is intentional — these TypedDicts describe the raw storage contract
-(no validation, no defaults), while the BaseModels are for validated
-construction at the catalog/chargen boundary. Keep the field lists in sync.
+World and plugin blocks inside the stats blob are documented by their owners.
 """
 
 from typing import Any, TypedDict
-
-
-class ConduitAttributes(TypedDict):
-    FRT: int
-    RFX: int
-    ACU: int
-    RSV: int
-    PRS: int
-
-
-class ProficiencyRow(TypedDict):
-    level: int
-    state: str  # "raise" | "lower" | "lock"
-    peak: int
-
-
-class ConduitBlock(TypedDict):
-    version: int
-    conduit_attributes: ConduitAttributes
-    proficiencies: dict[str, ProficiencyRow]
-    archive_domain_spent: dict[str, int]
-    combat_hybrid_legacy: bool
 
 
 class CharacterStats(TypedDict, total=False):
@@ -45,7 +18,7 @@ class CharacterStats(TypedDict, total=False):
     intelligence: int
     perception: int
     hp: int
-    conduit: ConduitBlock
+    max_hp: int
 
 
 class InventoryItem(TypedDict, total=False):

@@ -30,6 +30,7 @@ crafting = "^1"
 maestro = "^1"
 hazards = "^1"
 agents = "^1"
+conduit = "^1"
 
 [params]
 # Tidegate clinic bills up to 10 Digi on respawn; half health on waking.
@@ -38,6 +39,8 @@ agents = "^1"
 # Skill use reported to progression by engine commands (proficiency leaves in this world).
 "engine.combat.skills" = ["combat.melee.blades", "combat.melee.impact", "combat.ballistic.sidearms", "combat.tactics.threat_assessment"]
 "engine.movement.skill" = "traversal.navigation.pathfinding"
+# Personal combat uses max(legacy strength/dexterity, proficiency) ratings while true.
+"conduit.combat_hybrid" = true
 "shop.wallet_aliases" = ["digi", "money"]
 # Progression skill ids are Conduit proficiency leaves.
 "search.skill" = "interface.perception.anomaly_scan"

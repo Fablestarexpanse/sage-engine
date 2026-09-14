@@ -34,8 +34,6 @@ class ServerConfig(BaseModel):
     # Passwordless test logins via POST /play/dev/login, loopback clients only.
     # Needs dev_mode too; never enable on a networked host.
     dev_login: bool = False
-    # When True, personal combat uses max(legacy strength/dexterity-derived, proficiency-derived) ratings.
-    proficiency_combat_hybrid: bool = True
     # When True, Nexus admin/content/forge/llm routes require a staff JWT (see /admin/auth/login).
     admin_auth_required: bool = True
     # HS256 secret; prefer env SAGE_ADMIN_JWT_SECRET in production.

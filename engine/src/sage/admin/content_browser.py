@@ -34,12 +34,11 @@ def set_content_root(content_dir: Path) -> None:
     The galaxy/system/ship and glyph browsers keep their defaults: those surfaces have no
     content or runtime and are slated for deletion (docs/sage/DECISIONS.md, owner G.3).
     """
-    global CONTENT_WORLD, ZONES_ROOT, ITEMS_DIR, PROFICIENCIES_CATALOG_JSON
+    global CONTENT_WORLD, ZONES_ROOT, ITEMS_DIR
     root = Path(content_dir)
     CONTENT_WORLD = root / "world"
     ZONES_ROOT = CONTENT_WORLD / "zones"
     ITEMS_DIR = CONTENT_WORLD / "items"
-    PROFICIENCIES_CATALOG_JSON = root / "proficiencies" / "catalog.json"
 
 
 def _is_safe_segment(segment: str) -> bool:
@@ -1106,48 +1105,3 @@ def save_ship_room(ship_id: str, room_local_id: str, patch: dict[str, Any]) -> P
     text = yaml.safe_dump(data, default_flow_style=False, allow_unicode=True, sort_keys=False)
     _atomic_write_text(path, text)
     return path
-
-
-PROFICIENCIES_CATALOG_JSON = Path("content/proficiencies/catalog.json")
-
-
-def read_proficiency_catalog_document() -> dict[str, Any]:
-    """Return raw ``catalog.json`` (version, expected_leaf_count, leaves) for admin editing."""
-    if not PROFICIENCIES_CATALOG_JSON.is_file():
-        raise FileNotFoundError("proficiency_catalog_missing")
-    raw = json.loads(PROFICIENCIES_CATALOG_JSON.read_text(encoding="utf-8"))
-    if not isinstance(raw, dict):
-        raise ValueError("invalid_catalog_root")
-    return raw
-
-
-def write_proficiency_catalog_document(raw: dict[str, Any]) -> dict[str, Any]:
-    """
-    Validate and atomically write ``content/proficiencies/catalog.json``.
-    ``expected_leaf_count`` is forced to ``len(leaves)`` so it stays consistent.
-    """
-    from sage.proficiencies.models import ProficiencyCatalogDocument
-    from sage.proficiencies.validation import validate_leaf_definitions
-
-    if not isinstance(raw, dict):
-        raise ValueError("catalog_must_be_object")
-    leaves_in = raw.get("leaves")
-    if not isinstance(leaves_in, list):
-        raise ValueError("leaves_must_be_array")
-    version = int(raw.get("version") or 1)
-    n = len(leaves_in)
-    doc_dict = {"version": version, "expected_leaf_count": n, "leaves": leaves_in}
-    try:
-        doc = ProficiencyCatalogDocument.model_validate(doc_dict)
-    except Exception as e:
-        raise ValueError(f"catalog_schema: {e}") from e
-    ok, errs = validate_leaf_definitions(list(doc.leaves), expected_count=len(doc.leaves))
-    if not ok:
-        raise ValueError("; ".join(errs))
-    payload = doc.model_dump(mode="json")
-    _atomic_write_json(PROFICIENCIES_CATALOG_JSON, payload)
-    return {
-        "ok": True,
-        "leaf_count": len(doc.leaves),
-        "path": str(PROFICIENCIES_CATALOG_JSON.resolve()),
-    }

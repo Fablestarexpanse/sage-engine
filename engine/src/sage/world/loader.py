@@ -7,8 +7,6 @@ from typing import Any, TypeVar
 import yaml
 from pydantic import BaseModel
 
-from sage.proficiencies.registry import ProficiencyRegistry
-from sage.proficiencies.registry_cache import ProficiencyRegistryCache
 from sage.world.models import EntityTemplate, ItemTemplate, RoomModel
 
 logger = logging.getLogger(__name__)
@@ -25,7 +23,6 @@ class ContentLoader:
     def __init__(self, content_dir: str = "content"):
         self.content_dir = Path(content_dir)
         self._cache: dict[str, Any] = {}
-        self._proficiency_cache = ProficiencyRegistryCache(self.content_dir)
 
     def _get_cache_key(self, content_type: str, content_id: str) -> str:
         return f"{content_type}:{content_id}"
@@ -140,10 +137,6 @@ class ContentLoader:
                 results.append(tmpl)
         return results
 
-    def get_proficiency_registry(self) -> ProficiencyRegistry:
-        """Delegate to the proficiencies package's own registry cache."""
-        return self._proficiency_cache.get()
-
     def invalidate(self, file_path: Path):
         """Invalidate cache entries associated with a changed file."""
         # Simple implementation: clear all or try to match path
@@ -151,9 +144,7 @@ class ContentLoader:
         logger.info(f"Invalidating cache for {file_path}")
 
         # For now, we'll just clear the specific type if we can determine it
-        if "proficiencies" in file_path.parts:
-            self._proficiency_cache.invalidate()
-        elif "rooms" in file_path.parts:
+        if "rooms" in file_path.parts:
             room_id = f"{file_path.parent.parent.name}:{file_path.stem}"
             cache_key = self._get_cache_key("room", room_id)
             if cache_key in self._cache:
@@ -166,5 +157,4 @@ class ContentLoader:
     def clear_cache(self):
         """Force clear the entire content cache."""
         self._cache.clear()
-        self._proficiency_cache.invalidate()
         logger.info("Content cache cleared.")

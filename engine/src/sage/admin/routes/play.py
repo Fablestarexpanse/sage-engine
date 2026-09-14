@@ -124,7 +124,7 @@ def build_play_router(server: SageServer) -> APIRouter:
     @router.get("/play/health")
     async def play_health():
         """Cheap check that player REST routes are live (no DB)."""
-        return {"ok": True, "play_api": "v1", "proficiency_catalog": True}
+        return {"ok": True, "play_api": "v1"}
 
     @router.get("/media/room-art/{zone_id}/{room_slug}/v/{filename}")
     async def media_room_art_variant(zone_id: str, room_slug: str, filename: str):
@@ -222,24 +222,12 @@ def build_play_router(server: SageServer) -> APIRouter:
             token=body.token,
         )
 
-    @router.get("/play/proficiencies/catalog")
-    async def play_proficiencies_catalog():
-        """Public read-only leaf list for chargen skill picker."""
-        from sage.proficiencies.starter import (
-            STARTER_MAX_PER_LEAF,
-            STARTER_POINTS_BUDGET,
-            catalog_leaves_for_client,
-        )
+    @router.get("/play/chargen/options")
+    async def play_chargen_options():
+        """Public: the world's character-creation options (chargen.options slot)."""
+        from sage.world.chargen import OPTIONS
 
-        reg = server.content_loader.get_proficiency_registry()
-        leaves = catalog_leaves_for_client(reg)
-        domains = sorted({x["domain"] for x in leaves})
-        return {
-            "budget": STARTER_POINTS_BUDGET,
-            "max_per_leaf": STARTER_MAX_PER_LEAF,
-            "domains": domains,
-            "leaves": leaves,
-        }
+        return server.resolvers.get(OPTIONS)()
 
     @router.post("/play/characters/delete")
     async def play_character_delete(body: PlayDeleteCharacterBody):

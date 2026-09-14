@@ -71,26 +71,12 @@ class TestContentLoaderInvalidate(unittest.TestCase):
         self.assertIn(stays, loader._cache)
         self.assertNotIn(goes, loader._cache)
 
-    def test_proficiency_eviction(self) -> None:
-        loader = ContentLoader()
-        loader._proficiency_cache._registry = object()  # type: ignore[assignment]
-        loader.invalidate(Path("content/proficiencies/combat.yaml"))
-        self.assertIsNone(loader._proficiency_cache._registry)
-
     def test_unknown_path_clears_everything(self) -> None:
         loader = ContentLoader()
         key = loader._get_cache_key("entity", "stalker")
         loader._cache[key] = object()
         loader.invalidate(Path("content/world/entities/stalker.yaml"))
         self.assertEqual(loader._cache, {})
-
-    def test_clear_cache_resets_proficiency_registry(self) -> None:
-        loader = ContentLoader()
-        loader._cache["room:z1:r1"] = object()
-        loader._proficiency_cache._registry = object()  # type: ignore[assignment]
-        loader.clear_cache()
-        self.assertEqual(loader._cache, {})
-        self.assertIsNone(loader._proficiency_cache._registry)
 
 
 if __name__ == "__main__":

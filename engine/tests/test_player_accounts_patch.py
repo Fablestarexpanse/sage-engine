@@ -53,12 +53,13 @@ def _server(session):
         notify_play_clients_echo_grant=notify_grant,
     )
     from sage.core.resolvers import Resolvers
-    from sage.proficiencies.providers import provide_all
     from sage.world.slots import define_engine_slots
 
     srv.resolvers = Resolvers()
     define_engine_slots(srv.resolvers)
-    provide_all(srv.resolvers, srv)
+    srv.resolvers.provide(
+        "progression.prepare", lambda stats: {**stats, "prepared": True}, owner="test"
+    )
     return srv, calls
 
 
@@ -174,14 +175,11 @@ def test_patch_character_blank_room_id_ignored():
     asyncio.run(check())
 
 
-def test_patch_character_stats_migrated_and_proficiency_block_ensured():
+def test_patch_character_stats_go_through_the_world_prepare_slot():
     async def check():
         char = _character()
         srv, _ = _server(_FakeSession(get_row=char))
         out = await player_accounts.patch_character(srv, 7, 3, {"stats": {"hp": 12}})
-        assert out["stats"]["hp"] == 12
-        assert "conduit" in out["stats"] or any(
-            k for k in out["stats"] if "proficien" in k or "conduit" in k
-        )
+        assert out["stats"] == {"hp": 12, "prepared": True}
 
     asyncio.run(check())

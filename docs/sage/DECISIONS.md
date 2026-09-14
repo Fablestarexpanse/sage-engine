@@ -4,9 +4,9 @@ NEXT: Phase 3 on sage/phase-3 (plan: docs/dev/milestones/M2-sage-decoupling/phas
 3.1 achievements, 3.2 wallet, 3.3 factions, 3.4 content extensions + plugin admin routes, 3.5 shop and
 lodging, 3.6 search and crafting (+ progression slots), 3.7 maestro, 3.8 hazards: DONE. 3.9 agents (virtual
 sessions, engine seams, plugins/agents with plg_agents_state) DONE; agent_state retirement moved to 3.14 (order-
-safe rename first). 3.12 snapshot sections DONE. Next: 3.10 Conduit -> worlds/fablestar/plugins/conduit
-(needs a chargen slot for the player-ui creation flow). Dev DB at n7o8p9q0r1s2.
-Ratchet 2039/113. Commit 9a831ea does not boot (be48da3 completes it).
+safe rename first). 3.12 snapshot sections, 3.10 Conduit world plugin DONE. Next: 3.11 combat, equipment,
+ambient, effects -> first-party plugins. Dev DB at n7o8p9q0r1s2.
+Ratchet 948/107. Commit 9a831ea does not boot (be48da3 completes it).
 Open owner questions: Rivermoot license; PRs for sage/stage-2b and sage/stage-2c.
 Review page: https://claude.ai/code/artifact/2d488113-1ca9-4f45-b993-ac0253e0670c
 
@@ -40,3 +40,4 @@ decisions are proposals until the Phase 1 review approves them.
 | 2026-09-13 | Architect | **Plugins may edit a whole character, within a seal (phase-3 3.3).** `api.state.edit(player_id)` loads the full stats blob for work that spans a plugin's own blocks and engine services (wallet, counters); on exit any other changed top-level key raises `PluginError` and nothing is saved. Chosen over giving plugins raw `set_player_stats`. | Mission payout moves money, bumps counters and clears the plugin's own block in one step; per-block `state.set` couldn't express it without losing the ownership check. |
 | 2026-09-13 | Architect | **Shop keepers are named by character name, not agent persona id.** Room YAML `owner:` changed for Fablestar's two keeper shops; keeper takings use the engine wallet's `pay_later`/`bank_pending` (`wallet_pending:<name>`). | A shop plugin that resolved persona ids would depend on agents; a character name works for agents and human keepers alike, and every lookup the admin view needs (location, wallet, inventory) is generic. |
 | 2026-09-13 | Owner | **Agent durable state moves to a plugin-owned table `plg_agents_state`** (copy existing `agent_state` rows first, drop the engine table in a later commit; uninstalling the plugin drops it). Chosen over engine accountless characters and over pausing agents. One-way door acknowledged. | Keeps the engine ignorant of agents; plugin tables roll back on uninstall (locked decision 8). |
+| 2026-09-13 | Architect | **Conduit code moves from the engine (FSL) into `worlds/fablestar/plugins/conduit` (proprietary per NOTICE).** It is Fablestar-only progression; the engine keeps only slots and defaults. | Brief: world mechanics are world packages; the licence line follows the path split already in NOTICE. |

@@ -14,11 +14,6 @@ import sage.app as app_module
 import sage.commands.combat as combat_mod
 
 # Register all command modules on the global registry.
-import sage.commands.communication
-import sage.commands.info
-import sage.commands.items
-import sage.commands.movement
-import sage.commands.proficiency  # noqa: F401
 from sage.world.models import ExitModel, RoomModel
 from tests.fakes import StubSession, make_fake_server
 

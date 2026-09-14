@@ -113,7 +113,7 @@ class RedisState:
 
     async def get_player_stats(self, player_id: str) -> dict[str, Any]:
         """Shape documented by state_types.CharacterStats (returned as plain dict —
-        the proficiency layer mutates it with dynamic keys)."""
+        world and plugin blocks add dynamic keys)."""
         key = self._get_key("player_stats", id=player_id)
         raw = await self.client.get(key)
         if raw is None:

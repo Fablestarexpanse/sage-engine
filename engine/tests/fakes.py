@@ -173,13 +173,12 @@ class FakeRedis:
 
 
 class FakeContentLoader:
-    """Serves canned Pydantic models; proficiency registry loads from real content/."""
+    """Serves canned Pydantic models."""
 
     def __init__(self) -> None:
         self.rooms: dict[str, RoomModel] = {}
         self.entity_templates: dict[str, EntityTemplate] = {}
         self.item_templates: dict[str, ItemTemplate] = {}
-        self._registry = None
 
     def get_room(self, room_id: str) -> RoomModel | None:
         return self.rooms.get(room_id)
@@ -189,15 +188,6 @@ class FakeContentLoader:
 
     def get_item_template(self, item_id: str) -> ItemTemplate | None:
         return self.item_templates.get(item_id)
-
-    def get_proficiency_registry(self):
-        if self._registry is None:
-            from sage.proficiencies.catalog_loader import load_proficiency_catalog_from_disk
-            from sage.proficiencies.registry import ProficiencyRegistry
-
-            doc = load_proficiency_catalog_from_disk(ROOT / "content")
-            self._registry = ProficiencyRegistry(doc.leaves)
-        return self._registry
 
 
 class StubProtocol:
@@ -285,17 +275,15 @@ def make_fake_server() -> SimpleNamespace:
     server.redis = FakeRedis()
     server.content_loader = FakeContentLoader()
     server.world = repo_world()
-    server.config = SimpleNamespace(server=SimpleNamespace(proficiency_combat_hybrid=True))
+    server.config = SimpleNamespace(server=SimpleNamespace())
     server.dispatcher = CommandDispatcher()
     server.session_manager = SimpleNamespace(
         player_to_session={}, get_session_by_player=lambda pid: None
     )
     server.spawner = EntitySpawnManager(server)  # type: ignore[arg-type]
     from sage.core.resolvers import Resolvers
-    from sage.proficiencies.providers import provide_all
     from sage.world.slots import define_engine_slots
 
     server.resolvers = Resolvers()
     define_engine_slots(server.resolvers)
-    provide_all(server.resolvers, server)
     return server

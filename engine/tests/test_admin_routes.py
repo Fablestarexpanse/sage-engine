@@ -52,7 +52,6 @@ def server():
     srv = make_fake_server()
     srv.config = SimpleNamespace(
         server=SimpleNamespace(
-            proficiency_combat_hybrid=True,
             admin_auth_required=True,
             admin_jwt_secret=SECRET,
             cors_origins=[],

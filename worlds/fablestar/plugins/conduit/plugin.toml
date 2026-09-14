@@ -1,0 +1,27 @@
+# Conduit — Fablestar Expanse's progression (proprietary, all rights reserved; see NOTICE).
+# Attributes FRT/RFX/ACU/RSV/PRS, the proficiency tree in content/proficiencies, chargen skill
+# allocation and combat ratings, provided to the engine through resolver slots.
+[plugin]
+id = "conduit"
+name = "Conduit"
+version = "1.0.0"
+engine = ">=0.2,<0.3"
+entry = "sage_plugin_conduit.main:setup"
+first_party = true
+
+[touches]
+commands = ["score", "prof", "cap", "bonus", "raise", "lower", "lock"]
+resolvers = [
+    "progression.skill_used",
+    "progression.skill_level",
+    "progression.seed_attributes",
+    "progression.total_levels",
+    "progression.skill_sheet",
+    "progression.prepare",
+    "combat.ratings",
+    "chargen.validate",
+    "chargen.seed",
+    "chargen.options",
+]
+state_blocks = ["conduit"]
+routes = ["/plugins/conduit/*"]

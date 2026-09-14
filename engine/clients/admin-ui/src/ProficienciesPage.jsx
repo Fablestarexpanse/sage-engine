@@ -4,6 +4,8 @@ import { useAdminTheme } from "./AdminThemeContext.jsx";
 import { API_BASE } from "./apiConfig.js";
 
 const WEIGHT_KEYS = ["FRT", "RFX", "ACU", "RSV", "PRS"];
+// The skills catalog editor is served by the world plugin that owns the proficiency tree.
+const CATALOG_URL = `${API_BASE}/plugins/conduit/admin/catalog`;
 
 function emptyLeaf() {
   return {
@@ -11,7 +13,7 @@ function emptyLeaf() {
     name: "",
     description: "",
     domain: "domain",
-    stat_weights: { FRT: 0.2, RFX: 0.2, ACU: 0.2, RSV: 0.2, PRS: 0.2 },
+    stat_weights: Object.fromEntries(WEIGHT_KEYS.map((k) => [k, 0.2])),
     tree_depth: 0,
     tags: [],
   };
@@ -36,7 +38,7 @@ export default function ProficienciesPage() {
     setLoadErr("");
     setSaveMsg("");
     try {
-      const { data } = await axios.get(`${API_BASE}/content/proficiencies/catalog`);
+      const { data } = await axios.get(CATALOG_URL);
       setDoc(data);
       setSel(null);
     } catch (e) {
@@ -106,7 +108,7 @@ export default function ProficienciesPage() {
     setBusy(true);
     setSaveMsg("");
     try {
-      const { data } = await axios.put(`${API_BASE}/content/proficiencies/catalog`, doc);
+      const { data } = await axios.put(CATALOG_URL, doc);
       setSaveMsg(`Saved ${data.leaf_count} leaves. Reload game content cache if players are online.`);
       await load();
     } catch (e) {

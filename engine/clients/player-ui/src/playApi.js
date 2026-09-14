@@ -146,20 +146,9 @@ export async function playComfyuiStatus() {
   return handlePlayResponse(r);
 }
 
-/**
- * Public leaf catalog for chargen (budget, caps, domain list). No auth.
- * Checks /play/health first so older Nexus builds (no GET /play/proficiencies/catalog)
- * fail with a short message instead of HTTP 404 from the catalog route.
- */
+/** The world's character-creation options (for this world: the skill catalog with budget and caps). No auth. */
 export async function playFetchProficiencyCatalog() {
-  const hr = await fetch(`${base()}/play/health`);
-  const health = await handlePlayResponse(hr);
-  if (!health || health.proficiency_catalog !== true) {
-    throw new Error(
-      "The skill picker is not available on this Nexus build. Stop the server and start it again from this project: python -m sage."
-    );
-  }
-  const r = await fetch(`${base()}/play/proficiencies/catalog`);
+  const r = await fetch(`${base()}/play/chargen/options`);
   return handlePlayResponse(r);
 }
 
@@ -199,7 +188,7 @@ export async function playCreateCharacter(username, password, name, portrait_pro
       const n = Number(v);
       if (Number.isFinite(n) && n > 0) cleaned[String(k)] = Math.floor(n);
     }
-    if (Object.keys(cleaned).length) payload.starter_proficiencies = cleaned;
+    if (Object.keys(cleaned).length) payload.chargen = { proficiencies: cleaned };
   }
   const r = await fetch(`${base()}/play/characters/create`, {
     method: "POST",

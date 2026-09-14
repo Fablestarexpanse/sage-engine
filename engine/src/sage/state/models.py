@@ -16,19 +16,6 @@ def default_character_stats() -> CharacterStats:
         "dexterity": 10,
         "intelligence": 10,
         "perception": 10,
-        "conduit": {
-            "version": 1,
-            "conduit_attributes": {
-                "FRT": 10,
-                "RFX": 10,
-                "ACU": 10,
-                "RSV": 10,
-                "PRS": 10,
-            },
-            "proficiencies": {},
-            "archive_domain_spent": {},
-            "combat_hybrid_legacy": True,
-        },
     }
 
 

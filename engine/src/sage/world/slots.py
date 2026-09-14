@@ -19,4 +19,5 @@ def define_engine_slots(resolvers: Any) -> None:
     resolvers.define(progression.PREPARE, progression.default_prepare)
     resolvers.define(chargen.VALIDATE, chargen.default_validate)
     resolvers.define(chargen.SEED, chargen.default_seed)
+    resolvers.define(chargen.OPTIONS, chargen.default_options)
     resolvers.define(ratings.RATINGS, ratings.default_ratings)

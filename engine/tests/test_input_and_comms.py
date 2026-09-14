@@ -4,9 +4,6 @@ from __future__ import annotations
 
 import asyncio
 
-import sage.commands.communication
-import sage.commands.info
-import sage.commands.proficiency  # noqa: F401 — registers score
 from sage import app as app_module
 from sage.commands.communication import resolve_tell_target
 from sage.network.session import SessionManager
@@ -23,8 +20,8 @@ def test_clean_input_strips_ansi_and_caps_length():
 
 
 def test_unique_prefix_and_suggestions():
-    cmd, _ = _resolve_verb("sco")
-    assert cmd is not None and cmd.name == "score"
+    cmd, _ = _resolve_verb("inven")
+    assert cmd is not None and cmd.name == "inventory"
     cmd, sugg = _resolve_verb("lok")
     assert cmd is None and "look" in sugg
 
