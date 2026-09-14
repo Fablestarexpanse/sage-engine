@@ -10,7 +10,7 @@ from typing import Any
 
 from sage.api import PluginAPI
 
-from . import commands, routes
+from . import commands, panels, routes
 from .catalog_loader import load_proficiency_catalog_from_disk
 from .engine import ProficiencyEngine
 from .registry import ProficiencyRegistry
@@ -127,3 +127,11 @@ def setup(api: PluginAPI) -> None:
 
     commands.register(api, catalog.get)
     routes.mount(api, catalog)
+    api.snapshot.contribute(
+        "conduit", lambda name, stats: panels.attribute_sheet(stats, catalog.get(), api.t)
+    )
+    api.snapshot.contribute(
+        "conduit_skills", lambda name, stats: panels.skill_tree(stats, catalog.get(), api.t)
+    )
+    api.ui.panel("attributes", "stat_sheet", "conduit", icon="◈")
+    api.ui.panel("skills", "tree", "conduit_skills", icon="◇")

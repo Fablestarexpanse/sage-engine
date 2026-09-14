@@ -5,10 +5,8 @@ import { ReputationThermometer } from "../ReputationThermometer.jsx";
 import { PORTRAIT_ASPECT_RATIO_CSS } from "../portraitProfile.js";
 import { Tooltip } from "./01-primitives.jsx";
 
-const RESONANCE_CAP = 5000;
-
-/** Frosted quick-read: account, Digi wallet, PVP, reputation, location, level (pixels in header). */
-function ConduitGlassStrip({ locationLabel, level, accountName, digiBalance, gameCurrencyLabel, pvpEnabled, reputation }) {
+/** Frosted quick-read: account, wallet, PVP, reputation, location, progress (pixels in header). */
+function CharacterStrip({ locationLabel, level, accountName, digiBalance, gameCurrencyLabel, pvpEnabled, reputation }) {
   const { T } = usePlayTheme();
   const glass = {
     padding: "10px 10px 8px",
@@ -98,11 +96,10 @@ function ConduitGlassStrip({ locationLabel, level, accountName, digiBalance, gam
           </div>
         </div>
         <div style={{ flexShrink: 0, width: 52, textAlign: "center", padding: "4px 6px", borderRadius: T.radius.md, background: `${T.glyph.violet}14`, border: `1px solid ${T.glyph.violet}35` }}>
-          <div style={{ ...micro, marginBottom: 2 }}>Prof. Σ</div>
+          <div style={{ ...micro, marginBottom: 2 }}>Level</div>
           <div style={{ fontSize: 18, fontFamily: T.font.display, fontWeight: 700, color: T.glyph.violet, lineHeight: 1.1 }}>
             {level != null && level !== "" ? level : "—"}
           </div>
-          <div style={{ fontSize: 7, color: T.text.muted, marginTop: 2, lineHeight: 1.2, opacity: 0.75 }}>/{RESONANCE_CAP}</div>
         </div>
       </div>
     </div>
@@ -110,14 +107,14 @@ function ConduitGlassStrip({ locationLabel, level, accountName, digiBalance, gam
 }
 
 export function CharacterPanel({
-  displayName = "Kael Voss",
+  displayName = "",
   portraitImageUrl = null,
   accountName = null,
   locationLabel = "",
-  level = null,
-  /** Server-backed stats (includes legacy keys + `conduit` proficiency block). */
+  /** Server-backed stats blob (vitals are read from it; world data is shown by declared panels). */
   characterStats = null,
-  resonanceLevelsTotal = null,
+  /** The world's single progress number (snapshot section progression.levels_total). */
+  levelsTotal = null,
   digiBalance = null,
   gameCurrencyLabel = "Digi",
   pvpEnabled = null,
@@ -129,23 +126,10 @@ export function CharacterPanel({
 }) {
   const { T } = usePlayTheme();
   const [tab, setTab] = useState("vitals");
-  const ca = characterStats?.conduit?.conduit_attributes;
-  const rsv = typeof ca?.RSV === "number" ? ca.RSV : 10;
-  const resTotal = typeof resonanceLevelsTotal === "number" ? resonanceLevelsTotal : 0;
-  const hp = typeof characterStats?.hp === "number" ? characterStats.hp : 73;
-  const hpMax = typeof characterStats?.max_hp === "number" ? characterStats.max_hp : 100;
-  const s = {
-    hp,
-    hpMax,
-    mp: typeof characterStats?.mp === "number" ? characterStats.mp : 45,
-    mpMax: typeof characterStats?.mpMax === "number" ? characterStats.mpMax : 80,
-    res: resTotal,
-    resMax: RESONANCE_CAP,
-    madness: Math.max(0, Math.min(100, 100 - rsv)),
-    madnessMax: 100,
-  };
+  const hp = typeof characterStats?.hp === "number" ? characterStats.hp : 0;
+  const hpMax = typeof characterStats?.max_hp === "number" ? characterStats.max_hp : Math.max(hp, 1);
   const Bar = ({ label, val, max, color, icon }) => {
-    const p = (val/max)*100, low = p < 25;
+    const p = max > 0 ? (val / max) * 100 : 0, low = p < 25;
     return (
       <div style={{ marginBottom: 5 }}>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 1 }}>
@@ -294,9 +278,9 @@ export function CharacterPanel({
           </div>
         </div>
       )}
-      <ConduitGlassStrip
+      <CharacterStrip
         locationLabel={locationLabel}
-        level={level}
+        level={levelsTotal}
         accountName={accountName}
         digiBalance={digiBalance}
         gameCurrencyLabel={gameCurrencyLabel}
@@ -304,15 +288,11 @@ export function CharacterPanel({
         reputation={reputation}
       />
       <div style={{ display: "flex", borderBottom: `1px solid ${T.border.subtle}` }}>
-        {["vitals","stats","effects"].map(t => <button key={t} type="button" onClick={()=>setTab(t)} style={{ flex: 1, padding: "5px 0", background: "none", border: "none", borderBottom: tab===t?`2px solid ${T.glyph.violet}`:"2px solid transparent", color: tab===t?T.text.accent:T.text.muted, fontFamily: T.font.body, fontSize: 9, textTransform: "uppercase", letterSpacing: "0.08em", cursor: "pointer" }}>{t}</button>)}
+        {["vitals","effects"].map(t => <button key={t} type="button" onClick={()=>setTab(t)} style={{ flex: 1, padding: "5px 0", background: "none", border: "none", borderBottom: tab===t?`2px solid ${T.glyph.violet}`:"2px solid transparent", color: tab===t?T.text.accent:T.text.muted, fontFamily: T.font.body, fontSize: 9, textTransform: "uppercase", letterSpacing: "0.08em", cursor: "pointer" }}>{t}</button>)}
       </div>
       <div style={{ flex: 1, padding: 8, overflow: "auto" }}>
         {tab === "vitals" && <>
-          <Bar label="Health" val={s.hp} max={s.hpMax} color={T.glyph.crimson} icon="♥" />
-          <Bar label="Mana" val={s.mp} max={s.mpMax} color={T.glyph.cyan} icon="◆" />
-          <Bar label="Resonance" val={s.res} max={s.resMax} color={T.glyph.violet} icon="✦" />
-          <div style={{ height: 1, margin: "6px 0", background: T.border.subtle }} />
-          <Bar label="Madness" val={s.madness} max={s.madnessMax} color={T.glyph.amber} icon="⊘" />
+          <Bar label="Health" val={hp} max={hpMax} color={T.glyph.crimson} icon="♥" />
         </>}
         {tab === "effects" && (
           <div>
@@ -335,32 +315,6 @@ export function CharacterPanel({
                 </div>
               ))
             )}
-          </div>
-        )}
-        {tab === "stats" && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4 }}>
-            {(ca
-              ? [
-                  { l: "FRT", v: ca.FRT },
-                  { l: "RFX", v: ca.RFX },
-                  { l: "ACU", v: ca.ACU },
-                  { l: "RSV", v: ca.RSV },
-                  { l: "PRS", v: ca.PRS },
-                ]
-              : []
-            ).concat(
-              characterStats
-                ? [
-                    { l: "STR", v: characterStats.strength ?? "—" },
-                    { l: "DEX", v: characterStats.dexterity ?? "—" },
-                  ]
-                : [{ l: "STR", v: "—" }, { l: "DEX", v: "—" }]
-            ).map((st) => (
-              <div key={st.l} style={{ background: T.bg.surface, borderRadius: T.radius.sm, padding: "5px 7px", border: `1px solid ${T.border.subtle}`, display: "flex", justifyContent: "space-between" }}>
-                <span style={{ fontSize: 10, fontFamily: T.font.mono, color: T.text.muted }}>{st.l}</span>
-                <span style={{ fontSize: 11, fontFamily: T.font.mono, color: T.text.primary }}>{st.v}</span>
-              </div>
-            ))}
           </div>
         )}
       </div>

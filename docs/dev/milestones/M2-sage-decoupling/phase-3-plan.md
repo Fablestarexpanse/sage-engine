@@ -33,7 +33,7 @@ by owner G.4 ("every mechanic is a first-party plugin").
 | 3.10 | Conduit (proficiencies, FRT..PRS, combat ratings, chargen) → `worlds/fablestar/plugins/conduit` | done |
 | 3.11 | Combat, equipment, ambient, effects → first-party plugins (owner G.4): ambient, effects, combat, equipment, consumables (`use`) | done |
 | 3.12 | Snapshot contributors (`api.snapshot.contribute`); `resonance_levels_total` out of the protocol | done |
-| 3.13 | Declarative client panels; remove Fablestar panels/branding from player-ui: 3.13a API + renderer done | in progress |
+| 3.13 | Declarative client panels; remove Fablestar panels/branding from player-ui: 3.13a API + renderer, 3.13b Conduit panels done | in progress |
 | 3.14 | Schema: JSONB state, `digi_balance`/`reputation`/`echo_credits` columns, retire `agent_state` (backfill → drop) | todo |
 | 3.15 | Redis key namespace by world slug | todo |
 | 3.16 | AI slots and style; prompts into `worlds/fablestar/ai` | todo |
@@ -159,6 +159,13 @@ by owner G.4 ("every mechanic is a first-party plugin").
     First users: factions (`list`), equipment (`key_value`), Rivermoot levels (`stat_sheet`).
   - 3.13b Conduit declares its sheet (`stat_sheet`) and skill tree (`tree` with raise/lower/lock
     actions); the Conduit strip and ProficienciesPanel leave player-ui.
+    As built: the tree lists every domain plus the leaves a character has touched (level > 0 or a
+    state other than raise), not all 278 leaves, because sections ride on every snapshot push;
+    browsing untouched leaves is the `prof`/`bonus` commands' job. The generic Character panel
+    keeps name, portrait, account, wallet chip, PvP, reputation, location, the progression
+    `levels_total` ("Level") and health; Mana/Madness placeholders and the FRT..PRS/STR/DEX tab are
+    gone. `resonanceLevelsTotal` became `levelsTotal` in the client. Showing a panel from the
+    toggles now brings it to the front.
   - 3.13c player-ui loses mock panels (glyphs, quests, target, session stats, keybinds, triggers,
     quick actions: owner G.3 "mock client panels") and Fablestar branding (header from world name,
     wallet chip from the world's primary currency).

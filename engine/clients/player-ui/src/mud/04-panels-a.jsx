@@ -232,21 +232,20 @@ export function TriggerBuilder() {
 
 export function QuickActions() {
   const { T } = usePlayTheme();
-  const { sendCommand, focusProficienciesPanel } = useContext(GameCmdContext);
+  const { sendCommand } = useContext(GameCmdContext);
   const actions = [
     { label: "Look", cmd: "look", icon: "👁", color: T.text.secondary },
     { label: "Get All", cmd: "get all", icon: "✋", color: T.glyph.cyan },
     { label: "Inventory", cmd: "inventory", icon: "◻", color: T.glyph.amber },
     { label: "Score", cmd: "score", icon: "★", color: T.glyph.violet },
-    { label: "Skills", cmd: "", icon: "◇", color: T.glyph.violet, openSkills: true },
     { label: "Rest", cmd: "rest", icon: "💤", color: T.glyph.emerald },
     { label: "Map", cmd: "map", icon: "🗺", color: T.glyph.cyan },
   ];
   return (
     <div style={{ height: "100%", display: "flex", flexWrap: "wrap", gap: 3, padding: 6, alignContent: "flex-start" }}>
       {actions.map((a, i) => (
-        <button key={i} type="button" title={a.openSkills ? "Open Skills panel" : a.cmd} aria-label={a.openSkills ? `${a.label} (panel)` : `${a.label} (${a.cmd})`}
-          onClick={() => (a.openSkills ? focusProficienciesPanel?.() : sendCommand(a.cmd))}
+        <button key={i} type="button" title={a.cmd} aria-label={`${a.label} (${a.cmd})`}
+          onClick={() => sendCommand(a.cmd)}
           style={{
             display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
             gap: 2, width: 52, height: 44, borderRadius: T.radius.md,

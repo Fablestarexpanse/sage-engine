@@ -1,0 +1,18 @@
+conduit:
+  panel:
+    attributes: "Conduit"
+    skills: "Skills"
+  attribute:
+    FRT: "Fortitude"
+    RFX: "Reflex"
+    ACU: "Acuity"
+    RSV: "Resolve"
+    PRS: "Presence"
+  label:
+    resonance: "Resonance"
+    leaf_note: "{id} · {state} · peak {peak}"
+    no_skills: "No proficiencies yet."
+  state:
+    raise: "raise"
+    lower: "lower"
+    lock: "lock"

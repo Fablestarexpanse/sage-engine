@@ -11,7 +11,6 @@ import { MiniMap } from "./05-minimap.jsx";
 import {
   CharacterPanel, GlyphBar, InventoryPanel, SocialPanel, ScenePanel,
 } from "./06-panels-b.jsx";
-import { ProficienciesPanel } from "./07-proficiencies-panel.jsx";
 import { DeclaredPanel } from "./08-declared-panels.jsx";
 import { PORTRAIT_ASPECT_RATIO_CSS } from "../portraitProfile.js";
 import { GmBadge } from "../GmBadge.jsx";
@@ -52,13 +51,13 @@ function declaredPanelBox(index) {
 
 const PRESETS = {
   standard: { name: "Standard", desc: "Balanced layout",
-    panels: { narrative:{x:260,y:0,w:580,h:470}, scene:{x:840,y:0,w:340,h:260}, character:{x:0,y:0,w:260,h:360}, map:{x:840,y:260,w:340,h:210}, glyphs:{x:260,y:470,w:580,h:90}, inventory:{x:0,y:360,w:260,h:200}, social:{x:840,y:470,w:340,h:90}, afflictions:{x:100,y:100,w:240,h:280}, quests:{x:200,y:100,w:320,h:350}, target:{x:100,y:100,w:260,h:240}, stats:{x:100,y:100,w:240,h:280}, proficiencies:{x:300,y:70,w:420,h:420}, keybinds:{x:200,y:50,w:280,h:360}, triggers:{x:200,y:50,w:320,h:360}, quickactions:{x:0,y:560,w:260,h:70} },
+    panels: { narrative:{x:260,y:0,w:580,h:470}, scene:{x:840,y:0,w:340,h:260}, character:{x:0,y:0,w:260,h:360}, map:{x:840,y:260,w:340,h:210}, glyphs:{x:260,y:470,w:580,h:90}, inventory:{x:0,y:360,w:260,h:200}, social:{x:840,y:470,w:340,h:90}, afflictions:{x:100,y:100,w:240,h:280}, quests:{x:200,y:100,w:320,h:350}, target:{x:100,y:100,w:260,h:240}, stats:{x:100,y:100,w:240,h:280}, keybinds:{x:200,y:50,w:280,h:360}, triggers:{x:200,y:50,w:320,h:360}, quickactions:{x:0,y:560,w:260,h:70} },
     visible: ["narrative","scene","character","map","glyphs","inventory","social"] },
   combat: { name: "Combat", desc: "Effects & target",
-    panels: { narrative:{x:280,y:0,w:560,h:400}, scene:{x:0,y:360,w:280,h:200}, character:{x:0,y:0,w:280,h:360}, map:{x:840,y:360,w:340,h:200}, glyphs:{x:280,y:400,w:560,h:80}, inventory:{x:100,y:100,w:260,h:200}, social:{x:840,y:480,w:340,h:80}, afflictions:{x:840,y:0,w:340,h:200}, quests:{x:200,y:100,w:320,h:350}, target:{x:840,y:200,w:340,h:160}, stats:{x:100,y:100,w:240,h:280}, proficiencies:{x:120,y:70,w:400,h:400}, keybinds:{x:200,y:50,w:280,h:360}, triggers:{x:200,y:50,w:320,h:360}, quickactions:{x:280,y:480,w:560,h:80} },
+    panels: { narrative:{x:280,y:0,w:560,h:400}, scene:{x:0,y:360,w:280,h:200}, character:{x:0,y:0,w:280,h:360}, map:{x:840,y:360,w:340,h:200}, glyphs:{x:280,y:400,w:560,h:80}, inventory:{x:100,y:100,w:260,h:200}, social:{x:840,y:480,w:340,h:80}, afflictions:{x:840,y:0,w:340,h:200}, quests:{x:200,y:100,w:320,h:350}, target:{x:840,y:200,w:340,h:160}, stats:{x:100,y:100,w:240,h:280}, keybinds:{x:200,y:50,w:280,h:360}, triggers:{x:200,y:50,w:320,h:360}, quickactions:{x:280,y:480,w:560,h:80} },
     visible: ["narrative","character","glyphs","afflictions","target","map","quickactions"] },
   classic: { name: "Classic MUD", desc: "Text-forward",
-    panels: { narrative:{x:0,y:0,w:860,h:520}, scene:{x:100,y:100,w:380,h:300}, character:{x:860,y:0,w:320,h:260}, map:{x:860,y:260,w:320,h:200}, glyphs:{x:0,y:520,w:580,h:60}, inventory:{x:860,y:460,w:320,h:100}, social:{x:580,y:520,w:280,h:60}, afflictions:{x:100,y:100,w:240,h:280}, quests:{x:200,y:100,w:320,h:350}, target:{x:100,y:100,w:260,h:240}, stats:{x:100,y:100,w:240,h:280}, proficiencies:{x:120,y:120,w:400,h:380}, keybinds:{x:200,y:50,w:280,h:360}, triggers:{x:200,y:50,w:320,h:360}, quickactions:{x:100,y:100,w:260,h:100} },
+    panels: { narrative:{x:0,y:0,w:860,h:520}, scene:{x:100,y:100,w:380,h:300}, character:{x:860,y:0,w:320,h:260}, map:{x:860,y:260,w:320,h:200}, glyphs:{x:0,y:520,w:580,h:60}, inventory:{x:860,y:460,w:320,h:100}, social:{x:580,y:520,w:280,h:60}, afflictions:{x:100,y:100,w:240,h:280}, quests:{x:200,y:100,w:320,h:350}, target:{x:100,y:100,w:260,h:240}, stats:{x:100,y:100,w:240,h:280}, keybinds:{x:200,y:50,w:280,h:360}, triggers:{x:200,y:50,w:320,h:360}, quickactions:{x:100,y:100,w:260,h:100} },
     visible: ["narrative","character","map","glyphs","inventory","social"] },
 };
 
@@ -99,7 +98,7 @@ export default function PlayClient({
   const preset = PRESETS[layout];
   const narrativeLocationHint = useMemo(() => lastRoomTitleHint(narrativeLines || []), [narrativeLines]);
   // Server-pushed location wins; the narrative-scrape hint is the legacy fallback.
-  const conduitLocation =
+  const characterLocation =
     session?.liveLocation?.name || session?.liveLocation?.id || narrativeLocationHint;
   const toggleCollapse = (id) => setCollapsed(p => ({ ...p, [id]: !p[id] }));
   const bringToFront = (id) => setFocusStack(p => [...p.filter(x => x !== id), id]);
@@ -107,8 +106,10 @@ export default function PlayClient({
   const isVis = (id) => preset.visible.includes(id);
   const togglePanel = (id) => {
     const p = { ...PRESETS[layout] };
-    p.visible = isVis(id) ? p.visible.filter(v => v !== id) : [...p.visible, id];
+    const showing = !isVis(id);
+    p.visible = showing ? [...p.visible, id] : p.visible.filter(v => v !== id);
     PRESETS[layout] = p;
+    if (showing) bringToFront(id);
     setLayout(l => l);
     setCollapsed(c => ({ ...c }));
   };
@@ -118,17 +119,6 @@ export default function PlayClient({
   const sendCommand = useCallback((cmd) => {
     onSendCommand?.(cmd);
   }, [onSendCommand]);
-
-  const focusProficienciesPanel = useCallback(() => {
-    const pid = "proficiencies";
-    const lp = PRESETS[layout];
-    if (!lp?.panels?.[pid]) return;
-    const nextVis = lp.visible.includes(pid) ? lp.visible : [...lp.visible, pid];
-    PRESETS[layout] = { ...lp, visible: nextVis };
-    setLayout((l) => l);
-    setCollapsed((c) => ({ ...c, [pid]: false }));
-    bringToFront(pid);
-  }, [layout]);
 
   const onArtCreditsInfo = useCallback(() => {
     const art = echoEconomy?.label || "pixels";
@@ -190,16 +180,15 @@ export default function PlayClient({
         }
       />
     ) },
-    { id: "character", title: "Conduit", icon: "◈", accent: T.glyph.violet, minW: 200, minH: 240, content: (
+    { id: "character", title: "Character", icon: "◉", accent: T.glyph.violet, minW: 200, minH: 240, content: (
       <CharacterPanel
         displayName={session?.characterName}
         portraitImageUrl={session?.portraitImageUrl}
         showHeroPortrait={!session?.portraitImageUrl}
         accountName={session?.username}
-        locationLabel={conduitLocation}
-        level={session?.resonanceLevelsTotal != null ? session.resonanceLevelsTotal : null}
+        locationLabel={characterLocation}
         characterStats={session?.characterStats ?? null}
-        resonanceLevelsTotal={session?.resonanceLevelsTotal ?? null}
+        levelsTotal={session?.levelsTotal ?? null}
         digiBalance={session?.digiBalance}
         gameCurrencyLabel={gameCurrencyDisplayName}
         pvpEnabled={session?.pvpEnabled}
@@ -215,20 +204,6 @@ export default function PlayClient({
     { id: "quests", title: "Quest Journal", icon: "📖", accent: T.glyph.emerald, minW: 260, minH: 250, content: <QuestJournal gameCurrencyLabel={gameCurrencyDisplayName} /> },
     { id: "target", title: "Target", icon: "⎯", accent: T.glyph.amber, minW: 220, minH: 180, content: <TargetPanel/> },
     { id: "stats", title: "Session Stats", icon: "📊", accent: T.text.info, minW: 200, minH: 200, content: <SessionStats/> },
-    {
-      id: "proficiencies",
-      title: "Skills",
-      icon: "◇",
-      accent: T.glyph.violet,
-      minW: 320,
-      minH: 280,
-      content: (
-        <ProficienciesPanel
-          characterStats={session?.characterStats ?? null}
-          resonanceLevelsTotal={session?.resonanceLevelsTotal ?? null}
-        />
-      ),
-    },
     { id: "keybinds", title: "Keybinds", icon: "⌨", accent: T.text.muted, minW: 240, minH: 280, content: <KeybindManager/> },
     { id: "triggers", title: "Triggers", icon: "⚡", accent: T.glyph.amber, minW: 260, minH: 260, content: <TriggerBuilder/> },
     { id: "quickactions", title: "Quick Actions", icon: "▶", accent: T.glyph.cyan, minW: 200, minH: 60, content: <QuickActions/> },
@@ -241,10 +216,10 @@ export default function PlayClient({
       minH: 140,
       content: <DeclaredPanel spec={spec} data={session?.liveSections?.[spec.section]} />,
     })),
-  ], [session?.declaredPanels, session?.liveSections, narrativeLines, openCtx, sendCommand, focusProficienciesPanel, notifications, session?.characterName, session?.username, session?.portraitImageUrl, session?.digiBalance, session?.pvpEnabled, session?.reputation, session?.characterStats, session?.resonanceLevelsTotal, session?.liveEffects, session?.liveInventory, session?.liveMap, session?.chatMessages, sceneImageUrl, sceneGenerating, sceneRoomLabel, sceneDownloadBaseName, sceneGen, conduitLocation, gameCurrencyDisplayName, narrativeBackdropUrl, narrativeBackdropSource, openSceneGallerySignal]);
+  ], [session?.declaredPanels, session?.liveSections, narrativeLines, openCtx, sendCommand, notifications, session?.characterName, session?.username, session?.portraitImageUrl, session?.digiBalance, session?.pvpEnabled, session?.reputation, session?.characterStats, session?.levelsTotal, session?.liveEffects, session?.liveInventory, session?.liveMap, session?.chatMessages, sceneImageUrl, sceneGenerating, sceneRoomLabel, sceneDownloadBaseName, sceneGen, characterLocation, gameCurrencyDisplayName, narrativeBackdropUrl, narrativeBackdropSource, openSceneGallerySignal]);
 
   return (
-    <GameCmdContext.Provider value={{ sendCommand, focusProficienciesPanel }}>
+    <GameCmdContext.Provider value={{ sendCommand }}>
     {!wsConnected && (
       <div
         role="alert"

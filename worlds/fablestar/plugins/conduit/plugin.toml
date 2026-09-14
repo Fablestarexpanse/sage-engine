@@ -25,3 +25,6 @@ resolvers = [
 ]
 state_blocks = ["conduit"]
 routes = ["/plugins/conduit/*"]
+snapshot = ["conduit", "conduit_skills"]
+panels = ["conduit.attributes", "conduit.skills"]
+lexicon_prefix = "conduit."

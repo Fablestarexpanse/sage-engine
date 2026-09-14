@@ -1875,7 +1875,7 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
                   reputation: typeof ch?.reputation === "number" ? ch.reputation : 0,
                   lastSceneImageUrl: ch?.last_scene_image_url ?? null,
                   characterStats: ch?.stats ?? null,
-                  resonanceLevelsTotal: levelsTotalOf(ch),
+                  levelsTotal: levelsTotalOf(ch),
                 });
               }}
               style={{
@@ -2140,7 +2140,7 @@ export default function App() {
   }, [step, playSession?.username, playSession?.characterId]);
 
   const onChosen = useCallback(
-    ({ characterId, characterName, password, portraitUrl, digiBalance, pvpEnabled, reputation, lastSceneImageUrl, characterStats, resonanceLevelsTotal }) => {
+    ({ characterId, characterName, password, portraitUrl, digiBalance, pvpEnabled, reputation, lastSceneImageUrl, characterStats, levelsTotal }) => {
       passwordRef.current = password;
       setPlaySession({
         username: auth.username,
@@ -2153,7 +2153,7 @@ export default function App() {
         reputation: typeof reputation === "number" ? reputation : 0,
         isGm: Boolean(auth.isGm),
         characterStats: characterStats && typeof characterStats === "object" ? characterStats : null,
-        resonanceLevelsTotal: typeof resonanceLevelsTotal === "number" ? resonanceLevelsTotal : null,
+        levelsTotal: typeof levelsTotal === "number" ? levelsTotal : null,
       });
       setPlayerScenePath(lastSceneImageUrl && String(lastSceneImageUrl).trim() ? String(lastSceneImageUrl).trim() : null);
       setPlayerSceneBust((n) => n + 1);
@@ -2177,7 +2177,7 @@ export default function App() {
       reputation: typeof ch.reputation === "number" ? ch.reputation : 0,
       lastSceneImageUrl: ch.last_scene_image_url ?? null,
       characterStats: ch.stats ?? null,
-      resonanceLevelsTotal: levelsTotalOf(ch),
+      levelsTotal: levelsTotalOf(ch),
     });
   }, [step, auth, onChosen]);
 
@@ -2259,7 +2259,7 @@ export default function App() {
               ? {
                   ...prev,
                   characterStats: j.stats && typeof j.stats === "object" ? j.stats : prev.characterStats,
-                  resonanceLevelsTotal: levelsTotalOf(j) ?? prev.resonanceLevelsTotal,
+                  levelsTotal: levelsTotalOf(j) ?? prev.levelsTotal,
                   liveLocation: j.location && typeof j.location === "object" ? j.location : prev.liveLocation,
                   liveEffects: Array.isArray(j.effects) ? j.effects : prev.liveEffects,
                   liveInventory: Array.isArray(j.inventory) ? j.inventory : prev.liveInventory,
@@ -2453,7 +2453,7 @@ export default function App() {
             reputation: playSession.reputation ?? 0,
             isGm: playSession.isGm,
             characterStats: playSession.characterStats ?? null,
-            resonanceLevelsTotal: playSession.resonanceLevelsTotal ?? null,
+            levelsTotal: playSession.levelsTotal ?? null,
             liveLocation: playSession.liveLocation ?? null,
             liveEffects: playSession.liveEffects ?? null,
             liveInventory: playSession.liveInventory ?? null,

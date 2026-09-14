@@ -1,6 +1,6 @@
 {
   "totals": {
-    "denylist": 947,
+    "denylist": 866,
     "player_literals": 72
   },
   "denylist": {
@@ -18,17 +18,16 @@
     "engine/clients/admin-ui/src/pages/ServerPage.jsx": 17,
     "engine/clients/admin-ui/src/storageMigration.js": 8,
     "engine/clients/player-ui/index.html": 1,
-    "engine/clients/player-ui/src/App.jsx": 133,
+    "engine/clients/player-ui/src/App.jsx": 123,
     "engine/clients/player-ui/src/ChargenProficienciesStep.jsx": 8,
     "engine/clients/player-ui/src/ChargenSkillPicker.jsx": 4,
     "engine/clients/player-ui/src/mud/01-primitives.jsx": 3,
     "engine/clients/player-ui/src/mud/02-entity.jsx": 7,
     "engine/clients/player-ui/src/mud/03-narrative.jsx": 45,
-    "engine/clients/player-ui/src/mud/04-panels-a.jsx": 40,
+    "engine/clients/player-ui/src/mud/04-panels-a.jsx": 39,
     "engine/clients/player-ui/src/mud/05-minimap.jsx": 6,
-    "engine/clients/player-ui/src/mud/06-panels-b.jsx": 84,
-    "engine/clients/player-ui/src/mud/07-proficiencies-panel.jsx": 30,
-    "engine/clients/player-ui/src/mud/PlayClient.jsx": 70,
+    "engine/clients/player-ui/src/mud/06-panels-b.jsx": 56,
+    "engine/clients/player-ui/src/mud/PlayClient.jsx": 58,
     "engine/clients/player-ui/src/playApi.js": 1,
     "engine/clients/player-ui/src/storageMigration.js": 8,
     "engine/clients/player-ui/src/theme.js": 10,
