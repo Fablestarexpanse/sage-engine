@@ -37,6 +37,9 @@ def rivermoot():
         plugins_root=ROOT / "plugins",
         trusted_roots=[ROOT / "plugins", ROOT / "worlds"],
     )
+    from sage.world.slots import define_engine_slots
+
+    define_engine_slots(host.resolvers, world)
     host.server = SimpleNamespace(
         snapshot_contributors=SnapshotContributors(),
         panels=PanelRegistry(),
@@ -84,10 +87,23 @@ def test_kills_grant_experience_and_levels(rivermoot):
         await host.events.publish(event)
         return event.messages
 
+    stats.update({"hp": 5, "max_hp": 12})
     assert asyncio.run(kill()) == ["You gain 5 experience."]
     assert stats["levels"] == {"level": 1, "xp": 5}
-    assert asyncio.run(kill()) == ["You gain 5 experience.", "You are now level 2!"]
+    assert asyncio.run(kill()) == [
+        "You gain 5 experience.",
+        "You are now level 2! (+2 maximum health)",
+    ]
     assert stats["levels"] == {"level": 2, "xp": 0}
+    assert (stats["hp"], stats["max_hp"]) == (7, 14)
+
+
+def test_combat_ratings_come_from_might_nerve_and_level(rivermoot):
+    world, host = rivermoot
+    rate = host.resolvers.get("combat.ratings")
+    assert rate({"mgt": 2, "nrv": 2}) == (2, 1)
+    assert rate({"mgt": 4, "nrv": 5, "levels": {"level": 3, "xp": 0}}) == (5, 3)
+    assert host.resolvers.get("progression.total_levels")({"levels": {"level": 4}}) == 4
 
 
 def test_levels_panel_is_a_stat_sheet(rivermoot):
@@ -175,3 +191,27 @@ def test_worlds_without_attribute_points_keep_empty_chargen_defaults():
     resolvers = Resolvers()
     define_engine_slots(resolvers)
     assert resolvers.get("chargen.options")() == {}
+
+
+def test_a_kill_inside_combats_edit_may_raise_maximum_health(rivermoot):
+    """levels declares max_hp, so combat's blob may carry the level-up it published; nothing else."""
+    from sage.plugins.manifest import PluginError
+
+    world, host = rivermoot
+    combat = next(r.api for r in host.loaded if r.id == "combat")
+    host.redis.stats["hero"] = {"hp": 5, "max_hp": 12, "wts": 2}
+
+    async def level_up():
+        async with combat.state.edit("hero") as stats:
+            stats["max_hp"], stats["hp"] = 14, 7
+
+    asyncio.run(level_up())
+    assert host.redis.stats["hero"]["max_hp"] == 14
+
+    async def scribble():
+        async with combat.state.edit("hero") as stats:
+            stats["wts"] = 6
+
+    with pytest.raises(PluginError, match="does not own"):
+        asyncio.run(scribble())
+    assert host.redis.stats["hero"]["wts"] == 2

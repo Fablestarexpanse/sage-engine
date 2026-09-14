@@ -117,8 +117,10 @@ class _State:
         """Load the whole stats blob, let the plugin change it, save it on success.
 
         For work that spans the plugin's own blocks and engine services (wallet balances,
-        counters — whose subscribers may update their own blocks). Changing any other top-level
-        key (vitals, a world's progression data) raises PluginError and saves nothing.
+        counters — whose subscribers may update their own blocks). Engine-owned keys (vitals) may
+        change when some loaded plugin declares them in `stats_keys`: an event published inside
+        the edit (a kill raising maximum health) writes through the publisher's blob. Changing
+        any other top-level key raises PluginError and saves nothing.
         """
         redis = self._api._host.redis
         before = await redis.get_player_stats(player_id)
@@ -129,6 +131,11 @@ class _State:
             | set(self._api._host.state_owners)
             | _engine_service_keys(self._api._host.world)
             | set(self._api._record.manifest.touches.stats_keys)
+            | {
+                key
+                for record in self._api._host.loaded
+                for key in record.manifest.touches.stats_keys
+            }
         )
         changed = {k for k in set(before) | set(stats) if before.get(k) != stats.get(k)}
         stray = sorted(changed - allowed)

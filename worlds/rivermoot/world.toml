@@ -26,3 +26,4 @@ levels = "^1"
 [params]
 "levels.xp_per_kill" = 5
 "levels.xp_per_level" = 10
+"levels.hp_per_level" = 2
