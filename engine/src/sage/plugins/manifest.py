@@ -29,6 +29,7 @@ SUPPORTED_TOUCHES = (
     "routes",
     "redis_prefixes",
     "tables",
+    "snapshot",
     "lexicon_prefix",
 )
 

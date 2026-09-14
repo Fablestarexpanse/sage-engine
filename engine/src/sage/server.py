@@ -90,6 +90,10 @@ class SageServer:
         self.events = EventBus()
         self.resolvers = Resolvers()
         self._define_engine_resolvers()
+        from sage.network.snapshot import SnapshotContributors, progression_section
+
+        self.snapshot_contributors = SnapshotContributors()
+        self.snapshot_contributors.add("progression", progression_section(self.resolvers), "sage")
         self.session_manager = SessionManager()
         self.redis = RedisState(self.config.redis)
         self.db = PostgresState(self.config.database)
@@ -588,7 +592,6 @@ class SageServer:
 
         from sage.effects.engine import ensure_effects
         from sage.network.play_messages import CharacterSnapshotNotice
-        from sage.proficiencies.state_helpers import total_proficiency_levels
 
         player_id = session.player_id
         if not player_id:
@@ -602,12 +605,6 @@ class SageServer:
             inventory = await self.redis.get_player_inventory(player_id)
             room_id = await self.redis.get_player_location(player_id)
             room = self.content_loader.get_room(room_id) if room_id else None
-
-            try:
-                reg = self.content_loader.get_proficiency_registry()
-                total_lv = total_proficiency_levels(stats, registry=reg)
-            except Exception:
-                total_lv = total_proficiency_levels(stats)
 
             now = _time.time()
             effects = [
@@ -636,7 +633,7 @@ class SageServer:
                 "client_notice": "character_snapshot",
                 "character_name": player_id,
                 "stats": stats,
-                "resonance_levels_total": total_lv,
+                "sections": await self.snapshot_contributors.build(player_id, stats),
                 "location": {
                     "id": room_id or "",
                     "name": room.name if room and room.name else None,

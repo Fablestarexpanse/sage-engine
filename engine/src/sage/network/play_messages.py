@@ -47,7 +47,9 @@ class CharacterSnapshotNotice(TypedDict, total=False):
     client_notice: Literal["character_snapshot"]
     character_name: str
     stats: dict[str, Any]
-    resonance_levels_total: int
+    # Plugin- and engine-contributed panel data by section (sage.network.snapshot), e.g.
+    # {"progression": {"levels_total": 42}}.
+    sections: dict[str, Any]
     # {"id": "zone:slug", "name": "Display Name" | None}
     location: dict[str, Any]
     # [{"name", "description", "debuff", "seconds_left" (None = indefinite)}]
@@ -72,7 +74,7 @@ class CharacterPayload(TypedDict):
     pvp_enabled: bool
     reputation: int
     stats: dict[str, Any]
-    resonance_levels_total: int
+    sections: dict[str, Any]
 
 
 class PlayAccountResponse(TypedDict, total=False):

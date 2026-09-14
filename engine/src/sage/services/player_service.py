@@ -112,20 +112,13 @@ class PlayerService:
     # Shared response building
     # ------------------------------------------------------------------
 
-    def character_play_dict(self, character: Character) -> dict[str, Any]:
-        from sage.proficiencies.state_helpers import (
-            ensure_proficiency_block,
-            migrate_legacy_stats,
-            total_proficiency_levels,
-        )
+    async def character_play_dict(self, character: Character) -> dict[str, Any]:
+        from sage.proficiencies.state_helpers import ensure_proficiency_block, migrate_legacy_stats
 
         stats = migrate_legacy_stats(dict(character.stats or {}))
         ensure_proficiency_block(stats)
-        try:
-            reg = self.server.content_loader.get_proficiency_registry()
-            total_lv = total_proficiency_levels(stats, registry=reg)
-        except Exception:
-            total_lv = total_proficiency_levels(stats)
+        contributors = getattr(self.server, "snapshot_contributors", None)
+        sections = await contributors.build(character.name, stats) if contributors else {}
         return {
             "id": character.id,
             "name": character.name,
@@ -137,7 +130,7 @@ class PlayerService:
             "pvp_enabled": bool(character.pvp_enabled),
             "reputation": int(character.reputation),
             "stats": stats,
-            "resonance_levels_total": total_lv,
+            "sections": sections,
         }
 
     async def account_characters_response(self, db_session, account: Account) -> dict[str, Any]:
@@ -145,7 +138,7 @@ class PlayerService:
         result = await db_session.execute(
             select(Character).where(Character.account_id == account.id).order_by(Character.id)
         )
-        chars_payload = [self.character_play_dict(c) for c in result.scalars().all()]
+        chars_payload = [await self.character_play_dict(c) for c in result.scalars().all()]
         return {
             "ok": True,
             "username": account.username,
@@ -466,11 +459,11 @@ class PlayerService:
             character = await self._insert_character(
                 db_session, account_id, name, p_url, pp, starter_clean
             )
-            payload = self.character_play_dict(character)
+            payload = await self.character_play_dict(character)
             result = await db_session.execute(
                 select(Character).where(Character.account_id == account_id).order_by(Character.id)
             )
-            all_chars = [self.character_play_dict(c) for c in result.scalars().all()]
+            all_chars = [await self.character_play_dict(c) for c in result.scalars().all()]
 
         final_bal = await self.server.economy.read_balance(account_id)
         out: dict[str, Any] = {

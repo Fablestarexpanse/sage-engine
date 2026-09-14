@@ -32,7 +32,7 @@ by owner G.4 ("every mechanic is a first-party plugin").
 | 3.9 | Agents → `plugins/agents` (owner ruling); agent wallet reads (`stats["digi"]`, clinic bill, pending takings) move onto `api.wallet`, and the transitional `AgentManager._factions()` service lookup becomes a declared `depends` on `factions` | done |
 | 3.10 | Conduit (proficiencies, FRT..PRS, combat resolver, chargen) → `worlds/fablestar/plugins/conduit` | next |
 | 3.11 | Combat, equipment, ambient, effects → first-party plugins (owner G.4) | todo |
-| 3.12 | Snapshot contributors; `resonance_levels_total` out of the protocol | todo |
+| 3.12 | Snapshot contributors (`api.snapshot.contribute`); `resonance_levels_total` out of the protocol | done |
 | 3.13 | Declarative client panels; remove Fablestar panels/branding from player-ui | todo |
 | 3.14 | Schema: JSONB state, `digi_balance`/`reputation`/`echo_credits` columns, retire `agent_state` (backfill → drop) | todo |
 | 3.15 | Redis key namespace by world slug | todo |
@@ -116,3 +116,7 @@ by owner G.4 ("every mechanic is a first-party plugin").
   retired table. The engine `AgentState` model stays until then (migration drift test), and
   `sage plugin uninstall --purge-state` only purges `characters` rows for plugin blocks — a plugin
   that stores its own characters (agents) purges on restart.
+- **3.12 order.** Done before Conduit (3.10) because Conduit's client data has to leave through
+  a snapshot section. The snapshot and the character list now carry `sections`; the engine's own
+  `progression` section is `{levels_total}` from the progression slot. The player client reads it
+  from there (its panels still say Resonance until 3.13).

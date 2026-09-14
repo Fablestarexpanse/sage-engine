@@ -598,6 +598,21 @@ class _Clock:
         return day_phase()
 
 
+class _Snapshot:
+    def __init__(self, api: PluginAPI):
+        self._api = api
+
+    def contribute(self, section: str, fn: Callable[[str, dict[str, Any]], Any]) -> None:
+        """Add a section to the client character snapshot: fn(character_name, stats) -> data."""
+        contributors = self._api._host.server.snapshot_contributors
+        try:
+            contributors.add(section, fn, owner=self._api.id)
+        except ValueError as exc:
+            raise PluginError(f"plugin {self._api.id}: {exc}") from exc
+        self._api._record.record("snapshot", section)
+        self._api._cleanup.append(lambda: contributors.withdraw(self._api.id))
+
+
 class PluginAPI:
     def __init__(self, host: Any, record: Any):
         self._host = host
@@ -628,6 +643,7 @@ class PluginAPI:
         self.ai = _Ai(self)
         self.equipment = _Equipment()
         self.clock = _Clock()
+        self.snapshot = _Snapshot(self)
 
     @property
     def world(self) -> Any:

@@ -1875,7 +1875,7 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
                   reputation: typeof ch?.reputation === "number" ? ch.reputation : 0,
                   lastSceneImageUrl: ch?.last_scene_image_url ?? null,
                   characterStats: ch?.stats ?? null,
-                  resonanceLevelsTotal: typeof ch?.resonance_levels_total === "number" ? ch.resonance_levels_total : null,
+                  resonanceLevelsTotal: levelsTotalOf(ch),
                 });
               }}
               style={{
@@ -1977,6 +1977,12 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
 }
 
 const MAX_NARRATIVE_LINES = 1500;
+
+/** The world's single progress number, from the snapshot's "progression" section. */
+function levelsTotalOf(payload) {
+  const n = payload?.sections?.progression?.levels_total;
+  return typeof n === "number" ? n : null;
+}
 
 export default function App() {
   const [step, setStep] = useState("login");
@@ -2171,7 +2177,7 @@ export default function App() {
       reputation: typeof ch.reputation === "number" ? ch.reputation : 0,
       lastSceneImageUrl: ch.last_scene_image_url ?? null,
       characterStats: ch.stats ?? null,
-      resonanceLevelsTotal: typeof ch.resonance_levels_total === "number" ? ch.resonance_levels_total : null,
+      resonanceLevelsTotal: levelsTotalOf(ch),
     });
   }, [step, auth, onChosen]);
 
@@ -2253,8 +2259,7 @@ export default function App() {
               ? {
                   ...prev,
                   characterStats: j.stats && typeof j.stats === "object" ? j.stats : prev.characterStats,
-                  resonanceLevelsTotal:
-                    typeof j.resonance_levels_total === "number" ? j.resonance_levels_total : prev.resonanceLevelsTotal,
+                  resonanceLevelsTotal: levelsTotalOf(j) ?? prev.resonanceLevelsTotal,
                   liveLocation: j.location && typeof j.location === "object" ? j.location : prev.liveLocation,
                   liveEffects: Array.isArray(j.effects) ? j.effects : prev.liveEffects,
                   liveInventory: Array.isArray(j.inventory) ? j.inventory : prev.liveInventory,
