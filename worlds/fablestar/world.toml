@@ -32,6 +32,7 @@ hazards = "^1"
 agents = "^1"
 conduit = "^1"
 ambient = "^1"
+effects = "^1"
 
 [params]
 # Tidegate clinic bills up to 10 Digi on respawn; half health on waking.

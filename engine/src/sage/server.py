@@ -25,7 +25,6 @@ from sage.core.events import EventBus, SessionEnded, SessionStarted, emit
 from sage.core.llm_persist import save_llm_toml
 from sage.core.resolvers import Resolvers
 from sage.core.tick import TickManager
-from sage.effects.manager import EffectsManager
 from sage.hot_reload import HotReloader
 from sage.llm.client import LLMClient
 from sage.llm.prompts import PromptManager
@@ -102,7 +101,6 @@ class SageServer:
         self.content_loader = ContentLoader(self.world.content_dir)
         content_browser.set_content_root(self.world.content_dir)
         self.spawner = EntitySpawnManager(self)
-        self.effects = EffectsManager(self)
         self.hot_reloader = HotReloader(self._on_file_changed)
         self.dispatcher = CommandDispatcher(events=self.events)
         self.plugins = PluginHost(
@@ -362,7 +360,6 @@ class SageServer:
         registry.load_module_strict("sage.commands.movement")
         registry.load_module_strict("sage.commands.combat")
         registry.load_module_strict("sage.commands.items")
-        registry.load_module_strict("sage.commands.effects")
         registry.load_module_strict("sage.commands.admin")
 
         # 1b. The world's plugins, after engine commands so verb conflicts are caught.
@@ -371,7 +368,6 @@ class SageServer:
 
         # 2. Tick handlers — must be registered before the tick loop starts in step 4
         self.tick_manager.register(self.spawner.on_tick)
-        self.tick_manager.register(self.effects.on_tick)
         self.tick_manager.register(self.persistence.on_tick)
 
         # 3. HotReloader — watches content/ and commands/; safe to start any time after step 1

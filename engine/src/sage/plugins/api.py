@@ -505,6 +505,39 @@ class _Effects:
 
         clear_on_death(stats)
 
+    def describe(self, stats: dict[str, Any]) -> list[str]:
+        from sage.effects.engine import describe_effects
+
+        return describe_effects(stats)
+
+    async def advance(self, player_id: str) -> tuple[list[str], list[str], bool]:
+        """Run a character's due effect ticks and expiries, saving the result.
+
+        Returns (effect messages, death counter lines, died). A death here is recorded like any
+        other (PlayerDied, counters, telemetry); what to tell the player is the caller's.
+        """
+        from sage.effects.death import record_player_death
+        from sage.effects.engine import EFFECTS_KEY, process_effects
+
+        host = self._api._host
+        stats = await host.redis.get_player_stats(player_id)
+        if not stats.get(EFFECTS_KEY):
+            return [], [], False
+        was_alive = int(stats.get("hp", 1)) > 0
+        messages = process_effects(stats)
+        if not messages and stats.get(EFFECTS_KEY):
+            return [], [], False  # nothing fired, nothing expired: skip the write
+        died = was_alive and int(stats.get("hp", 1)) <= 0
+        lines: list[str] = []
+        if died:
+            session = host.server.session_manager.get_session_by_player(player_id)
+            room_id = await host.redis.get_player_location(player_id)
+            lines = await record_player_death(
+                host.server, session, player_id, stats, room_id, "affliction"
+            )
+        await host.redis.set_player_stats(player_id, stats)
+        return messages, lines, died
+
 
 class _Characters:
     """Characters a plugin runs itself (automated characters): it owns their whole stats blob."""

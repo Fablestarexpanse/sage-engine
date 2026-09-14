@@ -30,3 +30,7 @@ agents:
     setting: "a character in a space-station MUD"
     banter_place: "the AIpub on Tidegate Isle"
     world_notes: "Shops: the pawn_shop buys salvage; the general_store sells food; scavenging the wilds finds sellable goods.\nGoals and their targets: wander_to -> a room from the list above; hunt -> a creature (razor crab, rust hound, scrap drone); buy -> an item (ration, stout, charge cell); rest/scavenge/sell/idle -> empty."
+
+effects:
+  rest_unsafe: "Too dangerous to rest here. Find somewhere safe — the clinic, say."
+  rest_start: "You settle onto a diagnostic bed and let the station's hum take over."
