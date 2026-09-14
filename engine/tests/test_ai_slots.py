@@ -39,14 +39,22 @@ def test_templates_for_undeclared_slots_are_not_rendered(tmp_path):
     assert set(ENGINE_SLOTS) <= set(prompts.slots())  # engine slots are never withdrawn
 
 
-def test_every_shipped_template_names_a_slot_and_a_world_without_ai_has_none():
+def test_every_shipped_template_names_a_slot_and_a_world_runs_without_ai_images():
     plugin_slots = {"combat.narration"}
+    image_free = []
     for world_id in available_worlds(ROOT / "worlds"):
         world = load_world_package(ROOT / "worlds" / world_id)
         shipped = {p.name[: -len(".j2")] for p in world.prompts_dir.glob("*.j2")}
         assert shipped <= set(ENGINE_SLOTS) | plugin_slots, (world_id, shipped)
-    worlds = [load_world_package(ROOT / "worlds" / w) for w in available_worlds(ROOT / "worlds")]
-    assert any(not list(w.prompts_dir.glob("*.j2")) for w in worlds), "a world must run without AI"
+        if not any(slot.startswith("image.") for slot in shipped):
+            image_free.append(world_id)
+    # Owner G.9: the second world has no AI images (its text narration is optional).
+    assert image_free, "a world must run without AI images"
+
+
+def test_a_world_without_templates_has_every_slot_disabled(tmp_path):
+    prompts = PromptManager(tmp_path)
+    assert [slot for slot in ENGINE_SLOTS if prompts.enabled(slot)] == []
 
 
 def test_style_file_reaches_templates_and_reloads(tmp_path):
