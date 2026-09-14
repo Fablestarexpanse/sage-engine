@@ -154,6 +154,24 @@ def build_forge_router(server: SageServer) -> APIRouter:
         if not ctx.may_write_zone(zone_id):
             raise HTTPException(status_code=403, detail="zone_denied")
 
+        if not (
+            content_browser._is_safe_segment(zone_id)
+            and content_browser._is_safe_segment(room_filename)
+        ):
+            raise HTTPException(status_code=400, detail="invalid_id")
+        try:
+            content_browser.validate_room_yaml_text(zone_id, room_filename, injection.yaml_content)
+        except ValueError as e:
+            detail = "invalid_id" if str(e) == "invalid_slug" else str(e)
+            raise HTTPException(status_code=400, detail=detail) from None
+        from sage.world.lint import lint_room_candidate
+
+        problems = await asyncio.to_thread(
+            lint_room_candidate, server.world, injection.id, injection.yaml_content
+        )
+        if problems:
+            # Refused before writing: a room that names undeclared types or leads nowhere.
+            raise HTTPException(status_code=422, detail="; ".join(problems))
         try:
             file_path = await asyncio.to_thread(
                 content_browser.save_room_yaml_text, zone_id, room_filename, injection.yaml_content

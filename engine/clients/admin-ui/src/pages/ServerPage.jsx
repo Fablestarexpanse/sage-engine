@@ -354,9 +354,15 @@ const LmStudioPanel = () => {
         <div style={{ fontSize: 11, fontWeight: 600, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "'JetBrains Mono', monospace" }}>Settings</div>
         <label style={{ fontSize: 11, color: COLORS.textMuted }}>Backend</label>
         <select value={llmForm.primary_backend} onChange={(e) => { setLlmForm((p) => ({ ...p, primary_backend: e.target.value })); setConnectResult(null); }} style={inp}>
+          <option value="embedded">Embedded (model loaded inside the server)</option>
           <option value="lm_studio">LM Studio (OpenAI-compatible)</option>
           <option value="ollama">Ollama</option>
         </select>
+        {llmForm.primary_backend === "embedded" && (
+          <div style={{ fontSize: 11, color: COLORS.textMuted, lineHeight: 1.5 }}>
+            The embedded backend runs the GGUF file named by <code>model_path</code> in <code>config/llm.toml</code>; change the file there and restart. The URLs below are only used by LM Studio and Ollama.
+          </div>
+        )}
         <label style={{ fontSize: 11, color: COLORS.textMuted }}>LM Studio base URL</label>
         <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
           <input value={llmForm.lm_studio_url} onChange={(e) => { setLlmForm((p) => ({ ...p, lm_studio_url: e.target.value })); setConnectResult(null); }} style={{ ...inp, flex: 1 }} placeholder="http://localhost:1234/v1" />
@@ -802,7 +808,6 @@ const ServerPage = () => {
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: COLORS.text, fontFamily: "'Space Grotesk', sans-serif" }}>Server & Performance</h2>
-        <div style={{ display: "flex", gap: 8 }}><ActionButton small variant="ghost" icon={<Icons.Alert />} onClick={() => window.alert("Process restart is not exposed via API yet.")}>Restart</ActionButton></div>
       </div>
       {info?.host && (
         <HostMachinePanel
@@ -840,7 +845,7 @@ const ServerPage = () => {
         <div style={{ background: COLORS.bgCard, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 18, display: "flex", flexDirection: "column", gap: 10 }}>
           <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: COLORS.text, fontFamily: "'DM Sans', sans-serif" }}>Recent Events</h3>
           <div style={{ fontSize: 12, color: COLORS.textMuted, fontFamily: "'DM Sans', sans-serif", lineHeight: 1.5 }}>
-            No persisted event stream on the server yet. Use <strong style={{ color: COLORS.text }}>Dashboard → Live Activity</strong> for the WebSocket log feed while the Nexus is running.
+            Events are not stored yet. <strong style={{ color: COLORS.text }}>Dashboard → Live Activity</strong> streams server warnings and errors while this console is open.
           </div>
         </div>
       </div>

@@ -222,3 +222,28 @@ def lint_world(world: Any, zone: str | None = None) -> LintReport:
         required_rooms=(world.start_room, world.respawn_room),
         zone=zone,
     )
+
+
+def lint_room_candidate(world: Any, room_id: str, text: str) -> list[str]:
+    """Errors a room file would add to its world, checked on a copy before anything is written.
+
+    Only findings about the candidate room itself are returned, so problems elsewhere in the
+    world never block a good room. The live content directory is not touched.
+    """
+    import shutil
+    import tempfile
+
+    zone_id, slug = room_id.split(":", 1)
+    source = Path(world.content_dir) / "world"
+    with tempfile.TemporaryDirectory(prefix="sage-lint-") as tmp:
+        copy = Path(tmp) / "world"
+        shutil.copytree(source, copy, ignore=shutil.ignore_patterns("stamps", ".positions.json"))
+        target = copy / "zones" / zone_id / "rooms" / f"{slug}.yaml"
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(text, encoding="utf-8")
+        content = world.manifest.content
+        report = lint_content(
+            copy, room_types=content.room_types, exit_dirs=content.exit_dirs, zone=zone_id
+        )
+    mine = (f"{room_id}:", f"{room_id} ", f"{zone_id}/{slug}.yaml:")
+    return [e for e in report.errors if e.startswith(mine)]

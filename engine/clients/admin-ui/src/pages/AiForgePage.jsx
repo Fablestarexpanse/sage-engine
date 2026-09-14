@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import axios from "axios";
 import { useAdminTheme } from "../AdminThemeContext.jsx";
 import { API_BASE, WS_BASE } from "../apiConfig.js";
+import { useWorldSummary, slotEnabled } from "../useWorldSummary.js";
 import {
   LS_ADMIN_TOKEN, ALL_ADMIN_TOOLS, adminWsBase, adminPresenceWsUrl, adminLogsWsUrl,
   sendWsAuthToken, parseLeadingInt, parseRoomType, extractYamlRoomId, Icons,
@@ -17,102 +18,49 @@ import {
 // Marker for zone pickers: filled with the running world's zones (GET /content/zones).
 const WORLD_ZONES = "world_zones";
 
+// Only content Forge can deploy: a room, an entity template or an item template. Each needs the
+// world to fill its AI slot (worlds/<id>/ai/prompts/<slot>.j2); GET /admin/world says which do.
+const WORLD_ROOM_TYPES = "world_room_types";
+
 const FORGE_CATEGORIES = [
   {
-    id: "room", label: "Room / Location", icon: <Icons.Locations />, colorKey: "info",
-    desc: "Generate room descriptions, exits, ambient messages, and environmental details",
+    id: "room", slot: "forge.room", label: "Room", icon: <Icons.Locations />, colorKey: "info",
+    desc: "A room YAML for one of this world's zones: name, description, exits and features. Accept writes it to the zone.",
     fields: [
-      { key: "zone", label: "Target Zone", type: "select", options: WORLD_ZONES },
-      { key: "room_type", label: "Room Type", type: "select", options: ["chamber", "corridor", "hub", "dead_end", "hazard", "boss_arena", "sanctuary", "puzzle"] },
-      { key: "depth", label: "Depth Level", type: "select", options: ["0 (Surface)", "1 (Shallow)", "2 (Mid)", "3 (Deep)", "4 (Abyssal)", "5 (Core)"] },
-      { key: "mood", label: "Atmosphere", type: "select", options: ["foreboding", "serene", "chaotic", "ancient", "corrupted", "luminous", "decaying", "mechanical"] },
-      { key: "details", label: "Additional Context", type: "textarea", placeholder: "Any specific features, lore connections, adjacent room context..." },
+      { key: "zone", label: "Target zone", type: "select", options: WORLD_ZONES },
+      { key: "room_type", label: "Room type", type: "select", options: WORLD_ROOM_TYPES },
+      { key: "depth", label: "Depth", type: "select", options: ["1", "2", "3", "4", "5"] },
+      { key: "mood", label: "Atmosphere", type: "select", options: ["calm", "busy", "tense", "eerie", "cheerful", "run-down", "grand", "cramped"] },
+      { key: "details", label: "Additional context", type: "textarea", placeholder: "Features, neighbouring rooms, what a visitor should notice…" },
     ],
     promptTemplates: [
-      "Generate a detailed room with base description, 3 time-of-day variants, and 2 ambient messages",
-      "Create a puzzle room with environmental clues and hidden interactions",
-      "Design a boss arena with phase-transition descriptions",
-      "Write 5 connected corridor rooms with a thematic progression",
+      "A room with a clear description, two examinable features and exit descriptions",
+      "A quiet side room that rewards examining things",
+      "A busy crossroads room that connects several parts of the zone",
     ],
   },
   {
-    id: "entity", label: "Entity / NPC", icon: <Icons.Entities />, colorKey: "warning",
-    desc: "Create NPCs with dialogue, behavior patterns, combat abilities, and memory templates",
+    id: "entity", slot: "forge.content", label: "Entity template", icon: <Icons.Entities />, colorKey: "warning",
+    desc: "A creature or character template (name, description, stats, loot) saved to the world's entities.",
     fields: [
-      { key: "entity_type", label: "Entity Type", type: "select", options: ["Hunter", "Watcher", "Guide", "Archivist", "Boss", "Vendor", "Ambient", "Quest NPC"] },
-      { key: "zone", label: "Home Zone", type: "select", options: WORLD_ZONES },
-      { key: "level_range", label: "Level Range", type: "select", options: ["1-10 (Novice)", "11-25 (Intermediate)", "26-45 (Advanced)", "46-60 (Expert)", "61+ (Legendary)"] },
-      { key: "behavior", label: "Behavior Pattern", type: "select", options: ["patrol", "static", "ambient", "scripted", "adaptive", "territorial", "fleeing", "stalking"] },
-      { key: "details", label: "Character Concept", type: "textarea", placeholder: "Personality, backstory hooks, unique traits, combat style..." },
+      { key: "zone", label: "Home zone", type: "select", options: WORLD_ZONES },
+      { key: "details", label: "Concept", type: "textarea", placeholder: "What it is, how it looks, how tough it should be, what it drops…" },
     ],
     promptTemplates: [
-      "Create a Hunter entity with adaptive combat AI and 3 combat phases",
-      "Design a Guide NPC with branching dialogue tree and lore delivery",
-      "Generate an Archivist with a knowledge quiz mechanic",
-      "Build a Vendor with personality, inventory theming, and bartering dialogue",
+      "A weak creature suitable for new players, with one loot drop",
+      "A tougher creature for deeper rooms, with two loot drops",
     ],
   },
   {
-    id: "item", label: "Item", icon: <Icons.Items />, colorKey: "success",
-    desc: "Design equipment, consumables, lore objects, and key items with stats and flavor text",
+    id: "item", slot: "forge.content", label: "Item template", icon: <Icons.Items />, colorKey: "success",
+    desc: "An item template (name, type, value, description) saved to the world's items.",
     fields: [
-      { key: "item_type", label: "Item Type", type: "select", options: ["Equipment", "Consumable", "Material", "Key", "Lore", "Currency", "Artifact"] },
-      { key: "rarity", label: "Rarity", type: "select", options: ["common", "uncommon", "rare", "epic", "legendary"] },
-      { key: "details", label: "Item Concept", type: "textarea", placeholder: "Function, visual appearance, lore significance..." },
+      { key: "item_type", label: "Item type", type: "select", options: ["equipment", "consumable", "material", "key", "junk"] },
+      { key: "details", label: "Concept", type: "textarea", placeholder: "What it is, what it is for, how it looks…" },
     ],
     promptTemplates: [
-      "Generate a set of 5 themed loot drops for a specific zone",
-      "Design a legendary artifact with lore, stats, and discovery quest hook",
-      "Create a consumable crafting chain with 3 tiers of ingredients",
-      "Write flavor text for 10 common materials found in this zone",
-    ],
-  },
-  {
-    id: "quest", label: "Quest / Objective", icon: <Icons.Content />, colorKey: "danger",
-    desc: "Create quest chains with objectives, branching paths, dialogue, and reward structures",
-    fields: [
-      { key: "quest_type", label: "Quest Type", type: "select", options: ["Main story", "Side quest", "Discovery", "Repeatable", "Event", "Hidden", "Tutorial"] },
-      { key: "difficulty", label: "Difficulty", type: "select", options: ["Trivial", "Easy", "Medium", "Hard", "Legendary"] },
-      { key: "zone", label: "Zone", type: "select", options: WORLD_ZONES },
-      { key: "details", label: "Quest Concept", type: "textarea", placeholder: "Story hook, objectives, key NPCs, reward ideas..." },
-    ],
-    promptTemplates: [
-      "Create a 3-part quest chain with branching outcomes",
-      "Design a hidden discovery quest with environmental clue progression",
-      "Generate a repeatable hunt quest with adaptive difficulty scaling",
-      "Build a tutorial quest that teaches combat mechanics naturally",
-    ],
-  },
-  {
-    id: "dialogue", label: "Dialogue Tree", icon: <Icons.Activity />, colorKey: "cyan",
-    desc: "Write NPC conversation flows with conditions, personality, and memory integration",
-    fields: [
-      { key: "npc_type", label: "NPC Type", type: "select", options: ["Guide", "Archivist", "Vendor", "Quest giver", "Lore keeper", "Antagonist", "Rival"] },
-      { key: "tone", label: "Personality Tone", type: "select", options: ["cryptic", "friendly", "hostile", "melancholic", "manic", "scholarly", "fearful", "ancient"] },
-      { key: "context", label: "Conversation Context", type: "select", options: ["First meeting", "Returning player", "Quest delivery", "Lore dump", "Trading", "Warning", "Betrayal"] },
-      { key: "details", label: "Dialogue Concept", type: "textarea", placeholder: "Topic, emotional arc, information to convey, branching triggers..." },
-    ],
-    promptTemplates: [
-      "Write a first-meeting dialogue with 3 personality-based response branches",
-      "Create a lore-delivery conversation that reveals info through questions",
-      "Design a vendor haggling dialogue with price negotiation mechanics",
-      "Generate a cryptic warning dialogue with hidden clue integration",
-    ],
-  },
-  {
-    id: "zone", label: "Zone / Region", icon: <Icons.World />, colorKey: "forge",
-    desc: "Design entire zones with room layouts, entity populations, lore, and progression flow",
-    fields: [
-      { key: "zone_type", label: "Zone Type", type: "select", options: ["exploration", "dungeon", "boss", "safe", "tutorial", "puzzle", "gauntlet"] },
-      { key: "depth", label: "Depth Level", type: "select", options: ["0 (Surface)", "1 (Shallow)", "2 (Mid)", "3 (Deep)", "4 (Abyssal)", "5 (Core)"] },
-      { key: "room_count", label: "Approximate Rooms", type: "select", options: ["10-20 (Small)", "20-50 (Medium)", "50-100 (Large)", "100+ (Massive)"] },
-      { key: "details", label: "Zone Concept", type: "textarea", placeholder: "Theme, narrative purpose, key landmarks, unique mechanics..." },
-    ],
-    promptTemplates: [
-      "Design a complete zone blueprint with room graph and entity placement",
-      "Create a dungeon zone with 3 puzzle rooms leading to a boss encounter",
-      "Generate a safe hub zone with vendors, lore NPCs, and social spaces",
-      "Build an adaptive gauntlet zone that escalates based on player performance",
+      "A common material a creature could drop",
+      "A simple consumable a shop could sell",
     ],
   },
 ];
@@ -122,14 +70,20 @@ const FORGE_CATEGORIES = [
 function useForgeCategories() {
   const { colors } = useAdminTheme();
   const { rows: zones } = usePolledList(`${API_BASE}/content/zones`, 60000);
+  const { summary } = useWorldSummary();
   return useMemo(() => {
     const zoneNames = zones.map((z) => z.name || z.id).filter(Boolean);
+    const roomTypes = summary?.world?.room_types || [];
     return FORGE_CATEGORIES.map((c) => ({
       ...c,
       color: colors[c.colorKey] || colors.accent,
-      fields: c.fields.map((f) => (f.options === WORLD_ZONES ? { ...f, options: zoneNames } : f)),
+      enabled: summary ? slotEnabled(summary, c.slot) : true,
+      fields: c.fields.map((f) =>
+        f.options === WORLD_ZONES ? { ...f, options: zoneNames }
+          : f.options === WORLD_ROOM_TYPES ? { ...f, options: roomTypes }
+          : f),
     }));
-  }, [colors, zones]);
+  }, [colors, zones, summary]);
 }
 
 const ForgePromptTemplateButton = ({ tmpl, cat, onPick }) => {
@@ -204,7 +158,7 @@ const ForgeChat = ({ category, onClose }) => {
         if (root && typeof root === "object" && root.id) parsedId = root.id;
       }
       const responseText =
-        `**${cat.label}** generated via Nexus. Review YAML on the right. **Rooms**: deploy writes \`content/world/zones/<zone>/rooms/\` (needs \`id: zone:slug\`). **Entities / items**: use **Deploy** to save under \`content/world/entities/\` or \`items/\`. **Other categories**: copy YAML into the repo manually — no inject route yet.`;
+        `**${cat.label}** generated. Review the YAML on the right. **Rooms**: Accept checks it and writes it to the zone (needs \`id: zone:slug\`). **Entity and item templates**: Deploy saves them to the world's \`entities/\` or \`items/\`.`;
       setMessages((prev) => prev.map((m, i) =>
         (i === prev.length - 1 ? { role: "assistant", content: responseText, loading: false } : m)
       ));
@@ -547,15 +501,17 @@ const ForgeCategoryPickCard = ({ cat, onPick }) => {
   return (
     <button
       type="button"
-      onClick={() => onPick(cat.id)}
+      disabled={!cat.enabled}
+      title={cat.enabled ? undefined : `This world ships no ${cat.slot} template (ai/prompts/${cat.slot}.j2)`}
+      onClick={() => cat.enabled && onPick(cat.id)}
       onMouseEnter={() => setH(true)}
       onMouseLeave={() => setH(false)}
       style={{
         display: "flex", gap: 14, alignItems: "flex-start", padding: 18,
         background: h ? `${cat.color}08` : COLORS.bgCard,
         border: `1px solid ${h ? cat.color + "40" : COLORS.border}`,
-        borderRadius: 10, cursor: "pointer", textAlign: "left",
-        transition: "all 0.15s ease",
+        borderRadius: 10, cursor: cat.enabled ? "pointer" : "not-allowed", textAlign: "left",
+        transition: "all 0.15s ease", opacity: cat.enabled ? 1 : 0.5,
       }}
     >
       <div style={{
@@ -588,8 +544,7 @@ const AiForgePage = () => {
   const { colors: COLORS } = useAdminTheme();
   const forgeCategories = useForgeCategories();
   const [activeCategory, setActiveCategory] = useState(null);
-  const [historyFilter, setHistoryFilter] = useState("all");
-  const [forgeHistoryRows] = useState([]);
+  const { summary } = useWorldSummary();
   const [llmSnap, setLlmSnap] = useState(null);
 
   useEffect(() => {
@@ -627,7 +582,7 @@ const AiForgePage = () => {
             AI Forge
           </h2>
           <p style={{ margin: "4px 0 0", fontSize: 13, color: COLORS.textMuted, fontFamily: "'DM Sans', sans-serif" }}>
-            LLM-powered content generation for every system in your world
+            Draft rooms, entity templates and item templates for {summary?.world?.name || "this world"} with the configured model
           </p>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
@@ -641,8 +596,14 @@ const AiForgePage = () => {
         </div>
       </div>
       <p style={{ margin: 0, fontSize: 12, color: COLORS.textDim, fontFamily: "'DM Sans', sans-serif" }}>
-        Forge uses the same OpenAI-compatible client as in-game narration (<code style={{ color: COLORS.textMuted }}>look</code>). Configure it on Server & Performance → LM Studio / LLM.
+        Forge uses the same model as in-game narration. Configure it under <strong>Server → LM Studio / LLM</strong>.
       </p>
+      {summary && !forgeCategories.some((c) => c.enabled) && (
+        <div style={{ padding: "12px 14px", borderRadius: 8, border: `1px solid ${COLORS.warning}`, background: COLORS.warningBg, color: COLORS.text, fontSize: 13, fontFamily: "'DM Sans', sans-serif", lineHeight: 1.5 }}>
+          {summary.world.name} ships no Forge templates, so nothing can be generated here. A world turns Forge on with
+          {" "}<code>ai/prompts/forge.room.j2</code> and <code>ai/prompts/forge.content.j2</code> in its package.
+        </div>
+      )}
 
       {/* Category Grid */}
       <div>
@@ -656,58 +617,6 @@ const AiForgePage = () => {
         </div>
       </div>
 
-      {/* Generation History */}
-      <div>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-          <h3 style={{ margin: 0, fontSize: 13, fontWeight: 600, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "'JetBrains Mono', monospace", display: "flex", alignItems: "center", gap: 8 }}>
-            <Icons.History /> Generation History
-          </h3>
-          <TabBar tabs={[
-            { id: "all", label: "All" },
-            { id: "accepted", label: "Accepted" },
-            { id: "editing", label: "Editing" },
-            { id: "rejected", label: "Rejected" },
-          ]} active={historyFilter} onChange={setHistoryFilter} />
-        </div>
-        <div style={{
-          background: COLORS.bgCard, border: `1px solid ${COLORS.border}`,
-          borderRadius: 10, overflow: "hidden",
-        }}>
-          <DataTable
-            columns={[
-              { label: "Type", render: row => {
-                const cat = forgeCategories.find(c => c.id === row.category);
-                return <Badge color={cat?.color}>{row.category}</Badge>;
-              }},
-              { label: "Prompt", render: row => (
-                <span style={{ maxWidth: 360, display: "inline-block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {row.prompt}
-                </span>
-              )},
-              { label: "Time", key: "timestamp", mono: true },
-              { label: "Status", render: row => (
-                <Badge color={
-                  row.status === "accepted" ? COLORS.success :
-                  row.status === "editing" ? COLORS.warning : COLORS.danger
-                }>{row.status}</Badge>
-              )},
-              { label: "", render: row => (
-                <div style={{ display: "flex", gap: 4 }}>
-                  <ActionButton small variant="ghost" icon={<Icons.Eye />}>View</ActionButton>
-                  <ActionButton small variant="ghost" icon={<Icons.Edit />}>Edit</ActionButton>
-                  <ActionButton small variant="ghost" icon={<Icons.Refresh />}>Redo</ActionButton>
-                </div>
-              )},
-            ]}
-            rows={forgeHistoryRows.filter((h) => historyFilter === "all" || h.status === historyFilter)}
-          />
-        </div>
-        {forgeHistoryRows.length === 0 && (
-          <p style={{ margin: "10px 0 0", fontSize: 12, color: COLORS.textMuted, fontFamily: "'DM Sans', sans-serif" }}>
-            No saved generations yet. History will appear here once the Nexus stores Forge runs (or use session-only workflow for now).
-          </p>
-        )}
-      </div>
     </div>
   );
 };

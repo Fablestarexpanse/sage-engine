@@ -22,6 +22,27 @@ Versions built before the first publication have no conversion date.
 
 ## [Unreleased]
 
+- **Admin console shows what is really running.** New `GET /admin/world`: engine version, the running
+  world (id, name, version, room types), loaded plugins (version, where they live, what they
+  registered), AI slot status, and players and agents online, counted apart. The Dashboard uses it:
+  - it names the world and the engine version
+  - it lists the loaded plugins where the fake topology diagram used to be
+  - it warns while passwordless dev logins are on
+- **Live Activity works:** server log lines at WARNING and above stream to the Dashboard.
+- **AI Forge only offers what it can deploy:** rooms, entity templates and item templates, using the
+  world's own room types. Its cards are disabled when the world has no Forge template, and Accept
+  refuses a room that names undeclared types or directions or leads nowhere (422, nothing written).
+- **Removed or corrected untrue UI:**
+  - the hardcoded `v0.4.1-dev` label, and the Adaptive and Level columns nothing filled
+  - the "not authenticated" Operations banner
+  - a Restart button that only showed an alert
+  - the Skills page's pointers to a moved file and a missing menu
+  - the hardcoded "px" bundle suffix
+- **Admin pages:**
+  - the LLM form offers the embedded backend
+  - Agents and Shops use the plugin admin URL the server provides
+  - the open page is in the URL, and the tab title names it
+
 - **Tutorial 1, run the engine** (`docs/tutorial/01-run-the-engine.md`): from `git clone` to
   walking the demo world and changing a room while the server runs, with what each quickstart step
   did and how to recover from a broken room file.
