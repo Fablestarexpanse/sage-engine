@@ -21,13 +21,6 @@ import * as fs from "../utils/fsBridge.js";
  * @property {string[]} entityIds Sorted entity ids.
  * @property {Record<string, object>} items Item id -> item template YAML.
  * @property {string[]} itemIds Sorted item ids.
- * @property {Record<string, object>} systems System id -> system YAML.
- * @property {string[]} systemIds Sorted system ids.
- * @property {Record<string, object>} ships Ship id -> ship doc YAML (`{ ship: {...} }`).
- * @property {string[]} shipIds Sorted ship ids.
- * @property {Record<string, object>} glyphs Glyph id -> glyph YAML.
- * @property {string[]} glyphIds Sorted glyph ids.
- * @property {object|null} galaxy Parsed galaxy.yaml document.
  * @property {boolean} loading True while a full loadAll() scan is in flight.
  * @property {string|null} loadError Set when loadAll() fails; cleared on next load.
  * @property {Record<string, boolean>} dirtyPaths Reserved for future dirty-file tracking.
@@ -45,13 +38,6 @@ const initialState = {
   entityIds: [],
   items: {},
   itemIds: [],
-  systems: {},
-  systemIds: [],
-  ships: {},
-  shipIds: [],
-  glyphs: {},
-  glyphIds: [],
-  galaxy: null,
   loading: false,
   loadError: null,
   dirtyPaths: {},
@@ -95,13 +81,6 @@ export function reducer(state, action) {
         entityIds,
         items,
         itemIds,
-        systems,
-        systemIds,
-        ships,
-        shipIds,
-        glyphs,
-        glyphIds,
-        galaxy,
         contentRoot,
         worldRoot,
       } = action.payload;
@@ -115,13 +94,6 @@ export function reducer(state, action) {
         entityIds,
         items,
         itemIds,
-        systems,
-        systemIds,
-        ships,
-        shipIds,
-        glyphs,
-        glyphIds,
-        galaxy,
         loading: action.type === "LOAD_ALL_DONE" ? false : state.loading,
         loadError: action.type === "LOAD_ALL_DONE" ? null : state.loadError,
         dirtyPaths: {},
@@ -183,29 +155,6 @@ export function reducer(state, action) {
       const { [id]: _, ...rest } = state.items;
       return { ...state, items: rest, itemIds: state.itemIds.filter((x) => x !== id) };
     }
-    case "UPDATE_SYSTEM": {
-      const { id, data } = action;
-      return { ...state, systems: { ...state.systems, [id]: data } };
-    }
-    case "UPDATE_SHIP_DOC": {
-      const { id, doc } = action;
-      return { ...state, ships: { ...state.ships, [id]: doc } };
-    }
-    case "UPDATE_GLYPH": {
-      const { id, data } = action;
-      return {
-        ...state,
-        glyphs: { ...state.glyphs, [id]: data },
-        glyphIds: state.glyphIds.includes(id) ? state.glyphIds : sortIds([...state.glyphIds, id]),
-      };
-    }
-    case "DELETE_GLYPH": {
-      const { id } = action;
-      const { [id]: _, ...rest } = state.glyphs;
-      return { ...state, glyphs: rest, glyphIds: state.glyphIds.filter((x) => x !== id) };
-    }
-    case "SET_GALAXY":
-      return { ...state, galaxy: action.galaxy };
     case "MARK_DIRTY": {
       const p = action.path;
       return { ...state, dirtyPaths: { ...state.dirtyPaths, [p]: true } };
@@ -223,9 +172,6 @@ export function reducer(state, action) {
     case "ADD_ITEM_ID":
       if (state.itemIds.includes(action.id)) return state;
       return { ...state, itemIds: sortIds([...state.itemIds, action.id]) };
-    case "ADD_GLYPH_ID":
-      if (state.glyphIds.includes(action.id)) return state;
-      return { ...state, glyphIds: sortIds([...state.glyphIds, action.id]) };
     case "ADD_ZONE_ID":
       if (state.zoneIds.includes(action.id)) return state;
       return {
@@ -253,7 +199,7 @@ export function reducer(state, action) {
  * (and `id` set from the filename) rather than being dropped, so callers can still
  * see it exists and warn the user instead of silently losing the entry.
  * @param {string} worldRoot
- * @param {string} subdir e.g. "entities", "items", "glyphs", "systems"
+ * @param {string} subdir e.g. "entities", "items"
  * @returns {Promise<{map: Record<string, object>, ids: string[]}>}
  */
 async function loadYamlDir(worldRoot, subdir) {
@@ -311,7 +257,6 @@ async function resolveWorldRoot(picked) {
     if (await fs.pathExists(joinPaths(candidate, "zones"))) return candidate;
     // Also accept if the directory itself exists but is just empty/new
     if (await fs.pathExists(joinPaths(candidate, "entities"))) return candidate;
-    if (await fs.pathExists(joinPaths(candidate, "galaxy.yaml"))) return candidate;
   }
   // Fall back to the conventional path so scaffold prompt triggers correctly
   return joinPaths(picked, "content", "world");
@@ -319,8 +264,8 @@ async function resolveWorldRoot(picked) {
 
 /**
  * Shared scanning logic used by both loadAll and softRefresh: walks the whole world-content
- * tree (zones/rooms, entities, items, systems, ships, glyphs, galaxy.yaml) and returns a
- * fresh snapshot suitable for LOAD_ALL_DONE / SOFT_LOAD_DONE. A room or ship file that fails
+ * tree (zones/rooms, entities, items) and returns a
+ * fresh snapshot suitable for LOAD_ALL_DONE / SOFT_LOAD_DONE. A room file that fails
  * to parse is kept with a `_parseError: true` sentinel rather than dropped.
  * @param {string} contentRoot
  * @param {string} worldRoot
@@ -357,35 +302,6 @@ async function scanWorldContent(contentRoot, worldRoot) {
 
   const ent = await loadYamlDir(worldRoot, "entities");
   const it = await loadYamlDir(worldRoot, "items");
-  const sys = await loadYamlDir(worldRoot, "systems");
-  const glyphs = await loadYamlDir(worldRoot, "glyphs");
-
-  const shipsRoot = joinPaths(worldRoot, "ships");
-  const shipIds = [];
-  const ships = {};
-  if (await fs.pathExists(shipsRoot)) {
-    const sfiles = await fs.listDir(shipsRoot);
-    for (const f of sfiles) {
-      if (f.is_dir || !f.name.endsWith(".yaml")) continue;
-      const sid = f.name.replace(/\.yaml$/i, "");
-      try {
-        ships[sid] = await fs.readYaml(f.path);
-      } catch {
-        ships[sid] = { ship: { id: sid, rooms: [] }, _parseError: true };
-      }
-      shipIds.push(sid);
-    }
-  }
-
-  let galaxy = null;
-  const galPath = joinPaths(worldRoot, "galaxy.yaml");
-  if (await fs.pathExists(galPath)) {
-    try {
-      galaxy = await fs.readYaml(galPath);
-    } catch {
-      galaxy = null;
-    }
-  }
 
   return {
     contentRoot,
@@ -396,19 +312,11 @@ async function scanWorldContent(contentRoot, worldRoot) {
     entityIds: ent.ids,
     items: it.map,
     itemIds: it.ids,
-    systems: sys.map,
-    systemIds: sys.ids,
-    ships,
-    shipIds: sortIds(shipIds),
-    glyphs: glyphs.map,
-    glyphIds: glyphs.ids,
-    galaxy,
   };
 }
 
 /**
- * React context provider for all world content state (zones/entities/items/systems/ships/
- * glyphs/galaxy) plus the load, save, and delete actions that mutate it. See {@link ContentState}
+ * React context provider for all world content state (zones/entities/items) plus the load, save, and delete actions that mutate it. See {@link ContentState}
  * for the state shape provided alongside these actions.
  * @param {{children: import('react').ReactNode}} props
  */
@@ -537,58 +445,6 @@ export function ContentProvider({ children }) {
   }, []);
 
   /**
-   * Save a glyph: write `worldRoot/glyphs/{id}.yaml`, then dispatch UPDATE_GLYPH.
-   * Error contract: throws on write failure; state is left untouched.
-   * @param {string} worldRoot
-   * @param {string} id
-   * @param {object} data
-   * @returns {Promise<void>}
-   */
-  const saveGlyph = useCallback(async (worldRoot, id, data) => {
-    await fs.writeYaml(joinPaths(worldRoot, "glyphs", `${id}.yaml`), data);
-    dispatch({ type: "UPDATE_GLYPH", id, data });
-  }, []);
-
-  /**
-   * Save a system: write `worldRoot/systems/{id}.yaml`, then dispatch UPDATE_SYSTEM.
-   * Error contract: throws on write failure; state is left untouched.
-   * @param {string} worldRoot
-   * @param {string} id
-   * @param {object} data
-   * @returns {Promise<void>}
-   */
-  const saveSystem = useCallback(async (worldRoot, id, data) => {
-    await fs.writeYaml(joinPaths(worldRoot, "systems", `${id}.yaml`), data);
-    dispatch({ type: "UPDATE_SYSTEM", id, data });
-  }, []);
-
-  /**
-   * Save the galaxy document: write `worldRoot/galaxy.yaml`, then dispatch SET_GALAXY so
-   * `state.galaxy` reflects what was just written.
-   * Error contract: throws on write failure; state is left untouched.
-   * @param {string} worldRoot
-   * @param {object} doc
-   * @returns {Promise<void>}
-   */
-  const saveGalaxy = useCallback(async (worldRoot, doc) => {
-    await fs.writeYaml(joinPaths(worldRoot, "galaxy.yaml"), doc);
-    dispatch({ type: "SET_GALAXY", galaxy: doc });
-  }, []);
-
-  /**
-   * Save a ship document: write `worldRoot/ships/{shipId}.yaml`, then dispatch UPDATE_SHIP_DOC.
-   * Error contract: throws on write failure; state is left untouched.
-   * @param {string} worldRoot
-   * @param {string} shipId
-   * @param {object} doc Full ship doc, e.g. `{ ship: { id, rooms: [...] } }`.
-   * @returns {Promise<void>}
-   */
-  const saveShipDoc = useCallback(async (worldRoot, shipId, doc) => {
-    await fs.writeYaml(joinPaths(worldRoot, "ships", `${shipId}.yaml`), doc);
-    dispatch({ type: "UPDATE_SHIP_DOC", id: shipId, doc });
-  }, []);
-
-  /**
    * Save one zone room: write `worldRoot/zones/{zoneId}/rooms/{slug}.yaml`, then dispatch
    * UPDATE_ZONE_ROOM. This is the simple single-file room save used by most zone-editing call
    * sites; multi-file flows (duplicate, stamp placement, clear-all-connections) write and
@@ -631,8 +487,7 @@ export function ContentProvider({ children }) {
   // NOTE: `dispatch` stays on the provider value for load/refresh internals (e.g. rebuilding
   // positions/groups state that live outside the reducer, or editors reacting to live-watch
   // updates) — but any code that *writes content to disk* should go through one of the named
-  // save actions above (saveEntity/saveItem/saveGlyph/saveSystem/saveGalaxy/saveShipDoc/
-  // saveZoneRoom) or deleteZone, not call `dispatch` directly to fake a write. Those actions
+  // save actions above (saveEntity/saveItem/saveZoneRoom) or deleteZone, not call `dispatch` directly to fake a write. Those actions
   // guarantee the file write happens before the state update, and throw (rather than silently
   // diverging store state from disk) if the write fails.
   const value = useMemo(
@@ -646,10 +501,6 @@ export function ContentProvider({ children }) {
       dismissPendingScaffold,
       saveEntity,
       saveItem,
-      saveGlyph,
-      saveSystem,
-      saveGalaxy,
-      saveShipDoc,
       saveZoneRoom,
     }),
     [
@@ -661,10 +512,6 @@ export function ContentProvider({ children }) {
       dismissPendingScaffold,
       saveEntity,
       saveItem,
-      saveGlyph,
-      saveSystem,
-      saveGalaxy,
-      saveShipDoc,
       saveZoneRoom,
     ]
   );
@@ -683,10 +530,6 @@ export function ContentProvider({ children }) {
  *   dismissPendingScaffold: () => void,
  *   saveEntity: (worldRoot: string, id: string, data: object) => Promise<void>,
  *   saveItem: (worldRoot: string, id: string, data: object) => Promise<void>,
- *   saveGlyph: (worldRoot: string, id: string, data: object) => Promise<void>,
- *   saveSystem: (worldRoot: string, id: string, data: object) => Promise<void>,
- *   saveGalaxy: (worldRoot: string, doc: object) => Promise<void>,
- *   saveShipDoc: (worldRoot: string, shipId: string, doc: object) => Promise<void>,
  *   saveZoneRoom: (worldRoot: string, zoneId: string, slug: string, data: object) => Promise<void>,
  * }}
  */

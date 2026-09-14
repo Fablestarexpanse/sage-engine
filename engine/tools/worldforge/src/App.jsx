@@ -7,11 +7,8 @@ import { useTheme } from "./ThemeContext.jsx";
 import Sidebar from "./components/Sidebar.jsx";
 import ExportDialog from "./components/ExportDialog.jsx";
 import ZoneEditor from "./editors/ZoneEditor.jsx";
-import GalaxyEditor from "./editors/GalaxyEditor.jsx";
-import ShipEditor from "./editors/ShipEditor.jsx";
 import EntityEditor from "./editors/EntityEditor.jsx";
 import ItemEditor from "./editors/ItemEditor.jsx";
-import GlyphEditor from "./editors/GlyphEditor.jsx";
 
 const LS_ROOT = "worldforge_content_root";
 
@@ -140,8 +137,8 @@ function ScaffoldPrompt({ pending, onCreate, onPickOther, onCancel, busy }) {
   const missing = pending.reason === "missing";
   const title = missing ? "No content/world folder" : "World folder is empty";
   const body = missing
-    ? "This project does not have a content/world directory yet. Create a starter layout (galaxy index, starter zone with one room, and empty entity/item folders)?"
-    : "content/world exists but has no zones, galaxy.yaml, or other YAML yet. Create the same starter layout? Existing files are left unchanged.";
+    ? "This project does not have a content/world directory yet. Create a starter layout (starter zone with one room, and empty entity/item folders)?"
+    : "content/world exists but has no zones or other YAML yet. Create the same starter layout? Existing files are left unchanged.";
 
   return (
     <div
@@ -235,11 +232,8 @@ function Shell() {
     loadError,
     pendingScaffold,
     zoneIds,
-    systemIds,
-    shipIds,
     entityIds,
     itemIds,
-    glyphIds,
     setContentRoot,
     loadAll,
     softRefresh,
@@ -249,11 +243,8 @@ function Shell() {
   const settings = useLocalSettings();
   const [activeEditor, setActiveEditor] = useState("zone");
   const [selectedZone, setSelectedZone] = useState(null);
-  const [selectedSystem, setSelectedSystem] = useState(null);
-  const [selectedShip, setSelectedShip] = useState(null);
   const [selectedEntity, setSelectedEntity] = useState(null);
   const [selectedItem, setSelectedItem] = useState(null);
-  const [selectedGlyph, setSelectedGlyph] = useState(null);
   const [search, setSearch] = useState("");
   const [nexusLive, setNexusLive] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
@@ -278,12 +269,6 @@ function Shell() {
   useEffect(() => {
     if (contentRoot && zoneIds.length && !selectedZone) setSelectedZone(zoneIds[0]);
   }, [contentRoot, zoneIds, selectedZone]);
-  useEffect(() => {
-    if (contentRoot && systemIds.length && !selectedSystem) setSelectedSystem(systemIds[0]);
-  }, [contentRoot, systemIds, selectedSystem]);
-  useEffect(() => {
-    if (contentRoot && shipIds.length && !selectedShip) setSelectedShip(shipIds[0]);
-  }, [contentRoot, shipIds, selectedShip]);
 
   useEffect(() => {
     const url = settings.nexusUrl?.replace(/\/$/, "");
@@ -429,21 +414,12 @@ function Shell() {
         zoneIds={zoneIds}
         selectedZoneId={selectedZone}
         onSelectZone={setSelectedZone}
-        systemIds={systemIds}
-        selectedSystemId={selectedSystem}
-        onSelectSystem={setSelectedSystem}
-        shipIds={shipIds}
-        selectedShipId={selectedShip}
-        onSelectShip={setSelectedShip}
         entityIds={entityIds}
         selectedEntityId={selectedEntity}
         onSelectEntity={setSelectedEntity}
         itemIds={itemIds}
         selectedItemId={selectedItem}
         onSelectItem={setSelectedItem}
-        glyphIds={glyphIds}
-        selectedGlyphId={selectedGlyph}
-        onSelectGlyph={setSelectedGlyph}
         search={search}
         onSearch={setSearch}
         nexusLive={nexusLive}
@@ -476,21 +452,16 @@ function Shell() {
             showDevTools={settings.showDevTools}
           />
         ) : null}
-        {activeEditor === "galaxy" ? <GalaxyEditor worldRoot={worldRoot} /> : null}
-        {activeEditor === "ship" ? <ShipEditor shipId={selectedShip} worldRoot={worldRoot} onShipId={setSelectedShip} /> : null}
         {activeEditor === "entities" ? <EntityEditor worldRoot={worldRoot} selectedId={selectedEntity} onSelect={setSelectedEntity} /> : null}
         {activeEditor === "items" ? <ItemEditor worldRoot={worldRoot} selectedId={selectedItem} onSelect={setSelectedItem} /> : null}
-        {activeEditor === "glyphs" ? <GlyphEditor worldRoot={worldRoot} selectedId={selectedGlyph} onSelect={setSelectedGlyph} /> : null}
       </div>
       {exportOpen ? (
         <ExportDialog
           worldRoot={worldRoot}
           contentRoot={contentRoot}
           zoneIds={zoneIds}
-          systemIds={systemIds}
           entityIds={entityIds}
           itemIds={itemIds}
-          glyphIds={glyphIds}
           onClose={() => setExportOpen(false)}
         />
       ) : null}

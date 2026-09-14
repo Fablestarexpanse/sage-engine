@@ -252,7 +252,7 @@ function ZoneEditorInner({
   rfRef.current = rf;
   const containerRef = useRef(null);
   const suppressPaneContextUntilRef = useRef(0);
-  const { zones, zoneIds, dispatch, entities, entityIds, items, itemIds, glyphs, glyphIds, saveZoneRoom } = useContent();
+  const { zones, zoneIds, dispatch, entities, entityIds, items, itemIds, saveZoneRoom } = useContent();
 
   const [positionsDoc, setPositionsDoc] = useState(() => parsePositionsDoc(null));
   const [groups, setGroups] = useState([]);
@@ -1293,8 +1293,6 @@ function ZoneEditorInner({
         roomsMap,
         entityIds,
         itemIds,
-        glyphIds,
-        glyphs,
         allRoomIds,
         entityLoot: entityLootMap,
       })
@@ -1310,8 +1308,6 @@ function ZoneEditorInner({
     zoneIds,
     entityIds,
     itemIds,
-    glyphIds,
-    glyphs,
     allRoomIds,
     entityLootMap,
     nexusUrl,

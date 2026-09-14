@@ -100,9 +100,6 @@ export function buildSceneNarrativeContext(lines, maxLen = 4000) {
       case "entity":
         t = l.text;
         break;
-      case "glyph_cast":
-        t = l.text;
-        break;
       case "action":
         t = l.text ? String(l.text).replace(/^>\s*/, "").replace(/^Command sent:\s*/i, "") : "";
         break;
@@ -1036,11 +1033,6 @@ export function NarrativePanel({
         const cfg = { warning: { bg: T.hue.amberDim, color: T.hue.amber, border: T.hue.amber, icon: "⚠" }, success: { bg: T.hue.emeraldDim, color: T.text.success, border: T.hue.emerald, icon: "✓" }, danger: { bg: T.hue.crimsonDim, color: T.text.danger, border: T.hue.crimson, icon: "✕" } }[line.level] || {};
         return <div key={i} role="alert" style={{ ...base, color: cfg.color, fontSize: 12, fontWeight: 600, background: cfg.bg, margin: "4px 14px", padding: "6px 12px", borderRadius: T.radius.sm, borderLeft: `3px solid ${cfg.border}` }}>{cfg.icon} {line.text}</div>;
       }
-      case "glyph_cast": return (
-        <div key={i} style={{ ...base, fontFamily: T.font.body, fontSize: 14, lineHeight: 1.75, color: T.text.accentStrong, padding: "6px 14px", background: `linear-gradient(90deg,${T.hue.violetDim},transparent 70%)`, borderLeft: `2px solid ${T.hue.violet}60`, margin: "4px 0" }}>
-          {parseEntities(line.text)}
-        </div>
-      );
       case "image_gen": return (
         <div key={i} style={{ margin: "8px 14px", borderRadius: T.radius.md, height: 140, overflow: "hidden", position: "relative", background: `linear-gradient(135deg,${T.bg.deep},${T.hue.violetDim})`, border: `1px solid ${T.border.accent}` }}>
           <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 8 }}>

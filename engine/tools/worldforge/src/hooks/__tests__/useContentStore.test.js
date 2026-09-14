@@ -10,13 +10,6 @@ const initialState = {
   entityIds: [],
   items: {},
   itemIds: [],
-  systems: {},
-  systemIds: [],
-  ships: {},
-  shipIds: [],
-  glyphs: {},
-  glyphIds: [],
-  galaxy: null,
   loading: false,
   loadError: null,
   dirtyPaths: {},
@@ -49,17 +42,6 @@ describe("useContentStore reducer", () => {
     expect(next.items.potion).toEqual({ id: "potion", value: 2 });
   });
 
-  it("UPDATE_GLYPH adds a new id to glyphIds and updates data for an existing one", () => {
-    const state = { ...initialState, glyphIds: ["glyph_a"], glyphs: { glyph_a: { id: "glyph_a", tier: 1 } } };
-    let next = reducer(state, { type: "UPDATE_GLYPH", id: "glyph_z", data: { id: "glyph_z", tier: 2 } });
-    expect(next.glyphIds).toEqual(["glyph_a", "glyph_z"]);
-    expect(next.glyphs.glyph_z).toEqual({ id: "glyph_z", tier: 2 });
-
-    next = reducer(next, { type: "UPDATE_GLYPH", id: "glyph_a", data: { id: "glyph_a", tier: 5 } });
-    expect(next.glyphIds).toEqual(["glyph_a", "glyph_z"]);
-    expect(next.glyphs.glyph_a).toEqual({ id: "glyph_a", tier: 5 });
-  });
-
   it("DELETE_ZONE removes the zone from zones and zoneIds", () => {
     const state = {
       ...initialState,
@@ -80,20 +62,12 @@ describe("useContentStore reducer", () => {
       entityIds: ["e1"],
       items: {},
       itemIds: [],
-      systems: {},
-      systemIds: [],
-      ships: {},
-      shipIds: [],
-      glyphs: {},
-      glyphIds: [],
-      galaxy: { id: "galaxy" },
       contentRoot: "/picked",
       worldRoot: "/picked/content/world",
     };
     const next = reducer(state, { type: "SOFT_LOAD_DONE", payload });
     expect(next.zones).toEqual({ z1: { rooms: {} } });
     expect(next.entityIds).toEqual(["e1"]);
-    expect(next.galaxy).toEqual({ id: "galaxy" });
     expect(next.contentRoot).toBe("/picked");
     expect(next.worldRoot).toBe("/picked/content/world");
     expect(next.loading).toBe(true);

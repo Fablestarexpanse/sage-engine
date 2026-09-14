@@ -7,7 +7,7 @@ import { useContent } from "../hooks/useContentStore.js";
 
 const row = { display: "flex", alignItems: "center", gap: 8, fontSize: 12, marginTop: 4 };
 
-export default function ExportDialog({ worldRoot, contentRoot, zoneIds, systemIds, entityIds, itemIds, glyphIds, onClose }) {
+export default function ExportDialog({ worldRoot, contentRoot, zoneIds, entityIds, itemIds, onClose }) {
   const { colors: COLORS } = useTheme();
   const btn = useMemo(
     () => ({
@@ -22,11 +22,8 @@ export default function ExportDialog({ worldRoot, contentRoot, zoneIds, systemId
     [COLORS]
   );
   const [z, setZ] = useState(() => Object.fromEntries(zoneIds.map((id) => [id, true])));
-  const [s, setS] = useState(() => Object.fromEntries(systemIds.map((id) => [id, true])));
   const [e, setE] = useState(() => Object.fromEntries(entityIds.map((id) => [id, true])));
   const [i, setI] = useState(() => Object.fromEntries(itemIds.map((id) => [id, true])));
-  const [g, setG] = useState(() => Object.fromEntries(glyphIds.map((id) => [id, true])));
-  const [gal, setGal] = useState(true);
   const [stampIds, setStampIds] = useState([]);
   const [st, setSt] = useState({});
   const { loadAll } = useContent();
@@ -49,14 +46,9 @@ export default function ExportDialog({ worldRoot, contentRoot, zoneIds, systemId
 
   const paths = useMemo(() => {
     const out = [];
-    if (gal) out.push(joinPaths(worldRoot, "galaxy.yaml"));
     for (const id of zoneIds) {
       if (!z[id]) continue;
       out.push(joinPaths(worldRoot, "zones", id));
-    }
-    for (const id of systemIds) {
-      if (!s[id]) continue;
-      out.push(joinPaths(worldRoot, "systems", `${id}.yaml`));
     }
     for (const id of entityIds) {
       if (!e[id]) continue;
@@ -66,16 +58,12 @@ export default function ExportDialog({ worldRoot, contentRoot, zoneIds, systemId
       if (!i[id]) continue;
       out.push(joinPaths(worldRoot, "items", `${id}.yaml`));
     }
-    for (const id of glyphIds) {
-      if (!g[id]) continue;
-      out.push(joinPaths(worldRoot, "glyphs", `${id}.yaml`));
-    }
     for (const id of stampIds) {
       if (!st[id]) continue;
       out.push(joinPaths(worldRoot, "stamps", id));
     }
     return out;
-  }, [worldRoot, zoneIds, systemIds, entityIds, itemIds, glyphIds, stampIds, z, s, e, i, g, st, gal]);
+  }, [worldRoot, zoneIds, entityIds, itemIds, stampIds, z, e, i, st]);
 
   const collectFiles = async () => {
     const files = [];
@@ -153,14 +141,9 @@ export default function ExportDialog({ worldRoot, contentRoot, zoneIds, systemId
       >
         <h2 style={{ marginTop: 0, fontSize: 18 }}>Export bundle</h2>
         <div style={{ fontSize: 12, color: COLORS.textMuted, marginBottom: 12 }}>Select content to include (paths under content/world).</div>
-        <label style={row}><input type="checkbox" checked={gal} onChange={(ev) => setGal(ev.target.checked)} /> galaxy.yaml</label>
         <div style={{ marginTop: 8, fontWeight: 600, fontSize: 12 }}>Zones (folders)</div>
         {zoneIds.map((id) => (
           <label key={id} style={row}><input type="checkbox" checked={!!z[id]} onChange={(ev) => setZ({ ...z, [id]: ev.target.checked })} /> {id}</label>
-        ))}
-        <div style={{ marginTop: 8, fontWeight: 600, fontSize: 12 }}>Systems</div>
-        {systemIds.map((id) => (
-          <label key={id} style={row}><input type="checkbox" checked={!!s[id]} onChange={(ev) => setS({ ...s, [id]: ev.target.checked })} /> {id}</label>
         ))}
         <div style={{ marginTop: 8, fontWeight: 600, fontSize: 12 }}>Entities</div>
         <div style={{ maxHeight: 100, overflow: "auto" }}>
@@ -172,12 +155,6 @@ export default function ExportDialog({ worldRoot, contentRoot, zoneIds, systemId
         <div style={{ maxHeight: 100, overflow: "auto" }}>
           {itemIds.map((id) => (
             <label key={id} style={row}><input type="checkbox" checked={!!i[id]} onChange={(ev) => setI({ ...i, [id]: ev.target.checked })} /> {id}</label>
-          ))}
-        </div>
-        <div style={{ marginTop: 8, fontWeight: 600, fontSize: 12 }}>Glyphs</div>
-        <div style={{ maxHeight: 100, overflow: "auto" }}>
-          {glyphIds.map((id) => (
-            <label key={id} style={row}><input type="checkbox" checked={!!g[id]} onChange={(ev) => setG({ ...g, [id]: ev.target.checked })} /> {id}</label>
           ))}
         </div>
         <div style={{ marginTop: 8, fontWeight: 600, fontSize: 12 }}>Stamps</div>

@@ -47,7 +47,6 @@ engine/clients/player-ui/              React player client (Vite, port 5173)
 engine/tools/worldforge/             Tauri desktop WorldForge editor
 engine/tools/worldforge-mcp/         MCP server exposing map-building tools (mcp__worldforge__*)
 worlds/fablestar/content/world/   Fablestar game content (YAML, tracked in git; changes hot-reload)
-  galaxy.yaml           Galaxy stub (no runtime loader; admin builder only)
   entities/             Entity templates (NPC/mob definitions)
   items/                Item templates
   zones/                Game zones (test_isle "Tidegate Isle", aipub)
@@ -55,7 +54,7 @@ worlds/fablestar/content/world/   Fablestar game content (YAML, tracked in git; 
       zone.yaml         Zone metadata
       .positions.json   Editor layout (v2: positions, floors, notes)
       rooms/            Room YAML files; file stem = room slug
-  (ships/, systems/, glyphs/, stamps/ are referenced by the editors but do not exist today)
+  (stamps/ is created by WorldForge when a stamp is saved)
 worlds/fablestar/content/achievements/   Achievement YAML
 worlds/fablestar/content/agents/         Agent personas (computer-controlled players)
 worlds/fablestar/content/factions/       Faction YAML

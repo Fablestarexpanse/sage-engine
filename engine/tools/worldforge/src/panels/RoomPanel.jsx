@@ -28,7 +28,6 @@ export default function RoomPanel({
   roomIndexForPicker,
   nexusUrl,
   nexusToken,
-  shipMode,
 }) {
   const { colors: COLORS } = useTheme();
   const { lbl, inp, btn, btnPrimary, btnDanger } = useMemo(() => roomPanelChrome(COLORS), [COLORS]);
@@ -285,7 +284,7 @@ export default function RoomPanel({
             <button type="button" style={btnPrimary} onClick={() => aiGenerate().catch((e) => alert(e.message))} disabled={!nexusUrl}>
               AI Generate description
             </button>
-            {!shipMode && onLayoutBorderColorChange ? (
+            {onLayoutBorderColorChange ? (
               <>
                 <label style={{ ...lbl, marginTop: 14 }}>Map border color (editor only)</label>
                 <p style={{ fontSize: 10, color: COLORS.textDim, margin: "0 0 8px", lineHeight: 1.4 }}>
@@ -373,15 +372,13 @@ export default function RoomPanel({
 
         {tab === "Exits" && (
           <div>
-            {!shipMode ? (
-              <p style={{ fontSize: 11, color: COLORS.textMuted, margin: "0 0 12px", lineHeight: 1.45 }}>
-                Pick a destination below, or drag from a <strong>door port</strong> (square on a room edge) to a port on another room — both directions are written at once.
-              </p>
-            ) : null}
+            <p style={{ fontSize: 11, color: COLORS.textMuted, margin: "0 0 12px", lineHeight: 1.45 }}>
+              Pick a destination below, or drag from a <strong>door port</strong> (square on a room edge) to a port on another room — both directions are written at once.
+            </p>
             {Object.entries(exits).map(([dir, ex]) => (
               <div key={dir} style={{ marginBottom: 10, padding: 8, background: COLORS.bgCard, borderRadius: 8 }}>
                 <div style={{ fontWeight: 700, fontSize: 11, color: COLORS.accent, marginBottom: 6 }}>{dir}</div>
-                <label style={lbl}>Destination {shipMode ? "(self:slug or @airlock)" : ""}</label>
+                <label style={lbl}>Destination</label>
                 <input
                   style={inp}
                   value={ex.destination || ""}
@@ -404,22 +401,18 @@ export default function RoomPanel({
                 </select>
                 <label style={lbl}>Description</label>
                 <input style={inp} value={ex.description || ""} onChange={(e) => setExit(dir, { description: e.target.value })} />
-                {!shipMode ? (
-                  <>
-                    <label style={lbl}>Map link label (editor)</label>
-                    <input
-                      style={{ ...inp, fontFamily: "monospace", fontSize: 11 }}
-                      value={ex.map_label ?? ""}
-                      placeholder={`default: ${dir}`}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        if (v.trim() === "") setExit(dir, { map_label: undefined });
-                        else setExit(dir, { map_label: v });
-                      }}
-                    />
-                    <p style={{ fontSize: 9, color: COLORS.textDim, margin: "4px 0 0", lineHeight: 1.35 }}>Shown on the zone map on this exit line; empty uses the direction name.</p>
-                  </>
-                ) : null}
+                <label style={lbl}>Map link label (editor)</label>
+                <input
+                  style={{ ...inp, fontFamily: "monospace", fontSize: 11 }}
+                  value={ex.map_label ?? ""}
+                  placeholder={`default: ${dir}`}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v.trim() === "") setExit(dir, { map_label: undefined });
+                    else setExit(dir, { map_label: v });
+                  }}
+                />
+                <p style={{ fontSize: 9, color: COLORS.textDim, margin: "4px 0 0", lineHeight: 1.35 }}>Shown on the zone map on this exit line; empty uses the direction name.</p>
                 <label style={{ ...lbl, display: "flex", alignItems: "center", gap: 8 }}>
                   <input type="checkbox" checked={Boolean(ex.one_way)} onChange={(e) => setExit(dir, { one_way: e.target.checked })} />
                   One-way exit

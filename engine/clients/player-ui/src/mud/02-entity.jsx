@@ -4,7 +4,7 @@ import { usePlayTheme } from "../PlayThemeContext.jsx";
 
 export function EntitySpan({ type, name, id, children, onContextMenu: parentCtx }) {
   const { T } = usePlayTheme();
-  const colors = { npc: T.hue.amber, item: T.hue.cyan, exit: T.hue.emerald, player: T.hue.violet, glyph: T.text.accentStrong };
+  const colors = { npc: T.hue.amber, item: T.hue.cyan, exit: T.hue.emerald, player: T.hue.violet };
   const col = colors[type] || T.text.accent;
   const [hov, setHov] = useState(false);
 
@@ -33,10 +33,6 @@ export function EntitySpan({ type, name, id, children, onContextMenu: parentCtx 
       { icon: "💬", label: "Tell", action: () => {} },
       { icon: "🤝", label: "Invite to party", action: () => {} },
       { icon: "📋", label: "View profile", action: () => {} },
-    ],
-    glyph: [
-      { icon: "✦", label: "Inscribe", action: () => {} },
-      { icon: "📖", label: "View details", action: () => {} },
     ],
   };
 

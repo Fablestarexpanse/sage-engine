@@ -8,7 +8,7 @@ async function yamlFilesInDir(dirPath) {
   return entries.filter((e) => !e.is_dir && e.name.toLowerCase().endsWith(".yaml")).length;
 }
 
-/** True if there is any game-facing YAML under content/world (zones, galaxy, etc.). */
+/** True if there is any game-facing YAML under content/world (zones, entities, items). */
 export async function hasAnyWorldContent(worldRoot) {
   if (await fs.pathExists(worldRoot)) {
     const entries = await fs.listDir(worldRoot);
@@ -18,9 +18,6 @@ export async function hasAnyWorldContent(worldRoot) {
   }
   if ((await yamlFilesInDir(joinPaths(worldRoot, "entities"))) > 0) return true;
   if ((await yamlFilesInDir(joinPaths(worldRoot, "items"))) > 0) return true;
-  if ((await yamlFilesInDir(joinPaths(worldRoot, "systems"))) > 0) return true;
-  if ((await yamlFilesInDir(joinPaths(worldRoot, "ships"))) > 0) return true;
-  if ((await yamlFilesInDir(joinPaths(worldRoot, "glyphs"))) > 0) return true;
 
   const zonesRoot = joinPaths(worldRoot, "zones");
   if (!(await fs.pathExists(zonesRoot))) return false;
@@ -32,14 +29,6 @@ export async function hasAnyWorldContent(worldRoot) {
   }
   return false;
 }
-
-const MINIMAL_GALAXY = {
-  galaxy: {
-    id: "new_galaxy",
-    name: "New Galaxy",
-    systems: [],
-  },
-};
 
 const STARTER_ZONE = "starter_zone";
 
@@ -53,7 +42,7 @@ function resolveScaffoldWorldRoot(root) {
   return joinPaths(root, "content", "world");
 }
 
-/** Create content/world layout + minimal galaxy + starter zone (skips files that already exist). */
+/** Create content/world layout + starter zone (skips files that already exist). */
 export async function createWorldScaffold(contentRoot) {
   const worldRoot = resolveScaffoldWorldRoot(contentRoot);
 
@@ -62,14 +51,6 @@ export async function createWorldScaffold(contentRoot) {
   await fs.createDir(joinPaths(worldRoot, "stamps"));
   await fs.createDir(joinPaths(worldRoot, "entities"));
   await fs.createDir(joinPaths(worldRoot, "items"));
-  await fs.createDir(joinPaths(worldRoot, "systems"));
-  await fs.createDir(joinPaths(worldRoot, "ships"));
-  await fs.createDir(joinPaths(worldRoot, "glyphs"));
-
-  const galaxyPath = joinPaths(worldRoot, "galaxy.yaml");
-  if (!(await fs.pathExists(galaxyPath))) {
-    await fs.writeText(galaxyPath, yaml.dump(MINIMAL_GALAXY, { lineWidth: 120, quotingType: '"', noRefs: true }));
-  }
 
   const zoneRoot = joinPaths(worldRoot, "zones", STARTER_ZONE);
   const roomsDir = joinPaths(zoneRoot, "rooms");

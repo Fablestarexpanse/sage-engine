@@ -1,6 +1,6 @@
 {
   "totals": {
-    "denylist": 259,
+    "denylist": 98,
     "player_literals": 72
   },
   "denylist": {
@@ -16,8 +16,6 @@
     "engine/clients/admin-ui/src/storageMigration.js": 8,
     "engine/clients/player-ui/src/App.jsx": 2,
     "engine/clients/player-ui/src/ChargenProficienciesStep.jsx": 3,
-    "engine/clients/player-ui/src/mud/02-entity.jsx": 2,
-    "engine/clients/player-ui/src/mud/03-narrative.jsx": 2,
     "engine/clients/player-ui/src/mud/06-panels-b.jsx": 1,
     "engine/clients/player-ui/src/storageMigration.js": 8,
     "engine/pyproject.toml": 1,
@@ -30,17 +28,8 @@
     "engine/tests/test_play_tokens.py": 1,
     "engine/tests/test_player_accounts_patch.py": 2,
     "engine/tests/test_spawner.py": 6,
-    "engine/tools/worldforge-mcp/server.py": 13,
-    "engine/tools/worldforge/src/App.jsx": 17,
-    "engine/tools/worldforge/src/components/ExportDialog.jsx": 7,
-    "engine/tools/worldforge/src/components/Sidebar.jsx": 9,
-    "engine/tools/worldforge/src/editors/GlyphEditor.jsx": 16,
-    "engine/tools/worldforge/src/editors/ZoneEditor.jsx": 6,
-    "engine/tools/worldforge/src/hooks/__tests__/useContentStore.test.js": 29,
-    "engine/tools/worldforge/src/hooks/useContentStore.js": 46,
-    "engine/tools/worldforge/src/utils/__tests__/validation.test.js": 4,
-    "engine/tools/worldforge/src/utils/validation.js": 9,
-    "engine/tools/worldforge/src/utils/worldScaffold.js": 8
+    "engine/tools/worldforge-mcp/server.py": 1,
+    "engine/tools/worldforge/src/utils/worldScaffold.js": 6
   },
   "player_literals": {
     "engine/src/sage/admin/routes/admin_ops.py": 1,

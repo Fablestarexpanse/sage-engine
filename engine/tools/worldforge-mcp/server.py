@@ -1585,8 +1585,8 @@ def validate_zone(zone_id: str) -> dict[str, Any]:
     Checks: missing room/feature descriptions, unknown exit destinations,
     self-referencing and asymmetric exits (one_way honoured), orphaned and
     disconnected rooms, depth jumps, unknown entity templates in spawns,
-    entity loot referencing unknown items, glyph prerequisite cycles to
-    unknown glyphs, and the feature-density metric (aim >= 0.5 draws/room).
+    entity loot referencing unknown items, and the feature-density metric
+    (aim >= 0.5 draws/room).
 
     Returns {"errors": [...], "warnings": [...], "info": [...], "counts": {...}}.
     """
@@ -1748,21 +1748,6 @@ def validate_zone(zone_id: str) -> dict[str, Any]:
                 iid = entry.get("item") if isinstance(entry, dict) else entry
                 if iid and iid not in item_ids:
                     errors.append(f'Entity {eid} loot references unknown item "{iid}"')
-
-    # Glyph prerequisites (global check, cheap).
-    glyph_dir = _world_root() / "glyphs"
-    if glyph_dir.exists():
-        glyph_docs = {}
-        for f in glyph_dir.glob("*.yaml"):
-            try:
-                doc = yaml.safe_load(f.read_text(encoding="utf-8")) or {}
-            except Exception:
-                continue
-            glyph_docs[str(doc.get("id", f.stem))] = doc
-        for gid, doc in glyph_docs.items():
-            for p in doc.get("prerequisites") or []:
-                if p and p not in glyph_docs:
-                    errors.append(f"Glyph {gid} prerequisite unknown: {p}")
 
     # Feature density (Epitaph metric): gameplay draws per room, aim >= 0.5.
     if multi:

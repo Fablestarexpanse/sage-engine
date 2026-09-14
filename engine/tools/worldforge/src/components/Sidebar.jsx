@@ -67,11 +67,8 @@ const navBtn = {
 
 const EDITORS = [
   { id: "zone", label: "Zone" },
-  { id: "galaxy", label: "Galaxy" },
-  { id: "ship", label: "Ship" },
   { id: "entities", label: "Entities" },
   { id: "items", label: "Items" },
-  { id: "glyphs", label: "Glyphs" },
 ];
 
 export default function Sidebar({
@@ -83,21 +80,12 @@ export default function Sidebar({
   zoneIds,
   selectedZoneId,
   onSelectZone,
-  systemIds,
-  selectedSystemId,
-  onSelectSystem,
-  shipIds,
-  selectedShipId,
-  onSelectShip,
   entityIds,
   selectedEntityId,
   onSelectEntity,
   itemIds,
   selectedItemId,
   onSelectItem,
-  glyphIds,
-  selectedGlyphId,
-  onSelectGlyph,
   search,
   onSearch,
   nexusLive,
@@ -126,16 +114,10 @@ export default function Sidebar({
   const treeItems = () => {
     if (activeEditor === "zone")
       return zoneIds.map((id) => ({ id, label: id, active: id === selectedZoneId, onClick: () => onSelectZone(id) }));
-    if (activeEditor === "galaxy")
-      return systemIds.map((id) => ({ id, label: id, active: id === selectedSystemId, onClick: () => onSelectSystem(id) }));
-    if (activeEditor === "ship")
-      return shipIds.map((id) => ({ id, label: id, active: id === selectedShipId, onClick: () => onSelectShip(id) }));
     if (activeEditor === "entities")
       return entityIds.map((id) => ({ id, label: id, active: id === selectedEntityId, onClick: () => onSelectEntity(id) }));
     if (activeEditor === "items")
       return itemIds.map((id) => ({ id, label: id, active: id === selectedItemId, onClick: () => onSelectItem(id) }));
-    if (activeEditor === "glyphs")
-      return glyphIds.map((id) => ({ id, label: id, active: id === selectedGlyphId, onClick: () => onSelectGlyph(id) }));
     return [];
   };
 

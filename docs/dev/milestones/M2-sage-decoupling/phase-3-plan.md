@@ -38,7 +38,7 @@ by owner G.4 ("every mechanic is a first-party plugin").
 | 3.15 | Redis key namespace by world slug | done |
 | 3.16 | AI slots and style; prompts into `worlds/fablestar/ai` | done |
 | 3.17 | Move Fablestar content into `worlds/fablestar/content`; remove `[transition]` | done |
-| 3.18 | Delete glyph/ship/system/galaxy surfaces and the admin World Builder (owner G.3, G.6): 3.18a engine + admin-ui done | in progress |
+| 3.18 | Delete glyph/ship/system/galaxy surfaces and the admin World Builder (owner G.3, G.6): 3.18a engine + admin-ui, 3.18b WorldForge, player-ui, galaxy.yaml | done |
 
 ## Notes
 
@@ -284,6 +284,12 @@ by owner G.4 ("every mechanic is a first-party plugin").
     positions sidecar code went with the builder (their tests too): WorldForge and the MCP tools
     write files directly and never used them. Staff rows that still list `builder`/`glyphs` are
     unaffected (unknown tool ids are filtered out).
-  - 3.18b WorldForge Galaxy/Glyph/Ship editors, scaffold and validation; worldforge-mcp mentions;
-    player-ui `glyph_cast` narrative type and glyph entity kind; Fablestar's empty `galaxy.yaml`.
+  - 3.18b (done) WorldForge loses the Galaxy, Ship and Glyph editors (with `SystemNode`,
+    `ShipRoomNode`, `SystemPanel`, `shipGraph.js` and RoomPanel's `shipMode`), and its content store
+    no longer scans or saves `systems/`, `ships/`, `glyphs/` or `galaxy.yaml`. The export dialog,
+    world scaffold (no galaxy index or empty systems/ships/glyphs folders) and zone validation
+    (glyph prerequisites) follow; worldforge-mcp's `validate_zone` drops the same glyph check.
+    player-ui drops the `glyph_cast` narrative line type and the `glyph` entity kind (no server
+    ever sent either). Fablestar's empty `worlds/fablestar/content/world/galaxy.yaml` is deleted.
+    A folder that holds only a `galaxy.yaml` is no longer recognised as a world root by WorldForge.
 

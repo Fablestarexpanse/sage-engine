@@ -5,9 +5,7 @@ import { resolveExitDestination } from "./zoneGraph.js";
  * @property {string} [zoneId] Zone being validated (used to label cross-zone exits).
  * @property {string[]} [entityIds] Known entity template ids — spawns referencing others error.
  * @property {string[]} [itemIds] Known item ids — loot referencing others errors.
- * @property {string[]} [glyphIds] Known glyph ids — prerequisites referencing others error.
  * @property {Object<string, string[]>} [entityLoot] Map of entity id → loot item ids.
- * @property {Object<string, {prerequisites?: string[]}>} [glyphs] Glyph docs keyed by id.
  * @property {string[]} [allRoomIds] Every room id across zones (for cross-zone exit checks).
  */
 
@@ -34,7 +32,6 @@ export function runZoneValidation(nodes, edges, opts = {}) {
   const zoneId = ctx.zoneId || "";
   const entitySet = new Set(ctx.entityIds || []);
   const itemSet = new Set(ctx.itemIds || []);
-  const glyphSet = new Set(ctx.glyphIds || []);
   const allRoomIds = new Set(ctx.allRoomIds || nodes.map((n) => n.id));
 
   edges.forEach((e) => {
@@ -233,23 +230,6 @@ export function runZoneValidation(nodes, edges, opts = {}) {
           issues.push({
             level: "error",
             msg: `Entity ${eid} loot references unknown item "${itemId}"`,
-          });
-        }
-      }
-    }
-  }
-
-  // Glyph prerequisites (zone editor skips if no glyphs in ctx)
-  if (glyphSet.size) {
-    for (const gid of glyphSet) {
-      const g = ctx.glyphs?.[gid];
-      const pre = g?.prerequisites;
-      if (!Array.isArray(pre)) continue;
-      for (const p of pre) {
-        if (p && !glyphSet.has(p)) {
-          issues.push({
-            level: "error",
-            msg: `Glyph ${gid} prerequisite unknown: ${p}`,
           });
         }
       }
