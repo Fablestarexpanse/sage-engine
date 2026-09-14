@@ -22,9 +22,9 @@ def roll_damage(attacker_attack: int, defender_defense: int) -> int:
 
 
 def setup(api: PluginAPI) -> None:
+    api.ai.slot("narration")
     skills = list(api.param("skills", []) or [])
     flee_chance = float(api.param("flee_chance", 0.5))
-    narration_template = api.param("narration_template", "combat_narration")
 
     def service(name: str) -> Any:
         try:
@@ -43,17 +43,17 @@ def setup(api: PluginAPI) -> None:
 
     def narrate(session: Any, facts: str) -> None:
         """Fire-and-forget prose; one pending narration per player, never for virtual sessions."""
-        if getattr(session, "virtual", False) or getattr(
-            session, "combat_narration_pending", False
+        if (
+            getattr(session, "virtual", False)
+            or getattr(session, "combat_narration_pending", False)
+            or not api.ai.enabled("narration")
         ):
             return
         session.combat_narration_pending = True
 
         async def run() -> None:
             try:
-                prose = (
-                    await api.ai.narrate(narration_template, 200, narration_facts=facts)
-                ).strip()
+                prose = (await api.ai.narrate("narration", 200, narration_facts=facts)).strip()
                 if prose:
                     await session.send(prose)
             except Exception as exc:

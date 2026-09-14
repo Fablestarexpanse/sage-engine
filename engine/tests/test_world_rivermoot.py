@@ -14,6 +14,7 @@ from sage.commands.registry import CommandRegistry
 from sage.core.events import EntityKilled, EventBus
 from sage.core.resolvers import Resolvers
 from sage.core.tick import TickManager
+from sage.llm.prompts import PromptManager
 from sage.network.panels import PanelRegistry
 from sage.network.snapshot import SnapshotContributors
 from sage.plugins import PluginHost
@@ -37,7 +38,9 @@ def rivermoot():
         trusted_roots=[ROOT / "plugins", ROOT / "worlds"],
     )
     host.server = SimpleNamespace(
-        snapshot_contributors=SnapshotContributors(), panels=PanelRegistry()
+        snapshot_contributors=SnapshotContributors(),
+        panels=PanelRegistry(),
+        prompt_manager=PromptManager(world.prompts_dir),
     )
     host.load()
     previous = lexicon.active()

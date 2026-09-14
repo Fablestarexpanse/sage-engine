@@ -665,14 +665,31 @@ class _Ai:
     def __init__(self, api: PluginAPI):
         self._api = api
 
-    async def narrate(self, template: str, max_tokens: int, **variables: Any) -> str:
-        """Render a world prompt template and generate with the narration LLM; raises on failure.
+    def slot(self, name: str) -> str:
+        """Declare AI slot "<plugin>.<name>"; the world fills it with ai/prompts/<slot>.j2."""
+        api = self._api
+        slot = f"{api.id}.{name}"
+        prompts = api._host.server.prompt_manager
+        try:
+            prompts.declare(slot, api.id)
+        except ValueError as exc:
+            raise PluginError(f"plugin {api.id}: {exc}") from exc
+        api._record.record("ai_slots", slot)
+        api._cleanup.append(lambda: prompts.withdraw(api.id))
+        return slot
+
+    def enabled(self, name: str) -> bool:
+        """Whether the world fills this plugin's slot (callers skip AI work otherwise)."""
+        return self._api._host.server.prompt_manager.enabled(f"{self._api.id}.{name}")
+
+    async def narrate(self, name: str, max_tokens: int, **variables: Any) -> str:
+        """Render this plugin's slot and generate with the narration LLM; raises on failure.
 
         Narration only colours what already happened: callers send their outcome first and
-        treat any exception as "no prose".
+        treat any exception (including sage.llm.prompts.SlotDisabled) as "no prose".
         """
         server = self._api._host.server
-        prompt = server.prompt_manager.render(template, **variables)
+        prompt = server.prompt_manager.render(f"{self._api.id}.{name}", **variables)
         return await server.llm_client.generate_or_raise(prompt, max_tokens=max_tokens)
 
     def profile(self, name: str = "agents_llm") -> Any:

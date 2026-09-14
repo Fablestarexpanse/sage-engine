@@ -36,7 +36,7 @@ by owner G.4 ("every mechanic is a first-party plugin").
 | 3.13 | Declarative client panels; remove Fablestar panels/branding from player-ui: 3.13a API + renderer, 3.13b Conduit panels, 3.13c mock panels and branding out; 3.13d deferred until an admin panel is needed | done |
 | 3.14 | Schema: JSONB state, `digi_balance`/`reputation`/`echo_credits` columns, retire `agent_state` (backfill → drop) | done |
 | 3.15 | Redis key namespace by world slug | done |
-| 3.16 | AI slots and style; prompts into `worlds/fablestar/ai` | todo |
+| 3.16 | AI slots and style; prompts into `worlds/fablestar/ai`: 3.16a slots + prompts moved done | in progress |
 | 3.17 | Move Fablestar content into `worlds/fablestar/content`; remove `[transition]` | todo |
 | 3.18 | Delete glyph/ship/system/galaxy surfaces and the admin World Builder (owner G.3, G.6) | todo |
 
@@ -224,4 +224,24 @@ by owner G.4 ("every mechanic is a first-party plugin").
   stock survives the upgrade; the step is a no-op afterwards. Caveat: on a Redis shared by
   several worlds, the first world to boot adopts all pre-namespace keys, which only exist from
   single-world deployments. Test fakes keep an empty namespace.
+- **3.16 plan (AI slots and style).**
+  - 3.16a (done) `sage.llm.prompts`: engine slots `narrate.room`, `forge.room`, `forge.content`,
+    `image.area`, `image.portrait`, `image.scene`; plugins declare `<plugin>.<name>` with
+    `api.ai.slot(name)` (sealed by `[touches].ai_slots`) and render with `api.ai.narrate(name)`;
+    `api.ai.enabled(name)` lets callers skip AI work. A world fills a slot with
+    `ai/prompts/<slot>.j2`; rendering an empty or undeclared slot raises `SlotDisabled` instead of
+    the old "Error: Could not render prompt" string that was sent to the LLM. Callers: `look` skips
+    the narration task, forge routes answer 503 `ai_slot_disabled`, image-prompt suggestions return
+    `{"error": "ai_slot_disabled"}`, combat sends no prose. The seven templates moved from the
+    repository `prompts/` to `worlds/fablestar/ai/prompts/` under slot names
+    (`combat_narration` -> `combat.narration`, `room_description` -> `narrate.room`, ...);
+    `[transition] prompts_dir` is gone. Rivermoot ships no templates and runs with every slot
+    disabled.
+  - 3.16b `ai/style.yaml`: tone injected as `{{ style.tone }}`, content rules replacing the
+    validator's hardcoded patterns, system prompts for the image-prompt jobs, image style tokens and
+    negative prompt.
+  - 3.16c ComfyUI graphs into `ai/comfyui/<role>.json` with `ai/loras.yaml`; config paths stay as
+    deployment overrides.
+  - Versioned prompt/style edits in Nexus (B.6 overrides) wait for a user of them (two-world
+    ceiling); package files stay the source.
 

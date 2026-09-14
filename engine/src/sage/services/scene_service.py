@@ -15,6 +15,7 @@ from sqlalchemy import select
 from sage.comfyui_client import generate_portrait_png
 from sage.core.config import resolve_config_asset_path
 from sage.llm.client import LLMGenerationError
+from sage.llm.prompts import SlotDisabled
 from sage.services._shared import (
     resolve_play_account,
     resolve_play_account_or_error,
@@ -154,13 +155,16 @@ class SceneService:
         description_base: str,
     ) -> dict[str, Any]:
         """LM Studio / OpenAI-compatible: short ComfyUI prompt from room fields."""
-        prompt = self.server.prompt_manager.render(
-            "forge_area_image_prompt",
-            room_name=room_name or "?",
-            room_type=room_type or "chamber",
-            room_depth=int(depth or 1),
-            description_base=(description_base or "").strip(),
-        )
+        try:
+            prompt = self.server.prompt_manager.render(
+                "image.area",
+                room_name=room_name or "?",
+                room_type=room_type or "chamber",
+                room_depth=int(depth or 1),
+                description_base=(description_base or "").strip(),
+            )
+        except SlotDisabled as e:
+            return {"ok": False, "error": "ai_slot_disabled", "detail": str(e)}
         try:
             raw = await self.server.llm_client.generate_or_raise(
                 prompt,
@@ -194,11 +198,14 @@ class SceneService:
 
         cn = (character_name or "").strip() or "?"
         notes = (appearance_notes or "").strip()
-        prompt = self.server.prompt_manager.render(
-            "forge_portrait_character_prompt",
-            character_name=cn,
-            appearance_notes=notes or "(none)",
-        )
+        try:
+            prompt = self.server.prompt_manager.render(
+                "image.portrait",
+                character_name=cn,
+                appearance_notes=notes or "(none)",
+            )
+        except SlotDisabled as e:
+            return {"ok": False, "error": "ai_slot_disabled", "detail": str(e)}
         try:
             raw = await self.server.llm_client.generate_or_raise(
                 prompt,
@@ -237,11 +244,14 @@ class SceneService:
         if len(ctx) > 8000:
             ctx = ctx[:8000]
         rh = (room_hint or "").strip() or "Unknown location"
-        prompt = self.server.prompt_manager.render(
-            "play_scene_image_prompt",
-            narrative_context=ctx or "(no narrative text yet)",
-            room_hint=rh,
-        )
+        try:
+            prompt = self.server.prompt_manager.render(
+                "image.scene",
+                narrative_context=ctx or "(no narrative text yet)",
+                room_hint=rh,
+            )
+        except SlotDisabled as e:
+            return {"ok": False, "error": "ai_slot_disabled", "detail": str(e)}
         try:
             raw = await self.server.llm_client.generate_or_raise(
                 prompt,

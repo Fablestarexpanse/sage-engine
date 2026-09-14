@@ -60,7 +60,7 @@ content/achievements/   Achievement YAML
 content/agents/         Agent personas (computer-controlled players)
 content/factions/       Faction YAML
 content/proficiencies/  Conduit proficiency catalog (catalog.json, 278 leaves)
-prompts/                Jinja2 prompt templates (*.j2)
+worlds/<world>/ai/prompts/  Jinja2 templates, one per AI slot (<slot>.j2)
 config/                 TOML config files (gitignored; copy from *.example.toml)
 engine/tests/           pytest suite (run from repo root: python -m pytest)
 engine/alembic/         Database migrations (engine/alembic.ini)
@@ -201,8 +201,8 @@ Narration is **optional and fire-and-forget** — the game never blocks on LLM o
 
 ```
 Command handler
-  └─ app_instance.prompt_manager.render("template_name", **context)
-       └─ Jinja2 renders prompts/{template_name}.j2
+  └─ app_instance.prompt_manager.render("narrate.room", **context)   # an AI slot
+       └─ Jinja2 renders worlds/<world>/ai/prompts/narrate.room.j2 (SlotDisabled if absent)
   └─ app_instance.llm_client.generate(prompt, max_tokens=N)
        └─ POST to LM Studio / Ollama / OpenAI-compatible endpoint
   └─ app_instance.llm_client.validator.sanitize(response)
@@ -210,7 +210,7 @@ Command handler
   └─ session.send(narration)
 ```
 
-Prompt templates live in `prompts/`. Each `.j2` file receives named variables. If the LLM call fails, command handlers fall back to a plain-text message — see `plugins/combat/sage_plugin_combat/main.py` (`api.ai.narrate`) for the pattern.
+AI slots are declared by the engine (`sage.llm.prompts.ENGINE_SLOTS`) and by plugins (`api.ai.slot(name)` -> `<plugin>.<name>`). The running world fills a slot with `ai/prompts/<slot>.j2`; a slot without a template is disabled and callers take their plain path. Each `.j2` file receives named variables. If the LLM call fails, command handlers fall back to a plain-text message — see `plugins/combat/sage_plugin_combat/main.py` (`api.ai.narrate`) for the pattern.
 
 **LLM client config:** `config/llm.toml` (optional). Defaults to disabled. Set `base_url`, `model`, `enabled = true`.
 

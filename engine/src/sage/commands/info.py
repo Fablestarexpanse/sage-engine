@@ -49,7 +49,7 @@ async def look(session: Session, args: list[str]):
         async def _narrate():
             try:
                 prompt = app_instance.prompt_manager.render(
-                    "room_description", observation_block=observation_block
+                    "narrate.room", observation_block=observation_block
                 )
                 narration = await app_instance.llm_client.generate_or_raise(prompt)
                 clean = validator.sanitize(narration)
@@ -67,6 +67,7 @@ async def look(session: Session, args: list[str]):
         # narration backend. One pending scene per player: extras are dropped.
         if (
             narrate
+            and app_instance.prompt_manager.enabled("narrate.room")
             and not getattr(session, "virtual", False)
             and not getattr(session, "scene_narration_pending", False)
         ):

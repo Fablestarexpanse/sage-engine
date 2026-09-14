@@ -118,7 +118,7 @@ content/world/     Game content (YAML) — zones, rooms, entities, items; hot-re
 engine/clients/admin-ui/          React admin console
 engine/clients/player-ui/         React player client
 engine/tools/worldforge/        Tauri desktop map editor
-prompts/           Jinja2 templates for LLM narration and forge generation
+worlds/           world packages (Fablestar, Rivermoot): content, lexicon, ai/prompts, plugins
 ```
 
 Developer documentation lives in [`CLAUDE.md`](CLAUDE.md) (architecture guide) and [`docs/`](docs/).

@@ -13,6 +13,7 @@ from sage.commands.registry import CommandRegistry
 from sage.core.events import EventBus
 from sage.core.resolvers import Resolvers
 from sage.core.tick import TickManager
+from sage.llm.prompts import PromptManager
 from sage.network.panels import PanelRegistry
 from sage.network.snapshot import SnapshotContributors
 from sage.plugins import PluginHost
@@ -57,6 +58,7 @@ def plugin_host():
         for name, factory in (
             ("snapshot_contributors", SnapshotContributors),
             ("panels", PanelRegistry),
+            ("prompt_manager", lambda: PromptManager(world.prompts_dir)),
         ):
             if not hasattr(server, name):
                 setattr(server, name, factory())

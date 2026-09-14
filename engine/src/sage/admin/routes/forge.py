@@ -14,6 +14,7 @@ from sage.admin import content_browser
 from sage.admin.admin_security import AdminContext
 from sage.admin.route_helpers import require_tool
 from sage.llm.client import LLMGenerationError
+from sage.llm.prompts import SlotDisabled
 
 if TYPE_CHECKING:
     from sage.server import SageServer
@@ -61,9 +62,12 @@ def build_forge_router(server: SageServer) -> APIRouter:
         _ctx: Annotated[AdminContext, Depends(require_tool("forge"))],
     ):
         # 1. Render Prompt
-        prompt = server.prompt_manager.render(
-            "forge_room", user_seed=req.seed, room_type=req.room_type, room_depth=req.depth
-        )
+        try:
+            prompt = server.prompt_manager.render(
+                "forge.room", user_seed=req.seed, room_type=req.room_type, room_depth=req.depth
+            )
+        except SlotDisabled as e:
+            raise HTTPException(status_code=503, detail=f"ai_slot_disabled: {e}") from e
 
         # 2. Call LLM
         logger.info(f"Forge: Generating room from seed '{req.seed}'")
@@ -114,12 +118,15 @@ def build_forge_router(server: SageServer) -> APIRouter:
         cat = (req.category or "misc").lower().strip().replace(" ", "_")
         if not cat.replace("_", "").isalnum():
             raise HTTPException(status_code=400, detail="Invalid category")
-        prompt = server.prompt_manager.render(
-            "forge_generic",
-            category=cat,
-            seed=req.seed,
-            context=req.context or {},
-        )
+        try:
+            prompt = server.prompt_manager.render(
+                "forge.content",
+                category=cat,
+                seed=req.seed,
+                context=req.context or {},
+            )
+        except SlotDisabled as e:
+            raise HTTPException(status_code=503, detail=f"ai_slot_disabled: {e}") from e
         logger.info("Forge: generic generate category=%s", cat)
         try:
             raw_yaml = await server.llm_client.generate_or_raise(

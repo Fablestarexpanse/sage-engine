@@ -286,6 +286,10 @@ def make_fake_server() -> SimpleNamespace:
     server.world = repo_world()
     server.config = SimpleNamespace(server=SimpleNamespace())
     server.dispatcher = CommandDispatcher()
+    from sage.llm.prompts import PromptManager
+
+    # A world with no AI templates: every slot disabled, so commands take their plain paths.
+    server.prompt_manager = PromptManager(ROOT / "worlds" / "_no_ai")
     server.session_manager = SimpleNamespace(
         player_to_session={}, get_session_by_player=lambda pid: None
     )

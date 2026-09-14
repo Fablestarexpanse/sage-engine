@@ -9,6 +9,7 @@ from unittest import mock
 import pytest
 
 from sage.core.events import EntityKilled
+from sage.llm.prompts import PromptManager
 from sage.world.spawner import EntitySpawnManager
 from tests.fakes import StubSession, repo_world
 
@@ -23,6 +24,7 @@ ITEMS = {
     "pebble": "id: pebble\nname: pebble\n",
 }
 YARD = "town:yard"
+NARRATION = "[narration] {{ narration_facts }}"
 
 
 def _rat(hp: int = 1, attack: int = 3, **extra) -> dict:
@@ -40,11 +42,6 @@ def _rat(hp: int = 1, attack: int = 3, **extra) -> dict:
     }
 
 
-class _Prompts:
-    def render(self, name: str, **ctx) -> str:
-        return f"[{name}] {ctx['narration_facts']}"
-
-
 class _LLM:
     def __init__(self, prose: str = "", hang: bool = False):
         self.prose, self.hang, self.prompts = prose, hang, []
@@ -56,7 +53,7 @@ class _LLM:
         return self.prose
 
 
-def _host(plugin_host, tmp_path, ids=("combat",), llm=None, prompts=None):
+def _host(plugin_host, tmp_path, ids=("combat",), llm=None, template=NARRATION):
     content = tmp_path / "content" / "world"
     rooms = content / "zones" / "town" / "rooms"
     rooms.mkdir(parents=True)
@@ -69,13 +66,17 @@ def _host(plugin_host, tmp_path, ids=("combat",), llm=None, prompts=None):
     manifest = world.manifest.model_copy(deep=True)
     manifest.transition.content_dir = str(tmp_path / "content")
     manifest.params["combat.skills"] = ["brawling"]
+    prompt_dir = tmp_path / "ai" / "prompts"
+    prompt_dir.mkdir(parents=True)
+    if template is not None:
+        (prompt_dir / "combat.narration.j2").write_text(template, encoding="utf-8")
     dispatched: list[str] = []
 
     async def dispatch(session, line):
         dispatched.append(line)
 
     server = SimpleNamespace(
-        prompt_manager=prompts or _Prompts(),
+        prompt_manager=PromptManager(prompt_dir),
         llm_client=llm or _LLM(),
         dispatcher=SimpleNamespace(dispatch=dispatch),
         session_manager=SimpleNamespace(player_to_session={}, get_session_by_player=lambda p: None),
@@ -196,18 +197,15 @@ def test_narration_follows_the_outcome_and_never_blocks_it(plugin_host, tmp_path
     asyncio.run(run())
     assert session.sent[0].startswith("You strike Cellar Rat")
     assert "The rat squeals once." in session.sent
-    assert llm.prompts and "[combat_narration]" in llm.prompts[0]
+    assert llm.prompts and llm.prompts[0].startswith("[narration] Player attacks: Cellar Rat")
 
 
 @pytest.mark.parametrize("broken", ["hang", "raise"])
 def test_outcome_stands_when_narration_hangs_or_fails(plugin_host, tmp_path, broken):
-    class Exploding:
-        def render(self, name, **ctx):
-            raise RuntimeError("template missing")
-
     llm = _LLM(hang=True) if broken == "hang" else None
-    prompts = Exploding() if broken == "raise" else None
-    host, _ = _host(plugin_host, tmp_path, llm=llm, prompts=prompts)
+    # A template that calls an undefined function fails at render time.
+    template = "{{ missing() }}" if broken == "raise" else NARRATION
+    host, _ = _host(plugin_host, tmp_path, llm=llm, template=template)
     session = StubSession("hero")
 
     async def run():
@@ -267,3 +265,17 @@ def test_flee_needs_a_threat_and_an_exit(plugin_host, tmp_path):
         assert "nowhere to flee" in session.sent[-1]
 
     asyncio.run(run())
+
+
+def test_no_narration_work_when_the_world_leaves_the_slot_empty(plugin_host, tmp_path):
+    llm = _LLM(prose="should never be asked")
+    host, _ = _host(plugin_host, tmp_path, llm=llm, template=None)
+    session = StubSession("hero")
+
+    async def run():
+        await _place(host, _rat(hp=1))
+        await _run(host, "attack", session, "rat")
+
+    asyncio.run(run())
+    assert llm.prompts == []
+    assert "Cellar Rat is dead." in session.sent

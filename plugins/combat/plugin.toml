@@ -16,4 +16,5 @@ equipment = { version = "^1", optional = true }
 commands = ["attack", "flee"]
 events_publish = ["EntityKilled"]
 stats_keys = ["hp"]
+ai_slots = ["combat.narration"]
 lexicon_prefix = "combat."

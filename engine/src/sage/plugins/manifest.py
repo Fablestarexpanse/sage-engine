@@ -31,6 +31,7 @@ SUPPORTED_TOUCHES = (
     "tables",
     "snapshot",
     "panels",
+    "ai_slots",
     "stats_keys",
     "lexicon_prefix",
 )
@@ -131,6 +132,7 @@ class Touches(BaseModel):
     # Declared for later engine versions (contracts C.2); refused if a plugin uses them now.
     content_types: list[str] = Field(default_factory=list)
     params: list[str] = Field(default_factory=list)
+    # AI slots this plugin declares, "<plugin>.<name>" (sage.llm.prompts).
     ai_slots: list[str] = Field(default_factory=list)
 
 

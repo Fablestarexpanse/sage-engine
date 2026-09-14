@@ -63,6 +63,5 @@ morality = "^1"
 "agents.evening_room" = "aipub:main_bar"
 
 [transition]
-# Content and prompts still live at the repository root until Phase 3 moves them in here.
+# Content still lives at the repository root until Phase 3 moves it in here.
 content_dir = "../../content"
-prompts_dir = "../../prompts"
