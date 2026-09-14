@@ -357,6 +357,11 @@ class SageServer:
             self.world.root,
         )
 
+        # Refuse to start rather than start "healthy" and fail the first login or registration.
+        from sage.core.security import jwt_secret_for_server
+
+        jwt_secret_for_server(self)
+
         # 0. State stores — Redis must be ready before EntitySpawnManager and PersistenceManager
         await self.redis.connect()
 
