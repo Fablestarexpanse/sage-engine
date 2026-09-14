@@ -43,7 +43,9 @@ class PlayCreateCharacterBody(BaseModel):
     name: str
     portrait_prompt: str = ""
     portrait_url: str = ""
-    # Optional chargen: leaf_id -> levels, sum <= 15, each <= 5 (see /play/proficiencies/catalog).
+    # World-defined creation choices (chargen.validate), e.g. {"proficiencies": {leaf: level}}.
+    chargen: dict[str, Any] | None = None
+    # Older clients: the proficiency allocation alone; treated as {"proficiencies": ...}.
     starter_proficiencies: dict[str, Any] | None = None
 
 
@@ -207,18 +209,16 @@ def build_play_router(server: SageServer) -> APIRouter:
     @router.post("/play/characters/create")
     async def play_character_create(body: PlayCreateCharacterBody):
         """Create a new character for the account."""
-        starter = body.starter_proficiencies
-        if isinstance(starter, dict):
-            coerced: dict[str, Any] = {str(k): v for k, v in starter.items()}
-        else:
-            coerced = {}
+        chargen = dict(body.chargen or {})
+        if not chargen and isinstance(body.starter_proficiencies, dict):
+            chargen = {"proficiencies": {str(k): v for k, v in body.starter_proficiencies.items()}}
         return await server.player.create_character(
             body.username,
             body.password,
             body.name,
             portrait_prompt=body.portrait_prompt,
             portrait_url=body.portrait_url,
-            starter_proficiencies=coerced if coerced else None,
+            chargen=chargen or None,
             token=body.token,
         )
 

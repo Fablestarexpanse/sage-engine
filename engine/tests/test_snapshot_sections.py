@@ -51,3 +51,26 @@ def test_plugin_contributes_a_section():
     assert asyncio.run(contributors.build("pam", {})) == {"levels": {"level": 2}}
     api.withdraw()
     assert contributors.sections() == []
+
+
+def test_engine_slot_defaults_let_a_world_run_without_progression_or_chargen():
+    from sage.world.chargen import SEED, VALIDATE
+    from sage.world.progression import PREPARE
+    from sage.world.ratings import RATINGS
+
+    resolvers = Resolvers()
+    define_engine_slots(resolvers)
+    stats = {"strength": 16, "dexterity": 10}
+    assert resolvers.get(PREPARE)(stats) is stats
+    assert resolvers.get(RATINGS)(stats) == (5, 2)
+    assert resolvers.get(RATINGS)({}) == (3, 2)
+    assert resolvers.get(VALIDATE)({"anything": 1}) == (None, {})
+    assert resolvers.get(SEED)(stats, {}) is None
+
+
+def test_plugin_play_routes_are_public_admin_routes_are_not():
+    from sage.admin.admin_security import is_public_admin_path
+
+    assert is_public_admin_path("/plugins/levels/play/sheet")
+    assert not is_public_admin_path("/plugins/levels/admin/sheet")
+    assert not is_public_admin_path("/plugins/play")

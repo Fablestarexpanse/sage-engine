@@ -212,14 +212,9 @@ async def patch_character(
             pp = patch["portrait_prompt"]
             char.portrait_prompt = pp if isinstance(pp, str) and pp.strip() else None
         if "stats" in patch and isinstance(patch["stats"], dict):
-            from sage.proficiencies.state_helpers import (
-                ensure_proficiency_block,
-                migrate_legacy_stats,
-            )
+            from sage.world.progression import PREPARE
 
-            merged = migrate_legacy_stats(dict(patch["stats"]))
-            ensure_proficiency_block(merged)
-            char.stats = merged
+            char.stats = server.resolvers.get(PREPARE)(dict(patch["stats"]))
         await session.commit()
         await session.refresh(char)
         out = _character_admin_dict(char)

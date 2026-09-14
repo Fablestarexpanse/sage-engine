@@ -284,6 +284,24 @@ class _Http:
 
         self._api._cleanup.append(unmount)
 
+    def play_router(self, router: Any) -> None:
+        """Mount router at /plugins/<id>/play: public (player clients authenticate per request)."""
+        app = self._api._host.http
+        if app is None:
+            self._api.log.info("no HTTP app in this host; play routes not mounted")
+            return
+        before = list(app.router.routes)
+        app.include_router(router, prefix=f"/plugins/{self._api.id}/play")
+        added = [r for r in app.router.routes if r not in before]
+        app.openapi_schema = None
+        self._api._record.record("routes", f"/plugins/{self._api.id}/*")
+
+        def unmount() -> None:
+            app.router.routes[:] = [r for r in app.router.routes if r not in added]
+            app.openapi_schema = None
+
+        self._api._cleanup.append(unmount)
+
 
 class _Redis:
     """Plugin-owned Redis keys: "<prefix>" or "<prefix>:..." for a declared redis_prefixes."""

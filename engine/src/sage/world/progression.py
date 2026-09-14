@@ -14,6 +14,7 @@ SKILL_LEVEL = "progression.skill_level"
 SEED_ATTRIBUTES = "progression.seed_attributes"
 TOTAL_LEVELS = "progression.total_levels"
 SKILL_SHEET = "progression.skill_sheet"
+PREPARE = "progression.prepare"
 
 
 async def default_skill_used(player_id: str, skill: str, chance: float) -> None:
@@ -40,3 +41,8 @@ def default_total_levels(stats: dict[str, Any]) -> int:
 def default_skill_sheet(stats: dict[str, Any]) -> dict[str, Any]:
     """(stats) -> {"attributes": {...}, "leaves": [{id, level, peak, state}]} for admin views."""
     return {"attributes": {}, "leaves": []}
+
+
+def default_prepare(stats: dict[str, Any]) -> dict[str, Any]:
+    """(stats) -> stats ready for play (upgrade old shapes, fill blocks). Default: unchanged."""
+    return stats

@@ -80,22 +80,21 @@ def move_to(direction: str):
         # Traversal gain rewards exploring, not pacing: a first visit teaches a
         # lot; familiar ground teaches less the better you already are. (Flat
         # 12% per step gave agents 66-153 pathfinding levels overnight.)
-        from sage.proficiencies.field_gain import try_field_gain_for_player
+        from sage.world.progression import SKILL_LEVEL, SKILL_USED
 
-        try:
+        skill = app_instance.world.param("engine.movement.skill", None)
+        if skill:
+            try:
+                mover_stats = await app_instance.redis.get_player_stats(player_id)
+                first_visit = target_room_id not in (mover_stats.get("visited_rooms") or [])
+                level = int(app_instance.resolvers.get(SKILL_LEVEL)(mover_stats, skill))
+            except Exception:
+                first_visit, level = False, 0
+            gain_chance = 0.6 if first_visit else 0.04 / (1 + level / 5)
+            await app_instance.resolvers.get(SKILL_USED)(player_id, skill, gain_chance)
+        else:
             mover_stats = await app_instance.redis.get_player_stats(player_id)
             first_visit = target_room_id not in (mover_stats.get("visited_rooms") or [])
-            path_lvl = int(
-                ((mover_stats.get("conduit") or {}).get("proficiencies") or {})
-                .get("traversal.navigation.pathfinding", {})
-                .get("level", 0)
-            )
-        except Exception:
-            first_visit, path_lvl = False, 0
-        gain_chance = 0.6 if first_visit else 0.04 / (1 + path_lvl / 5)
-        await try_field_gain_for_player(
-            player_id, "traversal.navigation.pathfinding", chance=gain_chance
-        )
 
         # Unique-room exploration counter (best-effort, writes only on first visit).
         from sage.world.counters import visit_for_player

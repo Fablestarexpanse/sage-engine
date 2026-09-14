@@ -1,6 +1,6 @@
 {
   "totals": {
-    "denylist": 2039,
+    "denylist": 2038,
     "player_literals": 113
   },
   "denylist": {
@@ -42,7 +42,6 @@
     "engine/src/sage/admin/routes/llm_comfyui.py": 2,
     "engine/src/sage/admin/staff_service.py": 1,
     "engine/src/sage/bootstrap.py": 2,
-    "engine/src/sage/commands/movement.py": 1,
     "engine/src/sage/commands/proficiency.py": 41,
     "engine/src/sage/core/comfyui_persist.py": 4,
     "engine/src/sage/core/config.py": 10,

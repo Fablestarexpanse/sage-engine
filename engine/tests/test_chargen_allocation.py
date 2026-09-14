@@ -38,7 +38,7 @@ def test_coerce_starter_level(raw, want):
 
 
 def _clean(alloc):
-    return PlayerService(make_fake_server())._clean_starter_proficiencies(alloc)
+    return PlayerService(make_fake_server())._clean_chargen({"proficiencies": alloc})
 
 
 def test_whole_numbers_accepted():

@@ -113,10 +113,9 @@ class PlayerService:
     # ------------------------------------------------------------------
 
     async def character_play_dict(self, character: Character) -> dict[str, Any]:
-        from sage.proficiencies.state_helpers import ensure_proficiency_block, migrate_legacy_stats
+        from sage.world.progression import PREPARE
 
-        stats = migrate_legacy_stats(dict(character.stats or {}))
-        ensure_proficiency_block(stats)
+        stats = self.server.resolvers.get(PREPARE)(dict(character.stats or {}))
         contributors = getattr(self.server, "snapshot_contributors", None)
         sections = await contributors.build(character.name, stats) if contributors else {}
         return {
@@ -242,38 +241,16 @@ class PlayerService:
             return {"ok": False, "error": "portrait_prompt_too_long"}, None, None
         return None, p_url, pp
 
-    def _clean_starter_proficiencies(
-        self, starter_proficiencies: dict[str, int] | None
-    ) -> tuple[dict[str, Any] | None, dict[str, int]]:
-        """Coerce and validate the chargen skill allocation. Returns (error_response, cleaned)."""
-        from sage.proficiencies.starter import coerce_starter_level
+    def _clean_chargen(
+        self, chargen: dict[str, Any] | None
+    ) -> tuple[dict[str, Any] | None, dict[str, Any]]:
+        """World-defined creation choices through chargen.validate. Returns (error_response, cleaned)."""
+        from sage.world.chargen import VALIDATE
 
-        starter_clean: dict[str, int] = {}
-        seen: set[str] = set()
-        if starter_proficiencies:
-            for k, v in starter_proficiencies.items():
-                if not isinstance(k, str):
-                    continue
-                kid = k.strip()
-                if not kid:
-                    continue
-                if kid in seen:
-                    # " combat.melee.blades" and "combat.melee.blades" both given.
-                    return {"ok": False, "error": "invalid_starter_proficiencies"}, {}
-                seen.add(kid)
-                n = coerce_starter_level(v)
-                if n is None:
-                    return {"ok": False, "error": "invalid_starter_proficiencies"}, {}
-                if n != 0:
-                    starter_clean[kid] = n
-        if starter_clean:
-            from sage.proficiencies.starter import validate_starter_allocation
-
-            reg0 = self.server.content_loader.get_proficiency_registry()
-            ok_st, err_st = validate_starter_allocation(starter_clean, reg0)
-            if not ok_st:
-                return {"ok": False, "error": err_st}, {}
-        return None, starter_clean
+        error, cleaned = self.server.resolvers.get(VALIDATE)(dict(chargen or {}))
+        if error:
+            return {"ok": False, "error": error}, {}
+        return None, cleaned
 
     async def _generate_create_portrait(
         self, account_id: int, name: str, pp: str | None
@@ -308,14 +285,11 @@ class PlayerService:
         name: str,
         portrait_url: str | None,
         portrait_prompt: str | None,
-        starter_clean: dict[str, int] | None,
+        chargen_clean: dict[str, Any] | None,
     ) -> Character:
         """Insert a fresh character row with initialised stats (caller validated the name)."""
-        from sage.proficiencies.starter import apply_starter_to_stats
-        from sage.proficiencies.state_helpers import (
-            ensure_proficiency_block,
-            migrate_legacy_stats,
-        )
+        from sage.world.chargen import SEED
+        from sage.world.progression import PREPARE
 
         character = Character(
             account_id=account_id,
@@ -330,14 +304,8 @@ class PlayerService:
         db_session.add(character)
         await db_session.commit()
         await db_session.refresh(character)
-        merged_stats = migrate_legacy_stats(dict(character.stats or {}))
-        ensure_proficiency_block(merged_stats)
-        if starter_clean:
-            apply_starter_to_stats(
-                merged_stats,
-                starter_clean,
-                self.server.content_loader.get_proficiency_registry(),
-            )
+        merged_stats = self.server.resolvers.get(PREPARE)(dict(character.stats or {}))
+        self.server.resolvers.get(SEED)(merged_stats, dict(chargen_clean or {}))
         character.stats = merged_stats
         await db_session.commit()
         await db_session.refresh(character)
@@ -403,7 +371,7 @@ class PlayerService:
         name: str,
         portrait_prompt: str = "",
         portrait_url: str = "",
-        starter_proficiencies: dict[str, int] | None = None,
+        chargen: dict[str, Any] | None = None,
         *,
         token: str = "",
     ) -> dict[str, Any]:
@@ -414,7 +382,7 @@ class PlayerService:
         err, p_url, pp = self._validate_create_character_inputs(name, portrait_url, portrait_prompt)
         if err:
             return err
-        err, starter_clean = self._clean_starter_proficiencies(starter_proficiencies)
+        err, chargen_clean = self._clean_chargen(chargen)
         if err:
             return err
 
@@ -457,7 +425,7 @@ class PlayerService:
 
         async with self.server.db.session_factory() as db_session:
             character = await self._insert_character(
-                db_session, account_id, name, p_url, pp, starter_clean
+                db_session, account_id, name, p_url, pp, chargen_clean
             )
             payload = await self.character_play_dict(character)
             result = await db_session.execute(

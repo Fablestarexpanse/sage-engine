@@ -509,13 +509,9 @@ class SageServer:
         await self.session_manager.kick_existing(character.name)
         self.session_manager.link_player(session.id, character.name)
 
-        from sage.proficiencies.state_helpers import (
-            ensure_proficiency_block,
-            migrate_legacy_stats,
-        )
+        from sage.world.progression import PREPARE
 
-        norm_stats = migrate_legacy_stats(dict(character.stats))
-        ensure_proficiency_block(norm_stats)
+        norm_stats = self.resolvers.get(PREPARE)(dict(character.stats))
         # Canonical vitals: nothing else seeds them, and every consumer was
         # falling back to a different default (combat 20, client bar 100).
         norm_stats.setdefault("max_hp", 100)
@@ -775,22 +771,13 @@ class SageServer:
 
     def _define_engine_resolvers(self) -> None:
         """Engine resolver slots and their defaults (contracts catalog #4)."""
-        from sage.proficiencies.field_gain import skill_level, skill_used
-        from sage.proficiencies.state_helpers import seed_attributes, skill_sheet, total_levels
-        from sage.world import progression
+        from sage.proficiencies.providers import provide_all
         from sage.world.slots import define_engine_slots
 
         define_engine_slots(self.resolvers)
         # Transitional: the proficiency system is still engine code and answers for every world
         # until it moves into a world progression plugin (phase-3 plan), which will provide these.
-        for slot, fn in (
-            (progression.SKILL_USED, skill_used),
-            (progression.SKILL_LEVEL, skill_level),
-            (progression.SEED_ATTRIBUTES, seed_attributes),
-            (progression.TOTAL_LEVELS, total_levels),
-            (progression.SKILL_SHEET, skill_sheet),
-        ):
-            self.resolvers.provide(slot, fn, owner="proficiencies")
+        provide_all(self.resolvers, self)
 
     async def reload_lexicon_overrides(self) -> None:
         """Re-read active Nexus lexicon edits and rebuild the live lexicon (no restart)."""

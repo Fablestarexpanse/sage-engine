@@ -52,6 +52,13 @@ def _server(session):
         notify_play_clients_staff_audit=notify_audit,
         notify_play_clients_echo_grant=notify_grant,
     )
+    from sage.core.resolvers import Resolvers
+    from sage.proficiencies.providers import provide_all
+    from sage.world.slots import define_engine_slots
+
+    srv.resolvers = Resolvers()
+    define_engine_slots(srv.resolvers)
+    provide_all(srv.resolvers, srv)
     return srv, calls
 
 

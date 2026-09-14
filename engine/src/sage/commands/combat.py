@@ -73,18 +73,10 @@ async def attack(session: Session, args: list[str]):
         return
 
     # --- Player attacks entity ---
-    from sage.proficiencies.engine import ProficiencyEngine
-    from sage.proficiencies.state_helpers import (
-        combat_attack_defense_from_stats,
-        ensure_proficiency_block,
-    )
+    from sage.world.ratings import RATINGS
 
     player_stats = await app_instance.redis.get_player_stats(player_id)
-    ensure_proficiency_block(player_stats)
-    hybrid = bool(app_instance.config.server.proficiency_combat_hybrid)
-    player_attack, player_defense_rating = combat_attack_defense_from_stats(
-        player_stats, hybrid_legacy=hybrid
-    )
+    player_attack, player_defense_rating = app_instance.resolvers.get(RATINGS)(player_stats)
 
     # Worn gear adds flat bonuses on top of proficiency/stat math.
     try:
@@ -147,19 +139,6 @@ async def attack(session: Session, args: list[str]):
         counter_damage = _roll_damage(entity_attack, player_defense_rating)
         player_stats["hp"] = max(0, player_stats.get("hp", 20) - counter_damage)
 
-    # Field proficiency: meaningful combat use (best-effort; roll may fail).
-    try:
-        eng = ProficiencyEngine(app_instance.content_loader.get_proficiency_registry())
-        pool = [
-            "combat.melee.blades",
-            "combat.melee.impact",
-            "combat.ballistic.sidearms",
-            "combat.tactics.threat_assessment",
-        ]
-        eng.try_field_gain(player_stats, random.choice(pool), vr=False)
-    except Exception as exc:
-        logger.warning("Combat proficiency gain skipped: %s", exc)
-
     from sage.telemetry import heat, log_event
 
     if entity_dead:
@@ -213,6 +192,13 @@ async def attack(session: Session, args: list[str]):
         kill_messages += killed.messages
 
     await app_instance.redis.set_player_stats(player_id, player_stats)
+
+    # Fighting is meaningful skill use (after the save above, so the gain isn't overwritten).
+    combat_skills = list(app_instance.world.param("engine.combat.skills", []) or [])
+    if combat_skills:
+        from sage.world.progression import SKILL_USED
+
+        await app_instance.resolvers.get(SKILL_USED)(player_id, random.choice(combat_skills), 1.0)
 
     # --- LLM narrates the exchange ---
     entity_name = target_state.get("name", "the creature")

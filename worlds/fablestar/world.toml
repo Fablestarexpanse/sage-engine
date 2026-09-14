@@ -35,6 +35,9 @@ agents = "^1"
 # Tidegate clinic bills up to 10 Digi on respawn; half health on waking.
 "engine.death.respawn_bill_max" = 10
 "engine.death.respawn_hp_fraction" = 0.5
+# Skill use reported to progression by engine commands (proficiency leaves in this world).
+"engine.combat.skills" = ["combat.melee.blades", "combat.melee.impact", "combat.ballistic.sidearms", "combat.tactics.threat_assessment"]
+"engine.movement.skill" = "traversal.navigation.pathfinding"
 "shop.wallet_aliases" = ["digi", "money"]
 # Progression skill ids are Conduit proficiency leaves.
 "search.skill" = "interface.perception.anomaly_scan"

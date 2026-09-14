@@ -291,4 +291,11 @@ def make_fake_server() -> SimpleNamespace:
         player_to_session={}, get_session_by_player=lambda pid: None
     )
     server.spawner = EntitySpawnManager(server)  # type: ignore[arg-type]
+    from sage.core.resolvers import Resolvers
+    from sage.proficiencies.providers import provide_all
+    from sage.world.slots import define_engine_slots
+
+    server.resolvers = Resolvers()
+    define_engine_slots(server.resolvers)
+    provide_all(server.resolvers, server)
     return server
