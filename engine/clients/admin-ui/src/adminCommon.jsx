@@ -10,7 +10,7 @@ const LS_ADMIN_TOKEN = "sage_admin_token";
 /** Tool ids enforced by Nexus (see sage.admin.admin_security.NAV_TOOL_IDS). */
 const ALL_ADMIN_TOOLS = [
   "dashboard", "forge", "operations", "players", "world", "entities",
-  "items", "skills", "locations", "agents", "shops", "lexicon", "server", "content", "settings", "team",
+  "items", "skills", "agents", "shops", "lexicon", "server", "content", "team",
 ];
 
 function adminWsBase() {

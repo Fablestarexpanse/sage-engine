@@ -13,13 +13,11 @@ import {
 const OperationsPage = () => {
   const { colors: COLORS } = useAdminTheme();
   const [tab, setTab] = useState("broadcast");
-  const [worldLive, setWorldLive] = useState(null);
   const [serverInfo, setServerInfo] = useState(null);
   const [broadcastText, setBroadcastText] = useState("");
   const [bannerMsg, setBannerMsg] = useState("");
   const [reloadMsg, setReloadMsg] = useState("");
   const [busy, setBusy] = useState(false);
-  const [metrics, setMetrics] = useState(null);
 
   const refresh = useCallback(async () => {
     const run = async (fn, fallback) => {
@@ -29,12 +27,8 @@ const OperationsPage = () => {
         return fallback;
       }
     };
-    const wl = await run(() => axios.get(`${API_BASE}/world/live`), null);
-    if (wl) setWorldLive(wl.data);
     const si = await run(() => axios.get(`${API_BASE}/server/info`), null);
     if (si) setServerInfo(si.data);
-    const m = await run(() => axios.get(`${API_BASE}/admin/metrics`), null);
-    if (m) setMetrics(m.data);
   }, []);
 
   useEffect(() => {
@@ -77,9 +71,9 @@ const OperationsPage = () => {
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: COLORS.text, fontFamily: "'Space Grotesk', sans-serif" }}>Operations</h2>
+          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: COLORS.text, fontFamily: "'Space Grotesk', sans-serif" }}>Broadcast &amp; reload</h2>
           <p style={{ margin: "4px 0 0", fontSize: 12, color: COLORS.textMuted, fontFamily: "'DM Sans', sans-serif", maxWidth: 560, lineHeight: 1.5 }}>
-            Server-wide broadcast, content cache reload, a Redis snapshot of the live world, and tick metrics. Live sessions are under Players &amp; sessions. Every action here needs a staff login with the Operations tool.
+            Send a message to everyone playing, or clear the content and prompt caches. The live world snapshot is under Live › Live world, tick metrics under System › Server &amp; AI models.
           </p>
         </div>
         <ActionButton small variant="ghost" icon={<Icons.Refresh />} onClick={() => refresh()} disabled={busy}>Refresh</ActionButton>
@@ -88,8 +82,6 @@ const OperationsPage = () => {
         tabs={[
           { id: "broadcast", label: "Broadcast" },
           { id: "reload", label: "Reload caches" },
-          { id: "world", label: "World live" },
-          { id: "metrics", label: "Metrics" },
         ]}
         active={tab}
         onChange={setTab}
@@ -123,42 +115,6 @@ const OperationsPage = () => {
           )}
           {reloadMsg && <div style={{ fontSize: 12, color: reloadMsg.includes("Failed") ? COLORS.danger : COLORS.success }}>{reloadMsg}</div>}
           <ActionButton variant="primary" icon={<Icons.Refresh />} disabled={busy} onClick={doReloadCaches}>Reload content + prompt caches</ActionButton>
-        </div>
-      )}
-      {tab === "world" && (
-        <div style={{ background: COLORS.bgCard, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 18, display: "flex", flexDirection: "column", gap: 14 }}>
-          {!worldLive && <div style={{ color: COLORS.textMuted, fontSize: 13 }}>Could not load /world/live</div>}
-          {worldLive && (
-            <>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "12px 24px", fontSize: 13, fontFamily: "'JetBrains Mono', monospace", color: COLORS.textMuted }}>
-                <span>Redis: <strong style={{ color: COLORS.text }}>{worldLive.redis_connected ? "up" : "down"}</strong></span>
-                <span title="Rooms whose occupant set is not empty, counting players and agents">Occupied rooms (players and agents): <strong style={{ color: COLORS.text }}>{worldLive.rooms_with_players ?? "—"}</strong></span>
-                <span>Combat keys: <strong style={{ color: COLORS.text }}>{worldLive.combat_keys ?? "—"}</strong></span>
-                <span>Entity state keys: <strong style={{ color: COLORS.text }}>{worldLive.entity_state_keys ?? "—"}</strong></span>
-                <span>Item state keys: <strong style={{ color: COLORS.text }}>{worldLive.item_state_keys ?? "—"}</strong></span>
-              </div>
-              {worldLive.error && <div style={{ color: COLORS.danger, fontSize: 12 }}>{worldLive.error}</div>}
-              {worldLive.note && <div style={{ fontSize: 11, color: COLORS.textDim }}>{worldLive.note}</div>}
-              {(worldLive.rooms_with_players_detail || []).length > 0 && (
-                <div style={{ maxHeight: 280, overflow: "auto" }}>
-                  <DataTable
-                    columns={[
-                      { label: "Room", key: "room_id", mono: true },
-                      { label: "Players", key: "player_count", mono: true },
-                    ]}
-                    rows={worldLive.rooms_with_players_detail}
-                  />
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      )}
-      {tab === "metrics" && (
-        <div style={{ background: COLORS.bgCard, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 18 }}>
-          <pre style={{ margin: 0, fontSize: 12, color: COLORS.textMuted, fontFamily: "'JetBrains Mono', monospace", whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
-            {metrics ? JSON.stringify(metrics, null, 2) : "Could not load /admin/metrics"}
-          </pre>
         </div>
       )}
     </div>

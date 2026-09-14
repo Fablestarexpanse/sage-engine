@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from "react";
-import axios from "axios";
 import { useAdminTheme } from "../AdminThemeContext.jsx";
 import { API_BASE } from "../apiConfig.js";
 import {
@@ -25,25 +24,13 @@ const ZonesLibTab = () => {
   const typeColors = { tutorial: COLORS.success, exploration: COLORS.info, dungeon: COLORS.accent, boss: COLORS.danger, safe: COLORS.warning };
   const filtered = zones.filter((z) => filter === "all" || z.status === filter);
 
-  const createZone = async () => {
-    const zid = window.prompt("New zone id (e.g. crystal_depths):", "");
-    if (!zid || !/^[a-zA-Z0-9_-]+$/.test(zid)) return;
-    const name = window.prompt("Display name:", zid) || zid;
-    try {
-      await axios.post(`${API_BASE}/content/zones`, { id: zid, name });
-    } catch (e) {
-      window.alert(e.response?.data?.detail || e.message);
-    }
-  };
-
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
         <TabBar tabs={[{ id: "all", label: "All" }, { id: "active", label: "Active" }, { id: "building", label: "Building" }]} active={filter} onChange={setFilter} />
-        <ActionButton variant="primary" icon={<Icons.Plus />} onClick={createZone}>New Zone</ActionButton>
       </div>
       <FetchErrorBanner error={zonesError} label="zones" />
-      {filtered.length === 0 && !zonesError && <div style={{ color: COLORS.textMuted, fontFamily: "'DM Sans', sans-serif" }}>No zones found under content/world/zones.</div>}
+      {filtered.length === 0 && !zonesError && <div style={{ color: COLORS.textMuted, fontFamily: "'DM Sans', sans-serif" }}>No zones found under content/world/zones. Zones and rooms are made in WorldForge.</div>}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 14 }}>
         {filtered.map((zone) => (
           <div key={zone.id} style={{ background: COLORS.bgCard, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 18, display: "flex", flexDirection: "column", gap: 12 }}
@@ -88,24 +75,12 @@ const RoomsLibTab = () => {
   }, [zones, selectedZone]);
   const zone = zones.find((z) => z.id === selectedZone);
 
-  const addRoom = async () => {
-    if (!selectedZone) return;
-    const slug = window.prompt("New room slug (e.g. alcove_02):", "");
-    if (!slug || !/^[a-zA-Z0-9_-]+$/.test(slug)) return;
-    try {
-      await axios.post(`${API_BASE}/content/zones/${selectedZone}/rooms`, { slug, room: {} });
-    } catch (e) {
-      window.alert(e.response?.data?.detail || e.message);
-    }
-  };
-
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
         <select value={selectedZone} onChange={(e) => setSelectedZone(e.target.value)} style={{ padding: "8px 12px", background: COLORS.bgInput, border: `1px solid ${COLORS.border}`, borderRadius: 8, color: COLORS.text, fontSize: 13, fontFamily: "'DM Sans', sans-serif" }}>
           {zones.map((z) => <option key={z.id} value={z.id}>{z.name}</option>)}
         </select>
-        <ActionButton variant="primary" icon={<Icons.Plus />} onClick={addRoom}>Add Room</ActionButton>
       </div>
       <FetchErrorBanner error={zonesError} label="zones" />
       <FetchErrorBanner error={roomsError} label="rooms" />
@@ -115,7 +90,7 @@ const RoomsLibTab = () => {
           <div style={{ fontSize: 12, color: COLORS.textMuted, fontFamily: "'JetBrains Mono', monospace", marginTop: 2 }}>{zone?.id} · {zone?.rooms ?? roomRows.length} rooms · depth {zone?.depth ?? "—"}</div>
         </div>
         <div style={{ fontSize: 11, color: COLORS.textDim, fontFamily: "'DM Sans', sans-serif" }}>
-          Select a room to see its description, exits, features and who is there. Edit rooms in WorldForge.
+          Select a room to see its description, exits, features and who is there. Rooms are created and edited in WorldForge.
         </div>
       </div>
       {openRoom && (
@@ -147,45 +122,11 @@ const EntitiesLibTab = () => {
   const [editing, setEditing] = useState(null);
   const { rows: templates, error: templatesError } = usePolledList(`${API_BASE}/content/entities`, 15000);
   const { rows: spawnRefs } = usePolledList(`${API_BASE}/content/entities/spawns`, 15000);
-  const { rows: liveEntities, error: liveError } = usePolledList(`${API_BASE}/world/entities`, 8000);
-  const { rows: zones } = usePolledList(`${API_BASE}/content/zones`, 30000);
-  const [spawnZone, setSpawnZone] = useState("");
-  const { rows: spawnRooms } = usePolledList(
-    spawnZone ? `${API_BASE}/content/zones/${spawnZone}/rooms` : null,
-    30000,
-    { enabled: !!spawnZone }
-  );
-  const [spawnRoom, setSpawnRoom] = useState("");
-  const [spawnTemplate, setSpawnTemplate] = useState("");
-  const [spawnMsg, setSpawnMsg] = useState("");
   const rows = useMemo(() => {
     const refs = Object.fromEntries(spawnRefs.map((r) => [r.name, r.count]));
     return templates.map((t) => ({ ...t, spawn_refs: refs[t.id] ?? 0 }));
   }, [templates, spawnRefs]);
   const filtered = rows.filter((e) => `${e.name} ${e.id}`.toLowerCase().includes(search.toLowerCase()));
-
-  const doSpawn = async () => {
-    if (!spawnZone || !spawnRoom || !spawnTemplate) {
-      setSpawnMsg("Pick a zone, room, and template first.");
-      return;
-    }
-    setSpawnMsg("");
-    try {
-      const { data } = await axios.post(`${API_BASE}/world/rooms/${spawnZone}/${spawnRoom}/spawn`, { template: spawnTemplate });
-      setSpawnMsg(`Spawned ${data.entity_id} ✓`);
-    } catch (e) {
-      setSpawnMsg(e.response?.data?.detail || e.message);
-    }
-  };
-
-  const doDespawn = async (ent) => {
-    if (!window.confirm(`Despawn ${ent.name || ent.id}?`)) return;
-    try {
-      await axios.delete(`${API_BASE}/world/entities/${ent.id}`);
-    } catch (e) {
-      window.alert(e.response?.data?.detail || e.message);
-    }
-  };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -193,7 +134,7 @@ const EntitiesLibTab = () => {
         <SearchBar placeholder="Search entity templates..." value={search} onChange={setSearch} />
         <ActionButton variant="forge" icon={<Icons.Sparkles />} onClick={openForgeStudio}>AI Generate</ActionButton>
       </div>
-      <p style={{ margin: 0, fontSize: 12, color: COLORS.textMuted, fontFamily: "'DM Sans', sans-serif" }}>Every entity template in the world's <code style={{ color: COLORS.textDim }}>entities/</code>. Spawned in counts the room spawn entries that name it. Select a template to edit it.</p>
+      <p style={{ margin: 0, fontSize: 12, color: COLORS.textMuted, fontFamily: "'DM Sans', sans-serif" }}>Every entity template in the world's <code style={{ color: COLORS.textDim }}>entities/</code>. Spawned in counts the room spawn entries that name it. Select a template to edit it. Live creatures and manual spawns are under <a href="#/live" style={{ color: COLORS.accent }}>Live › Live world</a>.</p>
       <FetchErrorBanner error={templatesError} label="entity templates" />
       {editing && <TemplateEditor key={editing} kind="entities" templateId={editing} onClose={() => setEditing(null)} />}
       <div style={{ background: COLORS.bgCard, border: `1px solid ${COLORS.border}`, borderRadius: 10, overflow: "hidden" }}>
@@ -206,38 +147,6 @@ const EntitiesLibTab = () => {
         ]} rows={filtered} onRowClick={(row) => setEditing(row.id)} />
       </div>
 
-      <div style={{ background: COLORS.bgCard, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.text, fontFamily: "'Space Grotesk', sans-serif" }}>Live entities</div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-            <select value={spawnZone} onChange={(e) => { setSpawnZone(e.target.value); setSpawnRoom(""); }} style={{ padding: "6px 10px", background: COLORS.bgInput, border: `1px solid ${COLORS.border}`, borderRadius: 6, color: COLORS.text, fontSize: 12 }}>
-              <option value="">zone…</option>
-              {zones.map((z) => <option key={z.id} value={z.id}>{z.id}</option>)}
-            </select>
-            <select value={spawnRoom} onChange={(e) => setSpawnRoom(e.target.value)} style={{ padding: "6px 10px", background: COLORS.bgInput, border: `1px solid ${COLORS.border}`, borderRadius: 6, color: COLORS.text, fontSize: 12 }}>
-              <option value="">room…</option>
-              {spawnRooms.map((r) => <option key={r.id} value={r.name}>{r.name}</option>)}
-            </select>
-            <select value={spawnTemplate} onChange={(e) => setSpawnTemplate(e.target.value)} style={{ padding: "6px 10px", background: COLORS.bgInput, border: `1px solid ${COLORS.border}`, borderRadius: 6, color: COLORS.text, fontSize: 12 }}>
-              <option value="">template…</option>
-              {rows.map((t) => <option key={t.id} value={t.id}>{t.id}</option>)}
-            </select>
-            <ActionButton small variant="primary" icon={<Icons.Plus />} onClick={doSpawn}>Spawn</ActionButton>
-          </div>
-        </div>
-        {spawnMsg && <div style={{ fontSize: 11, color: spawnMsg.endsWith("✓") ? COLORS.success : COLORS.danger, fontFamily: "'JetBrains Mono', monospace" }}>{spawnMsg}</div>}
-        <FetchErrorBanner error={liveError} label="live entities" />
-        {!liveEntities.length && !liveError && <div style={{ fontSize: 12, color: COLORS.textMuted }}>No live entities in occupied rooms right now (spawns happen in rooms with players).</div>}
-        {liveEntities.length > 0 && (
-          <DataTable columns={[
-            { label: "Entity", render: (row) => (<div><div style={{ fontWeight: 600, fontSize: 13 }}>{row.name}</div><div style={{ fontSize: 11, color: COLORS.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{row.id}</div></div>) },
-            { label: "Template", key: "template", mono: true },
-            { label: "Room", key: "room_id", mono: true },
-            { label: "HP", render: (row) => <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>{row.hp}/{row.max_hp}</span> },
-            { label: "", render: (row) => <ActionButton small variant="danger" onClick={() => doDespawn(row)}>Despawn</ActionButton> },
-          ]} rows={liveEntities} />
-        )}
-      </div>
     </div>
   );
 };

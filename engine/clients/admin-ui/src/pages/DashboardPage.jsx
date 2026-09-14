@@ -190,7 +190,7 @@ const DashboardPage = () => {
             </span>
           )}
         </div>
-        <a href="#/players" style={{ fontSize: 12, color: COLORS.accent, fontFamily: "'DM Sans', sans-serif" }}>Open Players &amp; sessions</a>
+        <a href="#/online" style={{ fontSize: 12, color: COLORS.accent, fontFamily: "'DM Sans', sans-serif" }}>Open Who&apos;s online</a>
       </div>
     </div>
   );

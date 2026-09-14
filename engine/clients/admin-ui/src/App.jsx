@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import axios from "axios";
-import PlayerAccountsTab from "./PlayerAccountsTab.jsx";
 import AgentsTab from "./AgentsTab.jsx";
 import ShopsTab from "./ShopsTab.jsx";
 import ProficienciesPage from "./ProficienciesPage.jsx";
@@ -14,7 +13,11 @@ import { API_BASE, WS_BASE } from "./apiConfig.js";
 import { LS_ADMIN_TOKEN, ALL_ADMIN_TOOLS, adminPresenceWsUrl, sendWsAuthToken, Icons } from "./adminCommon.jsx";
 import AiForgePage from "./pages/AiForgePage.jsx";
 import DashboardPage from "./pages/DashboardPage.jsx";
-import PlayersPage from "./pages/PlayersPage.jsx";
+import OnlinePage from "./pages/OnlinePage.jsx";
+import LiveWorldPage from "./pages/LiveWorldPage.jsx";
+import CharactersPage from "./pages/CharactersPage.jsx";
+import AccountsPage from "./pages/AccountsPage.jsx";
+import CreditsPage from "./pages/CreditsPage.jsx";
 import ContentLibraryPage from "./pages/ContentLibraryPage.jsx";
 import ServerPage from "./pages/ServerPage.jsx";
 import OperationsPage from "./pages/OperationsPage.jsx";
@@ -146,26 +149,32 @@ const PresenceStrip = ({ online }) => {
 // NAVIGATION & MAIN APP
 // ═══════════════════════════════════════════════════════════════
 
-// Grouped by what an operator is doing. Plugin pages sit under Plugins and appear only when a
-// plugin of the running world mounts that admin tool (GET /admin/plugin-pages).
+// Grouped by the staff job, not by how a page is built. A plugin page (pluginTool) sits in the group
+// its job belongs to and appears only when a plugin of the running world mounts that admin tool
+// (GET /admin/plugin-pages). The array order is the sidebar order; groups must stay contiguous.
 const NAV_ITEMS = [
   { id: "dashboard", group: "Overview", label: "Dashboard", icon: <Icons.Dashboard /> },
+  { id: "online", group: "Live", label: "Who's online", icon: <Icons.Players />, anyOf: ["players"] },
+  { id: "live", group: "Live", label: "Live world", icon: <Icons.World />, anyOf: ["world", "operations"] },
+  { id: "operations", group: "Live", label: "Broadcast & reload", icon: <Icons.Alert /> },
+  { id: "characters", group: "Players", label: "Characters", icon: <Icons.Players />, anyOf: ["players"] },
+  { id: "accounts", group: "Players", label: "Accounts", icon: <Icons.Players />, anyOf: ["players"] },
   // The running world package, its plugins, content check and migration status.
   { id: "world", group: "World", label: "World & plugins", icon: <Icons.World />, anyOf: ["world", "server", "dashboard"] },
-  // One browsing surface for zones/rooms/entities/items; visible when
-  // ANY of the legacy content tool grants apply (backend still gates per-route).
-  { id: "content", group: "World", label: "Content Library", icon: <Icons.Content />, anyOf: ["content", "world", "locations", "entities", "items"] },
+  { id: "content", group: "World", label: "Content Library", icon: <Icons.Content />, anyOf: ["content", "world", "entities", "items"] },
+  { id: "skills", group: "World", label: "Skills catalog", icon: <Icons.Skills />, pluginTool: true },
   { id: "lexicon", group: "World", label: "Lexicon & MOTD", icon: <Icons.Content /> },
-  { id: "players", group: "Players", label: "Players & sessions", icon: <Icons.Players /> },
-  { id: "skills", group: "Plugins", label: "Skills catalog", icon: <Icons.Skills />, pluginTool: true },
-  { id: "agents", group: "Plugins", label: "Agents", icon: <Icons.Players />, pluginTool: true },
-  { id: "shops", group: "Plugins", label: "Shops", icon: <Icons.Items />, pluginTool: true },
-  { id: "forge", group: "AI", label: "AI Forge", icon: <Icons.Forge />, highlight: true },
+  { id: "forge", group: "World", label: "AI Forge", icon: <Icons.Forge />, highlight: true },
+  { id: "shops", group: "Economy", label: "Shops", icon: <Icons.Items />, pluginTool: true },
+  { id: "credits", group: "Economy", label: "AI art credits", icon: <Icons.Items />, anyOf: ["server"] },
+  { id: "agents", group: "NPCs", label: "Agents", icon: <Icons.Players />, pluginTool: true },
   { id: "server", group: "System", label: "Server & AI models", icon: <Icons.Server /> },
-  { id: "operations", group: "System", label: "Operations", icon: <Icons.Alert /> },
   { id: "team", group: "System", label: "Team & access", icon: <Icons.Players />, headOnly: true },
   { id: "audit", group: "System", label: "Audit log", icon: <Icons.History />, anyOf: ["team", "operations"] },
 ];
+
+// Page ids from before the regrouping, so old links and bookmarks still land somewhere sensible.
+const RENAMED_PAGES = { players: "characters" };
 
 const AgentsPage = ({ pluginBase }) => (
   <div style={{ display: "grid", gap: 16 }}>
@@ -184,7 +193,11 @@ const PAGES = {
   world: WorldPluginsPage,
   forge: AiForgePage,
   operations: OperationsPage,
-  players: PlayersPage,
+  online: OnlinePage,
+  live: LiveWorldPage,
+  characters: CharactersPage,
+  accounts: AccountsPage,
+  credits: CreditsPage,
   content: ContentLibraryPage,
   skills: ProficienciesPage,
   agents: AgentsPage,
@@ -198,11 +211,14 @@ const PAGES = {
 export default function App() {
   const { colors: COLORS, toggleMode, mode } = useAdminTheme();
   // The open page lives in the URL (#/players), so reloading or sharing a link keeps it.
-  const pageFromHash = () => (window.location.hash.replace(/^#\/?/, "").split("/")[0] || "dashboard");
+  const pageFromHash = () => {
+    const id = window.location.hash.replace(/^#\/?/, "").split("/")[0] || "dashboard";
+    return RENAMED_PAGES[id] || id;
+  };
   const [activePage, setActivePageState] = useState(pageFromHash);
   const setActivePage = useCallback((page) => {
     setActivePageState(page);
-    if (pageFromHash() !== page) window.location.hash = `/${page}`;
+    if (window.location.hash.replace(/^#\/?/, "").split("/")[0] !== page) window.location.hash = `/${page}`;
   }, []);
   useEffect(() => {
     const onHash = () => setActivePageState(pageFromHash());
@@ -323,7 +339,7 @@ export default function App() {
       }
       // Legacy page ids from before the Content Library consolidation.
       // Legacy page ids, including the retired World Builder (structural editing is WorldForge's).
-      if (["locations", "entities", "items", "builder"].includes(d.page)) {
+      if (["entities", "items", "builder"].includes(d.page)) {
         setActivePage("content");
       }
     };

@@ -90,39 +90,6 @@ def list_zones() -> list[dict[str, Any]]:
     return [z for z in (zone_summary(zid) for zid in list_zone_ids()) if z]
 
 
-def create_zone(zone_id: str, zone_name: str) -> Path:
-    """Create ``content/world/zones/{zone_id}/`` with ``zone.yaml`` and starter ``rooms/entrance.yaml``."""
-    if not re.match(r"^[a-zA-Z0-9_-]+$", zone_id or ""):
-        raise ValueError("invalid_zone_id")
-    root = ZONES_ROOT / zone_id
-    if root.exists():
-        raise FileExistsError("zone_exists")
-    rooms_dir = root / "rooms"
-    rooms_dir.mkdir(parents=True, exist_ok=True)
-    display = (zone_name or "").strip() or zone_id.replace("_", " ").title()
-    meta = {"name": display, "type": "exploration", "status": "active"}
-    _atomic_write_text(
-        root / "zone.yaml",
-        yaml.safe_dump(meta, default_flow_style=False, allow_unicode=True, sort_keys=False),
-    )
-    entrance: dict[str, Any] = {
-        "id": f"{zone_id}:entrance",
-        "zone": zone_id,
-        "type": "hub",
-        "depth": 1,
-        "description": {"base": f"The entrance to {display}."},
-        "exits": {},
-        "features": [],
-        "entity_spawns": [],
-        "tags": [],
-    }
-    _atomic_write_text(
-        rooms_dir / "entrance.yaml",
-        yaml.safe_dump(entrance, default_flow_style=False, allow_unicode=True, sort_keys=False),
-    )
-    return rooms_dir
-
-
 def room_row(zone_id: str, stem: str, data: dict[str, Any]) -> dict[str, Any]:
     exits = data.get("exits") or {}
     hazards = data.get("hazards") or []
@@ -341,42 +308,5 @@ def save_template_yaml_text(kind: str, slug: str, text: str) -> Path:
         raise ValueError("invalid_slug")
     validate_template_yaml_text(kind, slug, text)
     path = CONTENT_WORLD / kind / f"{slug}.yaml"
-    _atomic_write_text(path, text)
-    return path
-
-
-def _deep_merge_room(existing: dict[str, Any], patch: dict[str, Any]) -> dict[str, Any]:
-    out = dict(existing)
-    for k, v in patch.items():
-        if isinstance(v, dict) and isinstance(out.get(k), dict):
-            out[k] = {**out[k], **v}
-        else:
-            out[k] = v
-    return out
-
-
-def create_room(zone_id: str, slug: str, initial: dict[str, Any] | None = None) -> Path:
-    if not _is_safe_segment(zone_id) or not _is_safe_segment(slug):
-        raise ValueError("invalid_slug")
-    path = ZONES_ROOT / zone_id / "rooms" / f"{slug}.yaml"
-    if path.is_file():
-        raise FileExistsError("room_exists")
-    path.parent.mkdir(parents=True, exist_ok=True)
-    base: dict[str, Any] = {
-        "id": f"{zone_id}:{slug}",
-        "zone": zone_id,
-        "type": "chamber",
-        "depth": 1,
-        "description": {"base": ""},
-        "exits": {},
-        "features": [],
-        "entity_spawns": [],
-        "tags": [],
-    }
-    if initial:
-        base = _deep_merge_room(base, initial)
-    base["id"] = f"{zone_id}:{slug}"
-    base["zone"] = zone_id
-    text = yaml.safe_dump(base, default_flow_style=False, allow_unicode=True, sort_keys=False)
     _atomic_write_text(path, text)
     return path

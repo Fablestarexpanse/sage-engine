@@ -159,7 +159,7 @@ export default function ProficienciesPage({ pluginBase }) {
       </h2>
       <p style={{ margin: "0 0 16px", fontSize: 13, color: COLORS.textMuted, fontFamily: "'DM Sans', sans-serif", lineHeight: 1.45 }}>
         Edit the world's skills catalog (<code style={{ color: COLORS.textDim }}>content/proficiencies/catalog.json</code> in its package) from here. Saves are validated (unique ids, domain matches id root, stat weights sum to ~1 when non-empty).
-        After saving, use <strong>Operations → Reload caches</strong> or restart the server so players pick up changes. Optional display copy in{" "}
+        Saves take effect in the game straight away, with no reload or restart. Optional display copy in{" "}
         <code style={{ color: COLORS.textDim }}>content/proficiencies/leaf_descriptions.json</code> is separate from this file.
       </p>
 

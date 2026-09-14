@@ -436,3 +436,23 @@ def test_template_yaml_save_refuses_a_template_the_loader_cannot_use(client, ser
     assert r.status_code == 400
     assert r.json()["detail"].startswith("id_mismatch")
     assert path.read_bytes() == before
+
+
+def test_nexus_no_longer_creates_zones_or_rooms(client, server):
+    # WorldForge is the only room editor (owner ruling 2026-09-14); these routes used to write files.
+    head = _auth(server, 1)
+    assert client.post("/content/zones", json={"id": "new_zone"}, headers=head).status_code == 405
+    r = client.post("/content/zones/town/rooms", json={"slug": "alcove"}, headers=head)
+    assert r.status_code in (404, 405)
+
+
+def test_tool_presets_use_only_tools_the_server_checks(client, server):
+    from sage.admin.admin_security import NAV_TOOL_IDS, TOOL_PRESETS
+
+    assert {"settings", "locations"}.isdisjoint(NAV_TOOL_IDS)
+    for preset in TOOL_PRESETS.values():
+        assert set(preset["tools"]) <= NAV_TOOL_IDS, preset["label"]
+    assert client.get("/admin/staff/tool-presets", headers=_auth(server, 2)).status_code == 403
+    r = client.get("/admin/staff/tool-presets", headers=_auth(server, 1))
+    assert r.status_code == 200
+    assert {p["id"] for p in r.json()} == set(TOOL_PRESETS)

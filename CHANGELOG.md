@@ -22,6 +22,19 @@ Versions built before the first publication have no conversion date.
 
 ## [Unreleased]
 
+- **Admin console menus are grouped by staff job:** Overview, Live, Players, World, Economy,
+  NPCs, System. Players & sessions is split into Who's online, Characters and Accounts
+  (`#/accounts/<id>` opens one account). Live world holds the Redis snapshot and creature
+  spawn/despawn, which used to sit in Operations and the Content Library. Operations is now
+  Broadcast & reload. AI art credit prices have their own page under Economy. The agent brain
+  model settings moved from the Agents page to Server & AI models, and tick metrics moved there
+  too. Old `#/players` links still work.
+- **Removed: Nexus no longer creates zones or rooms.** `POST /content/zones` and
+  `POST /content/zones/{zone}/rooms` are gone, along with the New Zone and Add Room buttons.
+  WorldForge is the only room editor. The `locations` and `settings` staff tools no longer exist,
+  because nothing checked them.
+- **Role presets on Team & access:** Builder, Game master, Moderator and Operator fill in the tool
+  ticks (`GET /admin/staff/tool-presets`). Stored permissions are still per tool.
 - **Fixed: admin character edits were undone within a minute.** Saving a character in the
   account editor wrote Postgres only. Redis keeps a character's live state after logout, and the
   persistence flush copies it back to Postgres every ~60 s, so the old room and stats returned.
