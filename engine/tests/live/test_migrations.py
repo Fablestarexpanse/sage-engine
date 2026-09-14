@@ -20,7 +20,7 @@ EXPECTED_TABLES = {
     "accounts",
     "characters",
     "admin_staff",
-    "agent_state",
+    "retired_agent_state",
     "account_scene_images",
     "alembic_version",
 }

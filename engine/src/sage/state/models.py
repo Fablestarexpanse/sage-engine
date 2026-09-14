@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Index, Integer, String, Text, func
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from sage.state.postgres import Base
@@ -79,7 +80,8 @@ class Character(Base):
     last_scene_image_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
 
     # World state
-    room_id: Mapped[str] = mapped_column(String(255), default="test_isle:ferry_landing")
+    # Always set explicitly: new characters start in the world's start room (world.toml).
+    room_id: Mapped[str] = mapped_column(String(255))
     # In-world wallet (display name from server.game_currency_display_name, e.g. Digi).
     digi_balance: Mapped[int] = mapped_column(Integer, default=0)
     # Opt-in player vs player; default off until toggled in-game or by admin.
@@ -87,11 +89,11 @@ class Character(Base):
     # Moral standing for UI (-100 evil .. 0 neutral .. +100 good); gameplay can widen range later.
     reputation: Mapped[int] = mapped_column(Integer, default=0)
 
-    # JSON columns: shapes documented by state_types.CharacterStats / InventoryItem.
-    # Stored as JSON so stats can evolve without schema migrations.
-    stats: Mapped[CharacterStats] = mapped_column(JSON, default=default_character_stats)
+    # JSONB (migration o8p9q0r1s2t3): shapes documented by state_types.CharacterStats /
+    # InventoryItem. Top-level stats keys are engine vitals, world attributes and plugin blocks.
+    stats: Mapped[CharacterStats] = mapped_column(JSONB, default=default_character_stats)
 
-    inventory: Mapped[list[InventoryItem]] = mapped_column(JSON, default=list)
+    inventory: Mapped[list[InventoryItem]] = mapped_column(JSONB, default=list)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
@@ -107,10 +109,13 @@ class Character(Base):
 Index("ix_characters_name_lower", func.lower(Character.name), unique=True)
 
 
-class AgentState(Base):
-    """Durable state for agent NPCs — keyed by persona id, seeded from YAML."""
+class RetiredAgentState(Base):
+    """The engine's former agent table, kept only until a later core revision drops it.
 
-    __tablename__ = "agent_state"
+    Agents persist in the agents plugin's plg_agents_state; nothing reads this table.
+    """
+
+    __tablename__ = "retired_agent_state"
 
     id: Mapped[str] = mapped_column(String(100), primary_key=True)  # persona id
     name: Mapped[str] = mapped_column(String(100), index=True)

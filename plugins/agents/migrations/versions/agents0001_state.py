@@ -4,8 +4,9 @@ Revision ID: agents0001
 Branch: plg_agents
 Create Date: 2026-09-13
 
-One-way door (owner ruling 2026-09-13): existing rows are copied from agent_state when that
-table exists; the engine drops agent_state in a later core migration. Downgrading this branch
+One-way door (owner ruling 2026-09-13): existing rows are copied from the engine's old table,
+under whichever name it has when this runs (agent_state, or retired_agent_state after core
+o8p9q0r1s2t3); a later core migration drops it. Downgrading this branch
 (plugin uninstall) drops plg_agents_state and its data.
 """
 
@@ -32,10 +33,12 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index("ix_plg_agents_state_name", "plg_agents_state", ["name"], unique=False)
-    if "agent_state" in sa.inspect(op.get_bind()).get_table_names():
+    tables = set(sa.inspect(op.get_bind()).get_table_names())
+    source = next((t for t in ("retired_agent_state", "agent_state") if t in tables), None)
+    if source is not None:
         op.execute(
             "INSERT INTO plg_agents_state (id, name, room_id, stats, inventory, updated_at) "
-            "SELECT id, name, room_id, stats, inventory, updated_at FROM agent_state"
+            f"SELECT id, name, room_id, stats, inventory, updated_at FROM {source}"
         )
 
 

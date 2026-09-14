@@ -1,6 +1,6 @@
 {
   "totals": {
-    "denylist": 634,
+    "denylist": 633,
     "player_literals": 72
   },
   "denylist": {
@@ -43,7 +43,7 @@
     "engine/src/sage/services/economy.py": 8,
     "engine/src/sage/services/player_service.py": 12,
     "engine/src/sage/services/scene_service.py": 12,
-    "engine/src/sage/state/models.py": 5,
+    "engine/src/sage/state/models.py": 4,
     "engine/src/sage/state/persistence.py": 1,
     "engine/src/sage/world/models.py": 9,
     "engine/tests/live/test_persistence_live.py": 1,

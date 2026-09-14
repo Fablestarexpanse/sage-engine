@@ -24,15 +24,18 @@ def dependents(records: list[PluginRecord], plugin_id: str) -> list[str]:
 
 
 async def purge_state_blocks(database_url: str, blocks: list[str]) -> int:
-    """Delete the named state blocks from every character and agent stats blob."""
-    from sage.state.models import AgentState, Character
+    """Delete the named state blocks from every character's stats blob.
+
+    Plugins that keep their own character tables (agents) purge those themselves.
+    """
+    from sage.state.models import Character
 
     engine = create_async_engine(database_url)
     changed = 0
     try:
         factory = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with factory() as session, session.begin():
-            for model in (Character, AgentState):
+            for model in (Character,):
                 for row in (await session.execute(select(model))).scalars():
                     stats = dict(row.stats or {})
                     if any(block in stats for block in blocks):

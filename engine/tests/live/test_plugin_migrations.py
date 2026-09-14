@@ -138,3 +138,39 @@ def test_plugin_branch_migrates_and_uninstalls(tmp_path, live_config, migrated_d
             await db2.close()
 
     assert asyncio.run(read_stats()) == {"hp": 9}
+
+
+def test_agents_branch_copies_rows_from_the_retired_engine_table(live_config, migrated_database):
+    """Core head renames agent_state first; plg_agents must still find and copy the rows."""
+    from sqlalchemy import text
+
+    from tests.live.conftest import REPO_ROOT
+    from tests.live.test_migrations import _run_sync
+
+    def seed(conn):
+        conn.execute(
+            text(
+                "INSERT INTO retired_agent_state (id, name, room_id, stats, inventory, updated_at) "
+                "VALUES ('probe', 'Probe Agent', 'town:gate', '{\"hp\": 4}', '[]', now())"
+            )
+        )
+        conn.commit()
+
+    def copied(conn):
+        return conn.execute(text("SELECT name, room_id, stats FROM plg_agents_state")).all()
+
+    def unseed(conn):
+        conn.execute(text("DELETE FROM retired_agent_state WHERE id = 'probe'"))
+        conn.commit()
+
+    cfg = alembic_config([REPO_ROOT / "plugins" / "agents"])
+    _run_sync(live_config, seed)
+    try:
+        command.upgrade(cfg, "plg_agents@head")
+        rows = _run_sync(live_config, copied)
+        assert [(r.name, r.room_id, r.stats) for r in rows] == [
+            ("Probe Agent", "town:gate", {"hp": 4})
+        ]
+    finally:
+        command.downgrade(cfg, "plg_agents@base")
+        _run_sync(live_config, unseed)
