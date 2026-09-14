@@ -1,0 +1,26 @@
+id: start:commons
+zone: start
+type: hub
+depth: 1
+description:
+  base: A small square of swept flagstones with a stone bench at its centre. Paths lead north to a garden, east to a workshop and west to a reading room.
+exits:
+  north:
+    destination: start:garden
+    description: A gate in a brick wall.
+  east:
+    destination: start:workshop
+    description: An open workshop door.
+  west:
+    destination: start:reading_room
+    description: A quiet doorway.
+features:
+- id: bench
+  name: stone bench
+  keywords:
+  - bench
+  - stone
+  description: Someone has carved a small arrow into the seat, pointing north.
+entity_spawns: []
+tags: []
+name: The Commons

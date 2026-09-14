@@ -42,7 +42,9 @@ First-party plugins - FSL-1.1-ALv2, see plugins/LICENSE:
 
 World packages - each world's terms are listed separately; a new world needs its own entry:
   worlds/               the directory itself holds no files of its own
-  worlds/rivermoot/    Rivermoot, the reference world that ships with the
+  worlds/demo/          SAGE Demo, the four-room world a new install runs -
+                        FSL-1.1-ALv2, see worlds/demo/LICENSE
+  worlds/rivermoot/     Rivermoot, the reference world that ships with the
                         engine - FSL-1.1-ALv2, see worlds/rivermoot/LICENSE
   worlds/fablestar/     Fablestar Expanse - proprietary, all rights reserved.
                         No license is granted. It deliberately has no LICENSE

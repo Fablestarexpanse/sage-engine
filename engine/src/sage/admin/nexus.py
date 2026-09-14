@@ -92,6 +92,10 @@ class NexusApp:
         self.app.state.limiter = limiter
         self.app.add_middleware(SlowAPIMiddleware)
         self.app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
+        # The built player client at / (engine/clients/player-ui/dist), when it has been built.
+        from sage.admin import player_client
+
+        player_client.install(self.app, self.server)
 
     async def _admin_ws_auth(self, websocket: WebSocket) -> AdminContext | None:
         """Authenticate via first-message auth envelope: {"type":"auth","token":"<jwt>"}."""

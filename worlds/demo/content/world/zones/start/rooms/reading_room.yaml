@@ -1,0 +1,21 @@
+id: start:reading_room
+zone: start
+type: room
+depth: 1
+description:
+  base: Tall shelves of books surround a pair of worn armchairs by a window. It is very quiet. The doorway east leads back to the square.
+exits:
+  east:
+    destination: start:commons
+    description: The doorway back to the square.
+features:
+- id: shelves
+  name: shelves
+  keywords:
+  - shelves
+  - books
+  - shelf
+  description: The spines are unlabelled. One book sticks out further than the rest.
+entity_spawns: []
+tags: []
+name: Reading Room

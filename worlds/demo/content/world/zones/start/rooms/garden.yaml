@@ -1,0 +1,20 @@
+id: start:garden
+zone: start
+type: garden
+depth: 1
+description:
+  base: Raised beds of herbs and a pear tree fill a garden enclosed by old brick walls. The only way out is the gate south to the square.
+exits:
+  south:
+    destination: start:commons
+    description: The gate back to the square.
+features:
+- id: pear_tree
+  name: pear tree
+  keywords:
+  - tree
+  - pear
+  description: An old pear tree, its lowest branch worn smooth where people sit.
+entity_spawns: []
+tags: []
+name: Walled Garden

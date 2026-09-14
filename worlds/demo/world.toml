@@ -1,0 +1,37 @@
+# The SAGE demo world: four rooms that ship with the engine, so a fresh install has something to
+# walk around. It is what `config/server.example.toml` runs. It uses no plugins; the list below
+# shows what can be switched on. Its map is edited in WorldForge like any other world.
+
+[world]
+id = "demo"
+name = "SAGE Demo"
+version = "0.1.0"
+engine = ">=0.2,<0.3"
+locale = "en"
+
+[start]
+room = "start:commons"
+respawn = "start:commons"
+
+[content]
+room_types = ["hub", "room", "garden"]
+exit_dirs = ["north", "south", "east", "west"]
+equipment_slots = []
+
+[plugins]
+# First-party plugins (plugins/<id>/). Uncomment one, then run `python -m sage db upgrade` and
+# restart. Some need content fields (see content.schema.json after `python -m sage schema export`).
+# achievements = "^1"  # achievements unlocked by play counters
+# agents = "^1"        # computer-controlled characters
+# ambient = "^1"       # timed ambient lines in rooms
+# combat = "^1"        # attack and fight entities
+# consumables = "^1"   # items with heal: restore health when used
+# crafting = "^1"      # recipes that turn items into items
+# effects = "^1"       # timed effects: buffs, damage over time, rest
+# equipment = "^1"     # wear and wield items in the world's equipment slots
+# factions = "^1"      # factions, reputation and missions
+# hazards = "^1"       # rooms that hurt
+# lodging = "^1"       # paid rooms to rest in
+# maestro = "^1"       # scheduled world events
+# search = "^1"        # search features for items
+# shop = "^1"          # buy and sell at room shops

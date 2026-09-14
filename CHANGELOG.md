@@ -22,6 +22,28 @@ Versions built before the first publication have no conversion date.
 
 ## [Unreleased]
 
+- **Tutorial 1, run the engine** (`docs/tutorial/01-run-the-engine.md`): from `git clone` to
+  walking the demo world and changing a room while the server runs, with what each quickstart step
+  did and how to recover from a broken room file.
+
+- **Nexus serves the built player client at `/`**, so a new install needs one terminal: open
+  http://localhost:8001/. `sage quickstart` builds the client when it is missing or older than its
+  sources (`--no-client` skips it). A client build now talks to the origin it was loaded from;
+  builds hosted elsewhere set `VITE_NEXUS_URL` (they used to assume `127.0.0.1:8001`).
+
+- **`sage quickstart`:** one command from a fresh checkout to a running server. It writes any
+  missing config with a generated database password and JWT secret, starts Postgres and Redis with
+  Docker Compose, creates the world's database, migrates and runs the server (the SAGE Demo world by
+  default). Re-running it changes nothing already done; `--world`, `--no-docker`, `--no-server`.
+- **`sage db create`** creates the configured database if it is missing.
+
+- **SAGE Demo world.** `worlds/demo/` ships four rooms around a hub with no plugins, and
+  `config/server.example.toml` now runs it instead of Fablestar Expanse. It is licensed with the
+  engine.
+- **The server refuses to start without a JWT secret** while `admin_auth_required` is on. Before,
+  it started and reported healthy, and the first registration or login returned HTTP 500. The
+  README quick start now generates the secret.
+
 - **Breaking: database defaults are now `sage`.** `config/database.toml` without `database` or
   `user` now connects to database `sage` as user `sage` (was `fablestar`), and
   `docker-compose.yml` creates `sage`/`sage` unless `.env` sets `POSTGRES_DB` and
