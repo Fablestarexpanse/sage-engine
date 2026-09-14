@@ -127,3 +127,7 @@ examine:
   nothing_with_hints: "You see nothing notable called '{name}'. Worth a look: {names}."
   nothing: "You see nothing notable called '{name}'. Nothing here rewards a closer look."
 
+chargen:
+  attributes:
+    title: "Attributes"
+

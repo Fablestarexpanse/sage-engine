@@ -782,7 +782,7 @@ class SageServer:
         """Engine resolver slots and their defaults (contracts catalog #4)."""
         from sage.world.slots import define_engine_slots
 
-        define_engine_slots(self.resolvers)
+        define_engine_slots(self.resolvers, self.world)
 
     async def reload_lexicon_overrides(self) -> None:
         """Re-read active Nexus lexicon edits and rebuild the live lexicon (no restart)."""

@@ -133,3 +133,45 @@ def test_stat_schema_seeds_attributes_and_vitals():
     assert wounded == {"hp": 3, "max_hp": 20}
     assert vital_max(world, "hp", 99) == 12 and vital_max(object(), "hp", 99) == 99
     assert default_respawn(world, {}, wallet=0).hp == 6
+
+
+def test_attribute_point_buy_from_stats_yaml():
+    """A stats.yaml with attribute_points gets engine chargen choices without any plugin."""
+    from sage.world.slots import define_engine_slots
+
+    world = load_world_package(ROOT / "worlds" / "rivermoot")
+    resolvers = Resolvers()
+    define_engine_slots(resolvers, world)
+    options = resolvers.get("chargen.options")()
+    assert options["kind"] == "attribute_points" and options["budget"] == 8
+    assert [
+        (a["key"], a["label"], a["min"], a["max"], a["default"]) for a in options["attributes"]
+    ] == [
+        ("mgt", "[stat.mgt.name]", 1, 6, 2),
+        ("wts", "[stat.wts.name]", 1, 6, 2),
+        ("nrv", "[stat.nrv.name]", 1, 6, 2),
+    ]
+
+    validate = resolvers.get("chargen.validate")
+    assert validate({}) == (None, {})
+    assert validate({"attributes": {"mgt": 4}}) == (
+        None,
+        {"attributes": {"mgt": 4, "wts": 2, "nrv": 2}},
+    )
+    assert validate({"attributes": {"mgt": 4, "wts": 3}})[0] == "attribute_budget_exceeded"
+    assert validate({"attributes": {"mgt": 7}})[0] == "attribute_out_of_range:mgt"
+    assert validate({"attributes": {"luck": 3}})[0] == "unknown_attribute:luck"
+    assert validate({"attributes": {"mgt": 2.5}})[0] == "invalid_attributes"
+    assert validate({"attributes": {"mgt": True}})[0] == "invalid_attributes"
+
+    stats = {"mgt": 2, "wts": 2, "nrv": 2}
+    resolvers.get("chargen.seed")(stats, validate({"attributes": {"mgt": 1, "nrv": 5}})[1])
+    assert stats == {"mgt": 1, "wts": 2, "nrv": 5}
+
+
+def test_worlds_without_attribute_points_keep_empty_chargen_defaults():
+    from sage.world.slots import define_engine_slots
+
+    resolvers = Resolvers()
+    define_engine_slots(resolvers)
+    assert resolvers.get("chargen.options")() == {}

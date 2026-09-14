@@ -181,7 +181,7 @@ export async function playSuggestPortraitPrompt(username, password, character_na
   return handlePlayResponse(r);
 }
 
-export async function playCreateCharacter(username, password, name, portrait_prompt, portrait_url, starter_proficiencies) {
+export async function playCreateCharacter(username, password, name, portrait_prompt, portrait_url, starter_proficiencies, chargen) {
   const payload = {
     ...authFields(username, password),
     name,
@@ -196,6 +196,8 @@ export async function playCreateCharacter(username, password, name, portrait_pro
     }
     if (Object.keys(cleaned).length) payload.chargen = { proficiencies: cleaned };
   }
+  // Other world-defined creation choices (e.g. {attributes: {...}}) go through as given.
+  if (chargen && typeof chargen === "object" && Object.keys(chargen).length) payload.chargen = chargen;
   const r = await fetch(`${base()}/play/characters/create`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

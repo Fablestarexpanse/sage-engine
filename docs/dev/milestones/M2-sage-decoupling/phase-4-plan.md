@@ -28,7 +28,7 @@ into `docs/sage/DECISIONS.md`.
 | # | Step | Status |
 |---|------|--------|
 | 4.1 | The stat schema is real. New characters get the world's attributes and vitals, login and death use the world's vital maximum, the engine's default ratings no longer read D&D keys, and `default_character_stats` is empty. | done |
-| 4.2 | Attribute point-buy at character creation. The engine's default chargen slots offer `kind: "attribute_points"` when `stats.yaml` sets `attribute_points`, and player-ui renders it. | todo |
+| 4.2 | Attribute point-buy at character creation. The engine's default chargen slots offer `kind: "attribute_points"` when `stats.yaml` sets `attribute_points`, and player-ui renders it. | done |
 | 4.3 | Levels that matter. The `levels` plugin provides `combat.ratings` from Might/Nerve plus level, and a level raises maximum health. | todo |
 | 4.4 | The map. 20–40 rooms over three zones (town, docks and riverbank, the old mill and marsh), entities and items, north/south/east/west exits only. | todo |
 | 4.5 | First-party plugins in a second world. Rivermoot enables equipment (hand/body), consumables, shop and lodging (priced in silver), search, effects (rest) and ambient; fix whatever assumes Fablestar. | todo |
@@ -47,4 +47,14 @@ into `docs/sage/DECISIONS.md`.
   `nexus-rivermoot`, port 8002) stores `mgt/wts/nrv = 2`, `hp = max_hp = 12`, 10 silver. Before
   this step it would have got `strength`/`dexterity`/`intelligence`/`perception` and 100 hp. A new
   Fablestar character stores Conduit attributes at 13 and 100 hp (probe deleted).
+- **4.2 attribute point-buy (done).** `define_engine_slots(resolvers, world)` gives a world whose
+  `stats.yaml` sets `chargen.attribute_points` engine chargen slots (`attribute_point_buy`), so no
+  plugin is needed. `attribute_points` is the most all attributes may add up to; each attribute
+  stays in its min..max, and any left out keep their default. That matches Fablestar's design
+  target (five attributes, 65 points), although Conduit keeps providing its own `skill_points`
+  choices there. player-ui renders the new kind with `ChargenAttributesStep` and sends
+  `{"attributes": {...}}`. Run: live Rivermoot options list Might/Wits/Nerve, budget 8; the API
+  refused 5+2+2 (`attribute_budget_exceeded`) and Might 0 (`attribute_out_of_range:mgt`) and
+  created "Point Buyer" with 4/1/3. The creation screen itself was not driven in a browser (it
+  needs a password sign-in).
 
