@@ -1086,7 +1086,7 @@ def set_room_floor(zone_id: str, slug: str, floor: int) -> str:
 @mcp.tool()
 def set_room_position(zone_id: str, slug: str, x: float, y: float) -> str:
     """
-    Set the canvas position of a room in WorldForge (pixels from origin).
+    Set the canvas position of a room in WorldForge (px from origin).
     Typical spacing: 220px horizontal, 130px vertical between adjacent rooms.
     Rooms on the same floor share a canvas, so align positions within each floor.
     """

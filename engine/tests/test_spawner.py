@@ -10,7 +10,7 @@ from sage.world.models import EntityTemplate, ItemTemplate
 from sage.world.spawner import EntitySpawnManager
 from tests.fakes import make_fake_server
 
-ROOM = "starter_zone:entrance"
+ROOM = "testzone:entrance"
 
 
 def _stalker() -> EntityTemplate:
@@ -18,19 +18,19 @@ def _stalker() -> EntityTemplate:
         id="stalker",
         name="Void Stalker",
         stats={"hp": 12, "max_hp": 12, "attack": 4, "defense": 2},
-        loot=["resonance_shard"],
+        loot=["bone_shard"],
     )
 
 
 def _shard() -> ItemTemplate:
-    return ItemTemplate(id="resonance_shard", name="Resonance Shard", value=25, weight=0.2)
+    return ItemTemplate(id="bone_shard", name="Bone Shard", value=25, weight=0.2)
 
 
 class TestSpawner(unittest.TestCase):
     def setUp(self) -> None:
         self.server = make_fake_server()
         self.server.content_loader.entity_templates["stalker"] = _stalker()
-        self.server.content_loader.item_templates["resonance_shard"] = _shard()
+        self.server.content_loader.item_templates["bone_shard"] = _shard()
         self.spawner = EntitySpawnManager(self.server)  # type: ignore[arg-type]
 
     def test_spawn_entity_writes_state_and_room(self) -> None:
@@ -80,7 +80,7 @@ class TestSpawner(unittest.TestCase):
         self.assertEqual(set(dropped), floor)
         istate = await self.server.redis.get_item_state(dropped[0])
         assert istate is not None
-        self.assertEqual(istate["template"], "resonance_shard")
+        self.assertEqual(istate["template"], "bone_shard")
         # Entity fully despawned afterwards
         self.assertIsNone(await self.server.redis.get_entity_state(eid))
 

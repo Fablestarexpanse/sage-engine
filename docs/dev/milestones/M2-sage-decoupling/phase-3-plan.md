@@ -39,7 +39,7 @@ by owner G.4 ("every mechanic is a first-party plugin").
 | 3.16 | AI slots and style; prompts into `worlds/fablestar/ai` | done |
 | 3.17 | Move Fablestar content into `worlds/fablestar/content`; remove `[transition]` | done |
 | 3.18 | Delete glyph/ship/system/galaxy surfaces and the admin World Builder (owner G.3, G.6): 3.18a engine + admin-ui, 3.18b WorldForge, player-ui, galaxy.yaml | done |
-| 3.19 | Ratchet sweep of the last Fablestar leftovers in engine code: 3.19a `ensure_test_user.py` (broken since 3.14), 3.19b admin AI Forge lore options and Agents default room, 3.19c player-ui chargen and sign-in copy (skip the skills step when the world has no chargen options), 3.19d Proficiencies admin page out of admin-ui, 3.19e test fixtures | in progress |
+| 3.19 | Ratchet sweep of the last Fablestar leftovers in engine code: 3.19a `ensure_test_user.py` (broken since 3.14), 3.19b admin AI Forge lore options and Agents default room, 3.19c player-ui chargen and sign-in copy (skip the skills step when the world has no chargen options), 3.19d plugin admin pages follow the running world, 3.19e test fixtures and scaffold names | done |
 | 3.20 | Remaining hardcoded player text in engine commands behind lexicon keys (72 `player_literals`) | todo |
 
 ## Notes
@@ -324,4 +324,10 @@ by owner G.4 ("every mechanic is a first-party plugin").
     Run: live `/admin/plugin-pages` lists conduit/skills, shop/shops, agents/agents; the catalog
     returns five weight keys and 278 leaves; a GET-then-PUT round trip saved 278 leaves with no
     content change to catalog.json.
+  - 3.19e (done) Tests use `testzone` and `bone_shard` instead of Fablestar's deleted
+    `starter_zone` and `resonance_shard`; the accounts-patch test checks a stray `balance` field
+    rather than the dropped `digi_balance`. WorldForge's new-world scaffold creates `first_zone`.
+    The retired `glyphs` admin page id and a "pixels" docstring are gone. Denylist 98 -> 43; every
+    remaining hit is in the by-design list above (config aliases and default DB name, storage key
+    migration, migration history, the env-alias tests, the legacy console script).
 

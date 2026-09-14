@@ -15,8 +15,8 @@ import sage.app as app_module
 from sage.world.models import ExitModel, RoomModel
 from tests.fakes import StubSession, make_fake_server
 
-ROOM = "starter_zone:entrance"
-ROOM_NORTH = "starter_zone:hall"
+ROOM = "testzone:entrance"
+ROOM_NORTH = "testzone:hall"
 
 
 class IntegrationCase(unittest.TestCase):
@@ -26,14 +26,14 @@ class IntegrationCase(unittest.TestCase):
         app_module.app_instance = self.server  # type: ignore[assignment]
         self.server.content_loader.rooms[ROOM] = RoomModel(
             id=ROOM,
-            zone="starter_zone",
+            zone="testzone",
             type="chamber",
             description={"base": "The entrance chamber."},
             exits={"north": ExitModel(destination=ROOM_NORTH, description="A hallway.")},
         )
         self.server.content_loader.rooms[ROOM_NORTH] = RoomModel(
             id=ROOM_NORTH,
-            zone="starter_zone",
+            zone="testzone",
             type="corridor",
             description={"base": "A long hallway."},
             exits={"south": ExitModel(destination=ROOM, description="Back to the entrance.")},

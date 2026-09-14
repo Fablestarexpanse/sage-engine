@@ -10,8 +10,8 @@ equipment, Rivermoot levels); 3.13b Conduit sheet + skill tree panels DONE; 3.13
 of player-ui DONE. 3.14a JSONB + agent_state rename, 3.14b wallet into stats, 3.14c ai_credits + morality plugin, 3.14d drops DONE (3.14 complete); 3.15 Redis namespace DONE. 3.16a AI slots +
 prompts in worlds/fablestar/ai, 3.16b ai/style.yaml, 3.16c ComfyUI graphs DONE (3.16 complete). 3.17 content in
 worlds/fablestar/content DONE. 3.18a builder + glyph/galaxy/ship surfaces out of engine and admin-ui, 3.18b
-WorldForge editors, player-ui glyph remnants, galaxy.yaml DONE (3.18 complete). Next: 3.19 sweep of the
-remaining ratchet hits (see phase-3-plan). Dev DB at r1s2t3u4v5w6. Ratchet 98/72. Commit 9a831ea does not boot (be48da3 completes it).
+WorldForge editors, player-ui glyph remnants, galaxy.yaml DONE (3.18 complete). 3.19 ratchet sweep DONE (denylist
+43, all by design). Next: 3.20 engine command text behind lexicon keys (72 player_literals). Dev DB at r1s2t3u4v5w6. Commit 9a831ea does not boot (be48da3 completes it).
 Open owner questions: none (Rivermoot license and stage PRs decided 2026-09-14, see log).
 Review page: https://claude.ai/code/artifact/2d488113-1ca9-4f45-b993-ac0253e0670c
 

@@ -30,7 +30,7 @@ export async function hasAnyWorldContent(worldRoot) {
   return false;
 }
 
-const STARTER_ZONE = "starter_zone";
+const FIRST_ZONE = "first_zone";
 
 /** Resolve the world root from whatever root the caller has, without double-appending.
  * Historical bug: blindly appending "content/world" to a picked folder that already
@@ -52,7 +52,7 @@ export async function createWorldScaffold(contentRoot) {
   await fs.createDir(joinPaths(worldRoot, "entities"));
   await fs.createDir(joinPaths(worldRoot, "items"));
 
-  const zoneRoot = joinPaths(worldRoot, "zones", STARTER_ZONE);
+  const zoneRoot = joinPaths(worldRoot, "zones", FIRST_ZONE);
   const roomsDir = joinPaths(zoneRoot, "rooms");
   const entrancePath = joinPaths(roomsDir, "entrance.yaml");
 
@@ -60,8 +60,8 @@ export async function createWorldScaffold(contentRoot) {
     await fs.createDir(roomsDir);
     // Matches the server's ZoneModel shape (id/name/description required).
     const zoneMeta = {
-      id: STARTER_ZONE,
-      name: "Starter Zone",
+      id: FIRST_ZONE,
+      name: "First Zone",
       description: "The first zone of a new world.",
       depth_range: [1, 3],
       type: "exploration",
@@ -70,8 +70,8 @@ export async function createWorldScaffold(contentRoot) {
     await fs.writeText(joinPaths(zoneRoot, "zone.yaml"), yaml.dump(zoneMeta, { lineWidth: 120, quotingType: '"', noRefs: true }));
 
     const entrance = {
-      id: `${STARTER_ZONE}:entrance`,
-      zone: STARTER_ZONE,
+      id: `${FIRST_ZONE}:entrance`,
+      zone: FIRST_ZONE,
       type: "hub",
       depth: 1,
       description: { base: "The starting point of your new world." },

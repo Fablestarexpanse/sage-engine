@@ -137,7 +137,7 @@ function ScaffoldPrompt({ pending, onCreate, onPickOther, onCancel, busy }) {
   const missing = pending.reason === "missing";
   const title = missing ? "No content/world folder" : "World folder is empty";
   const body = missing
-    ? "This project does not have a content/world directory yet. Create a starter layout (starter zone with one room, and empty entity/item folders)?"
+    ? "This project does not have a content/world directory yet. Create a starter layout (first zone with one room, and empty entity/item folders)?"
     : "content/world exists but has no zones or other YAML yet. Create the same starter layout? Existing files are left unchanged.";
 
   return (

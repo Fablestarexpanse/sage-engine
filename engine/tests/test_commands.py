@@ -16,14 +16,14 @@ from sage.commands.info import look
 from sage.world.models import RoomModel
 from tests.fakes import StubSession, make_fake_server
 
-ROOM = "starter_zone:entrance"
-ROOM_NORTH = "starter_zone:hall"
+ROOM = "testzone:entrance"
+ROOM_NORTH = "testzone:hall"
 
 
 def _room(room_id: str = ROOM, exits: dict | None = None) -> RoomModel:
     return RoomModel(
         id=room_id,
-        zone="starter_zone",
+        zone="testzone",
         type="chamber",
         description={"base": "A plain test chamber."},
         exits=exits or {},

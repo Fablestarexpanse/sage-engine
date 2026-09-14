@@ -303,7 +303,7 @@ export default function App() {
       }
       // Legacy page ids from before the Content Library consolidation.
       // Legacy page ids, including the retired World Builder (structural editing is WorldForge's).
-      if (["world", "locations", "entities", "items", "glyphs", "builder"].includes(d.page)) {
+      if (["world", "locations", "entities", "items", "builder"].includes(d.page)) {
         setActivePage("content");
       }
     };

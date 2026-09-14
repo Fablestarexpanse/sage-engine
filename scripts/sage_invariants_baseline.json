@@ -1,6 +1,6 @@
 {
   "totals": {
-    "denylist": 69,
+    "denylist": 43,
     "player_literals": 72
   },
   "denylist": {
@@ -9,20 +9,13 @@
     "engine/alembic/versions/p9q0r1s2t3u4_wallet_into_stats.py": 1,
     "engine/alembic/versions/q0r1s2t3u4v5_account_ai_credits.py": 1,
     "engine/alembic/versions/r1s2t3u4v5w6_drop_legacy_world_columns.py": 1,
-    "engine/clients/admin-ui/src/App.jsx": 1,
     "engine/clients/admin-ui/src/storageMigration.js": 8,
     "engine/clients/player-ui/src/storageMigration.js": 8,
     "engine/pyproject.toml": 1,
     "engine/src/sage/core/config.py": 7,
-    "engine/tests/test_admin_security.py": 4,
-    "engine/tests/test_command_integration.py": 4,
-    "engine/tests/test_commands.py": 3,
+    "engine/tests/test_admin_security.py": 1,
     "engine/tests/test_config_env.py": 6,
-    "engine/tests/test_play_tokens.py": 1,
-    "engine/tests/test_player_accounts_patch.py": 2,
-    "engine/tests/test_spawner.py": 6,
-    "engine/tools/worldforge-mcp/server.py": 1,
-    "engine/tools/worldforge/src/utils/worldScaffold.js": 6
+    "engine/tests/test_play_tokens.py": 1
   },
   "player_literals": {
     "engine/src/sage/admin/routes/admin_ops.py": 1,
