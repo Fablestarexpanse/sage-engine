@@ -65,9 +65,11 @@ pip install -e "./engine[dev]"
 (cd engine/clients/player-ui && npm install)
 (cd engine/clients/admin-ui && npm install)
 
-# 2. Create live config from the examples (gitignored)
+# 2. Create live config from the examples (gitignored), and choose a database password:
+#    put it in .env for docker compose and in config/database.toml for the server
 cp config/server.example.toml config/server.toml
 cp config/database.example.toml config/database.toml
+echo "POSTGRES_PASSWORD=choose-a-strong-password" > .env
 
 # 3. Start Redis and PostgreSQL, then apply engine and plugin migrations
 docker compose up -d redis postgres

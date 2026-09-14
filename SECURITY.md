@@ -31,5 +31,6 @@ Before deploying Fablestar to a network-accessible environment:
   ```
 - [ ] Set `cors_origins` in `server.toml` to the exact URL(s) your admin and player UIs are served from
 - [ ] Use TLS (HTTPS/WSS) via a reverse proxy (Nginx, Caddy) in front of Uvicorn
-- [ ] Change the default PostgreSQL password from the docker-compose default
+- [ ] Set `POSTGRES_PASSWORD` in `.env` (docker compose no longer ships a default) and use the same value in `config/database.toml`
+- [ ] Rotate the PostgreSQL password if your database was created from a docker-compose.yml that still had the old built-in default (it remains in git history)
 - [ ] Rotate all credentials if this repo was ever cloned with the default `config/database.toml`

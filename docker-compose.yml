@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   redis:
     image: redis:7-alpine
@@ -16,7 +14,7 @@ services:
     environment:
       POSTGRES_DB: fablestar
       POSTGRES_USER: fablestar
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-keiYEiw57WGPaq4dHDfJi0NYzM3ZYEdD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env (see README quick start)}
     ports:
       - "5432:5432"
     healthcheck:
