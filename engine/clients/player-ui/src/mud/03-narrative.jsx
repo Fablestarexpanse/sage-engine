@@ -405,10 +405,10 @@ function SceneArtModal({ onClose, lines, sceneGen }) {
   /** idle → user must confirm spend; confirm → showing spend confirmation */
   const [costStep, setCostStep] = useState("idle");
 
-  const lab = sceneGen.currencyLabel || "pixels";
+  const lab = sceneGen.currencyLabel || "credits";
   const cost = typeof sceneGen.areaGenerationCost === "number" ? sceneGen.areaGenerationCost : 3;
   const economyOn = sceneGen.economyEnabled !== false;
-  const bal = sceneGen.echoCredits;
+  const bal = sceneGen.aiCredits;
   const willCharge = economyOn && cost > 0;
   const broke = willCharge && typeof bal === "number" && bal < cost;
   const afterBal = typeof bal === "number" && willCharge ? Math.max(0, bal - cost) : null;
@@ -595,17 +595,17 @@ function SceneArtModal({ onClose, lines, sceneGen }) {
               marginBottom: 12,
               padding: "10px 12px",
               borderRadius: T.radius.md,
-              border: `1px solid ${T.currency.pixel.border}`,
-              background: `linear-gradient(135deg, ${T.currency.pixel.bg}, ${T.bg.surface})`,
+              border: `1px solid ${T.currency.art.border}`,
+              background: `linear-gradient(135deg, ${T.currency.art.bg}, ${T.bg.surface})`,
             }}
           >
-            <div style={{ fontSize: 9, fontWeight: 700, color: T.currency.pixel.label, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>
+            <div style={{ fontSize: 9, fontWeight: 700, color: T.currency.art.label, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>
               Art wallet (account)
             </div>
             <div style={{ fontSize: 12, color: T.text.primary, lineHeight: 1.5, fontFamily: T.font.body }}>
               {typeof bal === "number" ? (
                 <>
-                  You have <strong style={{ color: T.currency.pixel.fg, fontFamily: T.font.mono }}>{bal}</strong> {lab}.
+                  You have <strong style={{ color: T.currency.art.fg, fontFamily: T.font.mono }}>{bal}</strong> {lab}.
                 </>
               ) : (
                 <>Balance will be checked on the server when you generate.</>
@@ -614,7 +614,7 @@ function SceneArtModal({ onClose, lines, sceneGen }) {
             {willCharge ? (
               <div style={{ fontSize: 12, color: T.text.secondary, marginTop: 6, lineHeight: 1.45 }}>
                 One scene image costs{" "}
-                <strong style={{ color: T.currency.pixel.fg, fontFamily: T.font.mono }}>{cost}</strong> {lab}.
+                <strong style={{ color: T.currency.art.fg, fontFamily: T.font.mono }}>{cost}</strong> {lab}.
                 {afterBal != null ? (
                   <>
                     {" "}
@@ -634,14 +634,14 @@ function SceneArtModal({ onClose, lines, sceneGen }) {
             ) : null}
             <button
               type="button"
-              onClick={() => sceneGen.onPixelsHelp?.()}
+              onClick={() => sceneGen.onCreditsHelp?.()}
               style={{
                 marginTop: 8,
                 padding: "5px 10px",
                 borderRadius: T.radius.sm,
-                border: `1px solid ${T.currency.pixel.border}`,
+                border: `1px solid ${T.currency.art.border}`,
                 background: T.bg.deep,
-                color: T.currency.pixel.fg,
+                color: T.currency.art.fg,
                 fontSize: 10,
                 fontWeight: 600,
                 cursor: "pointer",
@@ -665,7 +665,7 @@ function SceneArtModal({ onClose, lines, sceneGen }) {
           >
             <div style={{ fontSize: 12, fontWeight: 700, color: T.text.primary, marginBottom: 6 }}>Confirm spend</div>
             <p style={{ fontSize: 12, color: T.text.secondary, margin: 0, lineHeight: 1.5 }}>
-              Spend <strong style={{ color: T.currency.pixel.fg }}>{cost}</strong> {lab} to run ComfyUI and replace the Scene panel image? This cannot be undone; if ComfyUI fails, Nexus may refund automatically. The dialog will close and progress shows on the Scene panel.
+              Spend <strong style={{ color: T.currency.art.fg }}>{cost}</strong> {lab} to run ComfyUI and replace the Scene panel image? This cannot be undone; if ComfyUI fails, Nexus may refund automatically. The dialog will close and progress shows on the Scene panel.
             </p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
               <button
@@ -1054,7 +1054,7 @@ export function NarrativePanel({
           {line.text}
         </div>
       );
-      case "pixel_grant": return (
+      case "credits_grant": return (
         <div
           key={i}
           role="status"
@@ -1067,10 +1067,10 @@ export function NarrativePanel({
             fontSize: 13,
             lineHeight: 1.55,
             fontWeight: 600,
-            color: T.currency.pixel.fg,
-            background: T.currency.pixel.bg,
-            border: `1px solid ${T.currency.pixel.border}`,
-            boxShadow: `0 0 12px ${T.currency.pixel.dim}`,
+            color: T.currency.art.fg,
+            background: T.currency.art.bg,
+            border: `1px solid ${T.currency.art.border}`,
+            boxShadow: `0 0 12px ${T.currency.art.dim}`,
           }}
         >
           {line.text}

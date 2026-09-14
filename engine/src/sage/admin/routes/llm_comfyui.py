@@ -39,12 +39,12 @@ class ComfyUISettingsBody(BaseModel):
     timeout_seconds: float | None = None
     poll_interval_seconds: float | None = None
     economy_enabled: bool | None = None
-    starting_echo_credits: int | None = None
+    starting_ai_credits: int | None = None
     portrait_generation_cost: int | None = None
     area_generation_cost: int | None = None
     character_create_portrait_cost: int | None = None
     currency_display_name: str | None = None
-    pixels_per_usd: int | None = None
+    credits_per_usd: int | None = None
 
 
 class WorkflowUploadBody(BaseModel):

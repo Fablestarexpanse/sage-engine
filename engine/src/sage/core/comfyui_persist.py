@@ -29,12 +29,12 @@ def save_comfyui_toml(cfg: ComfyUIConfig, path: Path | None = None) -> Path:
         f"poll_interval_seconds = {float(cfg.poll_interval_seconds)}",
         "",
         f"economy_enabled = {str(cfg.economy_enabled).lower()}",
-        f"starting_echo_credits = {int(cfg.starting_echo_credits)}",
+        f"starting_ai_credits = {int(cfg.starting_ai_credits)}",
         f"portrait_generation_cost = {int(cfg.portrait_generation_cost)}",
         f"area_generation_cost = {int(cfg.area_generation_cost)}",
         f"character_create_portrait_cost = {int(cfg.character_create_portrait_cost)}",
         f"currency_display_name = {_toml_str(cfg.currency_display_name)}",
-        f"pixels_per_usd = {int(cfg.pixels_per_usd)}",
+        f"credits_per_usd = {int(cfg.credits_per_usd)}",
         "",
     ]
     return atomic_write_toml(target, lines)

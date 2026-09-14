@@ -75,8 +75,8 @@ export default function PlayClient({
   sceneDownloadBaseName = "scene",
   /** The world's display name (GET /play/world). */
   worldName = "",
-  /** Optional: { credits, label } for ComfyUI / pixel economy display. */
-  echoEconomy,
+  /** Optional: { credits, label } for ComfyUI / AI art credit display. */
+  aiEconomy,
   /** The world's primary currency name from the server; empty when the world has no money. */
   gameCurrencyDisplayName = "",
   /** Optional: narrative toolbar → ComfyUI scene generation (credentials + callbacks). */
@@ -119,22 +119,22 @@ export default function PlayClient({
   }, [onSendCommand]);
 
   const onArtCreditsInfo = useCallback(() => {
-    const art = echoEconomy?.label || "pixels";
+    const art = aiEconomy?.label || "credits";
     const game = gameCurrencyDisplayName || "in-world money";
     window.alert(
       `${art} is your account balance for AI portraits and scene art (ComfyUI). It is shared by every character and is not the same as in-world ${game}.\n\n` +
         "Your host can grant more, or future progression may award it. There is no in-client purchase yet."
     );
-  }, [echoEconomy?.label, gameCurrencyDisplayName]);
+  }, [aiEconomy?.label, gameCurrencyDisplayName]);
 
   const onWalletInfo = useCallback(() => {
     const game = gameCurrencyDisplayName || "in-world money";
-    const art = echoEconomy?.label || "pixels";
+    const art = aiEconomy?.label || "credits";
     window.alert(
       `${game} is your in-world wallet for this character only — loot, quests, trades. It is separate from ${art} (AI portrait / scene balance on your account).\n\n` +
         "Each character has their own balance; pick another character to see a different amount here."
     );
-  }, [gameCurrencyDisplayName, echoEconomy?.label]);
+  }, [gameCurrencyDisplayName, aiEconomy?.label]);
 
   const narrativeBackdropUrl =
     narrativeBackdropSource === "scene" && sceneImageUrl
@@ -324,7 +324,7 @@ export default function PlayClient({
             <span style={{ fontSize: 8, color: T.text.muted }}>·</span>
             <span style={{ fontFamily: T.font.display, fontSize: 11, color: T.text.accent }}>{session.characterName}</span>
             <div style={{ marginLeft: 8, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-              {echoEconomy?.credits != null ? (
+              {aiEconomy?.credits != null ? (
                 <div
                   style={{
                     display: "flex",
@@ -332,8 +332,8 @@ export default function PlayClient({
                     gap: 8,
                     padding: "4px 10px 4px 12px",
                     borderRadius: T.radius.md,
-                    border: `1px solid ${T.currency.pixel.border}`,
-                    background: T.currency.pixel.bg,
+                    border: `1px solid ${T.currency.art.border}`,
+                    background: T.currency.art.bg,
                     maxWidth: 200,
                   }}
                   title="Shared by all your characters. Spent on AI portrait and scene generation (not in-world money)."
@@ -343,24 +343,24 @@ export default function PlayClient({
                       style={{
                         fontSize: 8,
                         fontWeight: 600,
-                        color: T.currency.pixel.label,
+                        color: T.currency.art.label,
                         textTransform: "uppercase",
                         letterSpacing: "0.07em",
                         fontFamily: T.font.body,
                       }}
                     >
-                      Pixels · account
+                      {aiEconomy.label} · account
                     </div>
                     <div
                       style={{
                         fontSize: 13,
                         fontFamily: T.font.mono,
                         fontWeight: 600,
-                        color: echoEconomy.credits < (echoEconomy.warnBelow ?? 12) ? T.currency.pixel.warn : T.currency.pixel.fg,
+                        color: aiEconomy.credits < (aiEconomy.warnBelow ?? 12) ? T.currency.art.warn : T.currency.art.fg,
                         marginTop: 1,
                       }}
                     >
-                      {echoEconomy.label} {echoEconomy.credits}
+                      {aiEconomy.label} {aiEconomy.credits}
                     </div>
                   </div>
                   <button
@@ -373,9 +373,9 @@ export default function PlayClient({
                       height: 22,
                       padding: 0,
                       borderRadius: T.radius.sm,
-                      border: `1px solid ${T.currency.pixel.border}`,
+                      border: `1px solid ${T.currency.art.border}`,
                       background: T.bg.deep,
-                      color: T.currency.pixel.fg,
+                      color: T.currency.art.fg,
                       fontSize: 12,
                       fontWeight: 700,
                       cursor: "pointer",

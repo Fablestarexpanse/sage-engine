@@ -95,7 +95,7 @@ class PlayAccountResponse(TypedDict, total=False):
     username: str
     account_id: int
     characters: list[CharacterPayload]
-    echo_credits: int
+    ai_credits: int
     is_gm: bool
     # Present on login/register responses: play session token for later /play/* calls
     # and the WebSocket handshake (send as "token"; supersedes password re-transmission).
@@ -103,4 +103,4 @@ class PlayAccountResponse(TypedDict, total=False):
     # Economy fields (EconomyService.public_fields)
     currency_display_name: str
     game_currency_display_name: str
-    pixels_per_usd: int
+    credits_per_usd: int

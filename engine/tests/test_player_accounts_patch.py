@@ -48,7 +48,7 @@ def _server(session):
 
     srv = SimpleNamespace(
         db=SimpleNamespace(session_factory=lambda: session),
-        config=SimpleNamespace(comfyui=SimpleNamespace(currency_display_name="pixels")),
+        config=SimpleNamespace(comfyui=SimpleNamespace(currency_display_name="credits")),
         notify_play_clients_staff_audit=notify_audit,
         notify_play_clients_echo_grant=notify_grant,
     )
@@ -68,7 +68,7 @@ def _account(credits=50, is_gm=False):
     a.id = 7
     a.username = "player"
     a.email = None
-    a.echo_credits = credits
+    a.ai_credits = credits
     a.is_gm = is_gm
     return a
 
@@ -102,9 +102,9 @@ def test_patch_account_credit_add_clamps_at_zero_and_notifies_actor():
         acc = _account(credits=10)
         srv, calls = _server(_FakeSession(get_row=acc))
         out = await player_accounts.patch_account(
-            srv, 7, {"echo_credits_add": -999}, actor={"username": "gm1", "role": "gm"}
+            srv, 7, {"ai_credits_add": -999}, actor={"username": "gm1", "role": "gm"}
         )
-        assert out["echo_credits"] == 0  # clamped, never negative
+        assert out["ai_credits"] == 0  # clamped, never negative
         assert len(calls["audit"]) == 1
         assert calls["grant"] == []
         _, kw = calls["audit"][0]
@@ -117,8 +117,8 @@ def test_patch_account_grant_without_actor_uses_grant_notification():
     async def check():
         acc = _account(credits=10)
         srv, calls = _server(_FakeSession(get_row=acc))
-        out = await player_accounts.patch_account(srv, 7, {"echo_credits_add": 25})
-        assert out["echo_credits"] == 35
+        out = await player_accounts.patch_account(srv, 7, {"ai_credits_add": 25})
+        assert out["ai_credits"] == 35
         assert calls["audit"] == []
         assert calls["grant"] == [(7, {"added": 25, "new_balance": 35})]
 

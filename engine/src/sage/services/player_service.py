@@ -142,7 +142,7 @@ class PlayerService:
             "username": account.username,
             "account_id": account.id,
             "characters": chars_payload,
-            "echo_credits": int(account.echo_credits),
+            "ai_credits": int(account.ai_credits),
             "is_gm": bool(account.is_gm),
             **self.server.economy.public_fields(),
         }
@@ -180,25 +180,25 @@ class PlayerService:
             if result.scalar_one_or_none():
                 return {"ok": False, "error": "username_taken"}
             pw_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-            start_credits = int(self.server.config.comfyui.starting_echo_credits)
+            start_credits = int(self.server.config.comfyui.starting_ai_credits)
             account = Account(
                 username=username,
                 password_hash=pw_hash,
                 last_login=datetime.utcnow(),
-                echo_credits=start_credits,
+                ai_credits=start_credits,
             )
             db_session.add(account)
             await db_session.commit()
             await db_session.refresh(account)
             aid = account.id
-            ec = account.echo_credits
+            ec = account.ai_credits
             is_gm = bool(account.is_gm)
         return {
             "ok": True,
             "username": username,
             "account_id": aid,
             "characters": [],
-            "echo_credits": ec,
+            "ai_credits": ec,
             "is_gm": is_gm,
             "play_token": issue_play_token(self.server, aid),
             **self.server.economy.public_fields(),
@@ -338,7 +338,7 @@ class PlayerService:
                     username=DEV_LOGIN_ACCOUNT,
                     password_hash=unusable,
                     last_login=datetime.utcnow(),
-                    echo_credits=int(self.server.config.comfyui.starting_echo_credits),
+                    ai_credits=int(self.server.config.comfyui.starting_ai_credits),
                 )
                 db_session.add(account)
                 await db_session.commit()
@@ -439,7 +439,7 @@ class PlayerService:
             "character": payload,
             "characters": all_chars,
             **self.server.economy.public_fields(),
-            "echo_credits": final_bal,
+            "ai_credits": final_bal,
             "is_gm": is_gm,
         }
         if create_portrait_charged and not portrait_gen_failed:

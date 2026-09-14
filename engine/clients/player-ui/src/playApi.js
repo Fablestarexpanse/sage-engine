@@ -204,7 +204,7 @@ export async function playCreateCharacter(username, password, name, portrait_pro
   return handlePlayResponse(r);
 }
 
-/** Re-fetch characters + account fields (is_gm, echo_credits) from Nexus. */
+/** Re-fetch characters + account fields (is_gm, ai_credits) from Nexus. */
 export async function playRefreshSession(username, password) {
   const r = await fetch(`${base()}/play/auth/characters`, {
     method: "POST",

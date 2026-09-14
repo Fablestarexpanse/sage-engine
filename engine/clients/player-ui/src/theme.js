@@ -12,7 +12,7 @@ export const PLAY_THEME_DARK = {
       dim: "rgba(251,146,60,0.28)",
       label: "#fdba74",
     },
-    pixel: {
+    art: {
       fg: "#e879f9",
       bg: "rgba(232,121,249,0.12)",
       border: "rgba(232,121,249,0.5)",
@@ -43,7 +43,7 @@ export const PLAY_THEME_LIGHT = {
       dim: "rgba(234,88,12,0.25)",
       label: "#7c2d12",
     },
-    pixel: {
+    art: {
       fg: "#a21caf",
       bg: "rgba(162,28,175,0.1)",
       border: "rgba(162,28,175,0.45)",

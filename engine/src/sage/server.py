@@ -197,12 +197,12 @@ class SageServer:
         if added <= 0:
             return
         c = self.config.comfyui
-        lab = (c.currency_display_name or "pixels").strip() or "pixels"
+        lab = (c.currency_display_name or "credits").strip() or "credits"
         payload = {
             "ok": True,
-            "client_notice": "echo_credits_granted",
-            "echo_credits_added": int(added),
-            "echo_credits": int(new_balance),
+            "client_notice": "ai_credits_granted",
+            "ai_credits_added": int(added),
+            "ai_credits": int(new_balance),
             "currency_display_name": lab,
             **self.economy.public_fields(),
         }
@@ -215,8 +215,8 @@ class SageServer:
         actor_display_name: str,
         actor_role: str,
         summary_lines: list[str],
-        echo_credits: int | None = None,
-        echo_credits_added: int | None = None,
+        ai_credits: int | None = None,
+        ai_credits_added: int | None = None,
         character_name: str | None = None,
         play_account_is_gm: bool | None = None,
     ) -> None:
@@ -224,7 +224,7 @@ class SageServer:
         if not summary_lines:
             return
         c = self.config.comfyui
-        lab = (c.currency_display_name or "pixels").strip() or "pixels"
+        lab = (c.currency_display_name or "credits").strip() or "credits"
         payload: dict[str, Any] = {
             "ok": True,
             "client_notice": "staff_account_update",
@@ -235,10 +235,10 @@ class SageServer:
             "currency_display_name": lab,
             **self.economy.public_fields(),
         }
-        if echo_credits is not None:
-            payload["echo_credits"] = int(echo_credits)
-        if echo_credits_added is not None and echo_credits_added > 0:
-            payload["echo_credits_added"] = int(echo_credits_added)
+        if ai_credits is not None:
+            payload["ai_credits"] = int(ai_credits)
+        if ai_credits_added is not None and ai_credits_added > 0:
+            payload["ai_credits_added"] = int(ai_credits_added)
         if character_name:
             payload["character_name"] = character_name
         if play_account_is_gm is not None:
@@ -299,12 +299,12 @@ class SageServer:
             "timeout_seconds",
             "poll_interval_seconds",
             "economy_enabled",
-            "starting_echo_credits",
+            "starting_ai_credits",
             "portrait_generation_cost",
             "area_generation_cost",
             "character_create_portrait_cost",
             "currency_display_name",
-            "pixels_per_usd",
+            "credits_per_usd",
         }
     )
 
@@ -312,11 +312,11 @@ class SageServer:
         """Merge ComfyUI config fields, optionally write config/comfyui.toml."""
         data = {k: v for k, v in patch.items() if k in self._COMFYUI_PATCH_KEYS and v is not None}
         for int_key in (
-            "starting_echo_credits",
+            "starting_ai_credits",
             "portrait_generation_cost",
             "area_generation_cost",
             "character_create_portrait_cost",
-            "pixels_per_usd",
+            "credits_per_usd",
         ):
             if int_key in data:
                 data[int_key] = int(data[int_key])

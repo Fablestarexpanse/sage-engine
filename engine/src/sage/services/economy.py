@@ -28,13 +28,13 @@ class EconomyService:
         return {
             "currency_display_name": c.currency_display_name,
             "game_currency_display_name": wallet.name() if wallet.enabled else "",
-            "pixels_per_usd": int(c.pixels_per_usd),
+            "credits_per_usd": int(c.credits_per_usd),
         }
 
     async def read_balance(self, account_id: int) -> int:
         async with self.server.db.session_factory() as db_session:
             result = await db_session.execute(
-                select(Account.echo_credits).where(Account.id == account_id)
+                select(Account.ai_credits).where(Account.id == account_id)
             )
             v = result.scalar_one_or_none()
             return int(v) if v is not None else 0
@@ -43,7 +43,7 @@ class EconomyService:
         self, account_id: int, cost: int
     ) -> tuple[bool, dict[str, Any], int, int]:
         """
-        Debit echo_credits before ComfyUI. Returns:
+        Debit ai_credits before ComfyUI. Returns:
         (success, error_response_dict_if_failed, balance_after, amount_charged).
         When economy is off or cost is 0, amount_charged is 0 and balance_after is current balance.
         """
@@ -58,7 +58,7 @@ class EconomyService:
             account = result.scalar_one_or_none()
             if account is None:
                 return False, {"ok": False, "error": "account_not_found"}, 0, 0
-            bal = int(account.echo_credits)
+            bal = int(account.ai_credits)
             if bal < cost:
                 err = {
                     "ok": False,
@@ -69,7 +69,7 @@ class EconomyService:
                 }
                 await db_session.rollback()
                 return False, err, bal, 0
-            account.echo_credits = bal - cost
+            account.ai_credits = bal - cost
             await db_session.commit()
             return True, {}, bal - cost, cost
 
@@ -84,5 +84,5 @@ class EconomyService:
             if account is None:
                 await db_session.rollback()
                 return
-            account.echo_credits = int(account.echo_credits) + amount
+            account.ai_credits = int(account.ai_credits) + amount
             await db_session.commit()

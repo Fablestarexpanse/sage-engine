@@ -54,7 +54,7 @@ def _account(aid=5):
     a = Account()
     a.id = aid
     a.username = "player"
-    a.echo_credits = 100
+    a.ai_credits = 100
     return a
 
 
@@ -72,8 +72,8 @@ def _scene_server(rows, comfy_enabled=False):
                 workflow_path="does-not-exist.json",
                 area_workflow_path="",
                 area_generation_cost=10,
-                currency_display_name="pixels",
-                pixels_per_usd=100,
+                currency_display_name="credits",
+                credits_per_usd=100,
                 economy_enabled=True,
             ),
         ),
@@ -112,12 +112,12 @@ def test_generate_scene_image_not_configured_reports_balance(monkeypatch):
             return 77
 
         srv.economy = SimpleNamespace(
-            public_fields=lambda: {"currency_display_name": "pixels"},
+            public_fields=lambda: {"currency_display_name": "credits"},
             read_balance=read_balance,
         )
         r = await SceneService(srv).generate_scene_image("player", "pw", "a good prompt")
         assert r["error"] == "comfyui_not_configured"
-        assert r["echo_credits"] == 77
+        assert r["ai_credits"] == 77
 
     asyncio.run(check())
 

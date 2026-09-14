@@ -484,12 +484,12 @@ const ComfyUIPanel = () => {
     timeout_seconds: 600,
     poll_interval_seconds: 0.75,
     economy_enabled: true,
-    starting_echo_credits: 50,
+    starting_ai_credits: 50,
     portrait_generation_cost: 3,
     area_generation_cost: 3,
     character_create_portrait_cost: 3,
-    currency_display_name: "pixels",
-    pixels_per_usd: 100,
+    currency_display_name: "credits",
+    credits_per_usd: 100,
   });
   const [persist, setPersist] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -514,12 +514,12 @@ const ComfyUIPanel = () => {
         timeout_seconds: data.timeout_seconds ?? prev.timeout_seconds,
         poll_interval_seconds: data.poll_interval_seconds ?? prev.poll_interval_seconds,
         economy_enabled: data.economy_enabled ?? prev.economy_enabled,
-        starting_echo_credits: data.starting_echo_credits ?? prev.starting_echo_credits,
+        starting_ai_credits: data.starting_ai_credits ?? prev.starting_ai_credits,
         portrait_generation_cost: data.portrait_generation_cost ?? prev.portrait_generation_cost,
         area_generation_cost: data.area_generation_cost ?? prev.area_generation_cost,
         character_create_portrait_cost: data.character_create_portrait_cost ?? prev.character_create_portrait_cost,
         currency_display_name: data.currency_display_name ?? prev.currency_display_name,
-        pixels_per_usd: data.pixels_per_usd ?? prev.pixels_per_usd,
+        credits_per_usd: data.credits_per_usd ?? prev.credits_per_usd,
       }));
     } catch {
       setStatus(null);
@@ -552,11 +552,11 @@ const ComfyUIPanel = () => {
       const body = { ...form };
       body.timeout_seconds = Number(form.timeout_seconds);
       body.poll_interval_seconds = Number(form.poll_interval_seconds);
-      body.starting_echo_credits = Number(form.starting_echo_credits);
+      body.starting_ai_credits = Number(form.starting_ai_credits);
       body.portrait_generation_cost = Number(form.portrait_generation_cost);
       body.area_generation_cost = Number(form.area_generation_cost);
       body.character_create_portrait_cost = Number(form.character_create_portrait_cost);
-      body.pixels_per_usd = Number(form.pixels_per_usd);
+      body.credits_per_usd = Number(form.credits_per_usd);
       const { data } = await axios.patch(`${API_BASE}/comfyui/settings?persist=${persist}`, body);
       setStatus(data);
       setSaveMsg(persist ? "Saved to config/comfyui.toml." : "Applied (in-memory only).");
@@ -716,7 +716,7 @@ const ComfyUIPanel = () => {
       {tab === "economy" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <div style={{ fontSize: 11, color: COLORS.textMuted, fontFamily: "'DM Sans', sans-serif", lineHeight: 1.5 }}>
-            Controls the art-credit economy. The currency (e.g. <em>pixels</em>) is separate from the in-world Digi balance — it&apos;s spent only on ComfyUI generation.
+            Controls the art-credit economy. Its display name is set below; it is separate from the world&apos;s in-game money — it&apos;s spent only on ComfyUI generation.
           </div>
           <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: COLORS.textMuted, cursor: "pointer" }}>
             <input type="checkbox" checked={form.economy_enabled} onChange={(e) => setForm((p) => ({ ...p, economy_enabled: e.target.checked }))} />
@@ -729,8 +729,8 @@ const ComfyUIPanel = () => {
             {F("Chargen portrait cost", "character_create_portrait_cost", "number", { min: 0 })}
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            {F("Starting credits (new accounts)", "starting_echo_credits", "number", { min: 0 })}
-            {F("Credits per USD (reference only)", "pixels_per_usd", "number", { min: 1 })}
+            {F("Starting credits (new accounts)", "starting_ai_credits", "number", { min: 0 })}
+            {F("Credits per USD (reference only)", "credits_per_usd", "number", { min: 1 })}
           </div>
         </div>
       )}

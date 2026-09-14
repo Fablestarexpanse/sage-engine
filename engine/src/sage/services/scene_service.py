@@ -125,8 +125,8 @@ class SceneService:
             "economy_enabled": bool(c.economy_enabled),
             "area_generation_cost": int(c.area_generation_cost),
             "portrait_generation_cost": int(c.portrait_generation_cost),
-            "pixels_per_usd": int(c.pixels_per_usd),
-            "currency_display_name": (c.currency_display_name or "pixels").strip() or "pixels",
+            "credits_per_usd": int(c.credits_per_usd),
+            "currency_display_name": (c.currency_display_name or "credits").strip() or "credits",
             # The admin form fills from this payload; missing keys made it show
             # (and then save back) defaults instead of the live config.
             "area_positive_prompt_node_id": c.area_positive_prompt_node_id,
@@ -134,7 +134,7 @@ class SceneService:
             "checkpoint_name": c.checkpoint_name,
             "timeout_seconds": float(c.timeout_seconds),
             "poll_interval_seconds": float(c.poll_interval_seconds),
-            "starting_echo_credits": int(c.starting_echo_credits),
+            "starting_ai_credits": int(c.starting_ai_credits),
             "character_create_portrait_cost": int(c.character_create_portrait_cost),
         }
 
@@ -292,7 +292,7 @@ class SceneService:
                 "ok": False,
                 "error": "comfyui_not_configured",
                 **self.server.economy.public_fields(),
-                "echo_credits": await self.server.economy.read_balance(account_id),
+                "ai_credits": await self.server.economy.read_balance(account_id),
             }
         cost = int(cfg.area_generation_cost)
         ok_debit, err_debit, bal_after, charged = await self.server.economy.debit_for_generation(
@@ -307,7 +307,7 @@ class SceneService:
             return {
                 **res,
                 **self.server.economy.public_fields(),
-                "echo_credits": await self.server.economy.read_balance(account_id),
+                "ai_credits": await self.server.economy.read_balance(account_id),
             }
         scene_url = res.get("area_image_url")
         scene_url_str = str(scene_url).strip()[:2048] if scene_url else ""
@@ -333,7 +333,7 @@ class SceneService:
             "scene_image_url": scene_url,
             "bundled": bool(res.get("bundled")),
             **self.server.economy.public_fields(),
-            "echo_credits": bal_after,
+            "ai_credits": bal_after,
             "cost_charged": charged,
         }
 
@@ -481,7 +481,7 @@ class SceneService:
                 "portrait_url": None,
                 "note": "comfyui_not_configured",
                 **eco,
-                "echo_credits": await self.server.economy.read_balance(account_id),
+                "ai_credits": await self.server.economy.read_balance(account_id),
             }
 
         cost = int(cfg.portrait_generation_cost)
@@ -502,13 +502,13 @@ class SceneService:
                 "error": "comfyui_failed",
                 "detail": str(e),
                 **eco,
-                "echo_credits": await self.server.economy.read_balance(account_id),
+                "ai_credits": await self.server.economy.read_balance(account_id),
             }
 
         return {
             "ok": True,
             "portrait_url": save_portrait_png(png),
             **eco,
-            "echo_credits": bal_after,
+            "ai_credits": bal_after,
             "cost_charged": charged,
         }

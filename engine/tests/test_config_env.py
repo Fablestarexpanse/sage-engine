@@ -57,3 +57,17 @@ def test_live_tests_flag_is_not_a_config_override(monkeypatch, empty_config_dir)
     _clear(monkeypatch)
     monkeypatch.setenv("SAGE_LIVE_TESTS", "1")
     load_config(empty_config_dir)  # no "live_tests" section, no crash
+
+
+def test_renamed_comfyui_keys_still_load_with_a_warning(caplog):
+    from sage.core.config import _COMFYUI_RENAMED_KEYS, ComfyUIConfig
+
+    legacy = dict(zip(_COMFYUI_RENAMED_KEYS, (7, 250), strict=True))
+    with caplog.at_level("WARNING"):
+        cfg = ComfyUIConfig(**legacy)
+    assert (cfg.starting_ai_credits, cfg.credits_per_usd) == (7, 250)
+    assert set(_COMFYUI_RENAMED_KEYS.values()) == {"starting_ai_credits", "credits_per_usd"}
+    assert "Deprecated comfyui.toml keys" in caplog.text
+    old_start = next(k for k, v in _COMFYUI_RENAMED_KEYS.items() if v == "starting_ai_credits")
+    # The new name wins when both are present.
+    assert ComfyUIConfig(starting_ai_credits=9, **{old_start: 7}).starting_ai_credits == 9

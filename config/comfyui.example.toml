@@ -17,9 +17,9 @@ timeout_seconds = 600.0
 poll_interval_seconds = 0.75
 
 economy_enabled = true
-starting_echo_credits = 50
+starting_ai_credits = 50
 portrait_generation_cost = 3
 area_generation_cost = 3
 character_create_portrait_cost = 3
-currency_display_name = "pixels"
-pixels_per_usd = 100
+currency_display_name = "credits"
+credits_per_usd = 100

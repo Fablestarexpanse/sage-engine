@@ -6,7 +6,7 @@ import tomllib
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, Field, SecretStr, field_validator
+from pydantic import BaseModel, Field, SecretStr, field_validator, model_validator
 
 logger = logging.getLogger(__name__)
 
@@ -65,8 +65,32 @@ class RedisConfig(BaseModel):
     password: str | None = None
 
 
+# comfyui.toml keys renamed in SAGE 0.2 (3.14c); the old names are read for one release.
+_COMFYUI_RENAMED_KEYS = {
+    "starting_echo_credits": "starting_ai_credits",
+    "pixels_per_usd": "credits_per_usd",
+}
+
+
 class ComfyUIConfig(BaseModel):
     """Optional ComfyUI HTTP API for character portraits and room area art."""
+
+    @model_validator(mode="before")
+    @classmethod
+    def _renamed_keys(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        old = [k for k in _COMFYUI_RENAMED_KEYS if k in data]
+        if old:
+            logger.warning(
+                "Deprecated comfyui.toml keys %s: rename to %s",
+                old,
+                [_COMFYUI_RENAMED_KEYS[k] for k in old],
+            )
+            data = dict(data)
+            for key in old:
+                data.setdefault(_COMFYUI_RENAMED_KEYS[key], data.pop(key))
+        return data
 
     enabled: bool = False
     base_url: str = "http://127.0.0.1:8188"
@@ -82,15 +106,15 @@ class ComfyUIConfig(BaseModel):
     checkpoint_name: str = ""
     timeout_seconds: float = 600.0
     poll_interval_seconds: float = 0.75
-    # Player image generation economy (account echo_credits); label is the art currency (e.g. pixels).
+    # Player image generation economy (account ai_credits); label is the art currency's display name.
     economy_enabled: bool = True
-    starting_echo_credits: int = 50
+    starting_ai_credits: int = 50
     portrait_generation_cost: int = 3
     area_generation_cost: int = 3
     character_create_portrait_cost: int = 3
-    currency_display_name: str = "pixels"
+    currency_display_name: str = "credits"
     # Reference rate for storefront / admin bundle math (not enforced server-side).
-    pixels_per_usd: int = 100
+    credits_per_usd: int = 100
 
 
 class LLMConfig(BaseModel):

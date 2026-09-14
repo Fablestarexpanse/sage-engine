@@ -59,8 +59,8 @@ class StaffPatchBody(BaseModel):
 
 
 class PlayerAccountPatchBody(BaseModel):
-    echo_credits: int | None = None
-    echo_credits_add: int | None = None
+    ai_credits: int | None = None
+    ai_credits_add: int | None = None
     is_gm: bool | None = None
     email: str | None = None
 

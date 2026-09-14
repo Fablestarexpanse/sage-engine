@@ -5,7 +5,7 @@ import { ReputationThermometer } from "../ReputationThermometer.jsx";
 import { PORTRAIT_ASPECT_RATIO_CSS } from "../portraitProfile.js";
 import { Tooltip } from "./01-primitives.jsx";
 
-/** Frosted quick-read: account, wallet, PVP, reputation, location, progress (pixels in header). */
+/** Frosted quick-read: account, wallet, PVP, reputation, location, progress (AI art credits in header). */
 function CharacterStrip({ locationLabel, level, accountName, walletBalance, gameCurrencyLabel, pvpEnabled, reputation }) {
   const { T } = usePlayTheme();
   const glass = {

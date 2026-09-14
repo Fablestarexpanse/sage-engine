@@ -31,8 +31,8 @@ class Account(Base):
     email: Mapped[str | None] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     last_login: Mapped[datetime | None] = mapped_column(DateTime)
-    # Spendable balance for AI art (portraits / scene art); display label from comfyui.currency_display_name (e.g. pixels).
-    echo_credits: Mapped[int] = mapped_column(Integer, default=0)
+    # Spendable balance for AI art (portraits / scene art); display label from comfyui.currency_display_name.
+    ai_credits: Mapped[int] = mapped_column(Integer, default=0)
     # In-game GM crown / staff-visible play account (separate from admin_staff console logins).
     is_gm: Mapped[bool] = mapped_column(Boolean, default=False)
 
@@ -82,7 +82,7 @@ class Character(Base):
     # World state
     # Always set explicitly: new characters start in the world's start room (world.toml).
     room_id: Mapped[str] = mapped_column(String(255))
-    # In-world wallet (display name from server.game_currency_display_name, e.g. Digi).
+    # Legacy wallet column: balances moved into stats (p9q0r1s2t3u4); dropped in a later revision.
     digi_balance: Mapped[int] = mapped_column(Integer, default=0)
     # Opt-in player vs player; default off until toggled in-game or by admin.
     pvp_enabled: Mapped[bool] = mapped_column(Boolean, default=False)

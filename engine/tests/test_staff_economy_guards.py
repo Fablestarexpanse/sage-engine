@@ -65,8 +65,8 @@ def _server_with(session):
         config=SimpleNamespace(
             comfyui=SimpleNamespace(
                 economy_enabled=True,
-                currency_display_name="pixels",
-                pixels_per_usd=100,
+                currency_display_name="credits",
+                credits_per_usd=100,
             ),
         ),
         wallet=fake_wallet(),
@@ -143,7 +143,7 @@ def test_create_staff_rejects_taken_username():
 def _account(credits=100):
     acc = Account()
     acc.id = 5
-    acc.echo_credits = credits
+    acc.ai_credits = credits
     return acc
 
 
@@ -156,7 +156,7 @@ def test_debit_success_deducts_and_commits():
         ).debit_for_generation(5, 30)
         assert ok and err == {}
         assert balance_after == 70 and charged == 30
-        assert acc.echo_credits == 70
+        assert acc.ai_credits == 70
         assert session.committed
 
     asyncio.run(check())
@@ -173,7 +173,7 @@ def test_debit_insufficient_rolls_back():
         assert err["error"] == "insufficient_credits"
         assert err["balance"] == 10 and err["required"] == 30
         assert charged == 0
-        assert acc.echo_credits == 10
+        assert acc.ai_credits == 10
         assert session.rolled_back and not session.committed
 
     asyncio.run(check())
@@ -195,7 +195,7 @@ def test_refund_restores_credits():
         acc = _account(70)
         session = _FakeSession(execute_results=[acc])
         await EconomyService(_server_with(session)).refund(5, 30)
-        assert acc.echo_credits == 100
+        assert acc.ai_credits == 100
         assert session.committed
 
     asyncio.run(check())

@@ -27,22 +27,22 @@ import { PORTRAIT_ASPECT_RATIO_CSS } from "./portraitProfile.js";
 import { ReputationThermometer } from "./ReputationThermometer.jsx";
 import { FloatingThemeToggle, ThemeToggleButton } from "./ThemeToggleButton.jsx";
 
-/** Account-wide art balance (pixels / echo_credits): one place, not per character. */
-function AccountArtCreditsBar({ echoEconomy, gameCurrencyLabel, onTopUp }) {
+/** Account-wide AI art balance (ai_credits): one place, not per character. */
+function AccountArtCreditsBar({ aiEconomy, gameCurrencyLabel, onTopUp }) {
   const { T } = usePlayTheme();
-  if (echoEconomy?.credits == null) return null;
-  const lab = echoEconomy.label || "pixels";
+  if (aiEconomy?.credits == null) return null;
+  const lab = aiEconomy.label || "credits";
   const gameLab = gameCurrencyLabel || "in-world money";
-  const n = echoEconomy.credits;
-  const low = n < (echoEconomy.warnBelow ?? 12);
+  const n = aiEconomy.credits;
+  const low = n < (aiEconomy.warnBelow ?? 12);
   return (
     <div
       style={{
         marginBottom: 16,
         padding: "14px 16px",
         borderRadius: T.radius.lg,
-        border: `1px solid ${T.currency.pixel.border}`,
-        background: `linear-gradient(135deg, ${T.currency.pixel.bg}, ${T.bg.panel})`,
+        border: `1px solid ${T.currency.art.border}`,
+        background: `linear-gradient(135deg, ${T.currency.art.bg}, ${T.bg.panel})`,
         display: "flex",
         flexWrap: "wrap",
         alignItems: "center",
@@ -51,8 +51,8 @@ function AccountArtCreditsBar({ echoEconomy, gameCurrencyLabel, onTopUp }) {
       }}
     >
       <div style={{ flex: "1 1 200px", minWidth: 0 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: T.currency.pixel.fg, fontFamily: T.font.body }}>
-          Pixels <span style={{ color: T.text.muted, fontWeight: 400 }}>(your account)</span>
+        <div style={{ fontSize: 12, fontWeight: 600, color: T.currency.art.fg, fontFamily: T.font.body }}>
+          <span style={{ textTransform: "capitalize" }}>{lab}</span> <span style={{ color: T.text.muted, fontWeight: 400 }}>(your account)</span>
         </div>
         <p style={{ margin: "6px 0 0", fontSize: 12, color: T.text.muted, lineHeight: 1.5, fontFamily: T.font.body }}>
           Same balance for every character. Spent when you use AI portrait or scene generation (separate from in-world{" "}
@@ -61,13 +61,13 @@ function AccountArtCreditsBar({ echoEconomy, gameCurrencyLabel, onTopUp }) {
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
         <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: 10, fontWeight: 600, color: T.currency.pixel.label, fontFamily: T.font.body }}>{lab}</div>
+          <div style={{ fontSize: 10, fontWeight: 600, color: T.currency.art.label, fontFamily: T.font.body }}>{lab}</div>
           <div
             style={{
               fontSize: 26,
               fontFamily: T.font.mono,
               fontWeight: 700,
-              color: low ? T.currency.pixel.warn : T.currency.pixel.fg,
+              color: low ? T.currency.art.warn : T.currency.art.fg,
               lineHeight: 1.1,
             }}
           >
@@ -80,9 +80,9 @@ function AccountArtCreditsBar({ echoEconomy, gameCurrencyLabel, onTopUp }) {
           style={{
             padding: "8px 14px",
             borderRadius: T.radius.md,
-            border: `1px solid ${T.currency.pixel.border}`,
+            border: `1px solid ${T.currency.art.border}`,
             background: T.bg.deep,
-            color: T.currency.pixel.fg,
+            color: T.currency.art.fg,
             fontSize: 11,
             fontWeight: 600,
             cursor: "pointer",
@@ -97,7 +97,7 @@ function AccountArtCreditsBar({ echoEconomy, gameCurrencyLabel, onTopUp }) {
   );
 }
 
-/** Per-character row: saved position + level (readable). Pixel balance lives in AccountArtCreditsBar. */
+/** Per-character row: saved position + level (readable). The AI art balance lives in AccountArtCreditsBar. */
 function ChooseCharacterGlassStats({ character, selected, onSelectRow }) {
   const { T } = usePlayTheme();
   const full = String(character.room_id || "").trim() || "—";
@@ -360,10 +360,10 @@ function mapPlayAuthPayload(res) {
     username: res.username,
     accountId: res.account_id,
     characters: res.characters || [],
-    echoCredits: res.echo_credits,
+    aiCredits: res.ai_credits,
     currencyDisplayName: res.currency_display_name,
     gameCurrencyDisplayName: res.game_currency_display_name,
-    pixelsPerUsd: typeof res.pixels_per_usd === "number" ? res.pixels_per_usd : 100,
+    creditsPerUsd: typeof res.credits_per_usd === "number" ? res.credits_per_usd : 100,
     isGm: Boolean(res.is_gm),
   };
 }
@@ -659,7 +659,7 @@ function PlayAuthFlow({ onLoggedIn }) {
   );
 }
 
-function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacters, echoEconomy, mergeEchoFromPlayRes }) {
+function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacters, aiEconomy, mergeEchoFromPlayRes }) {
   const { T } = usePlayTheme();
   const { username, characters, gameCurrencyDisplayName, isGm } = auth;
   const gameCurrencyLabel = gameCurrencyDisplayName || "";
@@ -689,15 +689,15 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
   const [createPhase, setCreatePhase] = useState("identity");
   const prevViewRef = useRef(view);
 
-  const onPixelsHelp = useCallback(() => {
-    const lab = echoEconomy?.label || "pixels";
+  const onCreditsHelp = useCallback(() => {
+    const lab = aiEconomy?.label || "credits";
     const game = gameCurrencyLabel;
     window.alert(
       `${lab} (art currency) is spent when you generate character portraits or scene art with the AI (ComfyUI). ` +
         `It is not the same as in-world ${game}.\n\n` +
         "Your server host can grant more, or future progression may award it. There is no in-client purchase yet."
     );
-  }, [echoEconomy?.label, gameCurrencyLabel]);
+  }, [aiEconomy?.label, gameCurrencyLabel]);
 
   useEffect(() => {
     let cancelled = false;
@@ -899,7 +899,7 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
       if (!res.ok) {
         mergeEchoFromPlayRes?.(res);
         const map = {
-          insufficient_credits: `Not enough ${res.currency_display_name || "pixels"} (need ${res.required ?? "?"}, have ${res.balance ?? "?"}).`,
+          insufficient_credits: `Not enough ${res.currency_display_name || "credits"} (need ${res.required ?? "?"}, have ${res.balance ?? "?"}).`,
           comfyui_failed: res.detail || "ComfyUI portrait run failed.",
           invalid_credentials: "Session expired — sign in again.",
         };
@@ -987,7 +987,7 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
           character_name_taken: "That character name is already taken.",
           character_limit: "Maximum characters per account reached.",
           invalid_credentials: "Session expired — sign in again.",
-          insufficient_credits: `Not enough ${res.currency_display_name || "pixels"} (need ${res.required ?? "?"}, have ${res.balance ?? "?"}).`,
+          insufficient_credits: `Not enough ${res.currency_display_name || "credits"} (need ${res.required ?? "?"}, have ${res.balance ?? "?"}).`,
         };
         setFormErr(starterMsg || map[res.error] || res.error || "Could not create character");
         return;
@@ -1302,8 +1302,8 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
           </div>
         </div>
 
-        {echoEconomy?.credits != null ? (
-          <AccountArtCreditsBar echoEconomy={echoEconomy} gameCurrencyLabel={gameCurrencyLabel} onTopUp={onPixelsHelp} />
+        {aiEconomy?.credits != null ? (
+          <AccountArtCreditsBar aiEconomy={aiEconomy} gameCurrencyLabel={gameCurrencyLabel} onTopUp={onCreditsHelp} />
         ) : null}
 
         {view === "create" && createPhase === "identity" && (
@@ -2018,20 +2018,20 @@ export default function App() {
     areaReady: false,
     areaCost: 3,
     economyEnabled: true,
-    currencyDisplayName: "pixels",
-    pixelsPerUsd: 100,
+    currencyDisplayName: "credits",
+    creditsPerUsd: 100,
   });
-  const [echoEconomy, setEchoEconomy] = useState({ credits: null, label: "pixels", warnBelow: 12, pixelsPerUsd: 100 });
+  const [aiEconomy, setAiEconomy] = useState({ credits: null, label: "credits", warnBelow: 12, creditsPerUsd: 100 });
   const [sceneGenerating, setSceneGenerating] = useState(false);
   const sceneGenerateInFlightRef = useRef(false);
 
   const mergeEchoFromPlayRes = useCallback((res) => {
     if (!res || typeof res !== "object") return;
-    setEchoEconomy((prev) => ({
+    setAiEconomy((prev) => ({
       ...prev,
-      credits: typeof res.echo_credits === "number" ? res.echo_credits : prev.credits,
+      credits: typeof res.ai_credits === "number" ? res.ai_credits : prev.credits,
       label: typeof res.currency_display_name === "string" ? res.currency_display_name : prev.label,
-      pixelsPerUsd: typeof res.pixels_per_usd === "number" ? res.pixels_per_usd : prev.pixelsPerUsd,
+      creditsPerUsd: typeof res.credits_per_usd === "number" ? res.credits_per_usd : prev.creditsPerUsd,
     }));
     if (typeof res.is_gm === "boolean") {
       setAuth((a) => (a ? { ...a, isGm: res.is_gm } : a));
@@ -2048,11 +2048,11 @@ export default function App() {
     devAutoCharacterRef.current = autoCharacterId ?? null;
     passwordRef.current = pw;
     setAuth(a);
-    setEchoEconomy({
-      credits: typeof a.echoCredits === "number" ? a.echoCredits : 0,
-      label: a.currencyDisplayName || "pixels",
+    setAiEconomy({
+      credits: typeof a.aiCredits === "number" ? a.aiCredits : 0,
+      label: a.currencyDisplayName || "credits",
       warnBelow: 12,
-      pixelsPerUsd: typeof a.pixelsPerUsd === "number" ? a.pixelsPerUsd : 100,
+      creditsPerUsd: typeof a.creditsPerUsd === "number" ? a.creditsPerUsd : 100,
     });
     setStep("choose");
   }, []);
@@ -2075,16 +2075,16 @@ export default function App() {
     setNarrativeLines([...DEFAULT_NARRATIVE]);
     setPlayerScenePath(null);
     setPlayerSceneBust(0);
-    setPlayComfyScene({ areaReady: false, areaCost: 3, economyEnabled: true, currencyDisplayName: "pixels", pixelsPerUsd: 100 });
-    setEchoEconomy({ credits: null, label: "pixels", warnBelow: 12, pixelsPerUsd: 100 });
+    setPlayComfyScene({ areaReady: false, areaCost: 3, economyEnabled: true, currencyDisplayName: "credits", creditsPerUsd: 100 });
+    setAiEconomy({ credits: null, label: "credits", warnBelow: 12, creditsPerUsd: 100 });
     setSceneGenerating(false);
     sceneGenerateInFlightRef.current = false;
   }, [disconnectWs]);
 
-  const explainPlayPixels = useCallback(() => {
-    const lab = echoEconomy?.label || "pixels";
+  const explainPlayCredits = useCallback(() => {
+    const lab = aiEconomy?.label || "credits";
     const game = auth?.gameCurrencyDisplayName || "in-world money";
-    const ppu = echoEconomy?.pixelsPerUsd ?? playComfyScene?.pixelsPerUsd ?? 100;
+    const ppu = aiEconomy?.creditsPerUsd ?? playComfyScene?.creditsPerUsd ?? 100;
     const sceneCost = typeof playComfyScene?.areaCost === "number" ? playComfyScene.areaCost : 3;
     window.alert(
       `${lab} (art currency) is spent on AI portraits and scene art (ComfyUI). ` +
@@ -2093,18 +2093,18 @@ export default function App() {
         `Not the same as in-world ${game}.`
     );
   }, [
-    echoEconomy?.label,
-    echoEconomy?.pixelsPerUsd,
+    aiEconomy?.label,
+    aiEconomy?.creditsPerUsd,
     auth?.gameCurrencyDisplayName,
     playComfyScene?.areaCost,
-    playComfyScene?.pixelsPerUsd,
+    playComfyScene?.creditsPerUsd,
   ]);
 
   useEffect(() => {
     if (step !== "play") {
       setPlayerScenePath(null);
       setPlayerSceneBust(0);
-      setPlayComfyScene({ areaReady: false, areaCost: 3, economyEnabled: true, currencyDisplayName: "pixels", pixelsPerUsd: 100 });
+      setPlayComfyScene({ areaReady: false, areaCost: 3, economyEnabled: true, currencyDisplayName: "credits", creditsPerUsd: 100 });
       setSceneGenerating(false);
       sceneGenerateInFlightRef.current = false;
     }
@@ -2112,7 +2112,7 @@ export default function App() {
 
   useEffect(() => {
     if (step !== "play" || !playSession) {
-      setPlayComfyScene({ areaReady: false, areaCost: 3, economyEnabled: true, currencyDisplayName: "pixels", pixelsPerUsd: 100 });
+      setPlayComfyScene({ areaReady: false, areaCost: 3, economyEnabled: true, currencyDisplayName: "credits", creditsPerUsd: 100 });
       return;
     }
     let cancelled = false;
@@ -2120,7 +2120,7 @@ export default function App() {
       .then((s) => {
         if (!cancelled) {
           const areaCost = typeof s.area_generation_cost === "number" ? s.area_generation_cost : 3;
-          const ppu = typeof s.pixels_per_usd === "number" ? s.pixels_per_usd : 100;
+          const ppu = typeof s.credits_per_usd === "number" ? s.credits_per_usd : 100;
           setPlayComfyScene({
             areaReady: Boolean(s.area_ready),
             areaCost,
@@ -2128,19 +2128,19 @@ export default function App() {
             currencyDisplayName:
               typeof s.currency_display_name === "string" && s.currency_display_name.trim()
                 ? s.currency_display_name.trim()
-                : "pixels",
-            pixelsPerUsd: ppu,
+                : "credits",
+            creditsPerUsd: ppu,
           });
-          setEchoEconomy((prev) => ({
+          setAiEconomy((prev) => ({
             ...prev,
             warnBelow: Math.max(9, areaCost * 3),
-            pixelsPerUsd: ppu,
+            creditsPerUsd: ppu,
           }));
         }
       })
       .catch(() => {
         if (!cancelled) {
-          setPlayComfyScene({ areaReady: false, areaCost: 3, economyEnabled: true, currencyDisplayName: "pixels", pixelsPerUsd: 100 });
+          setPlayComfyScene({ areaReady: false, areaCost: 3, economyEnabled: true, currencyDisplayName: "credits", creditsPerUsd: 100 });
         }
       });
     return () => {
@@ -2225,13 +2225,13 @@ export default function App() {
           endReason = typeof j.reason === "string" ? j.reason : null;
           return;
         }
-        if (j && j.client_notice === "echo_credits_granted") {
-          const lab = typeof j.currency_display_name === "string" && j.currency_display_name.trim() ? j.currency_display_name.trim() : "pixels";
-          const added = typeof j.echo_credits_added === "number" ? j.echo_credits_added : 0;
-          const bal = typeof j.echo_credits === "number" ? j.echo_credits : null;
+        if (j && j.client_notice === "ai_credits_granted") {
+          const lab = typeof j.currency_display_name === "string" && j.currency_display_name.trim() ? j.currency_display_name.trim() : "credits";
+          const added = typeof j.ai_credits_added === "number" ? j.ai_credits_added : 0;
+          const bal = typeof j.ai_credits === "number" ? j.ai_credits : null;
           mergeEchoFromPlayRes(j);
           if (bal != null) {
-            setAuth((a) => (a ? { ...a, echoCredits: bal } : a));
+            setAuth((a) => (a ? { ...a, aiCredits: bal } : a));
           }
           const msg =
             added > 0 && bal != null
@@ -2239,7 +2239,7 @@ export default function App() {
               : bal != null
                 ? `Your ${lab} balance was updated to ${bal}.`
                 : `Your ${lab} balance was updated.`;
-          setNarrativeLines((prev) => [...prev, { type: "pixel_grant", text: msg }]);
+          setNarrativeLines((prev) => [...prev, { type: "credits_grant", text: msg }]);
           return;
         }
         if (j && j.client_notice === "chat_message") {
@@ -2282,9 +2282,9 @@ export default function App() {
           return;
         }
         if (j && j.client_notice === "staff_account_update") {
-          if (typeof j.echo_credits === "number") {
+          if (typeof j.ai_credits === "number") {
             mergeEchoFromPlayRes(j);
-            setAuth((a) => (a ? { ...a, echoCredits: j.echo_credits } : a));
+            setAuth((a) => (a ? { ...a, aiCredits: j.ai_credits } : a));
           }
           if (typeof j.play_account_is_gm === "boolean") {
             setAuth((a) => (a ? { ...a, isGm: j.play_account_is_gm } : a));
@@ -2397,7 +2397,7 @@ export default function App() {
               invalid_credentials: "Session expired — sign in again.",
               prompt_too_short: "Prompt too short.",
               prompt_too_long: "Prompt too long (max 4000 characters).",
-              insufficient_credits: `Not enough ${res.currency_display_name || "pixels"} (need ${res.required ?? "?"}, have ${res.balance ?? "?"}).`,
+              insufficient_credits: `Not enough ${res.currency_display_name || "credits"} (need ${res.required ?? "?"}, have ${res.balance ?? "?"}).`,
             };
             const msg = map[res.error] || res.detail || res.error || "Scene generation failed";
             setNarrativeLines((prev) => [...prev, { type: "alert", level: "danger", text: msg }]);
@@ -2433,7 +2433,7 @@ export default function App() {
           onCancel={onSignOut}
           onChosen={onChosen}
           onUpdateCharacters={updateAuthCharacters}
-          echoEconomy={echoEconomy}
+          aiEconomy={aiEconomy}
           mergeEchoFromPlayRes={mergeEchoFromPlayRes}
         />
       </div>
@@ -2486,7 +2486,7 @@ export default function App() {
           worldName={world.name}
           sceneDownloadBaseName={`scene-${String(playSession.characterName || "character").replace(/[^a-zA-Z0-9_-]+/g, "_")}`}
           gameCurrencyDisplayName={auth?.gameCurrencyDisplayName ?? ""}
-          echoEconomy={echoEconomy}
+          aiEconomy={aiEconomy}
           sceneGen={{
             username: playSession.username,
             characterId: playSession.characterId,
@@ -2494,9 +2494,9 @@ export default function App() {
             areaReady: playComfyScene.areaReady,
             areaGenerationCost: playComfyScene.areaCost,
             economyEnabled: playComfyScene.economyEnabled,
-            echoCredits: echoEconomy.credits,
-            currencyLabel: echoEconomy.label || playComfyScene.currencyDisplayName,
-            onPixelsHelp: explainPlayPixels,
+            aiCredits: aiEconomy.credits,
+            currencyLabel: aiEconomy.label || playComfyScene.currencyDisplayName,
+            onCreditsHelp: explainPlayCredits,
             onSceneGenerated: handleSceneImageSaved,
             beginBackgroundSceneGenerate,
             mergeEchoFromPlayRes,
