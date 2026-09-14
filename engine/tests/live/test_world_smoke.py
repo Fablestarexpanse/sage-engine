@@ -256,6 +256,7 @@ def test_second_world_plays_its_loop(world_id, live_config, world_database, tmp_
     assert "Level 1  (5/10 experience)" in text or "Level 2  (0/20 experience)" in text, text
     assert "Too dangerous to rest here." in text, text
     assert "[ town:shrine ]" in text, text
-    assert "You consume the loaf of bread" in text, text
+    # Eaten if a rat bit back, kept if still at full health (consumables refuse a +0 meal).
+    assert "You consume the loaf of bread" in text or "you keep the loaf of bread" in text, text
     assert _unresolved_keys(text) == [], f"unresolved lexicon keys: {_unresolved_keys(text)}"
     assert "Traceback" not in server_log, server_log[-4000:]
