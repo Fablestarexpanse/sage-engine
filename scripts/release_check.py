@@ -38,6 +38,7 @@ RESIDUE_PATHS = (
     "config/",
     "README.md",
     "CLAUDE.md",
+    "docs/architecture.md",
 )
 RESIDUE = re.compile(r"dev_login|/dev/login|/dev/status|playDevLogin|adminDevLogin|dev-staff")
 TEXT_SUFFIXES = {

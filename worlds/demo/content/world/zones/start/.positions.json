@@ -1,0 +1,37 @@
+{
+  "version": 2,
+  "positions": {
+    "commons": {
+      "x": 400,
+      "y": 300,
+      "width": 176,
+      "height": 108
+    },
+    "garden": {
+      "x": 400.0,
+      "y": 170.0,
+      "width": 176,
+      "height": 108
+    },
+    "workshop": {
+      "x": 620.0,
+      "y": 300.0,
+      "width": 176,
+      "height": 108
+    },
+    "reading_room": {
+      "x": 180.0,
+      "y": 300.0,
+      "width": 176,
+      "height": 108
+    }
+  },
+  "notes": [],
+  "muted_edges": [],
+  "floors": {
+    "commons": 0,
+    "garden": 0,
+    "workshop": 0,
+    "reading_room": 0
+  }
+}

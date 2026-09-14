@@ -11,8 +11,10 @@ from pydantic import BaseModel, Field, SecretStr, field_validator, model_validat
 logger = logging.getLogger(__name__)
 
 ENV_PREFIX = "SAGE_"
-# Pre-rename prefix, accepted for one release (docs/sage/PHASE1_CONTRACTS.md F.1).
+# Pre-rename prefix (docs/sage/PHASE1_CONTRACTS.md F.1). Deprecated in 0.2.0; removed in 0.3.0,
+# together with the legacy console script in engine/pyproject.toml (CHANGELOG.md).
 LEGACY_ENV_PREFIX = "FABLESTAR_"
+LEGACY_ENV_REMOVED_IN = "0.3.0"
 
 
 def env_setting(name: str) -> str:
@@ -28,6 +30,9 @@ class ServerConfig(BaseModel):
     # World package to run from worlds_dir (a directory name). Optional when only one exists.
     world: str | None = None
     worlds_dir: str = "worlds"
+    # Built player client Nexus serves at / (relative to the project root); nothing is served
+    # until `npm run build` (or `sage quickstart`) has produced it.
+    player_client_dir: str = "engine/clients/player-ui/dist"
     max_connections: int = 100
     tick_rate: float = 0.25  # 4 ticks per second
     dev_mode: bool = False
@@ -53,8 +58,8 @@ class ServerConfig(BaseModel):
 class DatabaseConfig(BaseModel):
     host: str = "localhost"
     port: int = 5432
-    database: str = "fablestar"
-    user: str = "fablestar"
+    database: str = "sage"
+    user: str = "sage"
     password: str | None = None
     pool_size: int = 10
 
@@ -190,7 +195,7 @@ def load_config(config_dir: str = "config") -> Config:
                 data[section_name] = section_data
 
     # Environment overrides: SAGE_<SECTION>__<FIELD>=value (e.g. SAGE_SERVER__WEBSOCKET_PORT=8001).
-    # Legacy FABLESTAR_ keys apply first so a SAGE_ key for the same setting wins.
+    # Legacy-prefix keys apply first so a SAGE_ key for the same setting wins.
     legacy_keys = []
     for prefix in (LEGACY_ENV_PREFIX, ENV_PREFIX):
         for key, value in os.environ.items():
@@ -205,9 +210,12 @@ def load_config(config_dir: str = "config") -> Config:
                 legacy_keys.append(key)
     if legacy_keys:
         logger.warning(
-            "Deprecated environment variables %s: rename the FABLESTAR_ prefix to SAGE_ "
-            "(support ends next release).",
+            "Deprecated environment variables %s: rename the %s prefix to %s "
+            "(support is removed in %s).",
             ", ".join(sorted(legacy_keys)),
+            LEGACY_ENV_PREFIX,
+            ENV_PREFIX,
+            LEGACY_ENV_REMOVED_IN,
         )
 
     return Config(**data)

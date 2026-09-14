@@ -1,43 +1,76 @@
 NOTICE
 
-This repository contains two distinct components under different terms:
-
-- engine/ (SAGE - Synthetic Agent Game Engine) is licensed under the Functional
-  Source License, Version 1.1, ALv2 Future License (FSL-1.1-ALv2) - see
-  engine/LICENSE.
-
-- worlds/fablestar/ (Fablestar Expanse) is proprietary. All rights reserved.
-  No license is granted to this content.
-
-- worlds/rivermoot/ (Rivermoot) is the second reference world used to test the
-  engine. It ships with the engine under the same Functional Source License,
-  Version 1.1, ALv2 Future License (FSL-1.1-ALv2) - see worlds/rivermoot/LICENSE.
-
 Copyright 2026 Brian M. Taylor.
 
+This repository holds SAGE - Synthetic Agent Game Engine, its first-party
+plugins, and two world packages. They are under different terms. Every path
+at the top of the repository, and every world package, is listed below with
+its terms; scripts/notice_check.py fails CI when a path is missing from this
+list or a listed path no longer exists.
 
-Transition period
------------------
+FSL-1.1-ALv2 means the Functional Source License, Version 1.1, ALv2 Future
+License. Each released version converts to the Apache License 2.0 two years
+after it is made available (see CHANGELOG.md and LICENSE-FAQ.md).
 
-The repository is being reorganised into engine/ and worlds/fablestar/ (see
-docs/sage/). Until that move is complete, the components live at these paths:
 
-SAGE engine - FSL-1.1-ALv2 (engine/LICENSE):
-  engine/                        engine source, migrations, tests, packaging,
-                                 clients (engine/clients/) and tools (engine/tools/)
-  scripts/                       repository tooling
+Paths
+-----
+
+SAGE engine - FSL-1.1-ALv2, see engine/LICENSE:
+  engine/               engine source, migrations, tests, packaging, clients
+                        (engine/clients/) and tools (engine/tools/)
+  scripts/              repository tooling (invariant ratchet, license and
+                        release checks)
+  config/               example configuration files
+  .github/              continuous integration
+  docs/                 documentation, except the paths listed as
+                        proprietary below
+  .gitignore            repository files, under the engine's terms
+  CHANGELOG.md
+  CLAUDE.md
+  docker-compose.yml
+  LICENSE-FAQ.md
+  NOTICE
+  pytest.ini
+  README.md
+  ruff.toml
+  SECURITY.md
+
+First-party plugins - FSL-1.1-ALv2, see plugins/LICENSE:
+  plugins/              every plugin under this directory; no plugin has
+                        different terms
+
+World packages - each world's terms are listed separately; a new world needs its own entry:
+  worlds/               the directory itself holds no files of its own
+  worlds/demo/          SAGE Demo, the four-room world a new install runs -
+                        FSL-1.1-ALv2, see worlds/demo/LICENSE
+  worlds/rivermoot/     Rivermoot, the reference world that ships with the
+                        engine - FSL-1.1-ALv2, see worlds/rivermoot/LICENSE
+  worlds/fablestar/     Fablestar Expanse - proprietary, all rights reserved.
+                        No license is granted. It deliberately has no LICENSE
+                        file. It is readable here only until it moves to a
+                        private repository (docs/sage/DECISIONS.md, 2026-09-14).
 
 Fablestar Expanse - proprietary, all rights reserved, no license granted:
-  docs/design/          world design documents
+  docs/design/          Fablestar world design documents
+  docs/screenshots/player-client-fablestar.png
+                        a capture of Fablestar Expanse content
 
-Fablestar Expanse material that is still embedded inside engine paths during
-the transition is also proprietary and is NOT covered by the FSL grant. This
-includes, without limitation: the proficiency domain data in
-engine/src/sage/proficiencies/data/, agent prompts and world knowledge in
-engine/src/sage/agents/, maestro event text in engine/src/sage/maestro/, world room
-identifiers in engine/src/sage/world/defaults.py, and all Fablestar Expanse
-names, lore, setting text, branding, logos and artwork anywhere in the
-repository.
+
+Fablestar Expanse names and branding
+------------------------------------
+
+Fablestar Expanse names, lore, setting text, branding, logos and artwork are
+proprietary wherever they appear in the repository, including where they are
+quoted in FSL-licensed files (for example, historical notes under docs/dev/,
+test fixtures, and legacy identifiers kept for compatibility such as the
+FABLESTAR_ environment prefix). The FSL grant covers the code and text of those
+files, not the Fablestar Expanse material they mention.
+
+
+Third-party components
+----------------------
 
 Third-party components keep their own licenses (for example, elkjs under
 EPL-2.0 in engine/clients/admin-ui/ and engine/tools/worldforge/).
+scripts/license_report.py lists every dependency's license.

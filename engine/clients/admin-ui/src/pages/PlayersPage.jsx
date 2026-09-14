@@ -46,13 +46,11 @@ const PlayersPage = () => {
     name: p.player_id || "guest",
     accountId: p.account_id ?? null,
     characterId: p.character_id ?? null,
-    level: "—",
     class: p.state ?? "playing",
     status: "online",
     location: p.room_id || "—",
     zone: typeof p.peer === "string" ? p.peer : JSON.stringify(p.peer ?? "—"),
     lastSeen: "now",
-    adaptiveLevel: 0,
   }));
 
   const filtered = tableRows.filter((p) =>
@@ -81,8 +79,7 @@ const PlayersPage = () => {
             { label: "Name", render: row => <span style={{ fontWeight: 600 }}>{row.name}</span> },
             { label: "State", key: "class", mono: true },
             { label: "Location", key: "location", mono: true, title: "room_id from Redis" },
-            { label: "Level", key: "level", mono: true }, { label: "Peer", key: "zone", mono: true },
-            { label: "Adaptive", render: row => (<div style={{ display: "flex", alignItems: "center", gap: 6 }}><div style={{ width: 60, height: 4, borderRadius: 2, background: COLORS.bgInput }}><div style={{ width: `${Math.min(100, (Number(row.adaptiveLevel) || 0) / 10 * 100)}%`, height: "100%", borderRadius: 2, background: row.adaptiveLevel > 7 ? COLORS.danger : row.adaptiveLevel > 4 ? COLORS.warning : COLORS.success }} /></div><span style={{ fontSize: 11, color: COLORS.textMuted, fontFamily: "'JetBrains Mono', monospace" }}>{typeof row.adaptiveLevel === "number" ? row.adaptiveLevel.toFixed(1) : "—"}</span></div>) },
+            { label: "Peer", key: "zone", mono: true },
             { label: "Last Seen", key: "lastSeen", mono: true },
             { label: "", render: row => (
               <div style={{ display: "flex", gap: 4 }}>

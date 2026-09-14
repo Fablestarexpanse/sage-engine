@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import axios from "axios";
 import { useAdminTheme } from "../AdminThemeContext.jsx";
 import { API_BASE, WS_BASE } from "../apiConfig.js";
+import { useWorldSummary } from "../useWorldSummary.js";
 import {
   LS_ADMIN_TOKEN, ALL_ADMIN_TOOLS, adminWsBase, adminPresenceWsUrl, adminLogsWsUrl,
   sendWsAuthToken, parseLeadingInt, parseRoomType, extractYamlRoomId, Icons,
@@ -9,32 +10,6 @@ import {
   DataTable, StatCard, usePolledList, FetchErrorBanner,
 } from "../adminCommon.jsx";
 
-
-const MiniMap = () => {
-  const { colors: COLORS } = useAdminTheme();
-  const rooms = [
-    { x: 50, y: 10, type: "hub", label: "Entry" }, { x: 30, y: 30, type: "chamber" },
-    { x: 70, y: 30, type: "chamber" }, { x: 20, y: 50, type: "corridor" },
-    { x: 50, y: 45, type: "boss", label: "Archive" }, { x: 80, y: 50, type: "corridor" },
-    { x: 10, y: 70, type: "dead_end" }, { x: 40, y: 70, type: "hazard" },
-    { x: 60, y: 65, type: "chamber" }, { x: 90, y: 70, type: "dead_end" },
-    { x: 30, y: 85, type: "corridor" }, { x: 50, y: 90, type: "hub", label: "Depths" }, { x: 70, y: 85, type: "corridor" },
-  ];
-  const connections = [[0,1],[0,2],[1,3],[1,4],[2,4],[2,5],[3,6],[3,7],[4,7],[4,8],[5,8],[5,9],[7,10],[8,12],[10,11],[11,12]];
-  const tc = { hub: COLORS.accent, chamber: COLORS.info, corridor: COLORS.textMuted, boss: COLORS.warning, hazard: COLORS.danger, dead_end: COLORS.textDim };
-  return (
-    <svg viewBox="0 0 100 100" style={{ width: "100%", height: 200 }}>
-      <defs><filter id="glow"><feGaussianBlur stdDeviation="2" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
-      {connections.map(([a, b], i) => <line key={i} x1={rooms[a].x} y1={rooms[a].y} x2={rooms[b].x} y2={rooms[b].y} stroke={COLORS.border} strokeWidth="0.5" strokeDasharray="2,2" />)}
-      {rooms.map((r, i) => (
-        <g key={i}>
-          <circle cx={r.x} cy={r.y} r={r.type === "hub" || r.type === "boss" ? 4 : 2.5} fill={tc[r.type]} opacity={0.8} filter={r.type === "hub" ? "url(#glow)" : undefined} />
-          {r.label && <text x={r.x} y={r.y + 9} textAnchor="middle" fill={COLORS.textMuted} fontSize="4" fontFamily="'DM Sans', sans-serif">{r.label}</text>}
-        </g>
-      ))}
-    </svg>
-  );
-};
 
 const DashboardPage = () => {
   const { colors: COLORS } = useAdminTheme();
@@ -45,6 +20,7 @@ const DashboardPage = () => {
   const [sessions, setSessions] = useState([]);
   const [activityLog, setActivityLog] = useState([]);
   const [overview, setOverview] = useState(null);
+  const { summary } = useWorldSummary();
 
   const syncNexus = useCallback(async () => {
     try {
@@ -93,7 +69,7 @@ const DashboardPage = () => {
         const data = JSON.parse(event.data);
         if (data.type === "log") {
           setActivityLog((prev) => [
-            { time: new Date().toLocaleTimeString(), type: "info", msg: data.content },
+            { time: new Date().toLocaleTimeString(), type: data.level === "error" || data.level === "critical" ? "danger" : data.level === "warning" ? "warning" : "info", msg: data.content },
             ...prev.slice(0, 120),
           ]);
         }
@@ -115,7 +91,6 @@ const DashboardPage = () => {
     location: p.room_id || "—",
     peer: typeof p.peer === "string" ? p.peer : JSON.stringify(p.peer ?? "—"),
     lastSeen: "now",
-    adaptiveLevel: 0,
   }));
 
   const onlineTableRows = onlineFromApi;
@@ -124,7 +99,12 @@ const DashboardPage = () => {
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: COLORS.text, fontFamily: "'Space Grotesk', sans-serif" }}>World Overview</h2>
+          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: COLORS.text, fontFamily: "'Space Grotesk', sans-serif" }}>{summary?.world?.name || "World overview"}</h2>
+          {summary?.world && (
+            <p style={{ margin: "2px 0 0", fontSize: 12, color: COLORS.textMuted, fontFamily: "'JetBrains Mono', monospace" }}>
+              world {summary.world.id} {summary.world.version} · {summary.world.path} · {summary.plugins?.length ?? 0} plugins
+            </p>
+          )}
           <p style={{ margin: "4px 0 0", fontSize: 12, color: COLORS.textMuted, fontFamily: "'JetBrains Mono', monospace" }}>
             Local time {time.toLocaleTimeString()} · ticks {serverStatus.tick_count}
             {typeof serverStatus.uptime_seconds === "number" && serverStatus.uptime_seconds > 0 && (
@@ -139,11 +119,23 @@ const DashboardPage = () => {
           <span style={{ fontSize: 12, color: serverStatus.is_running ? COLORS.success : COLORS.danger, fontWeight: 600, fontFamily: "'DM Sans', sans-serif" }}>
             {serverStatus.is_running ? "Engine online" : "Nexus unreachable"}
           </span>
-          <span style={{ fontSize: 11, color: COLORS.textDim, padding: "0 8px", fontFamily: "'JetBrains Mono', monospace" }}>v0.4.1-dev</span>
+          {summary?.engine?.version && (
+            <span style={{ fontSize: 11, color: COLORS.textDim, padding: "0 8px", fontFamily: "'JetBrains Mono', monospace" }} title="SAGE engine version">SAGE {summary.engine.version}</span>
+          )}
         </div>
       </div>
+      {/* DEV-AUTH:BEGIN */}
+      {summary?.dev_login && (
+        <div style={{ padding: "10px 14px", borderRadius: 8, border: `1px dashed ${COLORS.warning}`, background: COLORS.warningBg, color: COLORS.warning, fontSize: 12, fontFamily: "'DM Sans', sans-serif" }}>
+          Passwordless dev logins are on (server.dev_login). Local development only: turn it off on any shared or networked host.
+        </div>
+      )}
+      {/* DEV-AUTH:END */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14 }}>
-        <StatCard label="Players Online" value={String(serverStatus.active_sessions)} color={COLORS.success} icon={<Icons.Players />} />
+        <StatCard label="Players online" value={String(summary?.online?.players ?? serverStatus.active_sessions)} color={COLORS.success} icon={<Icons.Players />} />
+        {(summary?.online?.agents ?? 0) > 0 && (
+          <StatCard label="Agents online" value={String(summary.online.agents)} color={COLORS.info} icon={<Icons.Players />} title="Computer-controlled characters (agents plugin)" />
+        )}
         <StatCard label="Rooms w/ players" value={String(occupiedRooms)} color={COLORS.accent} icon={<Icons.Map />} title="Distinct room_id values from Redis for authenticated sessions" />
         <StatCard label="Zones / Rooms" value={overview ? `${overview.zone_count} / ${overview.room_count}` : "—"} color={COLORS.info} icon={<Icons.World />} />
         <StatCard label="Entity templates" value={overview ? String(overview.entity_templates ?? 0) : "—"} color={COLORS.warning} icon={<Icons.Entities />} title="Distinct spawn definitions across room YAML" />
@@ -171,7 +163,7 @@ const DashboardPage = () => {
           <div style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: 280, overflowY: "auto", fontFamily: "'JetBrains Mono', monospace", fontSize: 11.5 }}>
             {activityLog.length === 0 && (
               <div style={{ padding: "12px 8px", color: COLORS.textMuted, fontFamily: "'DM Sans', sans-serif", fontSize: 12, lineHeight: 1.5 }}>
-                No log lines yet. With the engine running, connect to Nexus and watch this feed when the server broadcasts to <code style={{ color: COLORS.textDim }}>/ws/logs</code>.
+                No warnings or errors since you opened this page. Server log lines at WARNING and above appear here as they happen.
               </div>
             )}
             {activityLog.map((entry, i) => (
@@ -184,12 +176,19 @@ const DashboardPage = () => {
           </div>
         </div>
         <div style={{ background: COLORS.bgCard, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: "16px 18px", display: "flex", flexDirection: "column", gap: 10 }}>
-          <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: COLORS.text, fontFamily: "'DM Sans', sans-serif", display: "flex", alignItems: "center", gap: 8 }}><Icons.Map /> Labyrinth Topology</h3>
-          <MiniMap />
-          <div style={{ display: "flex", gap: 14, flexWrap: "wrap", justifyContent: "center" }}>
-            {[{ label: "Hub", color: COLORS.accent }, { label: "Chamber", color: COLORS.info }, { label: "Boss", color: COLORS.warning }, { label: "Hazard", color: COLORS.danger }].map(l => (
-              <div key={l.label} style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                <StatusDot color={l.color} /><span style={{ fontSize: 10, color: COLORS.textMuted, fontFamily: "'DM Sans', sans-serif" }}>{l.label}</span>
+          <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: COLORS.text, fontFamily: "'DM Sans', sans-serif", display: "flex", alignItems: "center", gap: 8 }}><Icons.Content /> Plugins loaded</h3>
+          {!summary && <div style={{ fontSize: 12, color: COLORS.textMuted }}>Loading…</div>}
+          {summary && summary.plugins.length === 0 && (
+            <div style={{ fontSize: 12, color: COLORS.textMuted, fontFamily: "'DM Sans', sans-serif" }}>This world enables no plugins. Enable them in its world.toml [plugins].</div>
+          )}
+          <div style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: 280, overflowY: "auto" }}>
+            {(summary?.plugins || []).map((pl) => (
+              <div key={pl.id} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, fontFamily: "'JetBrains Mono', monospace", padding: "4px 2px" }} title={pl.path}>
+                <span style={{ color: COLORS.text, fontWeight: 600 }}>{pl.id}</span>
+                <span style={{ color: COLORS.textDim }}>{pl.version}</span>
+                <span style={{ marginLeft: "auto" }}>
+                  <Badge color={pl.source === "world" ? COLORS.accent : COLORS.info}>{pl.source === "world" ? "world plugin" : "shared"}</Badge>
+                </span>
               </div>
             ))}
           </div>
@@ -204,7 +203,6 @@ const DashboardPage = () => {
           { label: "State", key: "class", mono: true },
           { label: "Location", key: "location", mono: true, title: "room_id from Redis when logged in" },
           { label: "Peer", key: "peer", mono: true },
-          { label: "Adaptive", render: row => <Badge color={row.adaptiveLevel > 7 ? COLORS.danger : row.adaptiveLevel > 4 ? COLORS.warning : COLORS.success}>{typeof row.adaptiveLevel === "number" ? row.adaptiveLevel.toFixed(1) : "—"}</Badge> },
         ]} rows={onlineTableRows} />
       </div>
     </div>

@@ -1,0 +1,21 @@
+id: start:workshop
+zone: start
+type: room
+depth: 1
+description:
+  base: Tools hang in tidy rows above a long workbench scarred by years of use. Shavings curl on the floor. The door west opens onto the square.
+exits:
+  west:
+    destination: start:commons
+    description: The door back to the square.
+features:
+- id: workbench
+  name: workbench
+  keywords:
+  - workbench
+  - bench
+  - tools
+  description: Half a chair lies clamped to the bench, waiting to be finished.
+entity_spawns: []
+tags: []
+name: Workshop

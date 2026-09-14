@@ -177,6 +177,11 @@ async def load_admin_context_from_id(server: Any, staff_id: int) -> AdminContext
 
 
 def is_public_admin_path(path: str) -> bool:
+    from sage.admin.player_client import is_client_path
+
+    # The player client's own files (index, assets); only a built client is served there.
+    if is_client_path(path):
+        return True
     if path in ("/status", "/play/health", "/docs", "/openapi.json", "/redoc"):
         return True
     if path.startswith("/play/"):

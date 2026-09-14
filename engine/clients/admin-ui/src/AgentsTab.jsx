@@ -174,14 +174,14 @@ function ProgressChart({ progress }) {
   );
 }
 
-function StatBoard() {
+function StatBoard({ base }) {
   const { colors: COLORS } = useAdminTheme();
   const [board, setBoard] = useState(null);
   const [error, setError] = useState("");
 
   const refresh = useCallback(async () => {
     try {
-      const r = await axios.get(`${API_BASE}/plugins/agents/admin/statboard`);
+      const r = await axios.get(`${API_BASE}${base}/statboard`);
       setBoard(r.data);
       setError("");
     } catch (e) {
@@ -268,7 +268,8 @@ function StatBoard() {
   );
 }
 
-export default function AgentsTab() {
+// base: the agents plugin's admin URL from GET /admin/plugin-pages (e.g. /plugins/agents/admin).
+export default function AgentsTab({ pluginBase: base = "/plugins/agents/admin" }) {
   const { colors: COLORS } = useAdminTheme();
   const [view, setView] = useState("watch");
   const [rows, setRows] = useState([]);
@@ -282,7 +283,7 @@ export default function AgentsTab() {
 
   const refresh = useCallback(async () => {
     try {
-      const r = await axios.get(`${API_BASE}/plugins/agents/admin/agents`);
+      const r = await axios.get(`${API_BASE}${base}/agents`);
       setRows(Array.isArray(r.data) ? r.data : []);
       setError("");
     } catch (e) {
@@ -294,9 +295,9 @@ export default function AgentsTab() {
     if (!id) return;
     try {
       const [d, p, y] = await Promise.all([
-        axios.get(`${API_BASE}/plugins/agents/admin/agents/${encodeURIComponent(id)}`).catch(() => null),
-        axios.get(`${API_BASE}/plugins/agents/admin/agents/${encodeURIComponent(id)}/pov`).catch(() => null),
-        axios.get(`${API_BASE}/plugins/agents/admin/agents/${encodeURIComponent(id)}/persona`).catch(() => null),
+        axios.get(`${API_BASE}${base}/agents/${encodeURIComponent(id)}`).catch(() => null),
+        axios.get(`${API_BASE}${base}/agents/${encodeURIComponent(id)}/pov`).catch(() => null),
+        axios.get(`${API_BASE}${base}/agents/${encodeURIComponent(id)}/persona`).catch(() => null),
       ]);
       setDetail(d?.data ?? null);
       setPov(p?.data?.pov ?? []);
@@ -322,7 +323,7 @@ export default function AgentsTab() {
   const act = async (id, action, body) => {
     setBusy(true);
     try {
-      await axios.post(`${API_BASE}/plugins/agents/admin/agents/${encodeURIComponent(id)}/${action}`, body ?? {});
+      await axios.post(`${API_BASE}${base}/agents/${encodeURIComponent(id)}/${action}`, body ?? {});
       await refresh();
       await loadDetail(id);
     } catch (e) {
@@ -337,7 +338,7 @@ export default function AgentsTab() {
     setBusy(true);
     setPersonaMsg("");
     try {
-      const r = await axios.put(`${API_BASE}/plugins/agents/admin/agents/${encodeURIComponent(selectedId)}/persona`, {
+      const r = await axios.put(`${API_BASE}${base}/agents/${encodeURIComponent(selectedId)}/persona`, {
         yaml_text: personaText,
       });
       setPersonaMsg(r.data?.applies === "on_restart" ? "Saved — restart the agent to apply." : "Saved.");
@@ -380,7 +381,7 @@ export default function AgentsTab() {
       {viewBtn("watch", "Watch")}
       {viewBtn("stats", "Stat board")}
     </div>
-    {view === "stats" ? <StatBoard /> : (
+    {view === "stats" ? <StatBoard base={base} /> : (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(420px, 1fr) minmax(360px, 1fr)", gap: 16, alignItems: "start" }}>
       <div style={{ background: COLORS.bgCard, border: `1px solid ${COLORS.border}`, borderRadius: 10, overflow: "hidden" }}>
         <div style={{ padding: "10px 12px", fontWeight: 700, fontSize: 13, color: COLORS.text, borderBottom: `1px solid ${COLORS.border}` }}>

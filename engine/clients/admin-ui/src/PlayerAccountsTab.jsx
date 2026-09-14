@@ -418,7 +418,7 @@ function AccountEditForm({ detail, disabled, onSave, onGrantBundleCredits, econo
             >
               {b.label}
               <span style={{ display: "block", fontSize: 9, fontWeight: 500, color: COLORS.textMuted, marginTop: 2 }}>
-                +{b.credits} px · {b.blurb}
+                +{b.credits} {economy?.currency_display_name || "credits"} · {b.blurb}
               </span>
             </button>
           ))}
