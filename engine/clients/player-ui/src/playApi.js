@@ -152,6 +152,12 @@ export async function playFetchWorld() {
   return handlePlayResponse(r);
 }
 
+/** The running world's command names: { commands: [...] }. No auth. */
+export async function playFetchCommands() {
+  const r = await fetch(`${base()}/play/commands`);
+  return handlePlayResponse(r);
+}
+
 /** The world's character-creation options (for this world: the skill catalog with budget and caps). No auth. */
 export async function playFetchProficiencyCatalog() {
   const r = await fetch(`${base()}/play/chargen/options`);

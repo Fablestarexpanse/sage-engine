@@ -10,6 +10,9 @@ exits:
   east:
     destination: riverside:reed_path
     description: Back onto firmer reeds.
+  north:
+    destination: riverside:eel_weirs
+    description: Wade back across the shallows to the weirs.
 features:
 - id: wreck_ribs
   name: wreck ribs

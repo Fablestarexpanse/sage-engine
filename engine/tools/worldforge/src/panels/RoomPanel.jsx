@@ -1,12 +1,13 @@
+import ExtensionBlocks from "../components/ExtensionBlocks.jsx";
+import { ALL_DIRECTIONS } from "../utils/worldSchema.js";
 import { useMemo, useState } from "react";
 import yaml from "js-yaml";
 import { useTheme } from "../ThemeContext.jsx";
 import SceneArtPanel from "../components/SceneArtPanel.jsx";
 import { roomPanelChrome } from "./roomPanelChrome.js";
 
-const TABS = ["General", "Scene", "Exits", "Features", "Hazards", "Entities", "YAML"];
+const TABS = ["General", "Scene", "Exits", "Features", "Plugins", "Entities", "YAML"];
 
-const roomTypes = ["chamber", "corridor", "junction", "alcove", "descent", "danger", "safe", "boss", "hub", "command", "engineering", "airlock"];
 
 export { roomPanelChrome };
 
@@ -28,6 +29,9 @@ export default function RoomPanel({
   roomIndexForPicker,
   nexusUrl,
   nexusToken,
+  roomTypes = [],
+  exitDirs,
+  worldSchema = null,
 }) {
   const { colors: COLORS } = useTheme();
   const { lbl, inp, btn, btnPrimary, btnDanger } = useMemo(() => roomPanelChrome(COLORS), [COLORS]);
@@ -105,7 +109,6 @@ export default function RoomPanel({
   };
 
   const features = Array.isArray(merged.features) ? merged.features : [];
-  const hazards = Array.isArray(merged.hazards) ? merged.hazards : [];
   const spawns = Array.isArray(merged.entity_spawns) ? merged.entity_spawns : [];
 
   const pickerOptions = useMemo(() => {
@@ -251,7 +254,7 @@ export default function RoomPanel({
             />
             <label style={lbl}>Type</label>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
-              {roomTypes.map((rt) =>
+              {(merged.type && !roomTypes.includes(merged.type) ? [...roomTypes, merged.type] : roomTypes).map((rt) =>
                 pill(merged.type === rt, () => updateField("type", rt), rt)
               )}
             </div>
@@ -424,17 +427,24 @@ export default function RoomPanel({
             ))}
             <AddExitForm
               existing={Object.keys(exits)}
+              directions={exitDirs}
               onAdd={(dir) => setExit(dir, { destination: "", description: "" })}
             />
           </div>
         )}
 
         {tab === "Features" && (
-          <FeatureList features={features} onChange={(nf) => onChangeRoom({ ...merged, features: nf })} />
+          <FeatureList features={features} worldSchema={worldSchema} onChange={(nf) => onChangeRoom({ ...merged, features: nf })} />
         )}
 
-        {tab === "Hazards" && (
-          <HazardList hazards={hazards} onChange={(nh) => onChangeRoom({ ...merged, hazards: nh })} />
+        {tab === "Plugins" && (
+          <ExtensionBlocks
+            worldSchema={worldSchema}
+            kind="room"
+            doc={merged}
+            onChange={(next) => onChangeRoom(next)}
+            emptyNote="No enabled plugin adds fields to rooms in this world."
+          />
         )}
 
         {tab === "Entities" && (
@@ -487,21 +497,10 @@ export default function RoomPanel({
   );
 }
 
-function AddExitForm({ existing, onAdd }) {
+function AddExitForm({ existing, onAdd, directions = ALL_DIRECTIONS }) {
   const { colors: COLORS } = useTheme();
   const { btn } = useMemo(() => roomPanelChrome(COLORS), [COLORS]);
-  const dirs = [
-    "north",
-    "south",
-    "east",
-    "west",
-    "northeast",
-    "northwest",
-    "southeast",
-    "southwest",
-    "up",
-    "down",
-  ].filter((d) => !existing.includes(d));
+  const dirs = directions.filter((d) => !existing.includes(d));
   if (!dirs.length) return null;
   return (
     <div style={{ marginTop: 8 }}>
@@ -515,7 +514,7 @@ function AddExitForm({ existing, onAdd }) {
   );
 }
 
-function FeatureList({ features, onChange }) {
+function FeatureList({ features, onChange, worldSchema }) {
   const { colors: COLORS } = useTheme();
   const { lbl, inp, btnPrimary, btnDanger } = useMemo(() => roomPanelChrome(COLORS), [COLORS]);
   const add = () => onChange([...features, { id: `f_${Date.now()}`, name: "", keywords: [], description: "", interaction: "examine" }]);
@@ -543,6 +542,18 @@ function FeatureList({ features, onChange }) {
             nf[i] = { ...f, interaction: e.target.value };
             onChange(nf);
           }} />
+          <div style={{ marginTop: 6 }}>
+            <ExtensionBlocks
+              worldSchema={worldSchema}
+              kind="feature"
+              doc={f}
+              onChange={(next) => {
+                const nf = [...features];
+                nf[i] = next;
+                onChange(nf);
+              }}
+            />
+          </div>
           <button type="button" style={btnDanger} onClick={() => onChange(features.filter((_, j) => j !== i))}>
             Remove
           </button>
@@ -550,46 +561,6 @@ function FeatureList({ features, onChange }) {
       ))}
       <button type="button" style={btnPrimary} onClick={add}>
         + Feature
-      </button>
-    </div>
-  );
-}
-
-function HazardList({ hazards, onChange }) {
-  const { colors: COLORS } = useTheme();
-  const { lbl, inp, btnPrimary, btnDanger } = useMemo(() => roomPanelChrome(COLORS), [COLORS]);
-  const add = () => onChange([...hazards, { id: `h_${Date.now()}`, type: "trap", severity: 1, description: "" }]);
-  return (
-    <div>
-      {hazards.map((h, i) => (
-        <div key={i} style={{ marginBottom: 10, padding: 8, background: COLORS.bgCard, borderRadius: 8 }}>
-          <input style={inp} value={h.id || ""} onChange={(e) => {
-            const nh = [...hazards];
-            nh[i] = { ...h, id: e.target.value };
-            onChange(nh);
-          }} />
-          <input style={{ ...inp, marginTop: 4 }} value={h.type || ""} onChange={(e) => {
-            const nh = [...hazards];
-            nh[i] = { ...h, type: e.target.value };
-            onChange(nh);
-          }} />
-          <input type="range" min={1} max={5} value={h.severity || 1} onChange={(e) => {
-            const nh = [...hazards];
-            nh[i] = { ...h, severity: Number(e.target.value) };
-            onChange(nh);
-          }} />
-          <textarea style={{ ...inp, marginTop: 4 }} value={h.description || ""} onChange={(e) => {
-            const nh = [...hazards];
-            nh[i] = { ...h, description: e.target.value };
-            onChange(nh);
-          }} />
-          <button type="button" style={btnDanger} onClick={() => onChange(hazards.filter((_, j) => j !== i))}>
-            Remove
-          </button>
-        </div>
-      ))}
-      <button type="button" style={btnPrimary} onClick={add}>
-        + Hazard
       </button>
     </div>
   );

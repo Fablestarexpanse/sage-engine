@@ -41,7 +41,7 @@ written on demand, only after the Phase 1 contracts are approved.
 | 2c | Seams, plugin loader, lexicon, skeleton second world | done — phases 05–12, CI green |
 | 3 | Migrate Fablestar system by system | done — steps 3.1–3.20 ([phase-3-plan.md](phase-3-plan.md)), PR #10 |
 | 4 | Second reference world, full size | done — steps 4.1–4.7 ([phase-4-plan.md](phase-4-plan.md)) |
-| 5 | Tooling | decisions made (D.E); work after 2c |
+| 5 | Tooling | done — steps 5.1–5.8 ([phase-5-plan.md](phase-5-plan.md)); Nexus write-through deferred |
 
 ## Phases (stage 2a)
 

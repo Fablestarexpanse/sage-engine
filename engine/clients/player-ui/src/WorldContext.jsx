@@ -1,19 +1,27 @@
-import { createContext, useContext, useEffect, useState } from "react";
-import { playFetchWorld } from "./playApi.js";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { playFetchCommands, playFetchWorld } from "./playApi.js";
 
-/** The world this server runs (GET /play/world): its display name titles the page and headers. */
-const WorldContext = createContext({ id: "", name: "" });
+/** The world this server runs (GET /play/world): its display name titles the page and headers;
+ * its theme (ui/theme.yaml: mark, accent) restyles the client; its command names
+ * (GET /play/commands) drive input autocomplete. */
+const WorldContext = createContext({ id: "", name: "", theme: {}, commands: [] });
 
 export function WorldProvider({ children }) {
-  const [world, setWorld] = useState({ id: "", name: "" });
+  const [world, setWorld] = useState({ id: "", name: "", theme: {} });
+  const [commands, setCommands] = useState([]);
 
   useEffect(() => {
     let cancelled = false;
     playFetchWorld()
       .then((w) => {
         if (cancelled || !w || typeof w.name !== "string") return;
-        setWorld({ id: String(w.id || ""), name: w.name });
+        setWorld({ id: String(w.id || ""), name: w.name, theme: w.theme && typeof w.theme === "object" ? w.theme : {} });
         document.title = `${w.name} — Player`;
+      })
+      .catch(() => {});
+    playFetchCommands()
+      .then((c) => {
+        if (!cancelled && Array.isArray(c?.commands)) setCommands(c.commands.map(String));
       })
       .catch(() => {});
     return () => {
@@ -21,7 +29,8 @@ export function WorldProvider({ children }) {
     };
   }, []);
 
-  return <WorldContext.Provider value={world}>{children}</WorldContext.Provider>;
+  const value = useMemo(() => ({ ...world, commands }), [world, commands]);
+  return <WorldContext.Provider value={value}>{children}</WorldContext.Provider>;
 }
 
 export function useWorld() {

@@ -1,3 +1,4 @@
+import { loadWorldSchema } from "../utils/worldSchema.js";
 import { createContext, createElement, useCallback, useContext, useMemo, useReducer, useRef } from "react";
 import { joinPaths } from "../utils/paths.js";
 import { hasAnyWorldContent } from "../utils/worldScaffold.js";
@@ -21,6 +22,7 @@ import * as fs from "../utils/fsBridge.js";
  * @property {string[]} entityIds Sorted entity ids.
  * @property {Record<string, object>} items Item id -> item template YAML.
  * @property {string[]} itemIds Sorted item ids.
+ * @property {object|null} worldSchema The package's content.schema.json (world lists, plugin fields), or null.
  * @property {boolean} loading True while a full loadAll() scan is in flight.
  * @property {string|null} loadError Set when loadAll() fails; cleared on next load.
  * @property {Record<string, boolean>} dirtyPaths Reserved for future dirty-file tracking.
@@ -38,6 +40,7 @@ const initialState = {
   entityIds: [],
   items: {},
   itemIds: [],
+  worldSchema: null,
   loading: false,
   loadError: null,
   dirtyPaths: {},
@@ -81,6 +84,7 @@ export function reducer(state, action) {
         entityIds,
         items,
         itemIds,
+        worldSchema,
         contentRoot,
         worldRoot,
       } = action.payload;
@@ -94,6 +98,7 @@ export function reducer(state, action) {
         entityIds,
         items,
         itemIds,
+        worldSchema,
         loading: action.type === "LOAD_ALL_DONE" ? false : state.loading,
         loadError: action.type === "LOAD_ALL_DONE" ? null : state.loadError,
         dirtyPaths: {},
@@ -303,6 +308,8 @@ async function scanWorldContent(contentRoot, worldRoot) {
   const ent = await loadYamlDir(worldRoot, "entities");
   const it = await loadYamlDir(worldRoot, "items");
 
+  const worldSchema = await loadWorldSchema(fs, worldRoot);
+
   return {
     contentRoot,
     worldRoot,
@@ -312,6 +319,7 @@ async function scanWorldContent(contentRoot, worldRoot) {
     entityIds: ent.ids,
     items: it.map,
     itemIds: it.ids,
+    worldSchema,
   };
 }
 

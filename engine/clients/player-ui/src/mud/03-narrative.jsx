@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { usePlayTheme } from "../PlayThemeContext.jsx";
+import { useWorld } from "../WorldContext.jsx";
 import { EntitySpan } from "./02-entity.jsx";
 import {
   playSuggestScenePrompt,
@@ -1351,8 +1352,8 @@ export function CommandInput({ onSubmitCommand }) {
   const [histIdx, setHistIdx] = useState(-1);
   const [suggestions, setSuggestions] = useState([]);
   const inputRef = useRef(null);
-  // Mirrors the server's command registry (engine/src/sage/commands); keep in sync when adding commands.
-  const CMDS = ["achievements","attack","bonus","browse","buy","cap","craft","deconstruct","down","drop","east","effects","emote","equip","examine","factions","flee","help","inventory","lock","look","lower","map","missions","north","northeast","northwest","prof","quit","raise","recipes","rent","rest","say","score","search","sell","south","southeast","southwest","take","tell","unequip","up","use","wallet","west","who"];
+  // The running world's commands, from the server (GET /play/commands).
+  const { commands: CMDS } = useWorld();
   const handleKey = (e) => {
     if (e.key === "Enter" && value.trim()) {
       const cmd = value.trim();
@@ -1368,7 +1369,7 @@ export function CommandInput({ onSubmitCommand }) {
   useEffect(() => {
     if (value.trim() && !value.includes(" ")) { setSuggestions(CMDS.filter(c => c.startsWith(value.toLowerCase())).slice(0, 6)); }
     else setSuggestions([]);
-  }, [value]);
+  }, [value, CMDS]);
 
   return (
     <div style={{ position: "relative" }}>

@@ -10,6 +10,7 @@ const initialState = {
   entityIds: [],
   items: {},
   itemIds: [],
+  worldSchema: null,
   loading: false,
   loadError: null,
   dirtyPaths: {},
@@ -62,10 +63,12 @@ describe("useContentStore reducer", () => {
       entityIds: ["e1"],
       items: {},
       itemIds: [],
+      worldSchema: { content: { room_types: ["street"] } },
       contentRoot: "/picked",
       worldRoot: "/picked/content/world",
     };
     const next = reducer(state, { type: "SOFT_LOAD_DONE", payload });
+    expect(next.worldSchema).toEqual({ content: { room_types: ["street"] } });
     expect(next.zones).toEqual({ z1: { rooms: {} } });
     expect(next.entityIds).toEqual(["e1"]);
     expect(next.contentRoot).toBe("/picked");

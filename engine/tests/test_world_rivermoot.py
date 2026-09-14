@@ -268,3 +268,14 @@ def test_ai_is_text_only_with_its_own_voice(rivermoot):
     style = load_style(world.style_path)
     assert "river town" in style.system_prompt
     assert any(re.search(rule, "it cost 4 silver") for rule in style.rules())
+
+
+def test_validate_cli_reports_and_exits_on_errors(capsys):
+    from sage.cli import main
+
+    assert main(["validate", "--world", "rivermoot"]) == 0
+    out = capsys.readouterr().out
+    assert "rivermoot (30 rooms): 0 error(s), 0 warning(s)" in out
+    assert main(["validate", "--world", "rivermoot", "--zone", "millward", "--info"]) == 0
+    assert "info: millward:mill_loft: dead end" in capsys.readouterr().out
+    assert main(["validate", "--world", "nowhere"]) == 2

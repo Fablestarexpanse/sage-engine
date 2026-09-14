@@ -5,6 +5,8 @@ import { resolveExitDestination } from "./zoneGraph.js";
  * @property {string} [zoneId] Zone being validated (used to label cross-zone exits).
  * @property {string[]} [entityIds] Known entity template ids — spawns referencing others error.
  * @property {string[]} [itemIds] Known item ids — loot referencing others errors.
+ * @property {string[]} [roomTypes] The world's room types; other types error (empty: unchecked).
+ * @property {string[]} [exitDirs] The world's exit directions; others error (empty: unchecked).
  * @property {Object<string, string[]>} [entityLoot] Map of entity id → loot item ids.
  * @property {string[]} [allRoomIds] Every room id across zones (for cross-zone exit checks).
  */
@@ -20,8 +22,7 @@ import { resolveExitDestination } from "./zoneGraph.js";
  * @param {import('@xyflow/react').Node[]} nodes
  * @param {import('@xyflow/react').Edge[]} edges
  * @param {ZoneValidationCtx & { externalExits?: ExternalExitRef[] }} [opts] Validation context; `externalExits`
- *   plus the same fields as {@link ZoneValidationCtx}, matching the options-object convention used by
- *   `collectItemIssues` in itemValidation.js.
+ *   plus the same fields as {@link ZoneValidationCtx}.
  * @returns {{level: "error"|"warn", msg: string, nodeId?: string}[]}
  */
 export function runZoneValidation(nodes, edges, opts = {}) {
@@ -42,6 +43,24 @@ export function runZoneValidation(nodes, edges, opts = {}) {
   const slugById = new Map();
   nodes.forEach((n) => {
     if (n.data?.slug) slugById.set(n.id, n.data.slug);
+  });
+
+  // The world's declared room types and exit directions (content.schema.json), when it has them.
+  const typeSet = new Set(ctx.roomTypes || []);
+  const dirSet = new Set(ctx.exitDirs || []);
+  nodes.forEach((n) => {
+    const raw = n.data?.raw || {};
+    const label = n.data?.label || n.id;
+    if (typeSet.size && raw.type && !typeSet.has(raw.type)) {
+      issues.push({ level: "error", msg: `Room type "${raw.type}" is not one of this world's: ${label}`, nodeId: n.id });
+    }
+    if (dirSet.size && raw.exits && typeof raw.exits === "object") {
+      for (const dir of Object.keys(raw.exits)) {
+        if (!dirSet.has(dir)) {
+          issues.push({ level: "error", msg: `Exit direction "${dir}" is not one of this world's: ${label}`, nodeId: n.id });
+        }
+      }
+    }
   });
 
   nodes.forEach((n) => {

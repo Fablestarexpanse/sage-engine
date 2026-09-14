@@ -32,6 +32,19 @@ describe("runZoneValidation", () => {
     expect(msgs).toContain('unknown item "phantom_item"');
   });
 
+  it("errors on room types and exit directions the world does not declare", () => {
+    const issues = runZoneValidation(
+      [node("a", { type: "airlock", exits: { northeast: { destination: "z1:b" } } }), node("b", { type: "street" })],
+      [],
+      { zoneId: "z1", roomTypes: ["street"], exitDirs: ["north", "south"] }
+    );
+    const errors = issues.filter((i) => i.level === "error").map((i) => i.msg);
+    expect(errors).toContain(`Room type "airlock" is not one of this world's: a`);
+    expect(errors).toContain(`Exit direction "northeast" is not one of this world's: a`);
+    const unchecked = runZoneValidation([node("a", { type: "airlock" })], [], { zoneId: "z1" });
+    expect(unchecked.some((i) => i.msg.includes("not one of this world"))).toBe(false);
+  });
+
   it("warns on low feature density and reports it as info when healthy", () => {
     const empty = runZoneValidation([node("a"), node("b"), node("c")], [], { zoneId: "z1" });
     expect(empty.some((i) => i.level === "warn" && i.msg.includes("Low feature density"))).toBe(true);

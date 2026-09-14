@@ -22,7 +22,7 @@ export function ChargenProficienciesStep({
   disabled,
   onBack,
 }) {
-  const { T } = usePlayTheme();
+  const { T, mark } = usePlayTheme();
   const used = Object.values(value || {}).reduce((a, n) => a + (Number(n) || 0), 0);
   const remaining = Math.max(0, budget - used);
   const pct = budget > 0 ? Math.min(100, (used / budget) * 100) : 0;
@@ -80,7 +80,7 @@ export function ChargenProficienciesStep({
                   style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center" }}
                 />
               ) : (
-                <span style={{ fontSize: 18, color: T.hue.violet }}>◈</span>
+                <span style={{ fontSize: 18, color: T.hue.violet }}>{mark}</span>
               )}
             </div>
             <div style={{ minWidth: 0 }}>

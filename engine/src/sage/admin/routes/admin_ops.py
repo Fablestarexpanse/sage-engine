@@ -103,6 +103,13 @@ def build_admin_ops_router(server: SageServer) -> APIRouter:
     async def admin_me(request: Request):
         return get_admin_ctx(request).public_dict()
 
+    @router.get("/schema/world")
+    async def schema_world(_request: Request):
+        """The running world's content schema (sage.world.schema), for editors and forms."""
+        from sage.world.schema import content_schema
+
+        return content_schema(server.world, server.plugins.extensions)
+
     @router.get("/admin/plugin-pages")
     async def admin_plugin_pages(request: Request):
         """Plugin admin surfaces of the running world this staff member may open.
@@ -155,6 +162,18 @@ def build_admin_ops_router(server: SageServer) -> APIRouter:
         _ctx: Annotated[AdminContext, Depends(require_tool("players"))],
     ):
         return await player_accounts.list_accounts_with_counts(server)
+
+    @router.get("/admin/economy")
+    async def admin_economy(
+        _ctx: Annotated[AdminContext, Depends(require_tool("players"))],
+    ):
+        """AI art credit settings staff need when granting credits (deployment config)."""
+        c = server.config.comfyui
+        return {
+            "currency_display_name": c.currency_display_name,
+            "credits_per_usd": int(c.credits_per_usd),
+            "credit_bundles": [b.model_dump() for b in c.credit_bundles],
+        }
 
     @router.get("/admin/player-accounts/{account_id}")
     async def admin_player_accounts_get(

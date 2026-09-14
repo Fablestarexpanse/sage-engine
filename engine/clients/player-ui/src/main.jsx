@@ -8,10 +8,10 @@ import { WorldProvider } from './WorldContext.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <PlayThemeProvider>
-      <WorldProvider>
+    <WorldProvider>
+      <PlayThemeProvider>
         <App />
-      </WorldProvider>
-    </PlayThemeProvider>
+      </PlayThemeProvider>
+    </WorldProvider>
   </StrictMode>,
 )

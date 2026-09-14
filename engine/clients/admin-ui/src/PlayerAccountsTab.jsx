@@ -4,13 +4,6 @@ import { useAdminTheme } from "./AdminThemeContext.jsx";
 import { API_BASE } from "./apiConfig.js";
 
 /** Matches server comfyui.toml default: 100 credits ≈ US $1 at list. */
-const CREDITS_PER_USD_REF = 100;
-const ADMIN_CREDIT_BUNDLES = [
-  { id: "starter", label: "$4.99", credits: 500, blurb: "~100 px/$" },
-  { id: "standard", label: "$9.99", credits: 1000, blurb: "100 px/$" },
-  { id: "plus", label: "$19.99", credits: 2200, blurb: "+10% vs straight rate" },
-  { id: "best", label: "$49.99", credits: 5750, blurb: "+15% vs straight rate" },
-];
 
 function ConsoleAccessSection({ detail, accountId, disabled, onChanged }) {
   const { colors: COLORS } = useAdminTheme();
@@ -157,6 +150,18 @@ export default function PlayerAccountsTab({ focusTarget = null }) {
       setErr(parts.join(" — ") || "Failed to load accounts");
       setRows([]);
     }
+  }, []);
+
+  const [economy, setEconomy] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    axios
+      .get(`${API_BASE}/admin/economy`)
+      .then(({ data }) => alive && setEconomy(data))
+      .catch(() => alive && setEconomy(null));
+    return () => {
+      alive = false;
+    };
   }, []);
 
   const loadDetail = useCallback(async (id) => {
@@ -324,6 +329,7 @@ export default function PlayerAccountsTab({ focusTarget = null }) {
               disabled={busy}
               onSave={saveAccount}
               onGrantBundleCredits={grantBundleCredits}
+              economy={economy}
             />
 
             <div style={{ borderTop: `1px solid ${COLORS.border}`, paddingTop: 12 }}>
@@ -342,7 +348,8 @@ export default function PlayerAccountsTab({ focusTarget = null }) {
   );
 }
 
-function AccountEditForm({ detail, disabled, onSave, onGrantBundleCredits }) {
+function AccountEditForm({ detail, disabled, onSave, onGrantBundleCredits, economy }) {
+  const bundles = economy?.credit_bundles || [];
   const { colors: COLORS } = useAdminTheme();
   const inp = {
     padding: "8px 10px",
@@ -380,10 +387,13 @@ function AccountEditForm({ detail, disabled, onSave, onGrantBundleCredits }) {
         }}
       >
         <div style={{ fontSize: 11, color: COLORS.textMuted, marginBottom: 6 }}>
-          Grant purchase bundle <span style={{ fontFamily: "'JetBrains Mono', monospace", color: COLORS.textDim }}>({CREDITS_PER_USD_REF} px ≈ $1 list)</span>
+          Grant purchase bundle{economy ? <span style={{ fontFamily: "'JetBrains Mono', monospace", color: COLORS.textDim }}> ({economy.credits_per_usd} {economy.currency_display_name} ≈ $1 list)</span> : null}
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {ADMIN_CREDIT_BUNDLES.map((b) => (
+          {bundles.length === 0 ? (
+            <span style={{ fontSize: 11, color: COLORS.textDim }}>No bundles configured ([[credit_bundles]] in config/comfyui.toml).</span>
+          ) : null}
+          {bundles.map((b) => (
             <button
               key={b.id}
               type="button"
