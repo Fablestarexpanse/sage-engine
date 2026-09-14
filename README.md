@@ -5,7 +5,7 @@
 > over this file, which still describes the pre-split Fablestar-only shape. Audit:
 > `docs/sage/PHASE0_AUDIT.md`.
 
-[![Repository](https://img.shields.io/badge/GitHub-FablestarExpanseMUD-181717?logo=github)](https://github.com/Fablestarexpanse/FablestarExpanseMUD)
+[![Repository](https://img.shields.io/badge/GitHub-sage--engine-181717?logo=github)](https://github.com/Fablestarexpanse/sage-engine)
 
 A sci-fi MUD engine built for rapid iteration: deterministic Python game logic, optional local-LLM narration, AI-generated character portraits and scene art, and a desktop map editor for building the world visually.
 
