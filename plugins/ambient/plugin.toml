@@ -1,0 +1,12 @@
+# Ambient: rooms with an `ambient:` block drip atmosphere lines to whoever is in them.
+[plugin]
+id = "ambient"
+name = "Ambient"
+version = "1.0.0"
+engine = ">=0.2,<0.3"
+entry = "sage_plugin_ambient.main:setup"
+first_party = true
+
+[touches]
+tick_jobs = ["ambient"]
+content_extensions = ["room.ambient"]

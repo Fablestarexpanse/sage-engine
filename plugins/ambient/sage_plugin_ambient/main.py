@@ -1,26 +1,32 @@
 """
-AmbientManager — periodic room atmosphere lines (Epitaph-style room chats).
+Ambient plugin — periodic room atmosphere lines.
 
-Runs on the tick loop like EntitySpawnManager and, like it, only looks at
-rooms that currently hold players. Each occupied room with an `ambient:`
-block gets a random line every min_interval..max_interval seconds; motion
-belongs here, never in static descriptions (docs/design/EPITAPH_LESSONS.md).
+Only rooms that currently hold connected characters are considered. Each occupied room with an
+`ambient:` block gets a random line every min_interval..max_interval seconds; motion belongs here,
+never in static descriptions.
 """
+
+from __future__ import annotations
 
 import logging
 import random
 import time
-from typing import TYPE_CHECKING
 
-from sage.world.models import AmbientModel
+from pydantic import BaseModel, Field
 
-if TYPE_CHECKING:
-    from sage.server import SageServer
+from sage.api import PluginAPI
 
 logger = logging.getLogger(__name__)
 
-# 4 Hz tick → check every 8 ticks = 2 s; cheap because occupied rooms only.
-AMBIENT_CHECK_INTERVAL = 8
+CHECK_SECONDS = 2.0  # cheap: occupied rooms only
+
+
+class AmbientModel(BaseModel):
+    """`ambient:` — occasional atmosphere lines shown to characters in the room."""
+
+    lines: list[str] = Field(min_length=1)
+    min_interval: float = Field(default=45.0, gt=0)
+    max_interval: float = Field(default=120.0, gt=0)
 
 
 def pick_line(ambient: AmbientModel, last_line: str | None, rng: random.Random) -> str:
@@ -34,21 +40,18 @@ def next_due(ambient: AmbientModel, now: float, rng: random.Random) -> float:
     return now + rng.uniform(lo, hi)
 
 
-class AmbientManager:
-    def __init__(self, server: "SageServer", rng: random.Random | None = None):
-        self.server = server
+class AmbientDirector:
+    def __init__(self, api: PluginAPI, rng: random.Random | None = None):
+        self.api = api
         self.rng = rng or random.Random()
         # room_id -> monotonic timestamp when the next line is due
         self._due: dict[str, float] = {}
         self._last_line: dict[str, str] = {}
 
-    async def on_tick(self, tick_count: int):
-        if tick_count % AMBIENT_CHECK_INTERVAL != 0:
-            return
-
+    async def on_check(self, tick: int) -> None:
         occupied: dict[str, list[str]] = {}
-        for player_id in list(self.server.session_manager.player_to_session):
-            room_id = await self.server.redis.get_player_location(player_id)
+        for player_id in self.api.sessions.online():
+            room_id = await self.api.state.location(player_id)
             if room_id:
                 occupied.setdefault(room_id, []).append(player_id)
 
@@ -60,23 +63,29 @@ class AmbientManager:
 
         now = time.monotonic()
         for room_id, player_ids in occupied.items():
-            room = self.server.content_loader.get_room(room_id)
-            if not room or not room.ambient:
+            room = self.api.content.room(room_id)
+            ambient = self.api.content.extension(room, "room", "ambient") if room else None
+            if ambient is None:
                 continue
             due = self._due.get(room_id)
             if due is None:
                 # First sighting: schedule ahead rather than firing on entry.
-                self._due[room_id] = next_due(room.ambient, now, self.rng)
+                self._due[room_id] = next_due(ambient, now, self.rng)
                 continue
             if now < due:
                 continue
-            line = pick_line(room.ambient, self._last_line.get(room_id), self.rng)
+            line = pick_line(ambient, self._last_line.get(room_id), self.rng)
             self._last_line[room_id] = line
-            self._due[room_id] = next_due(room.ambient, now, self.rng)
+            self._due[room_id] = next_due(ambient, now, self.rng)
             for player_id in player_ids:
-                session = self.server.session_manager.get_session_by_player(player_id)
+                session = self.api.sessions.get(player_id)
                 if session:
                     try:
-                        await session.send(f"\r\n{line}")
+                        await session.send(line)
                     except Exception as exc:
                         logger.debug("Ambient send failed for %s: %s", player_id, exc)
+
+
+def setup(api: PluginAPI) -> None:
+    api.content.extend("room", "ambient", AmbientModel)
+    api.tick.every(CHECK_SECONDS, AmbientDirector(api).on_check, name="ambient")

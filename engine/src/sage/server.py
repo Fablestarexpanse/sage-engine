@@ -40,7 +40,6 @@ from sage.state.models import Character
 from sage.state.persistence import PersistenceManager
 from sage.state.postgres import PostgresState
 from sage.state.redis_client import RedisState
-from sage.world.ambient import AmbientManager
 from sage.world.loader import ContentLoader
 from sage.world.package import select_world
 from sage.world.spawner import EntitySpawnManager
@@ -103,7 +102,6 @@ class SageServer:
         self.content_loader = ContentLoader(self.world.content_dir)
         content_browser.set_content_root(self.world.content_dir)
         self.spawner = EntitySpawnManager(self)
-        self.ambient = AmbientManager(self)
         self.effects = EffectsManager(self)
         self.hot_reloader = HotReloader(self._on_file_changed)
         self.dispatcher = CommandDispatcher(events=self.events)
@@ -373,7 +371,6 @@ class SageServer:
 
         # 2. Tick handlers — must be registered before the tick loop starts in step 4
         self.tick_manager.register(self.spawner.on_tick)
-        self.tick_manager.register(self.ambient.on_tick)
         self.tick_manager.register(self.effects.on_tick)
         self.tick_manager.register(self.persistence.on_tick)
 

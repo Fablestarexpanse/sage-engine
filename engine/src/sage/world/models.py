@@ -26,14 +26,6 @@ class EntitySpawnModel(BaseModel):
     max_count: int = 1
 
 
-class AmbientModel(BaseModel):
-    """Occasional atmosphere lines shown to players in the room (Epitaph 'room chats')."""
-
-    lines: list[str] = Field(min_length=1)
-    min_interval: float = Field(default=45.0, gt=0)
-    max_interval: float = Field(default=120.0, gt=0)
-
-
 class RoomModel(BaseModel):
     # Unknown fields are kept: plugins claim them as content extensions (sage.world.extensions).
     model_config = ConfigDict(extra="allow")
@@ -48,7 +40,6 @@ class RoomModel(BaseModel):
     exits: dict[str, ExitModel] = Field(default_factory=dict)
     features: list[FeatureModel] = Field(default_factory=list)
     entity_spawns: list[EntitySpawnModel] = Field(default_factory=list)
-    ambient: AmbientModel | None = None
     tags: set[str] = Field(default_factory=set)
 
 
