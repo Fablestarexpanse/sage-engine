@@ -399,7 +399,7 @@ function AuthSignInForm({ onLoggedIn }) {
         setBusy(false);
         return;
       }
-      onLoggedIn(mapPlayAuthPayload(res), "", res.character_id);
+      onLoggedIn({ ...mapPlayAuthPayload(res), devCharacterId: res.character_id }, "");
     } catch (err) {
       setError(err.message || "Network error — is the Nexus running?");
     }
@@ -2103,9 +2103,9 @@ export default function App() {
   // DEV-AUTH:BEGIN — dev login may name its character up front; skip the chooser for it.
   const devAutoCharacterRef = useRef(null);
   // DEV-AUTH:END
-  const onLoggedIn = useCallback((a, pw, ...devArgs) => {
+  const onLoggedIn = useCallback((a, pw) => {
     // DEV-AUTH:BEGIN
-    devAutoCharacterRef.current = devArgs[0] ?? null;
+    devAutoCharacterRef.current = a.devCharacterId ?? null;
     // DEV-AUTH:END
     passwordRef.current = pw;
     setAuth(a);
