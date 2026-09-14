@@ -3,18 +3,27 @@
 Status: **proposal, awaiting owner review.** Nothing in this document is implemented. Scaffold
 work starts only after it is approved.
 
+Revised 2026-09-14 after owner feedback: *starting a world should not include building the map,
+which is the tools' job (the map builder); get the player set up with the engine first, world
+building second; the engine can come with a default four-room start as a demo.* Onboarding is
+therefore two stages: **(1) the engine running a bundled demo world**, then **(2) building your
+own world with the tools.**
+
 SAGE's seams hold: `sage.api` is the only import surface for plugins, `[touches]` seals what a
 plugin may do, and Rivermoot runs a different world on the same engine code. What is missing is
-the road from a stranger's `git clone` to their own running world. This plan measures that road
-as it is today, sets a target, and designs the commands and the tutorial that get there.
+the road from a stranger's `git clone` to a running engine, and from there to a world of their
+own. This plan measures that road as it is today, sets a target for each stage, and designs the
+commands, the demo world and the tutorial that get there.
 
 ---
 
 ## 1. Target experience
 
-**Success:** a newcomer goes from `git clone` to walking around a three-room world they created,
-and changes something they can see, in **under 15 minutes of wall-clock time, with 6 commands, one
-terminal, and no file edited by hand before they first play.**
+### Stage 1: the engine running, playing the demo
+
+**Success:** a newcomer goes from `git clone` to walking around the bundled four-room demo world,
+and changes something they can see, in **under 10 minutes of wall-clock time, with 5 commands,
+one terminal, and no file edited by hand.**
 
 Prerequisites: Python 3.11+, Node.js LTS, Docker, and Git are already installed. Installing them is
 outside this budget, as it is for every engine's getting-started page.
@@ -23,28 +32,36 @@ outside this budget, as it is for every engine's getting-started page.
 git clone https://github.com/Fablestarexpanse/sage-engine && cd sage-engine   # 1
 python -m venv .venv && . .venv/bin/activate                                   # 2  (Windows: .venv\Scripts\activate)
 pip install -e ./engine                                                        # 3
-sage world new mytown                                                          # 4
-sage quickstart --world mytown                                                 # 5  services, config, database, client build, server
-# 6: open http://localhost:8001, press "Play", walk around.
+sage quickstart                                                                # 4  services, config, database, client build, server, demo world
+# 5: open http://localhost:8001, press "Play", walk the four demo rooms.
 ```
 
-Then, in the tutorial, edit `worlds/mytown/content/world/zones/start/rooms/courtyard.yaml` and type
-`look` to see the change appear without a restart.
+Then edit one demo room's description and type `look` to see it change without a restart. Stage 1
+ends there: the newcomer has a working engine and has seen that a world is data the engine reads.
+
+### Stage 2: building a world with the tools
+
+**Success:** from a running Stage 1 setup, a newcomer creates a new world, draws at least three
+connected rooms in WorldForge's map builder, and walks them, in **under 20 minutes, with no
+hand-written room YAML and no hand-edited config.** Creating the world makes the package; drawing
+the map is done in the editor, not by a scaffold.
 
 Why these numbers:
-- **15 minutes.** The unavoidable machine time is short. Measured in section 2, the engine install
-  takes 49–54 s, the client installs 3–10 s, and the services, migrations and first boot under 10 s.
-  Cold Docker image pulls add about a minute, which was not measured because the images were
-  cached. That leaves more than 10 minutes for reading the tutorial and for a first
-  `pip install` on a slow connection. A 5-minute target would only be met by people who skip the
-  tutorial, and the tutorial is where the world/engine split is learned.
-- **6 commands.** Today's path is 18 (section 2). Commands 1–3 are standard for any Python project
-  and cannot be removed without a packaged release. Commands 4 and 5 are the two new ones, and
-  opening the browser is the sixth. Every further step belongs inside `quickstart`, because each
-  one is a place a newcomer can go wrong.
-- **One terminal and zero hand edits before first play.** Today it is 3 terminals and 5 edits,
-  one of which is undocumented and fails silently (section 2). Configuration a newcomer does not
-  understand yet must be generated, not typed.
+- **10 minutes for Stage 1.** The unavoidable machine time is short. Measured in section 2, the
+  engine install takes 49–54 s, the client installs 3–10 s, and the services, migrations and first
+  boot under 10 s. Cold Docker image pulls add about a minute, which was not measured because the
+  images were cached. That leaves several minutes for reading and for a slow first `pip install`.
+  Stage 1 no longer includes making a world, so it can be shorter than the first draft's 15.
+- **5 commands.** Today's path is 18 (section 2). Commands 1–3 are standard for any Python project
+  and cannot be removed without a packaged release; `quickstart` is the one new command, and
+  opening the browser is the fifth. Every other step belongs inside `quickstart`, because each one
+  is a place a newcomer can go wrong.
+- **One terminal and zero hand edits.** Today it is 3 terminals and 5 edits, one of which is
+  undocumented and fails silently (section 2). Configuration a newcomer does not understand yet
+  must be generated, not typed.
+- **20 minutes for Stage 2.** Most of it is the newcomer designing and describing rooms, which is
+  the point. The measured copy-a-world path (section 2) took 5 commands and 3 hand edits before
+  anything was drawn, and left 15 mentions of the copied world behind.
 
 ## 2. The current path, measured
 
@@ -115,103 +132,95 @@ Two fixes are too small to wait for this plan:
 
 Both are in the sequencing table.
 
-## 3. `sage world new <id>`
+## 3. The demo world and `sage world new <id>`
+
+Two separate things, one per stage.
+
+### 3a. The bundled demo world (Stage 1)
+
+`worlds/demo/`: a four-room world that ships with the engine and is what `quickstart` runs when no
+world is named. It is content, not a scaffold output, and it is authored and maintained in
+WorldForge like any other world, so its `.positions.json` is the editor's own layout.
+
+- **Rooms:** four, in one zone, laid out so every direction a newcomer tries early works: a start
+  room with exits north, east and west, and one room beyond each. Plain, setting-neutral
+  descriptions, one examinable feature per room, one item to pick up. Start and respawn are the
+  first room.
+- **Package:** the same files as Rivermoot, trimmed to what four rooms need: `world.toml`,
+  `stats.yaml` (three neutral attributes, `hp`), `currencies.yaml` (one currency), `lexicon/en.yaml`
+  (banner and motd that say this is the SAGE demo and point at the tutorial), `ui/theme.yaml`,
+  `ai/style.yaml` with no prompts (narration off), `content.schema.json`, and a short `README.md`.
+- **Plugins:** none enabled by default, with every first-party plugin listed as a comment in
+  `world.toml` `[plugins]` with its one-line description. The tutorial turns one on.
+- **Licensing:** FSL-1.1-ALv2 with the engine (`worlds/demo/LICENSE`) and a `NOTICE` entry, which
+  `scripts/notice_check.py` requires. **Owner decision needed** before it is added, like every new
+  path.
+- **Role next to Rivermoot:** Rivermoot stays the full proving ground (30 rooms, 10 plugins).
+  The demo is the smallest world the engine accepts and the first thing a newcomer sees.
+- `config/server.example.toml` defaults to `world = "demo"`, so the example config never boots the
+  proprietary world.
+- **Tests:** CI validates it (0 errors, 0 warnings), checks its exported schema is current, counts
+  zero denylist hits, and the live smoke test plays it: start room, each exit and back, `get`,
+  `quit`.
+
+### 3b. `sage world new <id>` (Stage 2)
 
 ```
 sage world new <id> [--name "My Town"] [--dir worlds] [--force]
 ```
 
-### Template
+**It creates a world package, not a map.** Rooms, exits and layout are drawn in WorldForge's map
+builder; the command's job is to produce a package WorldForge can open and the engine can boot.
 
-A **purpose-built minimal world**, not a stripped Rivermoot. It is shipped as package data in
-`engine/src/sage/templates/world/`, under the engine's license.
-- Stripping Rivermoot produces the problem measured above: its identity is spread across 10 files
-  and would have to be scrubbed by rewrite rules that break whenever Rivermoot changes.
-- Rivermoot keeps its job: the full proving ground with 30 rooms and 10 plugins.
-- The template is **Rivermoot-shaped**: the same files, the same keys, the same content model.
-  Nothing new is invented, and a CI test keeps the two structurally in step (see "Tests").
-
-### Generated tree
+Generated tree:
 
 ```
 worlds/<id>/
-  README.md             what each file is for, and what to change first
+  README.md             what each file is for; next step: open it in WorldForge
   world.toml            [world] id, name, version = "0.1.0", engine = range of the installed engine
-                        [start] room/respawn = "start:courtyard"
-                        [content] room_types, exit_dirs (8 directions), equipment_slots = []
-                        [plugins] empty, with every first-party plugin listed as a comment:
-                        its id and the one-line description from its plugin.toml
+                        [start] room/respawn = "start:arrival"
+                        [content] room_types, exit_dirs, equipment_slots = [] (the vocabulary
+                        WorldForge offers when drawing)
+                        [plugins] empty, every first-party plugin listed as a comment
                         [params] empty, with a commented example
-  stats.yaml            3 neutral attributes (label keys), vital hp, chargen attribute_points
+  stats.yaml            three neutral attributes, vital hp, chargen attribute_points
   currencies.yaml       one currency, "coin"
-  lexicon/en.yaml       login banner and motd using the world name, stat/vital/currency names
+  lexicon/en.yaml       banner and motd using the world name, stat/vital/currency names
   ui/theme.yaml         mark and accent (light and dark)
-  ai/style.yaml         tone and rules, with a comment that prompts/<slot>.j2 turns narration on
+  ai/style.yaml         tone and rules; prompts/<slot>.j2 turns narration on
   content/world/zones/start/
     zone.yaml
-    rooms/courtyard.yaml, hall.yaml, garden.yaml   three rooms, two-way exits, one feature
-                                                   each, plain descriptions
-    .positions.json     from sage.world.layout, so maps and WorldForge draw it at once
+    rooms/arrival.yaml  the single start room the engine requires: a name and a one-line
+                        description, no exits, no features
   content.schema.json   exported by the same code as `sage schema export`
 ```
 
-- No `plugins/` directory until `sage plugin new` creates one. No `LICENSE`: that is the author's
-  choice, and the README says so.
-- All generated text is setting-neutral: no genre, no proper nouns beyond the world name. Template
-  files sit under `engine/`, so the invariant ratchet scans them, and a test pins the denylist count
-  at zero for `templates/`.
-
-### Values
-
-- `<id>` must match `^[a-z][a-z0-9_]{1,31}$` (a directory name, Redis prefix and database suffix).
-- `--name` defaults to the id in title case.
-- The engine range is derived from the running engine version (`>=0.2,<0.3`), so a scaffold never
-  claims a range the engine refuses.
-- An existing directory is refused unless `--force` is given, and `--force` never deletes files
-  that the template does not produce.
-
-### Database
-
-**It does not create a database or run migrations.** `world new` works offline, runs in under a
-second, and is testable without services.
-- Its last lines print the next command, `sage quickstart --world <id>`, or for an existing setup,
-  `sage db create --world <id> && sage db upgrade --world <id>`.
-- A small new `sage db create` turns today's undocumented `createdb` step into a command.
-- One database per world stays the rule (owner ruling). The database name defaults to
-  `sage_<id>`, and `db`, `quickstart` and the server derive it from `--world` when
-  `database.toml` does not set one.
-
-### Validation
-
-**It ends by running `sage validate --world <id>` in-process** and exits non-zero if there is any
-error or warning. The files are kept, so the output can be inspected.
-- A scaffold that produced a broken world would fail loudly on the machine that made it, not
-  later in the tutorial.
-- CI makes it impossible to ship such a template in the first place (see "Tests").
-
-### Worlds in a clone of sage-engine
-
-`scripts/notice_check.py` fails on a world package that `NOTICE` does not list. So that a
-newcomer's world is never an accidental licensing problem, `.gitignore` ignores `worlds/*` except
-the reference worlds. A user world stays untracked in the engine repository.
-- The tutorial's last section shows how to keep the world in its own repository.
-- That uses the `world_paths` setting from `FABLESTAR_PRIVATE_REPO_PLAN.md` (prerequisite 1),
-  which serves both needs.
-
-### Tests
-
-For every template, CI does the following:
-- generates it into a temporary directory, then:
-  - runs validate with 0 errors and 0 warnings
-  - checks that the exported schema equals the generated `content.schema.json`
-  - loads it through `sage.plugins.offline.registration_host`
-  - boots it hermetically on the fakes and walks `north`/`south`
-- counts ratchet hits for `templates/` (must be 0)
-- runs a structural check that every top-level key and file in Rivermoot also exists in the
-  template, or is listed as intentionally absent.
-
-The live tier adds a smoke test that runs quickstart's steps against Docker and plays the
-template world.
+- **One room, no map.** The engine refuses a world without a start room, so exactly one is
+  generated, with no exits and no `.positions.json`. Everything else about the map is made in
+  WorldForge, which already writes rooms, exits and positions. Nothing here duplicates the editor.
+- **Template source:** package data in `engine/src/sage/templates/world/`, Rivermoot-shaped (same
+  files and keys), setting-neutral, scanned by the invariant ratchet with a test pinning zero
+  denylist hits. It is not a stripped Rivermoot: section 2 measured how a copy drags the old
+  world's identity through 10 files.
+- **Values:** `<id>` must match `^[a-z][a-z0-9_]{1,31}$`; `--name` defaults to the id in title
+  case; the engine range comes from the running engine; an existing directory is refused unless
+  `--force`, which never deletes files the template does not produce.
+- **Database:** not created. `world new` works offline and is testable without services. It prints
+  the next steps: open the world in WorldForge, then `sage quickstart --world <id>` (or
+  `sage db create --world <id> && sage db upgrade --world <id>` on an existing setup). One database
+  per world stays the rule; its name defaults to `sage_<id>`.
+- **Validation:** ends by running `sage validate --world <id>` in-process and exits non-zero on any
+  error or warning, keeping the files for inspection.
+- **WorldForge integration:** WorldForge gets a **New world** action that runs the same template
+  (through `sage world new`, so there is one implementation), then opens the world's `start` zone
+  with the arrival room on the canvas. Drawing rooms from there is the existing editor flow; its
+  saves hot-reload into a running server.
+- **Worlds in a clone of sage-engine:** `.gitignore` ignores `worlds/*` except the shipped worlds,
+  so a user world is never an accidental `NOTICE` failure or commit. Keeping a world in its own
+  repository uses `world_paths` from `FABLESTAR_PRIVATE_REPO_PLAN.md`.
+- **Tests:** CI generates the template into a temporary directory, validates it, checks the
+  exported schema, boots it hermetically, and runs WorldForge's vitest suite against it (the zone
+  loads, a room can be added and saved, the result still validates).
 
 ## 4. `sage plugin new <id>`
 
@@ -323,57 +332,50 @@ Revisit when the first external plugin exists. The likely next step is `sage plu
 It would print that plugin code runs with full server privileges. `plugin uninstall` already
 exists, so install is the missing half, not a new concept.
 
-## 6. "Your first world" tutorial outline
+## 6. Tutorial outline
 
-`docs/tutorial/first-world.md`. The reader knows a terminal and nothing about MUDs. Each step ends
+Two documents, one per stage. The reader knows a terminal and nothing about MUDs. Each step ends
 with something they can see.
 
-1. **What you are building (2 min).**
-   - A text world is rooms joined by exits, and players type commands.
-   - SAGE splits it three ways: the engine runs things, the world package holds your places,
-     words and look, and plugins add rules.
-   - One diagram of the three.
-2. **Install and start (5 min).** Commands 1–5 from section 1. Explains what `quickstart` did:
-   - services started in Docker
-   - config generated with local-only settings
-   - database created
-   - the player client built
-3. **Walk around (2 min).**
-   - Press **Play**; `look`, `north`, `south`, `say hello`, `help`.
-   - What a room line and exits mean.
-4. **Change a room (2 min).**
-   - Edit `courtyard.yaml` `description.base`, save, type `look`. It changes without a restart.
-   - Point out that no engine file was touched.
-5. **Add a room (3 min).**
-   - Create `fountain.yaml` and add an exit from `garden` to `fountain` and back.
-   - Run `sage validate --world mytown`. Break it on purpose (a misspelled destination) to read a
-     real error, then fix it.
-6. **Rename a stat and a currency (2 min).**
-   - Change the attribute label in `lexicon/en.yaml` and the currency name. Reconnect and see the
-     character sheet and wallet change.
-   - The world owns its words; the engine only knows keys.
-7. **Turn on a mechanic (3 min).**
-   - Uncomment `consumables` in `world.toml`, add a `heal:` item and a room spawn, restart, pick up
-     the item and `use` it.
-   - First look at a plugin as rules you can switch on.
-8. **Write a tiny plugin (5 min, optional).**
-   - `sage plugin new wave --world mytown`, read the generated `plugin.toml` comments, restart,
-     type `wave`.
-   - Add a second command without declaring it, watch `sage plugin check` name the missing line,
-     then add it.
-9. **Where next.**
-   - WorldForge for drawing maps.
-   - Rivermoot as a full example.
-   - Keeping your world in its own repository (`world_paths`).
-   - `docs/architecture.md`.
+### `docs/tutorial/01-run-the-engine.md` (Stage 1)
 
-Timed with at least one real first-time reader before the target in section 1 is declared met.
+1. **What you are running (2 min).** A text world is rooms joined by exits; players type commands.
+   SAGE splits it three ways: the engine runs things, a world package holds places, words and
+   look, plugins add rules. One diagram.
+2. **Install and start (5 min).** Commands 1–4 from section 1, and what `quickstart` did: services
+   in Docker, config generated with local-only settings, the demo world's database, the player
+   client built.
+3. **Walk the demo (2 min).** Press **Play**; `look`, `north`, `south`, `get`, `inventory`,
+   `say hello`, `help`. What a room line and exits mean.
+4. **Change a room (1 min).** Edit a demo room's `description.base`, save, `look`. It changes
+   without a restart, and no engine file was touched.
+5. **Where next.** Stage 2 tutorial; Rivermoot as a full example; `docs/architecture.md`.
+
+### `docs/tutorial/02-build-a-world.md` (Stage 2)
+
+1. **Make a world (2 min).** WorldForge → **New world** (or `sage world new mytown`), then read the
+   generated `README.md`: which file holds what.
+2. **Draw the map (8 min).** In WorldForge's map builder, add rooms around the arrival room,
+   connect exits, write descriptions, save. `sage validate --world mytown`; break an exit on
+   purpose to read a real error, then fix it.
+3. **Play it (2 min).** `sage quickstart --world mytown`, press **Play**, walk what you drew. Edit a
+   room in WorldForge while connected and `look`.
+4. **Rename a stat and a currency (2 min).** Change labels in `lexicon/en.yaml`, reconnect, see the
+   character sheet and wallet change. The world owns its words; the engine only knows keys.
+5. **Turn on a mechanic (3 min).** Uncomment `consumables` in `world.toml`, add a `heal:` item and
+   a spawn in WorldForge, restart, `use` it.
+6. **Write a tiny plugin (5 min, optional).** `sage plugin new wave --world mytown`, read the
+   generated `plugin.toml` comments, restart, `wave`. Add a second command without declaring it,
+   watch `sage plugin check` name the missing line, then add it.
+
+Both are timed with at least one real first-time reader before the targets in section 1 are
+declared met.
 
 ## 7. Infrastructure for a first run
 
 | Option | What it takes | Verdict |
 |---|---|---|
-| **A. `sage quickstart` wrapping Docker Compose** | One command: check Docker; generate `.env` (random DB password), `server.toml` (JWT secret, `world`, `dev_mode`, `dev_login`) and `database.toml` when absent; `docker compose up -d`; wait for health; `db create`; `db upgrade`; build the player client if `dist/` is missing or stale; start Nexus serving it. | **Recommended.** S–M. Same Postgres and Redis as production and CI, so nothing a newcomer builds behaves differently later. |
+| **A. `sage quickstart` wrapping Docker Compose** | One command (`--world` defaults to the demo world): check Docker; generate `.env` (random DB password), `server.toml` (JWT secret, `world`, `dev_mode`, `dev_login`) and `database.toml` when absent; `docker compose up -d`; wait for health; `db create`; `db upgrade`; build the player client if `dist/` is missing or stale; start Nexus serving it. | **Recommended.** S–M. Same Postgres and Redis as production and CI, so nothing a newcomer builds behaves differently later. |
 | B. SQLite / in-memory dev mode | A second persistence backend. The engine uses Postgres JSONB and 16 Postgres-specific references in `engine/src` and `engine/alembic`; plugins ship Alembic branches written for Postgres; every hot path goes through Redis. | **Rejected.** L–XL, and a permanent second code path. It contradicts the two-tier testing ruling: persistence is proven on real databases because fakes hid migration failures before. The hermetic fakes stay a test tool, not a runtime. |
 | C. Compose-only (`docker compose up` runs everything, config baked in) | Containerize the server and clients, seed config at container start. | Rejected as the first-run path. Hot reload across a bind mount is slow on Windows and macOS, and debugging moves into containers. It is worth doing later as the **deployment** image. |
 
@@ -397,21 +399,23 @@ Timed with at least one real first-time reader before the target in section 1 is
 
 ## 8. Sequencing
 
-Ordered by adoption impact per unit of effort. Sizes: XS under half a day, S about a day, M two to
-four days, L a week or more.
+Ordered by adoption impact per unit of effort, Stage 1 first. Sizes: XS under half a day, S about a
+day, M two to four days, L a week or more.
 
-| Order | Item | Size | Impact |
-|---|---|---|---|
-| 1 | **Fail fast without a JWT secret, and fix the README quick start.** The server refuses to start with a message saying how to generate one. | XS | Removes the silent 500 every newcomer hits today. |
-| 2 | **`sage quickstart`**: config generation, compose, `db create`, `db upgrade`, dev-auth defaults, then run. | S–M | 18 commands to about 8, 3 terminals to 2, zero hand edits. **The single item that most improves a stranger's first hour.** |
-| 3 | Nexus serves the built player client at `/` (quickstart builds it) | S | 2 terminals to 1. |
-| 4 | Example config defaults to Rivermoot, not the proprietary world | XS | First impression is a licensed world. Also a step in the Fablestar move plan. |
-| 5 | `sage world new` with the minimal template, validate on exit, CI template tests, `sage db create` | M | Own world with no copying or scrubbing. |
-| 6 | Tutorial `docs/tutorial/first-world.md`, timed with a real reader | S | Makes the split felt. Needs 2 and 5. |
-| 7 | `sage.testing` public test host | S | Prerequisite for 8. |
-| 8 | `sage plugin new` plus `sage plugin check` | M | Makes the manifest self-teaching. |
-| 9 | `world_paths` (shared with the Fablestar move plan) | S–M | User worlds in their own repositories. |
-| 10 | Revisit `sage plugin install` when a first external plugin exists | — | Section 5. |
+| Order | Item | Stage | Size | Impact |
+|---|---|---|---|---|
+| 1 | **Fail fast without a JWT secret, and fix the README quick start.** The server refuses to start with a message saying how to generate one. | 1 | XS | Removes the silent 500 every newcomer hits today. |
+| 2 | **Demo world** `worlds/demo/` (four rooms, drawn in WorldForge), `server.example.toml` defaults to it, CI validate and live smoke | 1 | S | A first world that is small, licensed and not proprietary. Needs the owner's license decision for the new path. |
+| 3 | **`sage quickstart`**: config generation, compose, `db create`, `db upgrade`, dev-auth defaults, runs the demo | 1 | S–M | 18 commands to about 7, zero hand edits. **The single item that most improves a stranger's first hour.** |
+| 4 | Nexus serves the built player client at `/` (quickstart builds it) | 1 | S | 3 terminals to 1; Stage 1 reaches its 5-command target. |
+| 5 | Stage 1 tutorial, timed with a real reader | 1 | XS–S | Needs 2–4. |
+| 6 | `sage world new` (package plus one start room), validate on exit, `sage db create --world`, CI template tests | 2 | S–M | Smaller than the first draft: no generated map. |
+| 7 | WorldForge **New world** action over the same template | 2 | S | World building starts in the tool that draws the map. |
+| 8 | Stage 2 tutorial, timed | 2 | S | Needs 6–7. |
+| 9 | `sage.testing` public test host, then `sage plugin new` plus `sage plugin check` | 2 | S + M | Makes the manifest self-teaching. |
+| 10 | `world_paths` (shared with the Fablestar move plan) | 2 | S–M | User worlds in their own repositories. |
+| 11 | Revisit `sage plugin install` when a first external plugin exists | — | — | Section 5. |
 
-Items 1 and 4 are small enough to ship before the rest is approved, if the owner wants. Everything
-from item 2 on waits for review of this plan.
+Item 1 is small enough to ship before the rest is approved, if the owner wants. Item 2 needs the
+owner's licensing call for `worlds/demo/`. Everything else waits for review of this plan.
+
