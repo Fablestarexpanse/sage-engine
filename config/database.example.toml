@@ -2,7 +2,7 @@
 # database.toml is gitignored — never commit real passwords.
 host = "localhost"
 port = 5432
-database = "fablestar"
-user = "fablestar"
+database = "sage"
+user = "sage"
 password = "CHANGE_ME"
 pool_size = 10

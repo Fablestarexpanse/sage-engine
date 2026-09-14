@@ -7,7 +7,7 @@ plugin fields (shops, lodging, hazards, searchable features, item slots...) get 
 generated from the package's `content.schema.json`. Writes YAML directly into the
 world's `content/world/`; the running server hot-reloads the changes.
 
-See the root `CLAUDE.md` → "How WorldForge saves (and the conflict risk)"
+See `docs/architecture.md` → "How WorldForge saves (and the conflict risk)"
 before editing the same zone from more than one tool at once.
 
 ## Run

@@ -1,6 +1,6 @@
 {
   "totals": {
-    "denylist": 43,
+    "denylist": 39,
     "player_literals": 4
   },
   "denylist": {
@@ -12,7 +12,7 @@
     "engine/clients/admin-ui/src/storageMigration.js": 8,
     "engine/clients/player-ui/src/storageMigration.js": 8,
     "engine/pyproject.toml": 1,
-    "engine/src/sage/core/config.py": 7,
+    "engine/src/sage/core/config.py": 3,
     "engine/tests/test_admin_security.py": 1,
     "engine/tests/test_config_env.py": 6,
     "engine/tests/test_play_tokens.py": 1

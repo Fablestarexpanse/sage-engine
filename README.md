@@ -171,7 +171,7 @@ python scripts/sage_invariants.py check             # world terms and hardcoded 
 ```
 
 CI runs all of these plus a license report on every push. Developer guides:
-[`CLAUDE.md`](CLAUDE.md) (architecture and conventions), [`docs/dev/`](docs/dev/) (standards,
+[`docs/architecture.md`](docs/architecture.md) (how it fits together), [`docs/dev/`](docs/dev/) (standards,
 workflow, milestones) and [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Project layout

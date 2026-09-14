@@ -22,6 +22,26 @@ Versions built before the first publication have no conversion date.
 
 ## [Unreleased]
 
+- **Breaking: database defaults are now `sage`.** `config/database.toml` without `database` or
+  `user` now connects to database `sage` as user `sage` (was `fablestar`), and
+  `docker-compose.yml` creates `sage`/`sage` unless `.env` sets `POSTGRES_DB` and
+  `POSTGRES_USER`. Migration for an existing setup: set `database = "fablestar"` and
+  `user = "fablestar"` in `config/database.toml` (or `SAGE_DATABASE__DATABASE` /
+  `SAGE_DATABASE__USER`), and add `POSTGRES_DB=fablestar` and `POSTGRES_USER=fablestar` to `.env`.
+  Compose only applies those names when the data volume is first created, so existing data keeps
+  its names either way.
+- **Deprecation end date:** the `FABLESTAR_` environment-variable prefix and the `fablestar`
+  console script are removed in **0.3.0**. Rename variables to `SAGE_` and run `sage` or
+  `python -m sage`. The server's deprecation warning names the version.
+- **Licensing:** first-party plugins (`plugins/`) are licensed FSL-1.1-ALv2 (`plugins/LICENSE`);
+  before, they had no license. `NOTICE` is rewritten for the tree as it is, and
+  `scripts/notice_check.py` fails CI when a top-level path or world package is missing from it.
+  Fablestar Expanse is planned to move to a private repository
+  (`docs/sage/FABLESTAR_PRIVATE_REPO_PLAN.md`).
+- **Docs and tooling:** `docs/architecture.md` is the canonical architecture document (the pre-SAGE
+  one is `docs/dev/ARCHITECTURE_PRE_SAGE.md`); `CLAUDE.md` keeps only agent conventions. Local
+  agent tooling files (`rexymcp.toml`, `REXYMCP.md`, `.desloppify/`) are no longer tracked.
+
 - **Development-only passwordless logins, removable for release.** With `dev_mode` and
   `dev_login`, loopback clients can open the player character chooser or sign in to the admin
   console as a head admin without a password, besides the existing named test character. A
