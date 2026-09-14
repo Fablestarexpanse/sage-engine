@@ -117,8 +117,9 @@ class AgentManager:
                 api.wallet.set(stats, int(persona.money))
 
             inventory: list[dict[str, Any]] = []
-            # Equip persona gear (slot -> template id) through the equipment engine.
-            for template_id in persona.gear.values():
+            # Equip persona gear (slot -> template id) through the equipment plugin, when enabled.
+            equipment = self._service("equipment")
+            for template_id in persona.gear.values() if equipment else ():
                 template = api.content.item_template(template_id)
                 if template is None:
                     logger.warning("Agent %s gear %r unknown", persona.id, template_id)
@@ -130,7 +131,7 @@ class AgentManager:
                     "description": template.description,
                     "value": template.value,
                 }
-                _, inventory = api.equipment.equip(stats, [*inventory, item], item, template)
+                _, inventory = equipment.equip(stats, [*inventory, item], item, template)
             room_id = persona.spawn_room
 
         await api.characters.place(persona.name, stats, inventory, room_id)
@@ -274,9 +275,10 @@ class AgentManager:
 
         inventory = await api.inventory.get(name)
         consumables = []
-        for it in inventory:
+        consumable_rules = self._service("consumables")
+        for it in inventory if consumable_rules else ():
             template = api.content.item_template(it.get("template", ""))
-            if template and template.heal > 0:
+            if template and consumable_rules.heal_of(template) > 0:
                 consumables.append(it.get("name", template.name))
 
         equipped_ids = {

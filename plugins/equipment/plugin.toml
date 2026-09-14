@@ -1,0 +1,16 @@
+# Equipment: items with `slot:` are worn in the world's equipment slots; `attack:`/`defense:`
+# bonuses apply while worn and `ammo:` items consume a round per attack.
+[plugin]
+id = "equipment"
+name = "Equipment"
+version = "1.0.0"
+engine = ">=0.2,<0.3"
+entry = "sage_plugin_equipment.main:setup"
+first_party = true
+
+[touches]
+commands = ["equip", "unequip", "gear"]
+services = ["equipment"]
+state_blocks = ["equipment"]
+content_extensions = ["item.slot", "item.attack", "item.defense", "item.ammo"]
+lexicon_prefix = "equipment."

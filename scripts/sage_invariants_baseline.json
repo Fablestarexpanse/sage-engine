@@ -1,7 +1,7 @@
 {
   "totals": {
-    "denylist": 948,
-    "player_literals": 96
+    "denylist": 947,
+    "player_literals": 72
   },
   "denylist": {
     "engine/alembic/versions/b3c4d5e6f7a8_account_echo_credits.py": 5,
@@ -54,7 +54,6 @@
     "engine/src/sage/world/models.py": 9,
     "engine/tests/live/test_persistence_live.py": 1,
     "engine/tests/test_admin_security.py": 4,
-    "engine/tests/test_combat_narration.py": 1,
     "engine/tests/test_command_integration.py": 4,
     "engine/tests/test_commands.py": 3,
     "engine/tests/test_config_env.py": 6,
@@ -78,10 +77,9 @@
   "player_literals": {
     "engine/src/sage/admin/routes/admin_ops.py": 1,
     "engine/src/sage/commands/admin.py": 1,
-    "engine/src/sage/commands/combat.py": 15,
     "engine/src/sage/commands/communication.py": 17,
     "engine/src/sage/commands/info.py": 13,
-    "engine/src/sage/commands/items.py": 28,
+    "engine/src/sage/commands/items.py": 19,
     "engine/src/sage/commands/movement.py": 7,
     "engine/src/sage/network/session.py": 2,
     "engine/src/sage/server.py": 8,

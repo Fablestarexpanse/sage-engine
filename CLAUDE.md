@@ -210,7 +210,7 @@ Command handler
   └─ session.send(narration)
 ```
 
-Prompt templates live in `prompts/`. Each `.j2` file receives named variables. If the LLM call fails, command handlers fall back to a plain-text message — see `commands/combat.py` for the pattern.
+Prompt templates live in `prompts/`. Each `.j2` file receives named variables. If the LLM call fails, command handlers fall back to a plain-text message — see `plugins/combat/sage_plugin_combat/main.py` (`api.ai.narrate`) for the pattern.
 
 **LLM client config:** `config/llm.toml` (optional). Defaults to disabled. Set `base_url`, `model`, `enabled = true`.
 

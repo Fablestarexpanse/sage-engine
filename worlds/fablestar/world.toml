@@ -33,13 +33,16 @@ agents = "^1"
 conduit = "^1"
 ambient = "^1"
 effects = "^1"
+equipment = "^1"
+consumables = "^1"
+combat = "^1"
 
 [params]
 # Tidegate clinic bills up to 10 Digi on respawn; half health on waking.
 "engine.death.respawn_bill_max" = 10
 "engine.death.respawn_hp_fraction" = 0.5
-# Skill use reported to progression by engine commands (proficiency leaves in this world).
-"engine.combat.skills" = ["combat.melee.blades", "combat.melee.impact", "combat.ballistic.sidearms", "combat.tactics.threat_assessment"]
+# Skill use reported to progression by combat and movement (proficiency leaves in this world).
+"combat.skills" = ["combat.melee.blades", "combat.melee.impact", "combat.ballistic.sidearms", "combat.tactics.threat_assessment"]
 "engine.movement.skill" = "traversal.navigation.pathfinding"
 # Personal combat uses max(legacy strength/dexterity, proficiency) ratings while true.
 "conduit.combat_hybrid" = true

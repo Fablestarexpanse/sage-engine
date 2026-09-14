@@ -128,6 +128,7 @@ class _State:
             set(self._defaults)
             | set(self._api._host.state_owners)
             | _engine_service_keys(self._api._host.world)
+            | set(self._api._record.manifest.touches.stats_keys)
         )
         changed = {k for k in set(before) | set(stats) if before.get(k) != stats.get(k)}
         stray = sorted(changed - allowed)
@@ -138,6 +139,10 @@ class _State:
     async def location(self, player_id: str) -> str | None:
         """The room a character is in (None when not in the world)."""
         return await self._api._host.redis.get_player_location(player_id)
+
+    async def relocate(self, player_id: str, room_id: str) -> None:
+        """Move a character to a room (room occupancy follows)."""
+        await self._api._host.redis.set_player_location(player_id, room_id)
 
     async def get(self, player_id: str, name: str) -> Any:
         self._check(name)
@@ -451,6 +456,22 @@ class _Entities:
     async def state(self, entity_id: str) -> dict[str, Any] | None:
         return await self._api._host.redis.get_entity_state(entity_id)
 
+    async def save(self, entity_id: str, state: dict[str, Any]) -> None:
+        await self._api._host.redis.set_entity_state(entity_id, state)
+
+    def lock(self, entity_id: str) -> Any:
+        """An asyncio lock for one entity's read-modify-write (released on despawn)."""
+        from sage.world.spawner import entity_lock
+
+        return entity_lock(entity_id)
+
+    async def kill(self, entity_id: str, room_id: str) -> list[dict[str, Any]]:
+        """Drop an entity's loot on the floor and despawn it; returns the dropped items' states."""
+        host = self._api._host
+        dropped = await host.server.spawner.kill_entity(entity_id, room_id)
+        states = [await host.redis.get_item_state(item_id) for item_id in dropped]
+        return [s for s in states if s]
+
 
 class _Items:
     """Items lying in rooms."""
@@ -540,11 +561,24 @@ class _Effects:
 
 
 class _Characters:
-    """Characters a plugin runs itself (automated characters): it owns their whole stats blob."""
+    """Characters a plugin runs itself (automated characters): it owns their whole stats blob.
+
+    record_death applies to any character.
+    """
 
     def __init__(self, api: PluginAPI):
         self._api = api
         self._owned: set[str] = set()
+
+    async def record_death(
+        self, session: Any, player_id: str, stats: dict[str, Any], room_id: str | None, cause: str
+    ) -> list[str]:
+        """Record a death on a stats blob the caller holds (PlayerDied, counters, telemetry)."""
+        from sage.effects.death import record_player_death
+
+        return await record_player_death(
+            self._api._host.server, session, player_id, stats, room_id, cause
+        )
 
     def claim_names(self, names: Callable[[], Any]) -> None:
         """Player character creation refuses every name names() returns."""
@@ -630,16 +664,19 @@ class _Ai:
     def __init__(self, api: PluginAPI):
         self._api = api
 
+    async def narrate(self, template: str, max_tokens: int, **variables: Any) -> str:
+        """Render a world prompt template and generate with the narration LLM; raises on failure.
+
+        Narration only colours what already happened: callers send their outcome first and
+        treat any exception as "no prose".
+        """
+        server = self._api._host.server
+        prompt = server.prompt_manager.render(template, **variables)
+        return await server.llm_client.generate_or_raise(prompt, max_tokens=max_tokens)
+
     def profile(self, name: str = "agents_llm") -> Any:
         """The named LLM profile (sage.llm.profiles.LLMProfile); generate() raises on failure."""
         return self._api._host.server.llm_profile
-
-
-class _Equipment:
-    def equip(self, stats: dict[str, Any], inventory: list, item: dict, template: Any) -> Any:
-        from sage.items.equipment import equip_item
-
-        return equip_item(stats, inventory, item, template)
 
 
 class _Clock:
@@ -692,7 +729,6 @@ class PluginAPI:
         self.rooms = _Rooms(self)
         self.persistence = _Persistence(self)
         self.ai = _Ai(self)
-        self.equipment = _Equipment()
         self.clock = _Clock()
         self.snapshot = _Snapshot(self)
 

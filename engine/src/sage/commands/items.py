@@ -22,7 +22,7 @@ async def _find_first_named(ids, fetch_state, target_name: str, *, require_alive
     return None, None
 
 
-@command("inventory", aliases=["i", "inv", "equipment", "gear"])
+@command("inventory", aliases=["i", "inv"])
 async def inventory(session: Session, args: list[str]):
     """List your carried inventory."""
     from sage.app import app_instance
@@ -40,114 +40,6 @@ async def inventory(session: Session, args: list[str]):
     for item in inv:
         name = item.get("name", item.get("template", "unknown item"))
         await session.send(f"  {name}")
-
-    from sage.items.equipment import ensure_equipment, equipped_lines
-
-    stats = await app_instance.redis.get_player_stats(player_id)
-    if ensure_equipment(stats):
-        await session.send("--- Equipped ---")
-        for line in equipped_lines(stats):
-            await session.send(line)
-
-
-@command("equip", aliases=["wield", "wear"])
-async def equip(session: Session, args: list[str]):
-    """Equip a weapon or armor from your inventory. Usage: equip <item>"""
-    from sage.app import app_instance
-    from sage.items.equipment import equip_item
-
-    player_id = session.player_id
-    if not player_id:
-        return
-    if not args:
-        await session.send("Equip what? Usage: equip <item>")
-        return
-
-    target_name = " ".join(args).lower()
-    inv = await app_instance.redis.get_player_inventory(player_id)
-    item = next((it for it in inv if target_name in it.get("name", "").lower()), None)
-    if item is None:
-        await session.send(f"You aren't carrying any '{target_name}'.")
-        return
-    template = app_instance.content_loader.get_item_template(item.get("template", ""))
-    if template is None or template.slot is None:
-        await session.send(f"The {item.get('name', 'item')} can't be equipped.")
-        return
-
-    stats = await app_instance.redis.get_player_stats(player_id)
-    message, new_inv = equip_item(stats, inv, item, template)
-    await app_instance.redis.set_player_stats(player_id, stats)
-    await app_instance.redis.set_player_inventory(player_id, new_inv)
-    await session.send(message)
-
-
-@command("unequip", aliases=["remove", "stow"])
-async def unequip(session: Session, args: list[str]):
-    """Remove equipped gear. Usage: unequip <weapon|armor|item name>"""
-    from sage.app import app_instance
-    from sage.items.equipment import unequip_slot
-
-    player_id = session.player_id
-    if not player_id:
-        return
-    if not args:
-        await session.send("Unequip what? Usage: unequip <weapon|armor|item name>")
-        return
-
-    stats = await app_instance.redis.get_player_stats(player_id)
-    inv = await app_instance.redis.get_player_inventory(player_id)
-    message, new_inv = unequip_slot(stats, inv, " ".join(args))
-    if new_inv is not None:
-        await app_instance.redis.set_player_stats(player_id, stats)
-        await app_instance.redis.set_player_inventory(player_id, new_inv)
-    await session.send(message)
-
-
-@command("use", aliases=["eat", "consume", "drink"])
-async def use(session: Session, args: list[str]):
-    """Use a consumable from your inventory. Usage: use <item>"""
-    from sage.app import app_instance
-
-    player_id = session.player_id
-    if not player_id:
-        return
-    if not args:
-        await session.send("Use what? Usage: use <item>")
-        return
-
-    target_name = " ".join(args).lower()
-    inv = await app_instance.redis.get_player_inventory(player_id)
-    item = next((it for it in inv if target_name in it.get("name", "").lower()), None)
-    if item is None:
-        await session.send(f"You aren't carrying any '{target_name}'.")
-        return
-
-    template = app_instance.content_loader.get_item_template(item.get("template", ""))
-    heal = int(template.heal) if template else 0
-    if heal <= 0:
-        await session.send(f"You can't think of a way to use the {item.get('name', 'item')}.")
-        return
-
-    stats = await app_instance.redis.get_player_stats(player_id)
-    max_hp = int(stats.get("max_hp", stats.get("hp", 20)))
-    before = int(stats.get("hp", 0))
-    stats["hp"] = min(max_hp, before + heal)
-    # Usage tracking: totals + per-template, so "most used item" is answerable.
-    from sage.world.counters import count
-
-    counter_lines = await count(
-        app_instance, player_id, stats, "items_used", f"items_used.{template.id}"
-    )
-    await app_instance.redis.set_player_stats(player_id, stats)
-    await app_instance.redis.set_player_inventory(
-        player_id, [it for it in inv if it.get("id") != item.get("id")]
-    )
-    gained = stats["hp"] - before
-    await session.send(
-        f"You consume the {item.get('name', 'item')} (+{gained} hp, {stats['hp']}/{max_hp})."
-    )
-    for line in counter_lines:
-        await session.send(line)
 
 
 @command("take", aliases=["get", "pick"])
@@ -319,9 +211,7 @@ async def examine(session: Session, args: list[str]):
             if frac >= 0.3
             else "is barely standing"
         )
-        weapon = ((ostats.get("equipment") or {}).get("weapon") or {}).get("name")
-        carried = f", carrying {weapon}" if weapon else ""
-        await session.send(f"\r\n{other} {condition}{carried}.")
+        await session.send(f"\r\n{other} {condition}.")
         return
 
     # 2. Check live entities

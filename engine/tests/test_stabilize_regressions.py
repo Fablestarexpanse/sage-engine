@@ -12,7 +12,6 @@ from types import SimpleNamespace
 from unittest import mock
 
 import sage.app as app_module
-import sage.commands.combat as combat_mod
 import sage.commands.info
 import sage.commands.movement  # noqa: F401
 from sage.network.session import SessionManager
@@ -44,8 +43,11 @@ def _server_with_rooms():
     return server
 
 
-def test_move_and_flee_reuse_the_server_dispatcher() -> None:
-    """Brief item 1: a fresh CommandDispatcher in a handler bypasses hot reload."""
+def test_move_reuses_the_server_dispatcher() -> None:
+    """Brief item 1: a fresh CommandDispatcher in a handler bypasses hot reload.
+
+    flee's half of this guard lives in engine/tests/plugins/test_combat_plugin.py.
+    """
 
     async def run() -> None:
         server = _server_with_rooms()
@@ -61,11 +63,7 @@ def test_move_and_flee_reuse_the_server_dispatcher() -> None:
                 side_effect=AssertionError("handler built its own CommandDispatcher"),
             ):
                 await server.dispatcher.dispatch(session, "north")
-                await server.redis.set_entity_state("drone_1", {"name": "drone", "alive": True})
-                await server.redis.add_entity_to_room("drone_1", ROOM_NORTH)
-                with mock.patch.object(combat_mod.random, "random", return_value=0.0):
-                    await server.dispatcher.dispatch(session, "flee")
-            assert "Room A." in "\n".join(session.sent)
+            assert "Room B." in "\n".join(session.sent)
         finally:
             app_module.app_instance = saved
 

@@ -30,6 +30,7 @@ SUPPORTED_TOUCHES = (
     "redis_prefixes",
     "tables",
     "snapshot",
+    "stats_keys",
     "lexicon_prefix",
 )
 
@@ -118,6 +119,8 @@ class Touches(BaseModel):
     lexicon_prefix: str | None = None
     # "<kind>.<field>", e.g. "room.shop" (sage.world.extensions).
     content_extensions: list[str] = Field(default_factory=list)
+    # Engine-owned top-level stats (vitals such as "hp") this plugin may change through state.edit.
+    stats_keys: list[str] = Field(default_factory=list)
     # Declared for later engine versions (contracts C.2); refused if a plugin uses them now.
     content_types: list[str] = Field(default_factory=list)
     snapshot: list[str] = Field(default_factory=list)

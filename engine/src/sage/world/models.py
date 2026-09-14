@@ -99,13 +99,6 @@ class ItemTemplate(BaseModel):
     description: str = ""
     value: int = 0
     weight: float = 0.0
-    heal: int = 0  # hp restored when consumed via `use` (0 = not consumable)
-    slot: str | None = None  # equipment slot: "weapon" | "armor" (None = not equippable)
-    attack: int = 0  # attack bonus while equipped
-    defense: int = 0  # defense bonus while equipped
-    # Ammo-fed weapon: item template consumed one per attack; without a round
-    # in inventory the weapon's attack bonus does not apply (dry fire).
-    ammo: str | None = None
     tags: set[str] = Field(default_factory=set)
 
 

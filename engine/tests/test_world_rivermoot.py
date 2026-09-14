@@ -49,7 +49,8 @@ def test_world_differs_from_the_first_reference_world(rivermoot):
     world, host = rivermoot
     assert [a.key for a in world.stats.attributes] == ["mgt", "wts", "nrv"]
     assert [c.key for c in world.currencies] == ["silver"]
-    assert [r.id for r in host.loaded] == ["levels"]
+    # combat without equipment: its optional dependency is simply absent here.
+    assert [r.id for r in host.loaded] == ["combat", "levels"]
     assert (world.content_dir / "world" / "zones" / "town" / "rooms" / "bridge.yaml").is_file()
 
 

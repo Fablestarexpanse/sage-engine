@@ -15,6 +15,8 @@ factions = { version = "^1", optional = true }
 shop = { version = "^1", optional = true }
 lodging = { version = "^1", optional = true }
 search = { version = "^1", optional = true }
+equipment = { version = "^1", optional = true }
+consumables = { version = "^1", optional = true }
 
 [touches]
 tick_jobs = ["agents"]

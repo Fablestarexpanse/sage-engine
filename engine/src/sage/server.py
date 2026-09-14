@@ -358,7 +358,6 @@ class SageServer:
         registry.load_module_strict("sage.commands.info")
         registry.load_module_strict("sage.commands.communication")
         registry.load_module_strict("sage.commands.movement")
-        registry.load_module_strict("sage.commands.combat")
         registry.load_module_strict("sage.commands.items")
         registry.load_module_strict("sage.commands.admin")
 
