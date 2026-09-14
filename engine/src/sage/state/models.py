@@ -86,7 +86,7 @@ class Character(Base):
     digi_balance: Mapped[int] = mapped_column(Integer, default=0)
     # Opt-in player vs player; default off until toggled in-game or by admin.
     pvp_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
-    # Moral standing for UI (-100 evil .. 0 neutral .. +100 good); gameplay can widen range later.
+    # Legacy moral standing column: moved into a world plugin's state block; dropped later.
     reputation: Mapped[int] = mapped_column(Integer, default=0)
 
     # JSONB (migration o8p9q0r1s2t3): shapes documented by state_types.CharacterStats /

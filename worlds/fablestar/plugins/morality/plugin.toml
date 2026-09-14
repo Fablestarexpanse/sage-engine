@@ -1,0 +1,16 @@
+# Morality: Fablestar's moral standing (-100 evil .. +100 good), shown as a character panel.
+# Proprietary, all rights reserved (see NOTICE). Holds the value the engine kept in
+# characters.reputation before SAGE Phase 3.14.
+[plugin]
+id = "morality"
+name = "Morality"
+version = "1.0.0"
+engine = ">=0.2,<0.3"
+entry = "sage_plugin_morality.main:setup"
+first_party = true
+
+[touches]
+state_blocks = ["morality"]
+snapshot = ["morality"]
+panels = ["morality.standing"]
+lexicon_prefix = "morality."

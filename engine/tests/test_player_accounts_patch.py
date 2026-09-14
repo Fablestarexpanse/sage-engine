@@ -80,7 +80,6 @@ def _character(account_id=7):
     c.name = "Hero"
     c.room_id = "zone:room"
     c.pvp_enabled = False
-    c.reputation = 0
     c.stats = {}
     c.inventory = []
     return c

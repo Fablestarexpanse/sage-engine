@@ -456,30 +456,22 @@ function CharacterEditCard({ c, disabled, onSave }) {
     width: "100%",
     boxSizing: "border-box",
   };
-  const [rep, setRep] = useState(String(c.reputation ?? 0));
   const [room, setRoom] = useState(c.room_id || "");
   const [pvp, setPvp] = useState(Boolean(c.pvp_enabled));
   const [portraitUrl, setPortraitUrl] = useState(c.portrait_url || "");
   const [portraitPrompt, setPortraitPrompt] = useState(c.portrait_prompt || "");
 
   useEffect(() => {
-    setRep(String(c.reputation ?? 0));
     setRoom(c.room_id || "");
     setPvp(Boolean(c.pvp_enabled));
     setPortraitUrl(c.portrait_url || "");
     setPortraitPrompt(c.portrait_prompt || "");
     setStatsJson(JSON.stringify(c.stats ?? {}, null, 2));
-  }, [c.id, c.reputation, c.room_id, c.pvp_enabled, c.portrait_url, c.portrait_prompt, c.stats]);
+  }, [c.id, c.room_id, c.pvp_enabled, c.portrait_url, c.portrait_prompt, c.stats]);
 
   return (
     <div style={{ marginBottom: 14, padding: 12, background: COLORS.bgInput, borderRadius: 8, border: `1px solid ${COLORS.border}` }}>
       <div style={{ fontWeight: 600, color: COLORS.forge, marginBottom: 8 }}>{c.name}</div>
-      <div style={{ display: "grid", gap: 8, gridTemplateColumns: "1fr 1fr" }}>
-        <div>
-          <div style={{ fontSize: 10, color: COLORS.textMuted, marginBottom: 4 }}>Reputation</div>
-          <input value={rep} onChange={(e) => setRep(e.target.value)} style={{ ...inp, padding: "6px 8px", fontSize: 12 }} disabled={disabled} />
-        </div>
-      </div>
       <div style={{ marginTop: 8 }}>
         <div style={{ fontSize: 10, color: COLORS.textMuted, marginBottom: 4 }}>room_id</div>
         <input value={room} onChange={(e) => setRoom(e.target.value)} style={{ ...inp, padding: "6px 8px", fontSize: 12 }} disabled={disabled} />
@@ -524,7 +516,6 @@ function CharacterEditCard({ c, disabled, onSave }) {
             return;
           }
           onSave({
-          reputation: parseInt(rep, 10) || 0,
           room_id: room.trim(),
           pvp_enabled: pvp,
           portrait_url: portraitUrl.trim() || null,

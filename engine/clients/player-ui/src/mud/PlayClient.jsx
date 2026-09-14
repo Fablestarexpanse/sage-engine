@@ -190,7 +190,6 @@ export default function PlayClient({
         walletBalance={session?.walletBalance}
         gameCurrencyLabel={gameCurrencyDisplayName}
         pvpEnabled={session?.pvpEnabled}
-        reputation={session?.reputation}
         effects={session?.liveEffects ?? null}
       />
     ) },
@@ -207,7 +206,7 @@ export default function PlayClient({
       minH: 140,
       content: <DeclaredPanel spec={spec} data={session?.liveSections?.[spec.section]} />,
     })),
-  ], [session?.declaredPanels, session?.liveSections, narrativeLines, openCtx, sendCommand, notifications, session?.characterName, session?.username, session?.portraitImageUrl, session?.walletBalance, session?.pvpEnabled, session?.reputation, session?.characterStats, session?.levelsTotal, session?.liveEffects, session?.liveInventory, session?.liveMap, session?.chatMessages, sceneImageUrl, sceneGenerating, sceneRoomLabel, sceneDownloadBaseName, sceneGen, characterLocation, gameCurrencyDisplayName, narrativeBackdropUrl, narrativeBackdropSource, openSceneGallerySignal]);
+  ], [session?.declaredPanels, session?.liveSections, narrativeLines, openCtx, sendCommand, notifications, session?.characterName, session?.username, session?.portraitImageUrl, session?.walletBalance, session?.pvpEnabled, session?.characterStats, session?.levelsTotal, session?.liveEffects, session?.liveInventory, session?.liveMap, session?.chatMessages, sceneImageUrl, sceneGenerating, sceneRoomLabel, sceneDownloadBaseName, sceneGen, characterLocation, gameCurrencyDisplayName, narrativeBackdropUrl, narrativeBackdropSource, openSceneGallerySignal]);
 
   return (
     <GameCmdContext.Provider value={{ sendCommand }}>

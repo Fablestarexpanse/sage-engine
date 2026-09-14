@@ -9,7 +9,9 @@ Data shapes, by kind (the section's value):
 ``key_value``   ``{"rows": [{"label": str, "value": str | number}]}``
 ``list``        ``{"items": [{"label": str, "detail"?: str, "value"?: str | number,
                 "tone"?: "good" | "warn" | "bad"}], "empty"?: str}``
-``stat_sheet``  ``{"stats": [{"label": str, "value": number, "max"?: number, "note"?: str}]}``
+``stat_sheet``  ``{"stats": [{"label": str, "value": number, "min"?: number, "max"?: number,
+                "note"?: str, "tone"?: str}]}`` (a bar is drawn when ``max`` is given; ``min``
+                defaults to 0)
 ``wallet``      ``{"balances": [{"label": str, "amount": number}]}``
 ``table``       ``{"columns": [str], "rows": [[str | number]]}``
 ``tree``        ``{"nodes": [node]}``, node = ``{"id": str, "label": str, "value"?: number,

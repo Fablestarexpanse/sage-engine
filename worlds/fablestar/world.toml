@@ -36,6 +36,7 @@ effects = "^1"
 equipment = "^1"
 consumables = "^1"
 combat = "^1"
+morality = "^1"
 
 [params]
 # Tidegate clinic bills up to 10 Digi on respawn; half health on waking.

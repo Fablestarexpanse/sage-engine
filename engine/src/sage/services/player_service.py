@@ -126,7 +126,6 @@ class PlayerService:
             "portrait_prompt": character.portrait_prompt,
             "last_scene_image_url": character.last_scene_image_url,
             "pvp_enabled": bool(character.pvp_enabled),
-            "reputation": int(character.reputation),
             "stats": stats,
             "sections": sections,
         }
@@ -297,7 +296,6 @@ class PlayerService:
             portrait_url=portrait_url,
             portrait_prompt=portrait_prompt,
             pvp_enabled=False,
-            reputation=0,
         )
         db_session.add(character)
         await db_session.commit()

@@ -22,7 +22,6 @@ def _character_admin_dict(c: Character) -> dict[str, Any]:
         "portrait_prompt": c.portrait_prompt,
         "last_scene_image_url": c.last_scene_image_url,
         "pvp_enabled": bool(c.pvp_enabled),
-        "reputation": int(c.reputation),
         "stats": dict(c.stats or {}),
         "inventory": list(c.inventory or []),
         "created_at": c.created_at.isoformat() + "Z" if c.created_at else None,
@@ -194,8 +193,6 @@ async def patch_character(
         char_name = char.name
         if "pvp_enabled" in patch:
             char.pvp_enabled = bool(patch["pvp_enabled"])
-        if "reputation" in patch:
-            char.reputation = int(patch["reputation"])
         if "room_id" in patch:
             rid = patch["room_id"]
             if isinstance(rid, str) and rid.strip():
@@ -215,8 +212,6 @@ async def patch_character(
         out = _character_admin_dict(char)
 
     lines: list[str] = []
-    if "reputation" in patch:
-        lines.append(f"Character {char_name}: Reputation → {out['reputation']}.")
     if "room_id" in patch:
         lines.append(f"Character {char_name}: Location (room) updated.")
     if "pvp_enabled" in patch:

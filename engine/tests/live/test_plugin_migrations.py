@@ -174,3 +174,52 @@ def test_agents_branch_copies_rows_from_the_retired_engine_table(live_config, mi
     finally:
         command.downgrade(cfg, "plg_agents@base")
         _run_sync(live_config, unseed)
+
+
+def test_world_plugin_branch_moves_a_legacy_column_into_its_state_block(
+    live_config, migrated_database
+):
+    """plg_morality copies characters.reputation into stats and zeroes it; downgrade reverses."""
+    from sqlalchemy import text
+
+    from tests.live.conftest import REPO_ROOT
+    from tests.live.test_migrations import _run_sync
+
+    plugin = next((REPO_ROOT / "worlds").glob("*/plugins/morality"), None)
+    if plugin is None:
+        pytest.skip("no world ships the morality plugin")
+
+    def execute(sql):
+        def run(conn):
+            result = conn.execute(text(sql))
+            rows = result.all() if result.returns_rows else None
+            conn.commit()
+            return rows
+
+        return _run_sync(live_config, run)
+
+    execute(
+        "INSERT INTO accounts (username, password_hash, is_gm, created_at) "
+        "VALUES ('moral_owner', 'x', false, now())"
+    )
+    execute(
+        "INSERT INTO characters (account_id, name, room_id, reputation, pvp_enabled, stats, "
+        "inventory, created_at, updated_at) SELECT id, 'moral_hero', 'probe:start', -40, false, "
+        "'{\"hp\": 3}', '[]', now(), now() FROM accounts WHERE username = 'moral_owner'"
+    )
+    cfg = alembic_config([plugin])
+    try:
+        command.upgrade(cfg, "plg_morality@head")
+        [(stats, column)] = execute(
+            "SELECT stats, reputation FROM characters WHERE name = 'moral_hero'"
+        )
+        assert stats == {"hp": 3, "morality": {"standing": -40}} and column == 0
+        command.downgrade(cfg, "plg_morality@base")
+        [(stats, column)] = execute(
+            "SELECT stats, reputation FROM characters WHERE name = 'moral_hero'"
+        )
+        assert stats == {"hp": 3} and column == -40
+    finally:
+        command.downgrade(cfg, "plg_morality@base")
+        execute("DELETE FROM characters WHERE name = 'moral_hero'")
+        execute("DELETE FROM accounts WHERE username = 'moral_owner'")

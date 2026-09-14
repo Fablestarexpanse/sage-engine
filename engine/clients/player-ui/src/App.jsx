@@ -24,7 +24,6 @@ import PlayClient from "./mud/PlayClient.jsx";
 import { GmBadge } from "./GmBadge.jsx";
 import { DEFAULT_NARRATIVE } from "./mud/03-narrative.jsx";
 import { PORTRAIT_ASPECT_RATIO_CSS } from "./portraitProfile.js";
-import { ReputationThermometer } from "./ReputationThermometer.jsx";
 import { FloatingThemeToggle, ThemeToggleButton } from "./ThemeToggleButton.jsx";
 
 /** Account-wide AI art balance (ai_credits): one place, not per character. */
@@ -1809,7 +1808,6 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
                         </span>
                       </div>
                       <div style={{ marginTop: 8, maxWidth: 280 }}>
-                        <ReputationThermometer reputation={typeof c.reputation === "number" ? c.reputation : 0} compact />
                       </div>
                     </div>
                   </button>
@@ -1874,7 +1872,6 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
                   portraitUrl: ch?.portrait_url ?? null,
                   walletBalance: walletOf(ch) ?? 0,
                   pvpEnabled: Boolean(ch?.pvp_enabled),
-                  reputation: typeof ch?.reputation === "number" ? ch.reputation : 0,
                   lastSceneImageUrl: ch?.last_scene_image_url ?? null,
                   characterStats: ch?.stats ?? null,
                   levelsTotal: levelsTotalOf(ch),
@@ -2149,7 +2146,7 @@ export default function App() {
   }, [step, playSession?.username, playSession?.characterId]);
 
   const onChosen = useCallback(
-    ({ characterId, characterName, password, portraitUrl, walletBalance, pvpEnabled, reputation, lastSceneImageUrl, characterStats, levelsTotal }) => {
+    ({ characterId, characterName, password, portraitUrl, walletBalance, pvpEnabled, lastSceneImageUrl, characterStats, levelsTotal }) => {
       passwordRef.current = password;
       setPlaySession({
         username: auth.username,
@@ -2159,7 +2156,6 @@ export default function App() {
         portraitUrl: portraitUrl || null,
         walletBalance: typeof walletBalance === "number" ? walletBalance : 0,
         pvpEnabled: typeof pvpEnabled === "boolean" ? pvpEnabled : false,
-        reputation: typeof reputation === "number" ? reputation : 0,
         isGm: Boolean(auth.isGm),
         characterStats: characterStats && typeof characterStats === "object" ? characterStats : null,
         levelsTotal: typeof levelsTotal === "number" ? levelsTotal : null,
@@ -2183,7 +2179,6 @@ export default function App() {
       portraitUrl: ch.portrait_url ?? null,
       walletBalance: walletOf(ch) ?? 0,
       pvpEnabled: Boolean(ch.pvp_enabled),
-      reputation: typeof ch.reputation === "number" ? ch.reputation : 0,
       lastSceneImageUrl: ch.last_scene_image_url ?? null,
       characterStats: ch.stats ?? null,
       levelsTotal: levelsTotalOf(ch),
@@ -2460,7 +2455,6 @@ export default function App() {
             portraitImageUrl: playSession.portraitUrl ? playMediaUrl(playSession.portraitUrl) : null,
             walletBalance: playSession.walletBalance ?? 0,
             pvpEnabled: playSession.pvpEnabled,
-            reputation: playSession.reputation ?? 0,
             isGm: playSession.isGm,
             characterStats: playSession.characterStats ?? null,
             levelsTotal: playSession.levelsTotal ?? null,

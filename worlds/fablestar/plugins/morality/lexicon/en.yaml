@@ -1,0 +1,11 @@
+morality:
+  panel:
+    standing: "Morality"
+  label:
+    standing: "Moral standing"
+  band:
+    evil: "Evil"
+    dark: "Dark"
+    neutral: "Neutral"
+    decent: "Decent"
+    good: "Good"

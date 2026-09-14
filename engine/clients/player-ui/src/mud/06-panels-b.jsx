@@ -1,12 +1,11 @@
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { usePlayTheme } from "../PlayThemeContext.jsx";
 import { GameCmdContext } from "./00-ctx.jsx";
-import { ReputationThermometer } from "../ReputationThermometer.jsx";
 import { PORTRAIT_ASPECT_RATIO_CSS } from "../portraitProfile.js";
 import { Tooltip } from "./01-primitives.jsx";
 
-/** Frosted quick-read: account, wallet, PVP, reputation, location, progress (AI art credits in header). */
-function CharacterStrip({ locationLabel, level, accountName, walletBalance, gameCurrencyLabel, pvpEnabled, reputation }) {
+/** Frosted quick-read: account, wallet, PVP, location, progress (AI art credits in header). */
+function CharacterStrip({ locationLabel, level, accountName, walletBalance, gameCurrencyLabel, pvpEnabled }) {
   const { T } = usePlayTheme();
   const glass = {
     padding: "10px 10px 8px",
@@ -76,7 +75,6 @@ function CharacterStrip({ locationLabel, level, accountName, walletBalance, game
           </div>
         </div>
       ) : null}
-      {typeof reputation === "number" ? <ReputationThermometer reputation={reputation} /> : null}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "stretch", gap: 10, marginBottom: 10 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={micro}>Location</div>
@@ -118,7 +116,6 @@ export function CharacterPanel({
   walletBalance = null,
   gameCurrencyLabel = "",
   pvpEnabled = null,
-  reputation = null,
   /** Server-pushed live effects: [{name, description, debuff, seconds_left}] or null. */
   effects = null,
   /** Large Conduit portrait; set false when the cutout is shown behind Narrative instead. */
@@ -285,7 +282,6 @@ export function CharacterPanel({
         walletBalance={walletBalance}
         gameCurrencyLabel={gameCurrencyLabel}
         pvpEnabled={pvpEnabled}
-        reputation={reputation}
       />
       <div style={{ display: "flex", borderBottom: `1px solid ${T.border.subtle}` }}>
         {["vitals","effects"].map(t => <button key={t} type="button" onClick={()=>setTab(t)} style={{ flex: 1, padding: "5px 0", background: "none", border: "none", borderBottom: tab===t?`2px solid ${T.hue.violet}`:"2px solid transparent", color: tab===t?T.text.accent:T.text.muted, fontFamily: T.font.body, fontSize: 9, textTransform: "uppercase", letterSpacing: "0.08em", cursor: "pointer" }}>{t}</button>)}

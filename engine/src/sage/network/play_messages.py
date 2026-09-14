@@ -73,7 +73,6 @@ class CharacterPayload(TypedDict):
     portrait_prompt: str | None
     last_scene_image_url: str | None
     pvp_enabled: bool
-    reputation: int
     stats: dict[str, Any]
     sections: dict[str, Any]
 

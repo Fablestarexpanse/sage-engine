@@ -23,8 +23,9 @@ function Empty({ T, text }) {
   );
 }
 
-function Bar({ value, max, T, tone }) {
-  const pct = max > 0 ? Math.max(0, Math.min(100, (Number(value) / Number(max)) * 100)) : 0;
+function Bar({ value, min = 0, max, T, tone }) {
+  const span = Number(max) - Number(min || 0);
+  const pct = span > 0 ? Math.max(0, Math.min(100, ((Number(value) - Number(min || 0)) / span) * 100)) : 0;
   return (
     <div style={{ height: 6, borderRadius: 3, background: T.bg.void, border: `1px solid ${T.border.subtle}`, overflow: "hidden" }}>
       <div style={{ width: `${pct}%`, height: "100%", background: tone ? toneColor(tone, T) : T.text.accent, transition: "width 0.3s ease" }} />
@@ -86,10 +87,11 @@ function StatSheet({ data, T }) {
             <span style={{ color: T.text.secondary }}>{String(s.label ?? "")}</span>
             <span style={{ fontFamily: T.font.mono, color: T.text.primary, fontVariantNumeric: "tabular-nums" }}>
               {String(s.value ?? "")}
-              {s.max != null ? <span style={{ color: T.text.muted }}> / {String(s.max)}</span> : null}
+              {s.max != null && s.min == null ? <span style={{ color: T.text.muted }}> / {String(s.max)}</span> : null}
+              {s.min != null && s.note ? <span style={{ color: T.text.muted }}> · {String(s.note)}</span> : null}
             </span>
           </div>
-          {s.max != null && <Bar value={s.value} max={s.max} T={T} tone={s.tone} />}
+          {s.max != null && <Bar value={s.value} min={s.min} max={s.max} T={T} tone={s.tone} />}
         </div>
       ))}
     </div>

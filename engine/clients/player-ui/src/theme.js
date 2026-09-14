@@ -21,7 +21,6 @@ export const PLAY_THEME_DARK = {
       label: "#f0abfc",
     },
   },
-  reputation: { evil: "#dc2626", mid: "#fbbf24", good: "#16a34a" },
   hue: { violet: "#a78bfa", violetDim: "rgba(167,139,250,0.15)", violetGlow: "rgba(167,139,250,0.3)", cyan: "#22d3ee", cyanDim: "rgba(34,211,238,0.15)", amber: "#f59e0b", amberDim: "rgba(245,158,11,0.15)", crimson: "#ef4444", crimsonDim: "rgba(239,68,68,0.15)", emerald: "#10b981", emeraldDim: "rgba(16,185,129,0.15)" },
   radius: { sm: 4, md: 6, lg: 10, xl: 14 },
   /** display: headings / room titles / branding — was Cinzel + Cormorant Garamond (fantasy serif). */
@@ -52,7 +51,6 @@ export const PLAY_THEME_LIGHT = {
       label: "#701a75",
     },
   },
-  reputation: { evil: "#b91c1c", mid: "#d97706", good: "#15803d" },
   hue: { violet: "#6d4ed6", violetDim: "rgba(109,78,214,0.12)", violetGlow: "rgba(109,78,214,0.22)", cyan: "#0891b2", cyanDim: "rgba(8,145,178,0.12)", amber: "#d97706", amberDim: "rgba(217,119,6,0.12)", crimson: "#dc2626", crimsonDim: "rgba(220,38,38,0.12)", emerald: "#059669", emeraldDim: "rgba(5,150,105,0.12)" },
   radius: { sm: 4, md: 6, lg: 10, xl: 14 },
   /** display: headings / room titles / branding — was Cinzel + Cormorant Garamond (fantasy serif). */

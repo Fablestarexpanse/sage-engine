@@ -67,7 +67,6 @@ class PlayerAccountPatchBody(BaseModel):
 
 class PlayerCharacterPatchBody(BaseModel):
     pvp_enabled: bool | None = None
-    reputation: int | None = None
     room_id: str | None = None
     portrait_url: str | None = None
     portrait_prompt: str | None = None

@@ -34,7 +34,7 @@ by owner G.4 ("every mechanic is a first-party plugin").
 | 3.11 | Combat, equipment, ambient, effects → first-party plugins (owner G.4): ambient, effects, combat, equipment, consumables (`use`) | done |
 | 3.12 | Snapshot contributors (`api.snapshot.contribute`); `resonance_levels_total` out of the protocol | done |
 | 3.13 | Declarative client panels; remove Fablestar panels/branding from player-ui: 3.13a API + renderer, 3.13b Conduit panels, 3.13c mock panels and branding out; 3.13d deferred until an admin panel is needed | done |
-| 3.14 | Schema: JSONB state, `digi_balance`/`reputation`/`echo_credits` columns, retire `agent_state` (backfill → drop): 3.14a JSONB + agent_state rename, 3.14b wallet into stats, 3.14c-1 ai_credits done | in progress |
+| 3.14 | Schema: JSONB state, `digi_balance`/`reputation`/`echo_credits` columns, retire `agent_state` (backfill → drop): 3.14a JSONB + agent_state rename, 3.14b wallet into stats, 3.14c ai_credits and morality done; 3.14d drops next | in progress |
 | 3.15 | Redis key namespace by world slug | todo |
 | 3.16 | AI slots and style; prompts into `worlds/fablestar/ai` | todo |
 | 3.17 | Move Fablestar content into `worlds/fablestar/content`; remove `[transition]` | todo |
@@ -200,9 +200,14 @@ by owner G.4 ("every mechanic is a first-party plugin").
     clients use the engine name; the art currency's default display name is "credits" (a
     deployment still sets its own label, e.g. "pixels", in comfyui.toml). The hardcoded USD
     bundles in the admin tab stay for now (contracts: move to deployment config).
-  - 3.14c-2 `reputation` becomes a state block owned by a Fablestar `morality` world plugin with
-    a declared panel; its plugin migration copies the column and zeroes it, so the core drop can
-    refuse while any row still holds a non-zero value.
-  - 3.14d drops: `digi_balance`, `reputation`, `retired_agent_state` (**one-way door**). Dev DB
-    backup before 3.14a: scratchpad `devdb_before_314a.sql`; take a fresh one before 3.14d.
+  - 3.14c-2 (done) Fablestar world plugin `morality` (state block `morality.standing`, -100..100,
+    a ranged `stat_sheet` panel titled "Morality" with a band note). Branch `plg_morality`
+    (`morality0001`, no tables) copies `characters.reputation` into the block and zeroes the
+    column; downgrade copies back. The engine API, admin editor and player-ui no longer carry
+    reputation; `ReputationThermometer` is deleted. `stat_sheet` rows gained optional `min`.
+    Standing is edited through the stats JSON; nothing in play changes it yet.
+  - 3.14d drops: `digi_balance`, `reputation`, `retired_agent_state` (**one-way door**). The drop
+    revision refuses while any row still has a non-zero `reputation` (a world plugin that owns it
+    has not run yet). Dev DB backups: scratchpad `devdb_before_314a/b/c1/c2.sql`; take a fresh
+    one before 3.14d.
 
