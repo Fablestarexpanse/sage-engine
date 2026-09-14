@@ -252,3 +252,19 @@ def test_lint_reports_broken_content(tmp_path):
     assert "town:market east: destination 'town:nowhere' does not exist" in report.errors
     assert "town:market: spawns unknown entity 'dragon'" in report.errors
     assert "town:shrine west -> town:market, which does not lead back" in report.warnings
+
+
+def test_ai_is_text_only_with_its_own_voice(rivermoot):
+    """Rivermoot fills the narration slots and ships no image templates (owner G.9)."""
+    import re
+
+    from sage.llm.style import load_style
+
+    world, host = rivermoot
+    prompts = host.server.prompt_manager
+    assert prompts.enabled("narrate.room") and prompts.enabled("combat.narration")
+    for slot in ("image.portrait", "image.area", "image.scene", "forge.room", "forge.content"):
+        assert not prompts.enabled(slot), slot
+    style = load_style(world.style_path)
+    assert "river town" in style.system_prompt
+    assert any(re.search(rule, "it cost 4 silver") for rule in style.rules())

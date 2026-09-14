@@ -32,7 +32,7 @@ into `docs/sage/DECISIONS.md`.
 | 4.3 | Levels that matter. The `levels` plugin provides `combat.ratings` from Might/Nerve plus level, and a level raises maximum health. | done |
 | 4.4 | The map. 20–40 rooms over three zones (town, docks and riverbank, the old mill and marsh), entities and items, north/south/east/west exits only. | done |
 | 4.5 | First-party plugins in a second world. Rivermoot enables equipment (hand/body), consumables, shop and lodging (priced in silver), search, effects (rest) and ambient; fix whatever assumes Fablestar. | done |
-| 4.6 | Rivermoot's AI. Room narration with its own style, and no image slots (owner G.9: no AI images). | todo |
+| 4.6 | Rivermoot's AI. Room narration with its own style, and no image slots (owner G.9: no AI images). | done |
 | 4.7 | Proof. The live smoke test plays a longer Rivermoot script (buy, equip, fight, level, rest, die and wake at the shrine). A real server runs on its own Rivermoot database (one database per world). | todo |
 
 ## Notes
@@ -99,4 +99,10 @@ into `docs/sage/DECISIONS.md`.
     - Woke at the shrine: "You leave 3 silver in the offering bowl."
     - Rested at the shrine (a regeneration effect) and ate bread (+3 hp).
     - Rest was refused in the market.
+- **4.6 Rivermoot's AI (done).**
+  - **What ships:** `ai/style.yaml` (its own tone and system prompt, and a content rule against prices in narration), `narrate.room.j2` and `combat.narration.j2`.
+  - **What is missing, on purpose:** image and forge templates. Those slots are disabled.
+  - **No engine change:** the portrait endpoint returns `comfyui_not_configured` with no charge.
+  - **Live run:** room narration arrived for the market and the crossroads, and combat narration for a rat kill.
+  - **Tone fix:** the first tone string was a noun phrase ("a muddy low-fantasy river town"). The local model echoed it back verbatim, so the setting moved to the system prompt, and the template now forbids naming the genre.
 
