@@ -225,10 +225,16 @@ async def patch_character(
     *,
     actor: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
+    from sage.admin.character_tools import snapshot
+
     async with server.db.session_factory() as session:
         char = await session.get(Character, character_id)
         if char is None or char.account_id != account_id:
             return None
+    by = str((actor or {}).get("username") or "")
+    await snapshot(server, character_id, "account editor save", by)
+    async with server.db.session_factory() as session:
+        char = await session.get(Character, character_id)
         char_name = char.name
         if "pvp_enabled" in patch:
             char.pvp_enabled = bool(patch["pvp_enabled"])

@@ -8,6 +8,8 @@ ownership checks, and which audit notification fires for whom.
 import asyncio
 from types import SimpleNamespace
 
+import pytest
+
 from sage.admin import player_accounts
 from sage.state.models import Account, Character
 
@@ -138,6 +140,21 @@ def test_patch_account_gm_toggle_audited_only_on_change():
 # ---- patch_character --------------------------------------------------------
 
 
+@pytest.fixture(autouse=True)
+def snapshots(monkeypatch):
+    """The account editor's character save snapshots first; the snapshot store is live-tested."""
+    from sage.admin import character_tools
+
+    taken = []
+
+    async def fake_snapshot(server, character_id, reason, by):
+        taken.append((character_id, reason, by))
+        return len(taken)
+
+    monkeypatch.setattr(character_tools, "snapshot", fake_snapshot)
+    return taken
+
+
 def test_patch_character_rejects_wrong_account():
     async def check():
         char = _character(account_id=42)  # belongs to another account
@@ -147,7 +164,7 @@ def test_patch_character_rejects_wrong_account():
     asyncio.run(check())
 
 
-def test_patch_character_audits_and_ignores_unknown_fields():
+def test_patch_character_audits_and_ignores_unknown_fields(snapshots):
     async def check():
         char = _character()
         srv, calls = _server(_FakeSession(get_row=char))
@@ -160,6 +177,7 @@ def test_patch_character_audits_and_ignores_unknown_fields():
         assert len(calls["audit"]) == 1
         _, kw = calls["audit"][0]
         assert kw["character_name"] == "Hero"
+        assert snapshots == [(3, "account editor save", "gm1")]
 
     asyncio.run(check())
 

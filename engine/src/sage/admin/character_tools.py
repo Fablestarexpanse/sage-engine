@@ -1,9 +1,13 @@
-"""Staff tools for one player character: find, inspect, move, set money, give or remove items, kick.
+"""Staff tools for one player character: find, inspect, move, set money, give or remove items,
+restore vitals, kick, and put the character back to an earlier snapshot.
 
 A character's live state lives in Redis once it has logged in since Redis was last cleared (its
 location key exists), and the persistence flush copies Redis over Postgres about every minute.
 So every write here updates Redis when that state exists, as well as the Postgres row. A write to
 Postgres alone would be silently undone by the next flush.
+
+Every change is preceded by a snapshot of the character's room, stats and inventory (who and why),
+so staff can undo it. The newest ``SNAPSHOTS_KEPT`` per character are kept.
 """
 
 from __future__ import annotations
@@ -12,6 +16,8 @@ import uuid
 from typing import Any
 
 from sqlalchemy import func, select
+
+SNAPSHOTS_KEPT = 50
 
 
 class CharacterToolError(ValueError):
@@ -121,7 +127,45 @@ async def detail(server: Any, character_id: int) -> dict[str, Any]:
         "max_hp": stats.get("max_hp"),
         "currencies": currencies,
         "inventory": inventory,
+        **await _sheet(server, char.name, stats),
     }
+
+
+async def _sheet(server: Any, name: str, stats: dict[str, Any]) -> dict[str, Any]:
+    """What the player's own panels show: the world's vitals and attributes, and every snapshot
+    section with the panel specs plugins declared for it (levels, skills, gear, standings ...)."""
+    from sage import lexicon
+
+    def label(key: str, fallback: str) -> str:
+        # A world that has not written the label line yet shows the stat key, not "[key]".
+        return lexicon.active().get(key) or fallback
+
+    schema = getattr(server.world, "stats", None)
+    vitals = [
+        {
+            "key": v.key,
+            "label": label(v.label, v.key),
+            "value": stats.get(v.key),
+            "max": stats.get(f"max_{v.key}", v.default_max),
+        }
+        for v in (getattr(schema, "vitals", None) or [])
+    ]
+    attributes = [
+        {"key": a.key, "label": label(a.label, a.key.upper()), "value": stats.get(a.key, a.default)}
+        for a in (getattr(schema, "attributes", None) or [])
+    ]
+    sections: dict[str, Any] = {}
+    contributors = getattr(server, "snapshot_contributors", None)
+    if contributors is not None:
+        try:
+            from sage.world.progression import PREPARE
+
+            prepared = server.resolvers.get(PREPARE)(dict(stats))
+        except Exception:
+            prepared = dict(stats)
+        sections = await contributors.build(name, prepared)
+    panels = server.panels.specs() if getattr(server, "panels", None) is not None else []
+    return {"vitals": vitals, "attributes": attributes, "sections": sections, "panels": panels}
 
 
 async def _write(
@@ -183,10 +227,110 @@ async def _tell(server: Any, name: str, key: str, **values: Any) -> None:
             pass
 
 
-async def move(server: Any, character_id: int, room_id: str) -> dict[str, Any]:
+async def snapshot(server: Any, character_id: int, reason: str, by: str) -> int:
+    """Save the character as it is now (live state when it exists). Returns the snapshot id."""
+    from sage.state.models import Character, CharacterSnapshot
+
+    name, stats, inventory = await _current(server, character_id)
+    hot = await _hot_room(server, name)
+    async with server.db.session_factory() as session:
+        char = await session.get(Character, character_id)
+        row = CharacterSnapshot(
+            character_id=character_id,
+            staff_username=(by or "unknown")[:64],
+            reason=(reason or "")[:64],
+            room_id=hot or (char.room_id if char else ""),
+            stats=stats,
+            inventory=inventory,
+        )
+        session.add(row)
+        await session.flush()
+        stale = (
+            await session.execute(
+                select(CharacterSnapshot)
+                .where(CharacterSnapshot.character_id == character_id)
+                .order_by(CharacterSnapshot.id.desc())
+                .offset(SNAPSHOTS_KEPT)
+            )
+        ).scalars()
+        for old in list(stale):
+            await session.delete(old)
+        await session.commit()
+        return row.id
+
+
+async def snapshots(server: Any, character_id: int) -> list[dict[str, Any]]:
+    """Every kept snapshot of the character, newest first."""
+    from sage.state.models import CharacterSnapshot
+
+    async with server.db.session_factory() as session:
+        await _row(session, character_id)
+        rows = (
+            await session.execute(
+                select(CharacterSnapshot)
+                .where(CharacterSnapshot.character_id == character_id)
+                .order_by(CharacterSnapshot.id.desc())
+            )
+        ).scalars()
+        return [
+            {
+                "id": r.id,
+                "at": r.created_at.isoformat() + "Z" if r.created_at else None,
+                "staff": r.staff_username,
+                "reason": r.reason,
+                "room_id": r.room_id,
+                "stats": r.stats,
+                "inventory": r.inventory,
+            }
+            for r in rows
+        ]
+
+
+async def restore_snapshot(server: Any, character_id: int, snapshot_id: int, by: str) -> dict:
+    """Put the character back to a snapshot, after taking a snapshot of how it is now."""
+    from sage.state.models import CharacterSnapshot
+
+    async with server.db.session_factory() as session:
+        row = await session.get(CharacterSnapshot, snapshot_id)
+        if row is None or row.character_id != character_id:
+            raise LookupError("snapshot_not_found")
+        room_id, stats, inventory = row.room_id, dict(row.stats or {}), list(row.inventory or [])
+    if server.content_loader.get_room(room_id) is None:
+        raise CharacterToolError(f"room_not_found: {room_id}")
+    undo = await snapshot(server, character_id, f"restore snapshot #{snapshot_id}", by)
+    name = await _write(server, character_id, room_id=room_id, stats=stats, inventory=inventory)
+    session = _session(server, name)
+    if session is not None:
+        await _tell(server, name, "staff.restored_snapshot")
+        try:
+            await server.dispatcher.dispatch(session, "look")
+        except Exception:
+            pass
+    return {"name": name, "restored": snapshot_id, "undo_snapshot": undo}
+
+
+async def restore_vitals(server: Any, character_id: int, by: str = "") -> dict[str, Any]:
+    """Fill every vital the world declares (hp ...) to its maximum."""
+    name, stats, _ = await _current(server, character_id)
+    vitals = getattr(getattr(server.world, "stats", None), "vitals", None) or []
+    changed = {}
+    for vital in vitals:
+        top = int(stats.get(f"max_{vital.key}", vital.default_max))
+        if stats.get(vital.key) != top:
+            changed[vital.key] = {"before": stats.get(vital.key), "after": top}
+            stats[vital.key] = top
+    if changed:
+        await snapshot(server, character_id, "restore vitals", by)
+        await _write(server, character_id, stats=stats)
+        await _tell(server, name, "staff.restored")
+    return {"name": name, "changed": changed}
+
+
+async def move(server: Any, character_id: int, room_id: str, by: str = "") -> dict[str, Any]:
     room_id = (room_id or "").strip()
     if server.content_loader.get_room(room_id) is None:
         raise CharacterToolError(f"room_not_found: {room_id}")
+    await snapshot(server, character_id, f"move to {room_id}", by)
     name = await _write(server, character_id, room_id=room_id)
     session = _session(server, name)
     if session is not None:
@@ -198,7 +342,9 @@ async def move(server: Any, character_id: int, room_id: str) -> dict[str, Any]:
     return {"name": name, "room_id": room_id}
 
 
-async def set_balance(server: Any, character_id: int, currency: str, amount: int) -> dict[str, Any]:
+async def set_balance(
+    server: Any, character_id: int, currency: str, amount: int, by: str = ""
+) -> dict[str, Any]:
     from sage.world.wallet import WalletError
 
     if not isinstance(amount, int) or amount < 0:
@@ -209,12 +355,13 @@ async def set_balance(server: Any, character_id: int, currency: str, amount: int
         server.wallet.set(stats, amount, currency)
     except WalletError as exc:
         raise CharacterToolError(str(exc)) from None
+    await snapshot(server, character_id, f"set {currency} to {amount}", by)
     await _write(server, character_id, stats=stats)
     await _tell(server, name, "staff.wallet", amount=amount, currency=server.wallet.name(currency))
     return {"name": name, "currency": currency, "before": before, "after": amount}
 
 
-async def give_item(server: Any, character_id: int, template_id: str) -> dict[str, Any]:
+async def give_item(server: Any, character_id: int, template_id: str, by: str = "") -> dict:
     template = server.content_loader.get_item_template((template_id or "").strip())
     if template is None:
         raise CharacterToolError(f"item_not_found: {template_id}")
@@ -226,18 +373,20 @@ async def give_item(server: Any, character_id: int, template_id: str) -> dict[st
         "description": template.description,
         "value": template.value,
     }
+    await snapshot(server, character_id, f"give {template.id}", by)
     inventory.append(entry)
     await _write(server, character_id, inventory=inventory)
     await _tell(server, name, "staff.item_given", item=template.name)
     return {"name": name, "item": entry}
 
 
-async def remove_item(server: Any, character_id: int, item_id: str) -> dict[str, Any]:
+async def remove_item(server: Any, character_id: int, item_id: str, by: str = "") -> dict:
     name, _, inventory = await _current(server, character_id)
     kept = [it for it in inventory if it.get("id") != item_id]
     if len(kept) == len(inventory):
         raise CharacterToolError(f"item_not_carried: {item_id}")
     removed = next(it for it in inventory if it.get("id") == item_id)
+    await snapshot(server, character_id, f"remove {removed.get('template') or item_id}", by)
     await _write(server, character_id, inventory=kept)
     await _tell(
         server, name, "staff.item_removed", item=removed.get("name") or removed.get("template")
