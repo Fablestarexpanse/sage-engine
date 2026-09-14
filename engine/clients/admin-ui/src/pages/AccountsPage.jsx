@@ -30,7 +30,7 @@ export default function AccountsPage() {
         <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: COLORS.text, fontFamily: "'Space Grotesk', sans-serif" }}>Accounts</h2>
         <p style={{ margin: "4px 0 0", fontSize: 13, color: COLORS.textMuted, fontFamily: "'DM Sans', sans-serif", maxWidth: 820 }}>Game accounts: suspension, AI art credits, Nexus console access for this login, and characters. Staff logins are under Team &amp; access.</p>
       </div>
-      <PlayerAccountsTab focusTarget={focus} />
+      <PlayerAccountsTab focusTarget={focus} onSelect={(id) => { if (accountFromHash() !== id) window.location.hash = `/accounts/${id}`; }} />
     </div>
   );
 }

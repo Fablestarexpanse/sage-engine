@@ -27,6 +27,34 @@ def set_content_root(content_dir: Path) -> None:
     ITEMS_DIR = CONTENT_WORLD / "items"
 
 
+# Parsed YAML by path, reused while the file's mtime and size are unchanged. Listing a big world
+# then costs a stat per file, not a parse, so the console can refresh its lists freely.
+_YAML_CACHE: dict[Path, tuple[tuple[int, int], dict[str, Any], str | None]] = {}
+# libyaml's safe loader is roughly ten times faster than the pure-Python one; same safety rules.
+_SAFE_LOADER = getattr(yaml, "CSafeLoader", yaml.SafeLoader)
+
+
+def load_yaml(path: Path) -> tuple[dict[str, Any], str | None]:
+    """(data, error) for one content file; data is shared with the cache, so never modify it."""
+    try:
+        st = path.stat()
+    except OSError as e:
+        return {}, str(e)
+    stamp = (st.st_mtime_ns, st.st_size)
+    hit = _YAML_CACHE.get(path)
+    if hit is not None and hit[0] == stamp:
+        return hit[1], hit[2]
+    try:
+        data = yaml.load(path.read_text(encoding="utf-8"), Loader=_SAFE_LOADER) or {}
+        error = None if isinstance(data, dict) else "not a mapping"
+    except Exception as e:
+        data, error = {}, str(e).splitlines()[0] if str(e) else type(e).__name__
+    if not isinstance(data, dict):
+        data = {}
+    _YAML_CACHE[path] = (stamp, data, error)
+    return data, error
+
+
 def _is_safe_segment(segment: str) -> bool:
     return bool(re.match(r"^[a-zA-Z0-9_-]+$", segment))
 
@@ -52,8 +80,7 @@ def zone_summary(zone_id: str) -> dict[str, Any] | None:
     status = "active"
     if meta_path.is_file():
         try:
-            with open(meta_path, encoding="utf-8") as f:
-                meta = yaml.safe_load(f) or {}
+            meta, _ = load_yaml(meta_path)
             name = meta.get("name", zone_id)
             ztype = meta.get("type", ztype)
             dr = meta.get("depth_range") or meta.get("depth")
@@ -78,12 +105,9 @@ def zone_summary(zone_id: str) -> dict[str, Any] | None:
 
 
 def _room_entity_count(path: Path) -> int:
-    try:
-        with open(path, encoding="utf-8") as f:
-            data = yaml.safe_load(f) or {}
-        return len(data.get("entity_spawns") or [])
-    except Exception:
-        return 0
+    data, _ = load_yaml(path)
+    spawns = data.get("entity_spawns")
+    return len(spawns) if isinstance(spawns, list) else 0
 
 
 def list_zones() -> list[dict[str, Any]]:
@@ -116,25 +140,27 @@ def list_rooms(zone_id: str) -> list[dict[str, Any]]:
         return []
     rows: list[dict[str, Any]] = []
     for rf in sorted(rooms_dir.glob("*.yaml")):
-        try:
-            with open(rf, encoding="utf-8") as f:
-                data = yaml.safe_load(f) or {}
-            rows.append(room_row(zone_id, rf.stem, data))
-        except Exception as e:
-            logger.warning("Skip room %s: %s", rf, e)
-            rows.append(
-                {
-                    "id": f"{zone_id}:{rf.stem}",
-                    "name": rf.stem,
-                    "type": "?",
-                    "exits": [],
-                    "entities": 0,
-                    "hazards": 0,
-                    "features": 0,
-                    "depth": 0,
-                    "error": str(e),
-                }
-            )
+        data, error = load_yaml(rf)
+        if error is None:
+            try:
+                rows.append(room_row(zone_id, rf.stem, data))
+                continue
+            except Exception as e:
+                error = str(e)
+        logger.warning("Skip room %s: %s", rf, error)
+        rows.append(
+            {
+                "id": f"{zone_id}:{rf.stem}",
+                "name": rf.stem,
+                "type": "?",
+                "exits": [],
+                "entities": 0,
+                "hazards": 0,
+                "features": 0,
+                "depth": 0,
+                "error": error,
+            }
+        )
     return rows
 
 
@@ -145,8 +171,7 @@ def aggregate_entity_spawns() -> list[dict[str, Any]]:
         for row in list_rooms(zone_id):
             path = ZONES_ROOT / zone_id / "rooms" / f"{row['name']}.yaml"
             try:
-                with open(path, encoding="utf-8") as f:
-                    data = yaml.safe_load(f) or {}
+                data, _ = load_yaml(path)
                 zone_name = zone_id
                 for sp in data.get("entity_spawns") or []:
                     if isinstance(sp, dict):
@@ -176,19 +201,26 @@ def _scan_simple_content_dir(base: Path) -> list[dict[str, Any]]:
         return []
     rows: list[dict[str, Any]] = []
     for f in sorted(base.glob("*.yaml")):
-        try:
-            with open(f, encoding="utf-8") as fp:
-                data = yaml.safe_load(fp) or {}
-            rows.append(
-                {
-                    "id": data.get("id", f.stem),
-                    "name": data.get("name", f.stem),
-                    **{k: data.get(k) for k in ("type", "rarity", "category", "tier") if k in data},
-                }
-            )
-        except Exception:
+        data, error = load_yaml(f)
+        if error is not None:
             rows.append({"id": f.stem, "name": f.stem, "parse_error": True})
+            continue
+        rows.append(
+            {
+                "id": data.get("id", f.stem),
+                "name": data.get("name", f.stem),
+                **{k: data.get(k) for k in ("type", "rarity", "category", "tier") if k in data},
+            }
+        )
     return rows
+
+
+def template_files(kind: str) -> list[tuple[Path, dict[str, Any], str | None]]:
+    """(path, data, error) for every entity or item template file, parsed through the cache."""
+    if kind not in ("entities", "items"):
+        raise ValueError("invalid_kind")
+    base = CONTENT_WORLD / kind
+    return [(f, *load_yaml(f)) for f in sorted(base.glob("*.yaml"))] if base.is_dir() else []
 
 
 def list_items() -> list[dict[str, Any]]:

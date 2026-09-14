@@ -166,8 +166,17 @@ def build_admin_ops_router(server: SageServer) -> APIRouter:
     @router.get("/admin/player-accounts")
     async def admin_player_accounts_list(
         _ctx: Annotated[AdminContext, Depends(require_tool("players"))],
+        q: str = "",
+        filter: str = Query(default="all", pattern="^(all|suspended|gm|no_characters)$"),
+        sort: str = Query(default="username", pattern="^(username|created|last_login|characters)$"),
+        desc: bool = False,
+        limit: int = Query(default=50, ge=1, le=500),
+        offset: int = Query(default=0, ge=0),
     ):
-        return await player_accounts.list_accounts_with_counts(server)
+        """One page of game accounts: {rows, total}."""
+        return await player_accounts.search_accounts(
+            server, q=q, filter=filter, sort=sort, desc=desc, limit=limit, offset=offset
+        )
 
     @router.get("/admin/economy")
     async def admin_economy(

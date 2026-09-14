@@ -61,17 +61,54 @@ async def lookup_characters_by_names(server: Any, names: list[str]) -> dict[str,
         }
 
 
-async def list_accounts_with_counts(server: Any) -> list[dict[str, Any]]:
+ACCOUNT_FILTERS = ("all", "suspended", "gm", "no_characters")
+ACCOUNT_SORTS = ("username", "created", "last_login", "characters")
+
+
+async def search_accounts(
+    server: Any,
+    *,
+    q: str = "",
+    filter: str = "all",
+    sort: str = "username",
+    desc: bool = False,
+    limit: int = 50,
+    offset: int = 0,
+) -> dict[str, Any]:
+    """One page of accounts with character counts, filtered and sorted in the database."""
+    counts = (
+        select(Character.account_id, func.count(Character.id).label("n"))
+        .group_by(Character.account_id)
+        .subquery()
+    )
+    n = func.coalesce(counts.c.n, 0)
+    stmt = select(Account, n).outerjoin(counts, counts.c.account_id == Account.id)
+    needle = (q or "").strip().lower()
+    if needle:
+        stmt = stmt.where(
+            func.lower(Account.username).contains(needle)
+            | func.lower(func.coalesce(Account.email, "")).contains(needle)
+        )
+    if filter == "suspended":
+        stmt = stmt.where(Account.suspended_at.is_not(None))
+    elif filter == "gm":
+        stmt = stmt.where(Account.is_gm.is_(True))
+    elif filter == "no_characters":
+        stmt = stmt.where(n == 0)
+    column = {
+        "username": func.lower(Account.username),
+        "created": Account.created_at,
+        "last_login": Account.last_login,
+        "characters": n,
+    }.get(sort, func.lower(Account.username))
+    order = column.desc().nulls_last() if desc else column.asc().nulls_last()
     async with server.db.session_factory() as session:
-        result = await session.execute(select(Account).order_by(Account.username))
-        accounts = list(result.scalars().all())
-        out: list[dict[str, Any]] = []
-        for a in accounts:
-            n = await session.scalar(
-                select(func.count()).select_from(Character).where(Character.account_id == a.id)
-            )
-            out.append(_account_summary_dict(a, int(n or 0)))
-        return out
+        total = await session.scalar(select(func.count()).select_from(stmt.subquery()))
+        result = await session.execute(
+            stmt.order_by(order, Account.id).limit(max(1, min(limit, 500))).offset(max(0, offset))
+        )
+        rows = [_account_summary_dict(a, int(count)) for a, count in result.all()]
+    return {"rows": rows, "total": int(total or 0)}
 
 
 def _console_access_dict(

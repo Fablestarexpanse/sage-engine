@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from sage.admin import audit, character_tools
@@ -48,9 +48,16 @@ def build_characters_router(server: SageServer) -> APIRouter:
     players = Depends(require_tool("players"))
 
     @router.get("/admin/characters")
-    async def characters_find(_ctx: AdminContext = players, q: str = "", limit: int = 25):
-        """Characters whose name or account name contains `q`."""
-        return await character_tools.find(server, q, limit)
+    async def characters_find(
+        _ctx: AdminContext = players,
+        q: str = "",
+        zone: str = "",
+        online: bool | None = None,
+        limit: int = Query(default=25, ge=1, le=500),
+        offset: int = Query(default=0, ge=0),
+    ):
+        """One page of characters: {rows, total}."""
+        return await character_tools.find(server, q, limit, offset=offset, zone=zone, online=online)
 
     @router.get("/admin/characters/{character_id}")
     async def characters_detail(character_id: int, _ctx: AdminContext = players):

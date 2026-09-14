@@ -139,7 +139,12 @@ def test_tools_write_live_state_so_the_flush_keeps_the_change(live_config, migra
                 detail = await character_tools.detail(server, char_id)
                 assert detail["live_state"] is True and detail["room_id"] == "town:market"
                 assert detail["currencies"][0]["key"] == "silver"
-                assert [c["name"] for c in await character_tools.find(server, "tool")] == [NAME]
+                found = await character_tools.find(server, "tool")
+                assert ([c["name"] for c in found["rows"]], found["total"]) == ([NAME], 1)
+                assert (await character_tools.find(server, "tool", zone="town"))["total"] == 1
+                assert (await character_tools.find(server, "tool", zone="tow"))["total"] == 0
+                assert (await character_tools.find(server, "tool", online=True))["total"] == 0
+                assert (await character_tools.find(server, "tool", online=False))["total"] == 1
         finally:
             await db.close()
 
@@ -264,3 +269,58 @@ def test_live_world_scans_find_left_behind_names_creatures_and_floor_items(
             await db.close()
 
     asyncio.run(go())
+
+
+def test_account_search_counts_characters_filters_and_pages_in_the_database(
+    live_config, migrated_database
+):
+    async def go():
+        db = PostgresState(live_config.database)
+        try:
+            async with open_redis(live_config) as redis:
+                server = _server(live_config, db, redis)
+                _, account_id = await _character(db, redis, logged_in=False)
+                async with db.session_factory() as session:
+                    empty = (
+                        await session.execute(
+                            select(Account).where(Account.username == "tool_empty")
+                        )
+                    ).scalar_one_or_none()
+                    if empty is None:
+                        session.add(Account(username="tool_empty", password_hash="x"))
+                    await session.commit()
+
+                found = await player_accounts.search_accounts(server, q="tool_")
+                assert found["total"] == 2
+                by_name = {r["username"]: r["character_count"] for r in found["rows"]}
+                assert by_name == {"tool_tester": 1, "tool_empty": 0}
+
+                most = await player_accounts.search_accounts(
+                    server, q="tool_", sort="characters", desc=True, limit=1
+                )
+                assert [r["username"] for r in most["rows"]] == ["tool_tester"]
+                assert most["total"] == 2
+                second = await player_accounts.search_accounts(
+                    server, q="tool_", sort="characters", desc=True, limit=1, offset=1
+                )
+                assert [r["username"] for r in second["rows"]] == ["tool_empty"]
+
+                none = await player_accounts.search_accounts(
+                    server, q="tool_", filter="no_characters"
+                )
+                assert [r["username"] for r in none["rows"]] == ["tool_empty"]
+
+                await player_accounts_suspend(server, account_id)
+                suspended = await player_accounts.search_accounts(
+                    server, q="tool_", filter="suspended"
+                )
+                assert [r["id"] for r in suspended["rows"]] == [account_id]
+                await character_tools.set_suspended(server, account_id, None)
+        finally:
+            await db.close()
+
+    asyncio.run(go())
+
+
+async def player_accounts_suspend(server, account_id):
+    await character_tools.set_suspended(server, account_id, "search test")

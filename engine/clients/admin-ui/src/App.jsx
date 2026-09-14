@@ -212,8 +212,13 @@ export default function App() {
   const { colors: COLORS, toggleMode, mode } = useAdminTheme();
   // The open page lives in the URL (#/players), so reloading or sharing a link keeps it.
   const pageFromHash = () => {
-    const id = window.location.hash.replace(/^#\/?/, "").split("/")[0] || "dashboard";
-    return RENAMED_PAGES[id] || id;
+    const [id = "dashboard", ...rest] = window.location.hash.replace(/^#\/?/, "").split("/");
+    if (RENAMED_PAGES[id]) {
+      // Rewrite the old address so links a page builds from the URL use the new id.
+      window.history.replaceState(null, "", `#/${[RENAMED_PAGES[id], ...rest].join("/")}`);
+      return RENAMED_PAGES[id];
+    }
+    return id || "dashboard";
   };
   const [activePage, setActivePageState] = useState(pageFromHash);
   const setActivePage = useCallback((page) => {

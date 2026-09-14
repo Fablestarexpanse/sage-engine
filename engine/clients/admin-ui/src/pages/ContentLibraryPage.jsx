@@ -1,10 +1,12 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useAdminTheme } from "../AdminThemeContext.jsx";
 import { API_BASE } from "../apiConfig.js";
 import {
-  Icons, Badge, Pill, ActionButton, SearchBar, TabBar, DataTable, usePolledList, FetchErrorBanner,
+  Icons, Badge, ActionButton, TabBar, DataTable, usePolledList, FetchErrorBanner,
 } from "../adminCommon.jsx";
+import { useHashParts } from "../listHooks.js";
 import { RoomDetail, TemplateEditor } from "../contentDetail.jsx";
+import TemplateTable from "../templateTable.jsx";
 
 
 // ═══════════════════════════════════════════════════════════
@@ -60,10 +62,12 @@ const ZonesLibTab = () => {
   );
 };
 
-const RoomsLibTab = () => {
+const RoomsLibTab = ({ zoneParam, slugParam, go }) => {
   const { colors: COLORS } = useAdminTheme();
-  const [selectedZone, setSelectedZone] = useState("");
-  const [openRoom, setOpenRoom] = useState(null); // { zone, slug }
+  const selectedZone = zoneParam || "";
+  const setSelectedZone = (zone) => go("rooms", zone);
+  const openRoom = zoneParam && slugParam ? { zone: zoneParam, slug: slugParam } : null;
+  const setOpenRoom = (room) => (room ? go("rooms", room.zone, room.slug) : go("rooms", selectedZone));
   const { rows: zones, error: zonesError } = usePolledList(`${API_BASE}/content/zones`, 12000);
   const { rows: roomRows, error: roomsError } = usePolledList(
     selectedZone ? `${API_BASE}/content/zones/${selectedZone}/rooms` : null,
@@ -71,8 +75,8 @@ const RoomsLibTab = () => {
     { enabled: !!selectedZone }
   );
   useEffect(() => {
-    if (zones.length && !selectedZone) setSelectedZone(zones[0].id);
-  }, [zones, selectedZone]);
+    if (zones.length && !zoneParam) go("rooms", zones[0].id);
+  }, [zones, zoneParam, go]);
   const zone = zones.find((z) => z.id === selectedZone);
 
   return (
@@ -116,68 +120,21 @@ const RoomsLibTab = () => {
   );
 };
 
-const EntitiesLibTab = () => {
+// Items and creatures: one searchable, sortable table each, with the YAML editor for the selected
+// template above it. The selected template is in the URL (#/content/items/<id>).
+const TemplatesLibTab = ({ kind, tab, noun, forgeLabel, selectedId, go }) => {
   const { colors: COLORS } = useAdminTheme();
-  const [search, setSearch] = useState("");
-  const [editing, setEditing] = useState(null);
-  const { rows: templates, error: templatesError } = usePolledList(`${API_BASE}/content/entities`, 15000);
-  const { rows: spawnRefs } = usePolledList(`${API_BASE}/content/entities/spawns`, 15000);
-  const rows = useMemo(() => {
-    const refs = Object.fromEntries(spawnRefs.map((r) => [r.name, r.count]));
-    return templates.map((t) => ({ ...t, spawn_refs: refs[t.id] ?? 0 }));
-  }, [templates, spawnRefs]);
-  const filtered = rows.filter((e) => `${e.name} ${e.id}`.toLowerCase().includes(search.toLowerCase()));
-
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
-        <SearchBar placeholder="Search entity templates..." value={search} onChange={setSearch} />
-        <ActionButton variant="forge" icon={<Icons.Sparkles />} onClick={openForgeStudio}>AI Generate</ActionButton>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <p style={{ margin: 0, fontSize: 12, color: COLORS.textMuted, fontFamily: "'DM Sans', sans-serif", maxWidth: 760 }}>
+          Every {noun.replace(/s$/, "")} template in the world package. Columns include the fields this world&apos;s plugins add; click a heading to sort. Select a row to edit its YAML.
+          {kind === "entities" && <> Live creatures and manual spawns are under <a href="#/live" style={{ color: COLORS.accent }}>Live › Live world</a>.</>}
+        </p>
+        <ActionButton variant="forge" icon={<Icons.Sparkles />} onClick={openForgeStudio}>{forgeLabel}</ActionButton>
       </div>
-      <p style={{ margin: 0, fontSize: 12, color: COLORS.textMuted, fontFamily: "'DM Sans', sans-serif" }}>Every entity template in the world's <code style={{ color: COLORS.textDim }}>entities/</code>. Spawned in counts the room spawn entries that name it. Select a template to edit it. Live creatures and manual spawns are under <a href="#/live" style={{ color: COLORS.accent }}>Live › Live world</a>.</p>
-      <FetchErrorBanner error={templatesError} label="entity templates" />
-      {editing && <TemplateEditor key={editing} kind="entities" templateId={editing} onClose={() => setEditing(null)} />}
-      <div style={{ background: COLORS.bgCard, border: `1px solid ${COLORS.border}`, borderRadius: 10, overflow: "hidden" }}>
-        <DataTable columns={[
-          { label: "Template", render: (row) => <span style={{ fontWeight: 600 }}>{row.name}</span> },
-          { label: "Id", key: "id", mono: true },
-          { label: "Type", render: (row) => (row.type ? <Badge>{row.type}</Badge> : <span style={{ color: COLORS.textDim }}>—</span>) },
-          { label: "Spawned in", render: (row) => <span style={{ fontFamily: "'JetBrains Mono', monospace", color: row.spawn_refs ? COLORS.text : COLORS.textDim }}>{row.spawn_refs}</span> },
-          { label: "", render: (row) => (row.parse_error ? <Badge color={COLORS.danger}>does not load</Badge> : null) },
-        ]} rows={filtered} onRowClick={(row) => setEditing(row.id)} />
-      </div>
-
-    </div>
-  );
-};
-
-const ItemsLibTab = () => {
-  const { colors: COLORS } = useAdminTheme();
-  const rarityColors = { common: COLORS.textMuted, uncommon: COLORS.success, rare: COLORS.info, epic: COLORS.accent, legendary: COLORS.warning };
-  const { rows: items, error: itemsError } = usePolledList(`${API_BASE}/content/items`, 15000);
-  const [editing, setEditing] = useState(null);
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
-        <ActionButton variant="forge" icon={<Icons.Sparkles />} onClick={openForgeStudio}>AI Generate Item</ActionButton>
-      </div>
-      <FetchErrorBanner error={itemsError} label="items" />
-      {editing && <TemplateEditor key={editing} kind="items" templateId={editing} onClose={() => setEditing(null)} />}
-      {!items.length && !itemsError && <div style={{ fontSize: 12, color: COLORS.textMuted, fontFamily: "'DM Sans', sans-serif" }}>No item templates yet. Add YAML under the world's <code style={{ color: COLORS.textDim }}>content/world/items/</code> or draft one with AI Forge.</div>}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 14 }}>
-        {items.map((item) => (
-          <button type="button" key={item.id} onClick={() => setEditing(item.id)} title="Edit this item template" style={{ textAlign: "left", cursor: "pointer", font: "inherit", background: editing === item.id ? COLORS.bgHover : COLORS.bgCard, border: `1px solid ${editing === item.id ? COLORS.borderActive : COLORS.border}`, borderRadius: 10, padding: 16, display: "flex", flexDirection: "column", gap: 10, borderLeft: `3px solid ${rarityColors[item.rarity] || COLORS.border}` }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <div><div style={{ fontSize: 14, fontWeight: 700, color: COLORS.text, fontFamily: "'Space Grotesk', sans-serif" }}>{item.name}</div><div style={{ fontSize: 11, color: COLORS.textMuted, fontFamily: "'JetBrains Mono', monospace", marginTop: 2 }}>{item.id}</div></div>
-              {item.rarity && <Badge color={rarityColors[item.rarity]}>{item.rarity}</Badge>}
-            </div>
-            <div style={{ display: "flex", gap: 10 }}>
-              {item.type && <Pill label="Type" value={item.type} />}
-              {item.parse_error && <Badge color={COLORS.danger}>does not load</Badge>}
-            </div>
-          </button>
-        ))}
-      </div>
+      {selectedId && <TemplateEditor key={selectedId} kind={kind} templateId={selectedId} onClose={() => go(tab)} />}
+      <TemplateTable kind={kind} noun={noun} selectedId={selectedId} onSelect={(id) => go(tab, id)} />
     </div>
   );
 };
@@ -185,23 +142,25 @@ const ItemsLibTab = () => {
 const CONTENT_LIB_TABS = [
   { id: "zones", label: "Zones" },
   { id: "rooms", label: "Rooms" },
-  { id: "entities", label: "Entities" },
+  { id: "creatures", label: "Creatures" },
   { id: "items", label: "Items" },
 ];
 
 const ContentLibraryPage = () => {
   const { colors: COLORS } = useAdminTheme();
-  const [tab, setTab] = useState("zones");
+  // #/content/<tab>/<record…>: zones, rooms/<zone>/<room>, creatures/<id>, items/<id>.
+  const [parts, go] = useHashParts();
+  const tab = CONTENT_LIB_TABS.some((t) => t.id === parts[0]) ? parts[0] : "zones";
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
         <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: COLORS.text, fontFamily: "'Space Grotesk', sans-serif" }}>Content Library</h2>
-        <TabBar tabs={CONTENT_LIB_TABS} active={tab} onChange={setTab} />
+        <TabBar tabs={CONTENT_LIB_TABS} active={tab} onChange={(id) => go(id)} />
       </div>
       {tab === "zones" && <ZonesLibTab />}
-      {tab === "rooms" && <RoomsLibTab />}
-      {tab === "entities" && <EntitiesLibTab />}
-      {tab === "items" && <ItemsLibTab />}
+      {tab === "rooms" && <RoomsLibTab zoneParam={parts[1]} slugParam={parts[2]} go={go} />}
+      {tab === "creatures" && <TemplatesLibTab kind="entities" tab="creatures" noun="creatures" forgeLabel="Draft a creature with AI" selectedId={parts[1]} go={go} />}
+      {tab === "items" && <TemplatesLibTab kind="items" tab="items" noun="items" forgeLabel="Draft an item with AI" selectedId={parts[1]} go={go} />}
     </div>
   );
 };
