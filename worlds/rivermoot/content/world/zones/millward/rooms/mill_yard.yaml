@@ -1,0 +1,22 @@
+id: millward:mill_yard
+zone: millward
+name: Mill Yard
+type: mill
+depth: 2
+description:
+  base: Weeds push up through the cobbles of the mill yard. The great wheel has not turned in years; somebody
+    has been lighting fires in its shadow.
+exits:
+  west:
+    destination: millward:crossroads
+    description: Back to the crossroads.
+  north:
+    destination: millward:mill_floor
+    description: Into the mill.
+features: []
+entity_spawns:
+- template: bandit
+  chance: 0.7
+  max_count: 1
+tags:
+- outdoor

@@ -1,0 +1,31 @@
+id: millward:crossroads
+zone: millward
+name: Crossroads
+type: road
+depth: 2
+description:
+  base: Four ways meet at a leaning waymarker. West smells of the fen; east, faintly, of old flour.
+exits:
+  south:
+    destination: millward:north_road
+    description: South toward town.
+  north:
+    destination: millward:gallows_hill
+    description: Up Gallows Hill.
+  east:
+    destination: millward:mill_yard
+    description: The mill yard.
+  west:
+    destination: millward:fen_edge
+    description: Toward the fen.
+features:
+- id: waymarker
+  name: waymarker
+  keywords:
+  - waymarker
+  - marker
+  - sign
+  description: TOWN, MILL, FEN, and a fourth arm snapped off and gone.
+entity_spawns: []
+tags:
+- outdoor

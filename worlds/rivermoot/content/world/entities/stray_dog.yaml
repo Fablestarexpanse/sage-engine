@@ -1,0 +1,15 @@
+id: stray_dog
+name: a stray dog
+type: beast
+description:
+  short: A rangy stray with a torn ear.
+  long: It has decided you are either food or a threat.
+stats:
+  hp: 7
+  max_hp: 7
+  attack: 2
+  defense: 1
+tags:
+- beast
+- hostile
+loot: []

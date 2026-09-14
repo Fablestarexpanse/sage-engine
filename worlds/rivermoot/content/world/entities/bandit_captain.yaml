@@ -1,0 +1,22 @@
+id: bandit_captain
+name: the bandit captain
+type: person
+description:
+  short: The bandit captain, on a throne of sacks.
+  long: A big woman in a stolen mail shirt, with a short sword she knows how to use.
+stats:
+  hp: 26
+  max_hp: 26
+  attack: 6
+  defense: 3
+tags:
+- person
+- hostile
+loot:
+- template: short_sword
+  chance: 0.5
+- template: padded_coat
+  chance: 0.4
+- template: silver_ring
+  chance: 1.0
+  count: 2

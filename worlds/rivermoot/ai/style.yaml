@@ -1,0 +1,10 @@
+# Rivermoot — AI style shared by its slot templates. Text narration only: the world ships no image
+# slot templates (owner G.9), so portrait, area and scene art are disabled here.
+tone: "wry, earthy and small-scale: mud, weather and neighbours, with danger that is real but local"
+system_prompt: "You narrate for Rivermoot, a text game set in a low-fantasy river town. Describe only what the facts give you, and never name the genre."
+content_rules:
+  - '(health|hp|mana|energy):?\s*\d+'
+  - 'level\s*\d+'
+  - 'experience points'
+  - 'you (gain|lose|find|receive) (a|an|the|\d+)'
+  - '\d+\s*(silver|coins?)'

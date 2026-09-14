@@ -11,12 +11,11 @@ from typing import Any, TypedDict
 
 
 class CharacterStats(TypedDict, total=False):
-    """Shape of Character.stats / player:stats:{id}. total=False: legacy rows may omit keys."""
+    """Shape of Character.stats / player:stats:{id}. total=False: legacy rows may omit keys.
 
-    strength: int
-    dexterity: int
-    intelligence: int
-    perception: int
+    Engine-owned top-level keys are the vitals; attributes are named by the world's stats.yaml.
+    """
+
     hp: int
     max_hp: int
 

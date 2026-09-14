@@ -1,0 +1,24 @@
+id: riverside:south_road
+zone: riverside
+name: South Road
+type: riverbank
+depth: 1
+description:
+  base: The road off the bridge runs between reed beds and willow stumps. Mud has eaten the verges.
+exits:
+  north:
+    destination: town:bridge
+    description: Onto the old bridge.
+  east:
+    destination: riverside:ferry_stage
+    description: The ferry stage.
+  west:
+    destination: riverside:reed_path
+    description: A reed path along the bank.
+  south:
+    destination: riverside:south_fields
+    description: The south fields.
+features: []
+entity_spawns: []
+tags:
+- outdoor

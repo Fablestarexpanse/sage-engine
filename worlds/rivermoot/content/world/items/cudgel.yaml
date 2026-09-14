@@ -1,0 +1,8 @@
+id: cudgel
+name: oak cudgel
+type: weapon
+value: 6
+weight: 1.5
+slot: hand
+attack: 1
+description: A club, honestly. A good heavy one.

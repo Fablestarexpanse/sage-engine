@@ -1,0 +1,25 @@
+id: town:high_street
+zone: town
+name: High Street
+type: street
+depth: 1
+description:
+  base: 'The one street in Rivermoot that deserves the name: timber-fronted houses lean over the cobbles,
+    and the smell of the smithy fights the smell of the inn''s kitchen.'
+exits:
+  south:
+    destination: town:market
+    description: Down to the market square.
+  east:
+    destination: town:drowned_lantern
+    description: The door of the Drowned Lantern.
+  west:
+    destination: town:smithy
+    description: Hobb's smithy, ringing.
+  north:
+    destination: town:north_gate
+    description: The north gate.
+features: []
+entity_spawns: []
+tags:
+- outdoor

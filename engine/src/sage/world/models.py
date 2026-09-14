@@ -100,23 +100,3 @@ class ItemTemplate(BaseModel):
     value: int = 0
     weight: float = 0.0
     tags: set[str] = Field(default_factory=set)
-
-
-class SystemConnection(BaseModel):
-    target: str
-    type: str
-    bidirectional: bool = True
-    stability: str | None = None
-
-
-class ZoneRef(BaseModel):
-    zone_ref: str
-
-
-class CelestialBody(BaseModel):
-    id: str
-    type: str
-    name: str
-    orbit: float | None = None
-    orbits: str | None = None
-    zones: list[ZoneRef] = Field(default_factory=list)

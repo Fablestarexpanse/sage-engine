@@ -1,0 +1,19 @@
+id: millward:gallows_hill
+zone: millward
+name: Gallows Hill
+type: road
+depth: 2
+description:
+  base: A bare hill with an empty gibbet and a fine view. The wind never stops up here.
+exits:
+  south:
+    destination: millward:crossroads
+    description: Down to the crossroads.
+features: []
+entity_spawns: []
+ambient:
+  lines:
+  - The gibbet chain clinks in the wind.
+  - Far below, the river catches the light.
+tags:
+- outdoor

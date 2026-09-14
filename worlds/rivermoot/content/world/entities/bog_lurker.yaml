@@ -1,0 +1,17 @@
+id: bog_lurker
+name: a bog lurker
+type: beast
+description:
+  short: Something toad-shaped and man-sized.
+  long: Wet, warty and patient. Its eyes are the colour of fen water.
+stats:
+  hp: 18
+  max_hp: 18
+  attack: 5
+  defense: 2
+tags:
+- beast
+- hostile
+loot:
+- template: herb_poultice
+  chance: 0.3

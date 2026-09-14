@@ -1,0 +1,32 @@
+id: riverside:smugglers_cellar
+zone: riverside
+name: Smugglers' Cellar
+type: cellar
+depth: 2
+description:
+  base: A brick cellar stacked with casks that never paid the bridge toll. A lantern is still warm.
+exits:
+  north:
+    destination: riverside:boathouse
+    description: Up the ladder.
+features:
+- id: casks
+  name: untaxed casks
+  keywords:
+  - casks
+  - cask
+  - barrels
+  description: Brandy, by the smell. A few have been tapped.
+  search:
+    items:
+    - silver_ring
+    - bread_loaf
+    max_finds: 1
+    respawn_s: 1200
+    chance: 0.4
+entity_spawns:
+- template: smuggler
+  chance: 0.8
+  max_count: 1
+tags:
+- indoor

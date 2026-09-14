@@ -144,6 +144,14 @@ class Currency(BaseModel):
         return value
 
 
+def vital_max(world: Any, key: str, fallback: int) -> int:
+    """The world's default maximum for vital `key` (stats.yaml), or fallback."""
+    for vital in getattr(getattr(world, "stats", None), "vitals", None) or []:
+        if vital.key == key:
+            return int(vital.default_max)
+    return fallback
+
+
 @dataclass(frozen=True)
 class WorldPackage:
     """A validated world package and the paths the engine reads from it."""
@@ -182,6 +190,16 @@ class WorldPackage:
     def param(self, key: str, default: Any = None) -> Any:
         """A world.toml [params] value, or default when the world does not set it."""
         return self.manifest.params.get(key, default)
+
+    def attribute_defaults(self) -> dict[str, int]:
+        """stats.yaml attributes at their default values: a new character's spread."""
+        return {a.key: a.default for a in self.stats.attributes}
+
+    def seed_vitals(self, stats: dict[str, Any]) -> None:
+        """Give stats every stats.yaml vital it lacks, full: `<key>` and `max_<key>`."""
+        for vital in self.stats.vitals:
+            stats.setdefault(f"max_{vital.key}", vital.default_max)
+            stats.setdefault(vital.key, int(stats[f"max_{vital.key}"]))
 
     @property
     def ai_dir(self) -> Path:

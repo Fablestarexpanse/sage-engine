@@ -60,9 +60,10 @@ def test_engine_slot_defaults_let_a_world_run_without_progression_or_chargen():
 
     resolvers = Resolvers()
     define_engine_slots(resolvers)
-    stats = {"strength": 16, "dexterity": 10}
+    stats = {"might": 16, "wits": 10}
     assert resolvers.get(PREPARE)(stats) is stats
-    assert resolvers.get(RATINGS)(stats) == (5, 2)
+    # No world attribute means anything to the engine: flat ratings until a plugin provides them.
+    assert resolvers.get(RATINGS)(stats) == (3, 2)
     assert resolvers.get(RATINGS)({}) == (3, 2)
     assert resolvers.get(VALIDATE)({"anything": 1}) == (None, {})
     assert resolvers.get(SEED)(stats, {}) is None

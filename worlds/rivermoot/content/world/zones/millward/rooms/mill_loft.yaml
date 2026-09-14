@@ -1,0 +1,18 @@
+id: millward:mill_loft
+zone: millward
+name: Mill Loft
+type: mill
+depth: 3
+description:
+  base: Dusty light through the loft boards. The bandit captain has made a throne of flour sacks.
+exits:
+  south:
+    destination: millward:mill_floor
+    description: Down the ladder.
+features: []
+entity_spawns:
+- template: bandit_captain
+  chance: 1.0
+  max_count: 1
+tags:
+- indoor

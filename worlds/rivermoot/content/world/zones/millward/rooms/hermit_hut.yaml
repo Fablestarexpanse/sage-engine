@@ -1,0 +1,24 @@
+id: millward:hermit_hut
+zone: millward
+name: Hermit's Hut
+type: hut
+depth: 2
+description:
+  base: A turf hut on the only dry hump for a mile. Bundles of herbs hang from every rafter, and the hermit,
+    who talks mainly to a goose, will sell you some.
+exits:
+  east:
+    destination: millward:bog_path
+    description: Back onto the logs.
+features: []
+entity_spawns: []
+shop:
+  name: the hermit's hut
+  sells:
+  - template: herb_poultice
+    price: 8
+  buys: true
+  buy_rate: 0.5
+tags:
+- indoor
+- safe

@@ -1,0 +1,9 @@
+id: eel_pie
+name: eel pie
+type: consumable
+value: 3
+weight: 0.4
+heal: 6
+tags:
+- food
+description: Jellied eel under a lid of hot-water crust. Better than it sounds. Worse than it smells.

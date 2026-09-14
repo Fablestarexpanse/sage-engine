@@ -20,6 +20,7 @@ import {
   getPlayToken,
 } from "./playApi.js";
 import { ChargenProficienciesStep } from "./ChargenProficienciesStep.jsx";
+import { ChargenAttributesStep } from "./ChargenAttributesStep.jsx";
 import PlayClient from "./mud/PlayClient.jsx";
 import { GmBadge } from "./GmBadge.jsx";
 import { DEFAULT_NARRATIVE } from "./mud/03-narrative.jsx";
@@ -681,11 +682,13 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
   const [pendingDelete, setPendingDelete] = useState(null);
   const [deleteNameConfirm, setDeleteNameConfirm] = useState("");
   const [profCatalog, setProfCatalog] = useState(null);
-  /** False once the world's chargen options load without a kind this client renders: no choices step. */
+  /** False once the world's chargen options load without a kind this client renders
+   * (skill_points, attribute_points): no choices step. */
   const [chargenHasSkills, setChargenHasSkills] = useState(true);
   const [profCatalogErr, setProfCatalogErr] = useState("");
   const [profCatalogLoading, setProfCatalogLoading] = useState(false);
   const [starterProf, setStarterProf] = useState({});
+  const [starterAttrs, setStarterAttrs] = useState({});
   /** create flow: identity + portrait first, then starter proficiencies, then submit */
   const [createPhase, setCreatePhase] = useState("identity");
   const prevViewRef = useRef(view);
@@ -737,6 +740,7 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
   useEffect(() => {
     if (view === "create" && prevViewRef.current !== "create") {
       setStarterProf({});
+      setStarterAttrs({});
       setCreatePhase("identity");
     }
     prevViewRef.current = view;
@@ -751,8 +755,9 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
       .then((data) => {
         if (cancelled) return;
         const skills = data?.kind === "skill_points" && typeof data.budget === "number" && Array.isArray(data.leaves);
-        setProfCatalog(skills ? data : null);
-        setChargenHasSkills(skills);
+        const attrs = data?.kind === "attribute_points" && typeof data.budget === "number" && Array.isArray(data.attributes);
+        setProfCatalog(skills || attrs ? data : null);
+        setChargenHasSkills(skills || attrs);
       })
       .catch((e) => {
         if (cancelled) return;
@@ -967,7 +972,8 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
         newName.trim(),
         portraitPrompt.trim(),
         pendingPortraitUrl,
-        starterProf
+        starterProf,
+        profCatalog?.kind === "attribute_points" && Object.keys(starterAttrs).length ? { attributes: starterAttrs } : null
       );
       if (!res.ok) {
         mergeEchoFromPlayRes?.(res);
@@ -979,6 +985,12 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
           else if (err === "invalid_starter_proficiencies") starterMsg = "Invalid proficiency levels — use whole numbers.";
           else if (err.startsWith("unknown_proficiency:"))
             starterMsg = `Unknown skill id: ${err.slice("unknown_proficiency:".length)}`;
+          else if (err === "attribute_budget_exceeded")
+            starterMsg = `Attributes add up to more than ${profCatalog?.budget ?? "?"}.`;
+          else if (err.startsWith("attribute_out_of_range:"))
+            starterMsg = `${err.slice("attribute_out_of_range:".length)} is outside its allowed range.`;
+          else if (err === "invalid_attributes" || err.startsWith("unknown_attribute:"))
+            starterMsg = "Those attribute choices are not valid for this world.";
           else if (err.startsWith("invalid_level:"))
             starterMsg = `Invalid level for ${err.slice("invalid_level:".length)}.`;
           else if (err.startsWith("level_out_of_range:"))
@@ -1002,6 +1014,7 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
       setPortraitPrompt("");
       setPendingPortraitUrl("");
       setStarterProf({});
+      setStarterAttrs({});
       setCreatePhase("identity");
       setPostCreatePortraitWarn(
         res.portrait_generation_failed
@@ -1260,7 +1273,7 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
             {view === "create" && chargenHasSkills ? (
               <p style={{ fontSize: 11, color: T.text.muted, marginTop: 4, lineHeight: 1.45 }}>
                 Step {createPhase === "identity" ? "1" : "2"} of 2 ·{" "}
-                {createPhase === "identity" ? "Identity & portrait" : "Optional starting ranks"}
+                {createPhase === "identity" ? "Identity & portrait" : profCatalog?.title || "Optional starting ranks"}
               </p>
             ) : null}
             <p style={{ fontSize: 12, color: T.text.muted, marginTop: view === "create" ? 2 : 4, lineHeight: 1.45, display: "flex", alignItems: "center", flexWrap: "wrap", gap: 4 }}>
@@ -1608,6 +1621,18 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
 
         {view === "create" && createPhase === "skills" && (
           <form onSubmit={runCreateCharacter} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {profCatalog?.kind === "attribute_points" ? (
+              <ChargenAttributesStep
+                options={profCatalog}
+                value={starterAttrs}
+                onChange={setStarterAttrs}
+                disabled={formLocked}
+                onBack={() => {
+                  setFormErr("");
+                  setCreatePhase("identity");
+                }}
+              />
+            ) : (
             <ChargenProficienciesStep
               characterName={newName.trim()}
               portraitUrl={pendingPortraitUrl}
@@ -1625,6 +1650,7 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
                 setCreatePhase("identity");
               }}
             />
+            )}
             {formErr ? (
               <div role="alert" style={{ fontSize: 12, color: T.text.danger, lineHeight: 1.45, maxWidth: 720, alignSelf: "center" }}>
                 {formErr}

@@ -520,8 +520,9 @@ class SageServer:
         from sage.world.progression import PREPARE
 
         norm_stats = self.resolvers.get(PREPARE)(dict(character.stats))
-        # Canonical vitals: nothing else seeds them, and every consumer was
-        # falling back to a different default (combat 20, client bar 100).
+        # Canonical vitals from the world's stats.yaml, for characters made before they were
+        # seeded at creation (or in a world that added a vital later).
+        self.world.seed_vitals(norm_stats)
         norm_stats.setdefault("max_hp", 100)
         norm_stats.setdefault("hp", int(norm_stats["max_hp"]))
         character.stats = norm_stats
@@ -781,7 +782,7 @@ class SageServer:
         """Engine resolver slots and their defaults (contracts catalog #4)."""
         from sage.world.slots import define_engine_slots
 
-        define_engine_slots(self.resolvers)
+        define_engine_slots(self.resolvers, self.world)
 
     async def reload_lexicon_overrides(self) -> None:
         """Re-read active Nexus lexicon edits and rebuild the live lexicon (no restart)."""

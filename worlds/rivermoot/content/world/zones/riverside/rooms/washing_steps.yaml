@@ -1,0 +1,19 @@
+id: riverside:washing_steps
+zone: riverside
+name: Washing Steps
+type: riverbank
+depth: 1
+description:
+  base: Broad stone steps go down into the river below Tanners' Row. Laundry and hides are beaten clean
+    here, side by side, which says a lot about the laundry.
+exits:
+  north:
+    destination: town:tanners_row
+    description: Up to Tanners' Row.
+  west:
+    destination: riverside:eel_weirs
+    description: The eel weirs.
+features: []
+entity_spawns: []
+tags:
+- outdoor

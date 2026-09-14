@@ -1,0 +1,6 @@
+id: millward
+name: Millward
+description: 'The north road out of town: a crossroads, a dead mill and the edge of the fen.'
+depth_range:
+- 2
+- 3

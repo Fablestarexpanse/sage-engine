@@ -1,0 +1,17 @@
+id: mud_eel
+name: a mud eel
+type: beast
+description:
+  short: An eel as thick as your arm.
+  long: It is mostly mouth, and the mouth is mostly teeth.
+stats:
+  hp: 6
+  max_hp: 6
+  attack: 2
+  defense: 0
+tags:
+- beast
+- hostile
+loot:
+- template: eel_skin
+  chance: 0.6

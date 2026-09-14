@@ -1,0 +1,19 @@
+id: smuggler
+name: a smuggler
+type: person
+description:
+  short: A smuggler with a cask hook.
+  long: Mud to the knees and a hook meant for casks, not people. Probably.
+stats:
+  hp: 12
+  max_hp: 12
+  attack: 3
+  defense: 1
+tags:
+- person
+- hostile
+loot:
+- template: silver_ring
+  chance: 0.3
+- template: bread_loaf
+  chance: 0.5

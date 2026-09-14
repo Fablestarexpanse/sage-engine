@@ -1,0 +1,22 @@
+id: town:tanners_row
+zone: town
+name: Tanners' Row
+type: street
+depth: 1
+description:
+  base: Hides stretch on frames along a lane that runs down toward the water. The stink is heroic.
+exits:
+  east:
+    destination: town:market
+    description: Back to the market, gratefully.
+  south:
+    destination: riverside:washing_steps
+    description: Down to the washing steps.
+features: []
+entity_spawns: []
+ambient:
+  lines:
+  - A tanner scrapes a hide with long, patient strokes.
+  - Flies drone over the soaking vats.
+tags:
+- outdoor

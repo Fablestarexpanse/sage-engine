@@ -1,0 +1,26 @@
+id: millward:bog_path
+zone: millward
+name: Bog Path
+type: marsh
+depth: 3
+description:
+  base: A causeway of sunken logs, some of them still there. Something in the reeds keeps pace with you.
+exits:
+  east:
+    destination: millward:fen_edge
+    description: Back to the fen edge.
+  west:
+    destination: millward:hermit_hut
+    description: A hut on a dry hump.
+features: []
+entity_spawns:
+- template: bog_lurker
+  chance: 0.6
+  max_count: 1
+hazards:
+- id: sinking_log
+  type: bog
+  severity: 2
+  description: A log rolls underfoot and you go in to the waist.
+tags:
+- outdoor

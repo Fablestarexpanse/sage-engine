@@ -1,0 +1,15 @@
+id: town:lantern_room_east
+zone: town
+name: East Room
+type: inn
+depth: 1
+description:
+  base: A narrow room with a straw mattress, a washbasin and a window onto the river.
+exits:
+  west:
+    destination: town:lantern_stairs
+    description: Out to the landing.
+features: []
+entity_spawns: []
+tags:
+- safe

@@ -37,6 +37,9 @@ def rivermoot():
         plugins_root=ROOT / "plugins",
         trusted_roots=[ROOT / "plugins", ROOT / "worlds"],
     )
+    from sage.world.slots import define_engine_slots
+
+    define_engine_slots(host.resolvers, world)
     host.server = SimpleNamespace(
         snapshot_contributors=SnapshotContributors(),
         panels=PanelRegistry(),
@@ -58,8 +61,18 @@ def test_world_differs_from_the_first_reference_world(rivermoot):
     world, host = rivermoot
     assert [a.key for a in world.stats.attributes] == ["mgt", "wts", "nrv"]
     assert [c.key for c in world.currencies] == ["silver"]
-    # combat without equipment: its optional dependency is simply absent here.
-    assert [r.id for r in host.loaded] == ["combat", "levels"]
+    assert sorted(r.id for r in host.loaded) == [
+        "ambient",
+        "combat",
+        "consumables",
+        "effects",
+        "equipment",
+        "hazards",
+        "levels",
+        "lodging",
+        "search",
+        "shop",
+    ]
     assert (world.content_dir / "world" / "zones" / "town" / "rooms" / "bridge.yaml").is_file()
 
 
@@ -84,16 +97,29 @@ def test_kills_grant_experience_and_levels(rivermoot):
         await host.events.publish(event)
         return event.messages
 
+    stats.update({"hp": 5, "max_hp": 12})
     assert asyncio.run(kill()) == ["You gain 5 experience."]
     assert stats["levels"] == {"level": 1, "xp": 5}
-    assert asyncio.run(kill()) == ["You gain 5 experience.", "You are now level 2!"]
+    assert asyncio.run(kill()) == [
+        "You gain 5 experience.",
+        "You are now level 2! (+2 maximum health)",
+    ]
     assert stats["levels"] == {"level": 2, "xp": 0}
+    assert (stats["hp"], stats["max_hp"]) == (7, 14)
+
+
+def test_combat_ratings_come_from_might_nerve_and_level(rivermoot):
+    world, host = rivermoot
+    rate = host.resolvers.get("combat.ratings")
+    assert rate({"mgt": 2, "nrv": 2}) == (2, 1)
+    assert rate({"mgt": 4, "nrv": 5, "levels": {"level": 3, "xp": 0}}) == (5, 3)
+    assert host.resolvers.get("progression.total_levels")({"levels": {"level": 4}}) == 4
 
 
 def test_levels_panel_is_a_stat_sheet(rivermoot):
     world, host = rivermoot
-    assert [(p["id"], p["kind"], p["title"]) for p in host.server.panels.specs()] == [
-        ("levels.sheet", "stat_sheet", "Level")
+    assert ("levels.sheet", "stat_sheet", "Level") in [
+        (p["id"], p["kind"], p["title"]) for p in host.server.panels.specs()
     ]
     sections = asyncio.run(
         host.server.snapshot_contributors.build("hero", {"levels": {"level": 2, "xp": 3}})
@@ -113,3 +139,132 @@ def test_level_command_reads_the_state_block(rivermoot):
         return session.sent
 
     assert asyncio.run(run()) == ["Level 3  (4/30 experience)"]
+
+
+def test_stat_schema_seeds_attributes_and_vitals():
+    """stats.yaml is applied: the world's attributes at their defaults and full vitals."""
+    from sage.world.death import default_respawn
+    from sage.world.package import vital_max
+    from sage.world.progression import default_seed_attributes
+
+    world = load_world_package(ROOT / "worlds" / "rivermoot")
+    assert world.attribute_defaults() == {"mgt": 2, "wts": 2, "nrv": 2}
+    stats: dict = {}
+    default_seed_attributes(stats, world.attribute_defaults())
+    world.seed_vitals(stats)
+    assert stats == {"mgt": 2, "wts": 2, "nrv": 2, "max_hp": 12, "hp": 12}
+
+    wounded = {"hp": 3, "max_hp": 20}
+    world.seed_vitals(wounded)
+    assert wounded == {"hp": 3, "max_hp": 20}
+    assert vital_max(world, "hp", 99) == 12 and vital_max(object(), "hp", 99) == 99
+    assert default_respawn(world, {}, wallet=0).hp == 6
+
+
+def test_attribute_point_buy_from_stats_yaml():
+    """A stats.yaml with attribute_points gets engine chargen choices without any plugin."""
+    from sage.world.slots import define_engine_slots
+
+    world = load_world_package(ROOT / "worlds" / "rivermoot")
+    resolvers = Resolvers()
+    define_engine_slots(resolvers, world)
+    options = resolvers.get("chargen.options")()
+    assert options["kind"] == "attribute_points" and options["budget"] == 8
+    assert [
+        (a["key"], a["label"], a["min"], a["max"], a["default"]) for a in options["attributes"]
+    ] == [
+        ("mgt", "[stat.mgt.name]", 1, 6, 2),
+        ("wts", "[stat.wts.name]", 1, 6, 2),
+        ("nrv", "[stat.nrv.name]", 1, 6, 2),
+    ]
+
+    validate = resolvers.get("chargen.validate")
+    assert validate({}) == (None, {})
+    assert validate({"attributes": {"mgt": 4}}) == (
+        None,
+        {"attributes": {"mgt": 4, "wts": 2, "nrv": 2}},
+    )
+    assert validate({"attributes": {"mgt": 4, "wts": 3}})[0] == "attribute_budget_exceeded"
+    assert validate({"attributes": {"mgt": 7}})[0] == "attribute_out_of_range:mgt"
+    assert validate({"attributes": {"luck": 3}})[0] == "unknown_attribute:luck"
+    assert validate({"attributes": {"mgt": 2.5}})[0] == "invalid_attributes"
+    assert validate({"attributes": {"mgt": True}})[0] == "invalid_attributes"
+
+    stats = {"mgt": 2, "wts": 2, "nrv": 2}
+    resolvers.get("chargen.seed")(stats, validate({"attributes": {"mgt": 1, "nrv": 5}})[1])
+    assert stats == {"mgt": 1, "wts": 2, "nrv": 5}
+
+
+def test_worlds_without_attribute_points_keep_empty_chargen_defaults():
+    from sage.world.slots import define_engine_slots
+
+    resolvers = Resolvers()
+    define_engine_slots(resolvers)
+    assert resolvers.get("chargen.options")() == {}
+
+
+def test_a_kill_inside_combats_edit_may_raise_maximum_health(rivermoot):
+    """levels declares max_hp, so combat's blob may carry the level-up it published; nothing else."""
+    from sage.plugins.manifest import PluginError
+
+    world, host = rivermoot
+    combat = next(r.api for r in host.loaded if r.id == "combat")
+    host.redis.stats["hero"] = {"hp": 5, "max_hp": 12, "wts": 2}
+
+    async def level_up():
+        async with combat.state.edit("hero") as stats:
+            stats["max_hp"], stats["hp"] = 14, 7
+
+    asyncio.run(level_up())
+    assert host.redis.stats["hero"]["max_hp"] == 14
+
+    async def scribble():
+        async with combat.state.edit("hero") as stats:
+            stats["wts"] = 6
+
+    with pytest.raises(PluginError, match="does not own"):
+        asyncio.run(scribble())
+    assert host.redis.stats["hero"]["wts"] == 2
+
+
+def test_world_content_lints_clean():
+    """30 rooms in three zones, every exit two-way and in world.toml's directions, every template real."""
+    from sage.world.lint import lint_world
+
+    report = lint_world(load_world_package(ROOT / "worlds" / "rivermoot"))
+    assert report.errors == [] and report.warnings == []
+    assert len(report.rooms) == 30
+    assert {room.zone for room in report.rooms.values()} == {"town", "riverside", "millward"}
+
+
+def test_lint_reports_broken_content(tmp_path):
+    import shutil
+
+    from sage.world.lint import lint_world
+
+    world = load_world_package(ROOT / "worlds" / "rivermoot")
+    content = tmp_path / "content"
+    shutil.copytree(world.content_dir, content)
+    market = content / "world" / "zones" / "town" / "rooms" / "market.yaml"
+    text = market.read_text(encoding="utf-8").replace("town:shrine", "town:nowhere")
+    market.write_text(text.replace("template: river_rat", "template: dragon"), encoding="utf-8")
+    report = lint_world(world.with_content_dir(content))
+    assert "town:market east: destination 'town:nowhere' does not exist" in report.errors
+    assert "town:market: spawns unknown entity 'dragon'" in report.errors
+    assert "town:shrine west -> town:market, which does not lead back" in report.warnings
+
+
+def test_ai_is_text_only_with_its_own_voice(rivermoot):
+    """Rivermoot fills the narration slots and ships no image templates (owner G.9)."""
+    import re
+
+    from sage.llm.style import load_style
+
+    world, host = rivermoot
+    prompts = host.server.prompt_manager
+    assert prompts.enabled("narrate.room") and prompts.enabled("combat.narration")
+    for slot in ("image.portrait", "image.area", "image.scene", "forge.room", "forge.content"):
+        assert not prompts.enabled(slot), slot
+    style = load_style(world.style_path)
+    assert "river town" in style.system_prompt
+    assert any(re.search(rule, "it cost 4 silver") for rule in style.rules())

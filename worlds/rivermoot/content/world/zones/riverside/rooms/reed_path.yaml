@@ -1,0 +1,18 @@
+id: riverside:reed_path
+zone: riverside
+name: Reed Path
+type: riverbank
+depth: 1
+description:
+  base: A path of trodden reeds wobbles west along the bank. Frogs go quiet as you pass.
+exits:
+  east:
+    destination: riverside:south_road
+    description: Back to the road.
+  west:
+    destination: riverside:mudflats
+    description: The mudflats.
+features: []
+entity_spawns: []
+tags:
+- outdoor

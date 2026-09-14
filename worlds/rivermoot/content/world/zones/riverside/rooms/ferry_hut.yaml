@@ -1,0 +1,24 @@
+id: riverside:ferry_hut
+zone: riverside
+name: Ferrywoman's Hut
+type: hut
+depth: 1
+description:
+  base: One room, one stove, a great many nets. Old Marta sells what the river gives her.
+exits:
+  west:
+    destination: riverside:ferry_stage
+    description: Out to the ferry stage.
+features: []
+entity_spawns: []
+shop:
+  name: Old Marta's hut
+  sells:
+  - template: eel_pie
+    price: 3
+  - template: herb_poultice
+    price: 9
+  buys: true
+  buy_rate: 0.6
+tags:
+- indoor
