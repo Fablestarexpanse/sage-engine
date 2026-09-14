@@ -349,7 +349,7 @@ export default function AgentsTab() {
   };
 
   const teleport = (id) => {
-    const room = window.prompt("Teleport to room id (zone:slug):", "test_isle:town_plaza");
+    const room = window.prompt("Teleport to room id (zone:slug):");
     if (room) act(id, "teleport", { room_id: room });
   };
   const give = (id) => {
