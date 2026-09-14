@@ -1,25 +1,10 @@
 # SAGE decoupling — decision log
 
-NEXT: Phase 3 on sage/phase-3 (plan: docs/dev/milestones/M2-sage-decoupling/phase-3-plan.md).
-3.1 achievements, 3.2 wallet, 3.3 factions, 3.4 content extensions + plugin admin routes, 3.5 shop and
-lodging, 3.6 search and crafting (+ progression slots), 3.7 maestro, 3.8 hazards: DONE. 3.9 agents (virtual
-sessions, engine seams, plugins/agents with plg_agents_state) DONE; agent_state retirement moved to 3.14 (order-
-safe rename first). 3.12 snapshot sections, 3.10 Conduit world plugin, 3.11 ambient, effects, combat,
-equipment and consumables plugins DONE. 3.13a panel API + generic player-ui renderer DONE (factions,
-equipment, Rivermoot levels); 3.13b Conduit sheet + skill tree panels DONE; 3.13c mock panels and branding out
-of player-ui DONE. 3.14a JSONB + agent_state rename, 3.14b wallet into stats, 3.14c ai_credits + morality plugin, 3.14d drops DONE (3.14 complete); 3.15 Redis namespace DONE. 3.16a AI slots +
-prompts in worlds/fablestar/ai, 3.16b ai/style.yaml, 3.16c ComfyUI graphs DONE (3.16 complete). 3.17 content in
-worlds/fablestar/content DONE. 3.18a builder + glyph/galaxy/ship surfaces out of engine and admin-ui, 3.18b
-WorldForge editors, player-ui glyph remnants, galaxy.yaml DONE (3.18 complete). 3.19 ratchet sweep DONE (denylist
-43, all by design). 3.20 engine text in the lexicon DONE (player_literals 4, all in test_session.py). PHASE 3 COMPLETE
-(PR #10 ready for review). Phase 4 (Rivermoot full size) STARTED on sage/phase-4 after owner "Continue" (2026-09-14);
-plan docs/dev/milestones/M2-sage-decoupling/phase-4-plan.md. PHASE 4 COMPLETE (4.1-4.7): Rivermoot 30 rooms on 10 plugins,
-own DB sage_rivermoot (launch config nexus-rivermoot, port 8002), PR #11. Phase 5 (tooling, D.E) STARTED on sage/phase-5 after
-owner "Continue"; plan docs/dev/milestones/M2-sage-decoupling/phase-5-plan.md. PHASE 5 COMPLETE (5.1-5.8; write-through
-deferred). All brief phases (-1..5) done; next: owner review of PRs #7-#12.
-Dev DBs: fablestar at r1s2t3u4v5w6, sage_rivermoot at head. Commit 9a831ea does not boot (be48da3 completes it).
-Open owner questions: none (Rivermoot license and stage PRs decided 2026-09-14, see log).
-Review page: https://claude.ai/code/artifact/2d488113-1ca9-4f45-b993-ac0253e0670c
+NEXT: M2 complete. Phases -1 to 5 merged into main 2026-09-14 (PRs #7-#12); repository moved to
+Fablestarexpanse/sage-engine. Per-phase notes: docs/dev/milestones/M2-sage-decoupling/phase-{3,4,5}-plan.md.
+Open for the owner: NOTICE still lists pre-split paths and does not name plugins/; Fablestar content has three
+dangling exits (sage validate --world fablestar); docker-compose.yml keeps a literal fallback Postgres password.
+Known history: commit 9a831ea does not boot (be48da3 completes it). Review page: https://claude.ai/code/artifact/2d488113-1ca9-4f45-b993-ac0253e0670c
 
 Append-only. One entry per ruling or decision, newest last. Owner rulings are binding; architect
 decisions are proposals until the Phase 1 review approves them.

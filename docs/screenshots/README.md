@@ -1,10 +1,11 @@
 # Screenshots referenced by the root README
 
-Drop PNG captures here with these exact filenames:
-
-| File | What to capture |
+| File | What it shows |
 |---|---|
-| `player-client.png` | Player UI (`http://localhost:5173`) logged in on the main play screen — MUD terminal with character sheet, portrait, and scene art visible. |
-| `worldforge-map-tool.png` | WorldForge desktop app with a zone open — room graph with exits and the editing panel visible. |
+| `player-client-fablestar.png` | Player client on the Fablestar Expanse server (dev login), 1600x1000, dark theme. |
+| `player-client-rivermoot.png` | The same client on the Rivermoot server: world mark, accent, currency, level panel, map. |
+| `worldforge-zone-editor.png` | WorldForge with Rivermoot's `town` zone auto-laid-out and the Market Square's Plugins tab open. |
 
-Tips: capture at ~1600px wide, light-on-dark theme as shipped, and crop out the OS window chrome if possible.
+The 2026-09-14 captures were taken with headless Chrome over the DevTools protocol against local dev
+servers. WorldForge ran as its Vite web build with a read-only stand-in for the Tauri file commands, so
+nothing was written to disk. Re-capture after visible UI changes, at the same size.

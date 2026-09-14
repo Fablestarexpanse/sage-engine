@@ -1,8 +1,9 @@
 # SAGE Nexus Admin Console
 
 React (Vite) admin console for the Nexus server — dashboard, Content Library
-(zones/rooms/entities/items/glyphs), World Builder graph editor, AI Forge,
-player-account moderation, staff roles, and live presence.
+(zones/rooms/entities/items), AI Forge, player-account moderation and credit grants, lexicon and
+MOTD editing, plugin pages (skills catalog, agents, shops) that appear only when the running world
+enables those plugins, staff roles, and live presence. Structural room editing is WorldForge's job.
 
 ## Run
 

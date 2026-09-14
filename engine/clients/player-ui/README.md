@@ -1,8 +1,10 @@
-# Fablestar Player Client
+# SAGE Player Client
 
-React (Vite) web client for playing Fablestar — MUD terminal over WebSocket,
-character sheet, chargen with the Conduit proficiency picker, AI portraits and
-scene art, and the scene gallery.
+React (Vite) web client for any SAGE world — MUD terminal over WebSocket, panels the
+world's plugins declare (character sheet, skills, gear, standings...), character creation
+with the world's choices (attribute points or a skill picker), AI portraits and scene art,
+and the scene gallery. Title, mark, accent colour, currency and command autocomplete come
+from the server it connects to.
 
 ## Run
 
@@ -11,7 +13,8 @@ npm install
 VITE_NEXUS_PORT=8001 npm run dev -- --port 5173 --host
 ```
 
-Requires the Nexus server on port 8001 (see the root README quick start).
+Requires a Nexus server (port 8001 by default; `VITE_NEXUS_PORT` points it elsewhere, for example 8002
+for a second world). See the root README quick start.
 Login issues a play session token; the password is not re-sent per action.
 
 Source conventions (named exports, `mud/` file numbering) are documented in

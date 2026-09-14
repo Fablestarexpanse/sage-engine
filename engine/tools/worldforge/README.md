@@ -1,9 +1,11 @@
 # WorldForge
 
-Tauri desktop map editor for SAGE world zones — visual room graph with exits,
-floors, stamps (reusable room groups), groups/notes, and editors for entities,
-items, glyphs, ships, and the galaxy map. Writes YAML directly into
-`content/world/`; the running server hot-reloads the changes.
+Tauri desktop editor for SAGE world packages — visual room graph with exits,
+floors, stamps (reusable room groups), groups/notes, and editors for entities and
+items. Room types, exit directions and equipment slots come from the open world, and
+plugin fields (shops, lodging, hazards, searchable features, item slots...) get forms
+generated from the package's `content.schema.json`. Writes YAML directly into the
+world's `content/world/`; the running server hot-reloads the changes.
 
 See the root `CLAUDE.md` → "How WorldForge saves (and the conflict risk)"
 before editing the same zone from more than one tool at once.
