@@ -1,0 +1,36 @@
+id: millward:mill_floor
+zone: millward
+name: Grinding Floor
+type: mill
+depth: 3
+description:
+  base: Two millstones sit under a drift of old flour and newer footprints. Bedrolls, a stolen ham, and
+    a dice game abandoned in a hurry.
+exits:
+  south:
+    destination: millward:mill_yard
+    description: Out to the yard.
+  north:
+    destination: millward:mill_loft
+    description: A ladder to the loft.
+features:
+- id: bedrolls
+  name: bedrolls
+  keywords:
+  - bedrolls
+  - bedroll
+  - blankets
+  description: Lice, mostly. And maybe something tucked under one.
+  search:
+    items:
+    - silver_ring
+    - cudgel
+    max_finds: 1
+    respawn_s: 1200
+    chance: 0.5
+entity_spawns:
+- template: bandit
+  chance: 0.9
+  max_count: 2
+tags:
+- indoor

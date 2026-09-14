@@ -1,0 +1,9 @@
+id: bread_loaf
+name: loaf of bread
+type: consumable
+value: 1
+weight: 0.3
+heal: 3
+tags:
+- food
+description: Brown, dense, yesterday's. It will fill a hole.

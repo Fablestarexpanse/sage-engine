@@ -1,0 +1,31 @@
+id: town:smithy
+zone: town
+name: Hobb's Smithy
+type: shop
+depth: 1
+description:
+  base: Heat rolls out of the forge. Hobb, a smith with one eyebrow singed permanently shorter than the
+    other, sells what he makes and makes what sells.
+exits:
+  east:
+    destination: town:high_street
+    description: Out onto the high street.
+features: []
+entity_spawns: []
+shop:
+  name: Hobb's smithy
+  sells:
+  - template: cudgel
+    price: 6
+  - template: wood_axe
+    price: 12
+  - template: short_sword
+    price: 25
+  - template: leather_jerkin
+    price: 15
+  - template: padded_coat
+    price: 30
+  buys: true
+  buy_rate: 0.4
+tags:
+- indoor

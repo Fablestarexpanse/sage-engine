@@ -1,0 +1,19 @@
+id: bandit
+name: a mill bandit
+type: person
+description:
+  short: A bandit in a flour-dusted cloak.
+  long: Hungry, bored and armed, which is the worst combination.
+stats:
+  hp: 14
+  max_hp: 14
+  attack: 4
+  defense: 1
+tags:
+- person
+- hostile
+loot:
+- template: cudgel
+  chance: 0.3
+- template: silver_ring
+  chance: 0.2

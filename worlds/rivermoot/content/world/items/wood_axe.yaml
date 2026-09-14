@@ -1,0 +1,8 @@
+id: wood_axe
+name: wood axe
+type: weapon
+value: 12
+weight: 2.0
+slot: hand
+attack: 2
+description: Made for logs. Logs do not argue.

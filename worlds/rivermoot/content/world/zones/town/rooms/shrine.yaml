@@ -4,12 +4,19 @@ name: River Shrine
 type: shrine
 depth: 1
 description:
-  base: A small stone shrine sits right at the waterline, candles guttering in niches. It smells of
-    wet moss and wax. People who fall in the river tend to wake up here.
+  base: A small stone shrine sits right at the waterline, candles guttering in niches. It smells of wet
+    moss and wax. People who fall in the river tend to wake up here.
 exits:
   west:
     destination: town:market
     description: Back to the market.
-features: []
+features:
+- id: offering_bowl
+  name: offering bowl
+  keywords:
+  - bowl
+  - offering
+  description: A chipped clay bowl holding a few coppers, a button and a fishhook.
 entity_spawns: []
-tags: [safe]
+tags:
+- safe

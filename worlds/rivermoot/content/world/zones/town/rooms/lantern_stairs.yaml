@@ -1,0 +1,21 @@
+id: town:lantern_stairs
+zone: town
+name: Lantern Stairs
+type: inn
+depth: 1
+description:
+  base: Narrow stairs creak up to a landing with two doors. Someone has chalked the prices on the wall.
+exits:
+  south:
+    destination: town:drowned_lantern
+    description: Down to the common room.
+  east:
+    destination: town:lantern_room_east
+    description: The east room.
+  north:
+    destination: town:lantern_room_north
+    description: The north room.
+features: []
+entity_spawns: []
+tags:
+- safe

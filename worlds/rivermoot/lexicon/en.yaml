@@ -20,3 +20,8 @@ vital:
 
 currency:
   silver: {name: silver}
+
+equipment:
+  equipped: "You ready the {item} ({slot})."
+  equipped_swap: "You ready the {item} ({slot}), putting away the {previous}."
+

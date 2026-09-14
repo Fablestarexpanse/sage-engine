@@ -1,0 +1,19 @@
+id: millward:north_road
+zone: millward
+name: North Road
+type: road
+depth: 2
+description:
+  base: The road climbs between hedges that have not been cut in a long time. Wheel ruts, and fewer of
+    them each season.
+exits:
+  south:
+    destination: town:north_gate
+    description: Back through the north gate.
+  north:
+    destination: millward:crossroads
+    description: The crossroads.
+features: []
+entity_spawns: []
+tags:
+- outdoor

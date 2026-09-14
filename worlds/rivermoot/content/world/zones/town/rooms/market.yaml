@@ -4,8 +4,8 @@ name: Market Square
 type: square
 depth: 1
 description:
-  base: Stalls of turnips, cheap knives and river eels crowd a square of packed earth. A rat as big
-    as a cat is working its way along the fish stall.
+  base: Stalls of turnips, cheap knives and river eels crowd a square of packed earth. A rat as big as
+    a cat is working its way along the fish stall.
 exits:
   south:
     destination: town:bridge
@@ -13,9 +13,32 @@ exits:
   east:
     destination: town:shrine
     description: A lane to the river shrine.
+  north:
+    destination: town:high_street
+    description: The high street, such as it is.
+  west:
+    destination: town:tanners_row
+    description: A reeking lane of tanners.
 features: []
 entity_spawns:
-  - template: river_rat
-    chance: 1.0
-    max_count: 1
-tags: [outdoor]
+- template: river_rat
+  chance: 1.0
+  max_count: 1
+shop:
+  name: the market stalls
+  sells:
+  - template: bread_loaf
+    price: 1
+  - template: eel_pie
+    price: 3
+  - template: cudgel
+    price: 6
+  buys: true
+  buy_rate: 0.5
+ambient:
+  lines:
+  - '"Eels! Fresh eels!" bawls a woman with forearms like hams.'
+  - Two apprentices argue over the price of a turnip.
+  - A pigeon steals a crust and flaps off in triumph.
+tags:
+- outdoor

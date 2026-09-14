@@ -1,0 +1,22 @@
+id: riverside:ferry_stage
+zone: riverside
+name: Ferry Stage
+type: dock
+depth: 1
+description:
+  base: A plank stage on tarred posts. A flat ferry is tied up, its rope worn to a shine.
+exits:
+  west:
+    destination: riverside:south_road
+    description: Back to the south road.
+  east:
+    destination: riverside:ferry_hut
+    description: Old Marta's hut.
+features: []
+entity_spawns: []
+ambient:
+  lines:
+  - The ferry knocks gently against the stage.
+  - A heron lifts off the far bank without a sound.
+tags:
+- outdoor

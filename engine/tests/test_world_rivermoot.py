@@ -61,8 +61,18 @@ def test_world_differs_from_the_first_reference_world(rivermoot):
     world, host = rivermoot
     assert [a.key for a in world.stats.attributes] == ["mgt", "wts", "nrv"]
     assert [c.key for c in world.currencies] == ["silver"]
-    # combat without equipment: its optional dependency is simply absent here.
-    assert [r.id for r in host.loaded] == ["combat", "levels"]
+    assert sorted(r.id for r in host.loaded) == [
+        "ambient",
+        "combat",
+        "consumables",
+        "effects",
+        "equipment",
+        "hazards",
+        "levels",
+        "lodging",
+        "search",
+        "shop",
+    ]
     assert (world.content_dir / "world" / "zones" / "town" / "rooms" / "bridge.yaml").is_file()
 
 
@@ -108,8 +118,8 @@ def test_combat_ratings_come_from_might_nerve_and_level(rivermoot):
 
 def test_levels_panel_is_a_stat_sheet(rivermoot):
     world, host = rivermoot
-    assert [(p["id"], p["kind"], p["title"]) for p in host.server.panels.specs()] == [
-        ("levels.sheet", "stat_sheet", "Level")
+    assert ("levels.sheet", "stat_sheet", "Level") in [
+        (p["id"], p["kind"], p["title"]) for p in host.server.panels.specs()
     ]
     sections = asyncio.run(
         host.server.snapshot_contributors.build("hero", {"levels": {"level": 2, "xp": 3}})
@@ -215,3 +225,30 @@ def test_a_kill_inside_combats_edit_may_raise_maximum_health(rivermoot):
     with pytest.raises(PluginError, match="does not own"):
         asyncio.run(scribble())
     assert host.redis.stats["hero"]["wts"] == 2
+
+
+def test_world_content_lints_clean():
+    """30 rooms in three zones, every exit two-way and in world.toml's directions, every template real."""
+    from sage.world.lint import lint_world
+
+    report = lint_world(load_world_package(ROOT / "worlds" / "rivermoot"))
+    assert report.errors == [] and report.warnings == []
+    assert len(report.rooms) == 30
+    assert {room.zone for room in report.rooms.values()} == {"town", "riverside", "millward"}
+
+
+def test_lint_reports_broken_content(tmp_path):
+    import shutil
+
+    from sage.world.lint import lint_world
+
+    world = load_world_package(ROOT / "worlds" / "rivermoot")
+    content = tmp_path / "content"
+    shutil.copytree(world.content_dir, content)
+    market = content / "world" / "zones" / "town" / "rooms" / "market.yaml"
+    text = market.read_text(encoding="utf-8").replace("town:shrine", "town:nowhere")
+    market.write_text(text.replace("template: river_rat", "template: dragon"), encoding="utf-8")
+    report = lint_world(world.with_content_dir(content))
+    assert "town:market east: destination 'town:nowhere' does not exist" in report.errors
+    assert "town:market: spawns unknown entity 'dragon'" in report.errors
+    assert "town:shrine west -> town:market, which does not lead back" in report.warnings

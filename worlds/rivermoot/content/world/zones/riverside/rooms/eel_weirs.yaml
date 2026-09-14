@@ -1,0 +1,34 @@
+id: riverside:eel_weirs
+zone: riverside
+name: Eel Weirs
+type: riverbank
+depth: 2
+description:
+  base: Wicker weirs fence the shallows. Most of the traps are empty; one is thrashing.
+exits:
+  east:
+    destination: riverside:washing_steps
+    description: Back to the washing steps.
+  west:
+    destination: riverside:boathouse
+    description: The old boathouse.
+features:
+- id: eel_traps
+  name: eel traps
+  keywords:
+  - traps
+  - trap
+  - weir
+  description: Wicker cones, weighted with stones. Someone checks them. Not today.
+  search:
+    items:
+    - eel_skin
+    max_finds: 2
+    respawn_s: 600
+    chance: 0.6
+entity_spawns:
+- template: mud_eel
+  chance: 0.6
+  max_count: 1
+tags:
+- outdoor

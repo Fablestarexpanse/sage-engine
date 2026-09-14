@@ -1,0 +1,19 @@
+id: riverside:south_fields
+zone: riverside
+name: South Fields
+type: field
+depth: 1
+description:
+  base: Strip fields run out to a line of alders. A scarecrow wearing a better coat than yours watches
+    the crows ignore it.
+exits:
+  north:
+    destination: riverside:south_road
+    description: North to the road.
+features: []
+entity_spawns:
+- template: stray_dog
+  chance: 0.6
+  max_count: 1
+tags:
+- outdoor

@@ -1,0 +1,22 @@
+id: millward:fen_edge
+zone: millward
+name: Fen Edge
+type: marsh
+depth: 2
+description:
+  base: The ground goes soft and the sky goes wide. Pools of black water hold the clouds.
+exits:
+  east:
+    destination: millward:crossroads
+    description: Back to the crossroads.
+  west:
+    destination: millward:bog_path
+    description: Onto the bog path.
+features: []
+entity_spawns: []
+ambient:
+  lines:
+  - A bittern booms somewhere out in the fen.
+  - Marsh gas bubbles up with a small, rude sound.
+tags:
+- outdoor

@@ -9,5 +9,9 @@ stats:
   max_hp: 3
   attack: 1
   defense: 0
-tags: [beast, hostile]
-loot: []
+tags:
+- beast
+- hostile
+loot:
+- template: rat_tail
+  chance: 0.5

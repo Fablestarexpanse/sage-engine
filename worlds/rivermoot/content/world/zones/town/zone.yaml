@@ -1,3 +1,6 @@
+id: town
 name: Rivermoot Town
-description: Three streets around the old stone bridge over the river Moot.
-depth_range: [1, 1]
+description: Streets and yards around the old stone bridge on the north bank of the Moot.
+depth_range:
+- 1
+- 1

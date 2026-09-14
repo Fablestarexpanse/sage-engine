@@ -1,0 +1,26 @@
+id: town:north_gate
+zone: town
+name: North Gate
+type: street
+depth: 1
+description:
+  base: A timber gate stands open in a wall that was never finished. Beyond it the north road climbs toward
+    the old mill.
+exits:
+  south:
+    destination: town:high_street
+    description: Back down the high street.
+  north:
+    destination: millward:north_road
+    description: The north road.
+features:
+- id: notice_post
+  name: notice post
+  keywords:
+  - post
+  - notice
+  - notices
+  description: 'A reward notice: BANDITS AT THE OLD MILL. The sum has been crossed out and raised twice.'
+entity_spawns: []
+tags:
+- outdoor

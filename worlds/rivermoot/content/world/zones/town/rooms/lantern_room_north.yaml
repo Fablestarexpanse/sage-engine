@@ -1,0 +1,15 @@
+id: town:lantern_room_north
+zone: town
+name: North Room
+type: inn
+depth: 1
+description:
+  base: A tidy room under the eaves. The bed is lumpy; the lock on the door is excellent.
+exits:
+  south:
+    destination: town:lantern_stairs
+    description: Out to the landing.
+features: []
+entity_spawns: []
+tags:
+- safe

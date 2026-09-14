@@ -1,0 +1,26 @@
+id: riverside:boathouse
+zone: riverside
+name: Old Boathouse
+type: dock
+depth: 2
+description:
+  base: A boathouse with half a roof. The slipway is green with weed, and fresh bootprints lead to a trapdoor
+    that should be rotten and isn't.
+exits:
+  east:
+    destination: riverside:eel_weirs
+    description: Back to the weirs.
+  south:
+    destination: riverside:smugglers_cellar
+    description: Down through the trapdoor.
+features:
+- id: trapdoor
+  name: trapdoor
+  keywords:
+  - trapdoor
+  - door
+  - hatch
+  description: New hinges, oiled. Someone uses the cellar below.
+entity_spawns: []
+tags:
+- outdoor

@@ -30,8 +30,8 @@ into `docs/sage/DECISIONS.md`.
 | 4.1 | The stat schema is real. New characters get the world's attributes and vitals, login and death use the world's vital maximum, the engine's default ratings no longer read D&D keys, and `default_character_stats` is empty. | done |
 | 4.2 | Attribute point-buy at character creation. The engine's default chargen slots offer `kind: "attribute_points"` when `stats.yaml` sets `attribute_points`, and player-ui renders it. | done |
 | 4.3 | Levels that matter. The `levels` plugin provides `combat.ratings` from Might/Nerve plus level, and a level raises maximum health. | done |
-| 4.4 | The map. 20–40 rooms over three zones (town, docks and riverbank, the old mill and marsh), entities and items, north/south/east/west exits only. | todo |
-| 4.5 | First-party plugins in a second world. Rivermoot enables equipment (hand/body), consumables, shop and lodging (priced in silver), search, effects (rest) and ambient; fix whatever assumes Fablestar. | todo |
+| 4.4 | The map. 20–40 rooms over three zones (town, docks and riverbank, the old mill and marsh), entities and items, north/south/east/west exits only. | done |
+| 4.5 | First-party plugins in a second world. Rivermoot enables equipment (hand/body), consumables, shop and lodging (priced in silver), search, effects (rest) and ambient; fix whatever assumes Fablestar. | done |
 | 4.6 | Rivermoot's AI. Room narration with its own style, and no image slots (owner G.9: no AI images). | todo |
 | 4.7 | Proof. The live smoke test plays a longer Rivermoot script (buy, equip, fight, level, rest, die and wake at the shrine). A real server runs on its own Rivermoot database (one database per world). | todo |
 
@@ -67,4 +67,36 @@ into `docs/sage/DECISIONS.md`.
   Run (live Rivermoot): the first rat took 3 damage (attack 2 + d6 1, below the old flat
   default's minimum of 4); after the fix the second kill printed the level-up and stored level 2,
   `hp = max_hp = 14`.
+- **4.4 the map (done).** 30 rooms in three zones.
+  - **Content:**
+    - `town` (11): bridge, market, shrine, high street, the Drowned Lantern inn with stairs and two rentable rooms, Hobb's smithy, Tanners' Row, north gate.
+    - `riverside` (10): south road, ferry stage and Old Marta's hut, reed path, mudflats, south fields, washing steps, eel weirs, old boathouse, smugglers' cellar.
+    - `millward` (9): north road, crossroads, Gallows Hill, mill yard, grinding floor, mill loft, fen edge, bog path, hermit's hut.
+    - 7 entities (river rat up to the bandit captain) and 13 items: 3 weapons (`slot: hand`), 2 armours (`slot: body`), 3 foods and a poultice (`heal`), and loot.
+    - The generator script is a one-off. The YAML is the source.
+  - **New `sage.world.lint`:** a static content check with no server. It reports:
+    - errors: schema failures, wrong ids, missing exit destinations, spawn and loot templates, start and respawn rooms, and room types or exit directions that `world.toml` does not declare
+    - warnings: exits that do not lead back
+  - **Rivermoot result:** no errors, no warnings. That is asserted in `test_world_rivermoot.py`.
+  - **Fablestar result:** 3 errors, reported, not fixed (owner content):
+    - `aipub:hallway_f1` exits to `apartment_3`/`apartment_4`. These are deleted in the owner's uncommitted work.
+    - `aipub:pub_entrance` west still leads to the deleted `starter_zone:station_street`.
+- **4.5 first-party plugins in a second world (done).**
+  - Rivermoot enables 10 plugins: combat, levels, equipment, consumables, shop, lodging, search, effects, ambient, hazards.
+  - Nothing new in the engine was needed. Rivermoot sets these through its own data:
+    - params: rest only in `shrine`/`inn` rooms (`effects.rest_room_types`); the shrine asks up to 3 silver on respawn, and you wake at half health.
+    - lexicon: "You ready the {item} ({slot})." instead of Fablestar's "as your weapon" wording, which read "as your hand".
+  - **Live run** (`sage_rivermoot`, 10 plugin branches migrated). Each played through a dev-login websocket:
+    - Browsed and bought bread and a cudgel with silver.
+    - Equipped the cudgel; `gear` shows the hand/body slots.
+    - Killed a rat with the cudgel (8 damage).
+    - Rent was refused for lack of silver.
+    - The smithy listed its stock.
+    - Took mud hazard damage on the mudflats.
+    - Searched the eel traps (found an eel skin).
+    - Killed two eels (reached level 2) and a smuggler (dropped a silver ring).
+    - Walked to the mill loft and was killed by the bandit captain.
+    - Woke at the shrine: "You leave 3 silver in the offering bowl."
+    - Rested at the shrine (a regeneration effect) and ate bread (+3 hp).
+    - Rest was refused in the market.
 

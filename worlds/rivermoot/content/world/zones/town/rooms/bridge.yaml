@@ -4,16 +4,27 @@ name: Old Bridge
 type: street
 depth: 1
 description:
-  base: A humped stone bridge spans the brown, quick river. Carts rattle over worn cobbles and a
-    toll-keeper's empty booth leans against the parapet.
+  base: A humped stone bridge spans the brown, quick river. Carts rattle over worn cobbles and a toll-keeper's
+    empty booth leans against the parapet.
 exits:
   north:
     destination: town:market
     description: The market square, loud with haggling.
+  south:
+    destination: riverside:south_road
+    description: Over the bridge to the south bank.
 features:
-  - id: toll_booth
-    name: empty toll booth
-    keywords: [booth, toll]
-    description: The shutters are nailed open. Nobody has collected a toll in years.
+- id: toll_booth
+  name: empty toll booth
+  keywords:
+  - booth
+  - toll
+  description: The shutters are nailed open. Nobody has collected a toll in years.
 entity_spawns: []
-tags: [outdoor]
+ambient:
+  lines:
+  - A barge horn lows somewhere downstream.
+  - The river slaps against the bridge piers.
+  - A carter curses a wheel stuck between two cobbles.
+tags:
+- outdoor

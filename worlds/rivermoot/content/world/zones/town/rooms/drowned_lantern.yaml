@@ -1,0 +1,39 @@
+id: town:drowned_lantern
+zone: town
+name: The Drowned Lantern
+type: inn
+depth: 1
+description:
+  base: A low-beamed common room with a fire that never quite goes out. A green-glass lantern, fished
+    from the river decades ago, hangs over the bar. The landlady keeps a ledger of rooms.
+exits:
+  west:
+    destination: town:high_street
+    description: Out onto the high street.
+  north:
+    destination: town:lantern_stairs
+    description: Stairs up to the rooms.
+features:
+- id: green_lantern
+  name: green-glass lantern
+  keywords:
+  - lantern
+  - glass
+  description: River-scoured glass, still whole. Nobody knows who drowned with it.
+entity_spawns: []
+shop:
+  name: the Drowned Lantern's bar
+  sells:
+  - template: bread_loaf
+    price: 1
+  - template: eel_pie
+    price: 3
+lodging:
+  name: the Drowned Lantern's rooms
+  rooms:
+  - town:lantern_room_east
+  - town:lantern_room_north
+  price: 5
+  lease_minutes: 60
+tags:
+- safe

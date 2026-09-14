@@ -1,0 +1,38 @@
+id: riverside:mudflats
+zone: riverside
+name: Mudflats
+type: riverbank
+depth: 2
+description:
+  base: Grey mud stretches to the water, riddled with holes. Something long moves under the surface of
+    a puddle and is gone.
+exits:
+  east:
+    destination: riverside:reed_path
+    description: Back onto firmer reeds.
+features:
+- id: wreck_ribs
+  name: wreck ribs
+  keywords:
+  - wreck
+  - ribs
+  - boat
+  description: The black ribs of a drowned boat. Things glint between them.
+  search:
+    items:
+    - river_pearl
+    - bent_nail
+    max_finds: 1
+    respawn_s: 900
+    chance: 0.5
+entity_spawns:
+- template: mud_eel
+  chance: 0.7
+  max_count: 2
+hazards:
+- id: sucking_mud
+  type: mud
+  severity: 1
+  description: The mud grips your boots and does not want to give them back.
+tags:
+- outdoor

@@ -15,15 +15,28 @@ room = "town:bridge"
 respawn = "town:shrine"
 
 [content]
-room_types = ["street", "square", "shrine"]
+room_types = ["street", "square", "shrine", "inn", "shop", "riverbank", "dock", "hut", "field",
+              "cellar", "road", "mill", "marsh"]
 exit_dirs = ["north", "south", "east", "west"]
 equipment_slots = ["hand", "body"]
 
 [plugins]
 combat = "^1"
 levels = "^1"
+equipment = "^1"
+consumables = "^1"
+shop = "^1"
+lodging = "^1"
+search = "^1"
+effects = "^1"
+ambient = "^1"
+hazards = "^1"
 
 [params]
 "levels.xp_per_kill" = 5
 "levels.xp_per_level" = 10
 "levels.hp_per_level" = 2
+"effects.rest_room_types" = ["shrine", "inn"]
+# The river shrine asks up to 3 silver of whoever wakes there, and they wake at half health.
+"engine.death.respawn_bill_max" = 3
+"engine.death.respawn_hp_fraction" = 0.5

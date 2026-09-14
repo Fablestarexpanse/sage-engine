@@ -1,0 +1,9 @@
+id: herb_poultice
+name: herb poultice
+type: consumable
+value: 8
+weight: 0.1
+heal: 10
+tags:
+- healing
+description: Fen moss and something bitter, wrapped in a dock leaf. It stings, then it helps.
