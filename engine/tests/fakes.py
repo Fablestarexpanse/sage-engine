@@ -117,6 +117,20 @@ class FakeRedis:
         self.locations[player_id] = room_id
         self.room_players.setdefault(room_id, set()).add(player_id)
 
+    async def set_player_location_offline(self, player_id: str, room_id: str) -> None:
+        old = self.locations.get(player_id)
+        if old:
+            self.room_players.get(old, set()).discard(player_id)
+        self.locations[player_id] = room_id
+
+    async def scan_sets(self, prefix_key: str) -> dict[str, set[str]]:
+        source = {"room_players": self.room_players, "room_items": self.room_items}[prefix_key]
+        return {room: set(members) for room, members in source.items() if members}
+
+    async def scan_states(self, prefix_key: str, limit: int) -> tuple[list[dict[str, Any]], int]:
+        source = {"entity_state": self.entity_states, "item_state": self.item_states}[prefix_key]
+        return [dict(v) for v in list(source.values())[:limit]], len(source)
+
     async def get_room_players(self, room_id: str) -> set[str]:
         return set(self.room_players.get(room_id, set()))
 
