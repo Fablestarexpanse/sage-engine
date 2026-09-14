@@ -34,7 +34,7 @@ by owner G.4 ("every mechanic is a first-party plugin").
 | 3.11 | Combat, equipment, ambient, effects → first-party plugins (owner G.4): ambient, effects, combat, equipment, consumables (`use`) | done |
 | 3.12 | Snapshot contributors (`api.snapshot.contribute`); `resonance_levels_total` out of the protocol | done |
 | 3.13 | Declarative client panels; remove Fablestar panels/branding from player-ui: 3.13a API + renderer, 3.13b Conduit panels, 3.13c mock panels and branding out; 3.13d deferred until an admin panel is needed | done |
-| 3.14 | Schema: JSONB state, `digi_balance`/`reputation`/`echo_credits` columns, retire `agent_state` (backfill → drop): 3.14a JSONB + agent_state rename, 3.14b wallet into stats, 3.14c ai_credits and morality done; 3.14d drops next | in progress |
+| 3.14 | Schema: JSONB state, `digi_balance`/`reputation`/`echo_credits` columns, retire `agent_state` (backfill → drop) | done |
 | 3.15 | Redis key namespace by world slug | todo |
 | 3.16 | AI slots and style; prompts into `worlds/fablestar/ai` | todo |
 | 3.17 | Move Fablestar content into `worlds/fablestar/content`; remove `[transition]` | todo |
@@ -206,8 +206,11 @@ by owner G.4 ("every mechanic is a first-party plugin").
     column; downgrade copies back. The engine API, admin editor and player-ui no longer carry
     reputation; `ReputationThermometer` is deleted. `stat_sheet` rows gained optional `min`.
     Standing is edited through the stats JSON; nothing in play changes it yet.
-  - 3.14d drops: `digi_balance`, `reputation`, `retired_agent_state` (**one-way door**). The drop
-    revision refuses while any row still has a non-zero `reputation` (a world plugin that owns it
-    has not run yet). Dev DB backups: scratchpad `devdb_before_314a/b/c1/c2.sql`; take a fresh
+  - 3.14d (done) core `r1s2t3u4v5w6` drops `characters.digi_balance`, `characters.reputation`
+    and `retired_agent_state`, refusing while any row still has a non-zero standing column (a
+    world plugin that owns it has not migrated). Downgrade re-creates them empty; the earlier
+    downgrades (p9q0r1s2t3u4, plg_morality) then copy the values back from stats, so the door is
+    one-way only for the retired agent rows, which live in `plg_agents_state`. Live tests that
+    need the old schema downgrade to `q0r1s2t3u4v5` first. Dev DB backups: scratchpad `devdb_before_314a/b/c1/c2.sql`; take a fresh
     one before 3.14d.
 

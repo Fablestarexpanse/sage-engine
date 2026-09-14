@@ -141,7 +141,10 @@ def test_plugin_branch_migrates_and_uninstalls(tmp_path, live_config, migrated_d
 
 
 def test_agents_branch_copies_rows_from_the_retired_engine_table(live_config, migrated_database):
-    """Core head renames agent_state first; plg_agents must still find and copy the rows."""
+    """Core renames agent_state before the plugin runs; plg_agents must still copy the rows.
+
+    Runs at q0r1s2t3u4v5, the last core revision where the retired table exists.
+    """
     from sqlalchemy import text
 
     from tests.live.conftest import REPO_ROOT
@@ -164,6 +167,7 @@ def test_agents_branch_copies_rows_from_the_retired_engine_table(live_config, mi
         conn.commit()
 
     cfg = alembic_config([REPO_ROOT / "plugins" / "agents"])
+    command.downgrade(cfg, "q0r1s2t3u4v5")
     _run_sync(live_config, seed)
     try:
         command.upgrade(cfg, "plg_agents@head")
@@ -174,6 +178,7 @@ def test_agents_branch_copies_rows_from_the_retired_engine_table(live_config, mi
     finally:
         command.downgrade(cfg, "plg_agents@base")
         _run_sync(live_config, unseed)
+        command.upgrade(cfg, "sage_core@head")
 
 
 def test_world_plugin_branch_moves_a_legacy_column_into_its_state_block(
@@ -198,6 +203,7 @@ def test_world_plugin_branch_moves_a_legacy_column_into_its_state_block(
 
         return _run_sync(live_config, run)
 
+    command.downgrade(alembic_config([plugin]), "q0r1s2t3u4v5")
     execute(
         "INSERT INTO accounts (username, password_hash, is_gm, created_at) "
         "VALUES ('moral_owner', 'x', false, now())"
@@ -210,6 +216,9 @@ def test_world_plugin_branch_moves_a_legacy_column_into_its_state_block(
     cfg = alembic_config([plugin])
     try:
         command.upgrade(cfg, "plg_morality@head")
+        # The core drop now finds no standing left behind and removes the column.
+        command.upgrade(cfg, "sage_core@head")
+        command.downgrade(cfg, "q0r1s2t3u4v5")
         [(stats, column)] = execute(
             "SELECT stats, reputation FROM characters WHERE name = 'moral_hero'"
         )
@@ -223,3 +232,4 @@ def test_world_plugin_branch_moves_a_legacy_column_into_its_state_block(
         command.downgrade(cfg, "plg_morality@base")
         execute("DELETE FROM characters WHERE name = 'moral_hero'")
         execute("DELETE FROM accounts WHERE username = 'moral_owner'")
+        command.upgrade(cfg, "sage_core@head")

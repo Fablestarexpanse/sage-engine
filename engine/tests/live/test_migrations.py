@@ -20,7 +20,6 @@ EXPECTED_TABLES = {
     "accounts",
     "characters",
     "admin_staff",
-    "retired_agent_state",
     "account_scene_images",
     "alembic_version",
 }
@@ -120,3 +119,42 @@ def test_wallet_balances_move_into_stats_and_back(
         command.upgrade(alembic_cfg, "head")
         execute("DELETE FROM characters WHERE name = 'wallet_hero'")
         execute("DELETE FROM accounts WHERE username = 'wallet_mig'")
+
+
+def test_legacy_column_drop_refuses_while_a_standing_is_left_behind(
+    live_config, alembic_cfg, migrated_database
+):
+    """r1s2t3u4v5w6 must not destroy a value no world plugin has moved yet."""
+    from sqlalchemy import text
+
+    from alembic.script import ScriptDirectory
+
+    standing = (
+        ScriptDirectory.from_config(alembic_cfg).get_revision("r1s2t3u4v5w6").module.LEGACY_STANDING
+    )
+
+    def execute(sql):
+        def run(conn):
+            conn.execute(text(sql))
+            conn.commit()
+
+        return _run_sync(live_config, run)
+
+    command.downgrade(alembic_cfg, "q0r1s2t3u4v5")
+    try:
+        execute(
+            "INSERT INTO accounts (username, password_hash, is_gm, created_at) "
+            "VALUES ('drop_guard', 'x', false, now())"
+        )
+        execute(
+            f"INSERT INTO characters (account_id, name, room_id, {standing}, pvp_enabled, stats, "
+            "inventory, created_at, updated_at) SELECT id, 'drop_guard_hero', 'probe:start', 12, "
+            "false, '{}', '[]', now(), now() FROM accounts WHERE username = 'drop_guard'"
+        )
+        with pytest.raises(RuntimeError, match="still hold"):
+            command.upgrade(alembic_cfg, "head")
+        assert "characters" in _tables(live_config)
+    finally:
+        execute("DELETE FROM characters WHERE name = 'drop_guard_hero'")
+        execute("DELETE FROM accounts WHERE username = 'drop_guard'")
+        command.upgrade(alembic_cfg, "head")
