@@ -171,6 +171,20 @@ class AgentsLLMConfig(LLMConfig):
     embedded_ctx: int = 4096
 
 
+class ModerationConfig(BaseModel):
+    """config/moderation.toml: player moderation settings staff change from the console.
+
+    Recording the network address a player signs in from is off by default. Rules differ by
+    country, so the operator decides; when on, players are told on the sign-in screen, and
+    addresses older than ``login_history_days`` are removed with the rest of that history.
+    """
+
+    registration_open: bool = True
+    record_login_addresses: bool = False
+    login_history_days: int = Field(default=30, ge=1, le=3650)
+    report_cooldown_seconds: int = Field(default=60, ge=0, le=86400)
+
+
 class Config(BaseModel):
     server: ServerConfig = Field(default_factory=ServerConfig)
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
@@ -179,6 +193,7 @@ class Config(BaseModel):
     # Loaded from config/agents_llm.toml (section name = file stem).
     agents_llm: AgentsLLMConfig = Field(default_factory=AgentsLLMConfig)
     comfyui: ComfyUIConfig = Field(default_factory=ComfyUIConfig)
+    moderation: ModerationConfig = Field(default_factory=ModerationConfig)
 
 
 def load_config(config_dir: str = "config") -> Config:

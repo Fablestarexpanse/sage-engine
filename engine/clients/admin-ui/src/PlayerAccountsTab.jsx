@@ -307,6 +307,9 @@ export default function PlayerAccountsTab({ focusTarget = null, onSelect }) {
             >
               <div style={{ fontWeight: 600, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                 {r.username}
+                {r.muted_until && new Date(r.muted_until) > new Date() ? (
+                  <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, background: COLORS.warningBg, color: COLORS.warning, border: `1px solid ${COLORS.warning}` }}>muted</span>
+                ) : null}
                 {r.suspended_at ? (
                   <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, background: COLORS.dangerBg, color: COLORS.danger, border: `1px solid ${COLORS.danger}` }}>suspended</span>
                 ) : null}
@@ -355,6 +358,10 @@ export default function PlayerAccountsTab({ focusTarget = null, onSelect }) {
 
             <SuspensionSection detail={detail} accountId={selectedId} disabled={busy} onChanged={reloadAccount} />
 
+            <MuteSection detail={detail} accountId={selectedId} disabled={busy} onChanged={reloadAccount} />
+
+            <SignInsSection key={selectedId} accountId={selectedId} />
+
             <ConsoleAccessSection detail={detail} accountId={selectedId} disabled={busy} onChanged={reloadAccount} />
 
             <AccountEditForm
@@ -377,6 +384,100 @@ export default function PlayerAccountsTab({ focusTarget = null, onSelect }) {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+const MUTE_LENGTHS = [
+  [15, "15 minutes"],
+  [60, "1 hour"],
+  [60 * 24, "1 day"],
+  [60 * 24 * 7, "1 week"],
+];
+
+// A muted account's characters cannot say, emote or tell; connected ones are told at once.
+function MuteSection({ detail, accountId, disabled, onChanged }) {
+  const { colors: COLORS } = useAdminTheme();
+  const [minutes, setMinutes] = useState(60);
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const run = async (fn) => {
+    setBusy(true);
+    try {
+      await fn();
+      setReason("");
+      await onChanged?.();
+    } catch (e) {
+      const d = e.response?.data?.detail;
+      window.alert(typeof d === "string" ? d : e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const until = detail.muted_until ? new Date(detail.muted_until) : null;
+  const muted = until && until > new Date();
+  return (
+    <div style={{ padding: "10px 12px", borderRadius: 8, border: `1px solid ${muted ? COLORS.warning : COLORS.border}`, background: muted ? COLORS.warningBg : COLORS.bgInput, display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ fontSize: 11, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: "0.06em" }}>Mute</div>
+      {muted ? (
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <span style={{ fontSize: 13, color: COLORS.text }}>Muted until {until.toLocaleString()}{detail.mute_reason ? `: ${detail.mute_reason}` : ""}. Their characters cannot say, emote or tell.</span>
+          <button type="button" disabled={disabled || busy} onClick={() => run(() => axios.delete(`${API_BASE}/admin/player-accounts/${accountId}/mute`))}
+            style={{ padding: "6px 12px", borderRadius: 6, border: `1px solid ${COLORS.border}`, background: COLORS.bgCard, color: COLORS.text, cursor: "pointer", fontSize: 12 }}>Lift mute</button>
+        </div>
+      ) : (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <select id={`mute-length-${accountId}`} aria-label="Mute length" value={minutes} onChange={(e) => setMinutes(Number(e.target.value))}
+            style={{ padding: "7px 10px", background: COLORS.bgCard, border: `1px solid ${COLORS.border}`, borderRadius: 6, color: COLORS.text, fontSize: 13 }}>
+            {MUTE_LENGTHS.map(([m, label]) => <option key={m} value={m}>{label}</option>)}
+          </select>
+          <input id={`mute-reason-${accountId}`} aria-label="Reason for mute" placeholder="Reason (shown to staff)" value={reason} onChange={(e) => setReason(e.target.value)}
+            style={{ flex: 1, minWidth: 180, padding: "7px 10px", background: COLORS.bgCard, border: `1px solid ${COLORS.border}`, borderRadius: 6, color: COLORS.text, fontSize: 13 }} />
+          <button type="button" disabled={disabled || busy} onClick={() => run(() => axios.post(`${API_BASE}/admin/player-accounts/${accountId}/mute`, { minutes, reason }))}
+            style={{ padding: "6px 12px", borderRadius: 6, border: `1px solid ${COLORS.warning}`, background: "transparent", color: COLORS.warning, cursor: "pointer", fontSize: 12, fontWeight: 600 }}>Mute</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// This account's recent sign-ins; addresses appear only if the operator records them.
+function SignInsSection({ accountId }) {
+  const { colors: COLORS } = useAdminTheme();
+  const [data, setData] = useState(null);
+  const [version, setVersion] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    axios.get(`${API_BASE}/admin/moderation/logins`, { params: { account_id: accountId, limit: 10 } })
+      .then(({ data: d }) => alive && setData(d))
+      .catch(() => alive && setData({ rows: [], total: 0 }));
+    return () => { alive = false; };
+  }, [accountId, version]);
+  const erase = async () => {
+    if (!window.confirm("Erase this account's stored sign-in addresses? Sign-in times stay.")) return;
+    try {
+      await axios.delete(`${API_BASE}/admin/player-accounts/${accountId}/logins`);
+      setVersion((v) => v + 1);
+    } catch (e) {
+      window.alert(e.response?.data?.detail || e.message);
+    }
+  };
+  if (!data) return null;
+  const hasAddresses = data.rows.some((r) => r.address);
+  return (
+    <div style={{ padding: "10px 12px", borderRadius: 8, border: `1px solid ${COLORS.border}`, background: COLORS.bgInput, display: "flex", flexDirection: "column", gap: 6 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ fontSize: 11, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: "0.06em" }}>Recent sign-ins ({data.total})</span>
+        {hasAddresses && <button type="button" onClick={erase} style={{ marginLeft: "auto", padding: "3px 10px", borderRadius: 6, border: `1px solid ${COLORS.border}`, background: COLORS.bgCard, color: COLORS.text, cursor: "pointer", fontSize: 11 }}>Erase addresses</button>}
+      </div>
+      {data.rows.length === 0 && <div style={{ fontSize: 12, color: COLORS.textDim }}>No sign-ins recorded.</div>}
+      {data.rows.map((r) => (
+        <div key={r.id} style={{ display: "flex", gap: 12, fontSize: 12, fontFamily: "'JetBrains Mono', monospace", color: COLORS.text }}>
+          <span>{new Date(r.at).toLocaleString()}</span>
+          <span style={{ color: COLORS.textMuted }}>{r.method}</span>
+          <span style={{ color: r.address ? COLORS.text : COLORS.textDim }}>{r.address || "address not recorded"}</span>
+        </div>
+      ))}
     </div>
   );
 }

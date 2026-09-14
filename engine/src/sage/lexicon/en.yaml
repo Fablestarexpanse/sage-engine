@@ -42,6 +42,20 @@ session:
   broadcast: "[Server] {message}"
 
 # What a player is told when staff change their character from the admin console.
+moderation:
+  muted: "
+You are muted and cannot talk right now."
+  muted_now: "
+Staff have muted you. You cannot say, emote or tell for now."
+  unmuted: "
+Staff lifted your mute. You can talk again."
+report:
+  usage: "
+Usage: report <what happened>. Say what you saw and where; your location is sent with it."
+  thanks: "
+Thanks. Your report #{id} is with the staff."
+  too_soon: "
+You sent a report a moment ago. Please wait a little before sending another."
 staff:
   moved: "
 A member of staff has moved you."

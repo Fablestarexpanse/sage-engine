@@ -317,6 +317,18 @@ class SageServer:
         }
     )
 
+    def update_moderation_settings(self, patch: dict[str, Any], *, persist: bool = True) -> None:
+        """Merge moderation settings (config/moderation.toml); invalid values raise ValueError."""
+        from sage.core.config import ModerationConfig
+        from sage.core.moderation_persist import save_moderation_toml
+
+        known = set(ModerationConfig.model_fields)
+        data = {k: v for k, v in patch.items() if k in known and v is not None}
+        merged = ModerationConfig.model_validate({**self.config.moderation.model_dump(), **data})
+        self.config = self.config.model_copy(update={"moderation": merged})
+        if persist:
+            save_moderation_toml(merged)
+
     def update_comfyui_settings(self, patch: dict[str, Any], *, persist: bool = True) -> None:
         """Merge ComfyUI config fields, optionally write config/comfyui.toml."""
         data = {k: v for k, v in patch.items() if k in self._COMFYUI_PATCH_KEYS and v is not None}
@@ -390,6 +402,7 @@ class SageServer:
         registry.load_module_strict("sage.commands.movement")
         registry.load_module_strict("sage.commands.items")
         registry.load_module_strict("sage.commands.admin")
+        registry.load_module_strict("sage.commands.report")
 
         # 1b. The world's plugins, after engine commands so verb conflicts are caught.
         self.plugins.load(plugin_records)
@@ -398,6 +411,13 @@ class SageServer:
         # 2. Tick handlers — must be registered before the tick loop starts in step 4
         self.tick_manager.register(self.spawner.on_tick)
         self.tick_manager.register(self.persistence.on_tick)
+
+        async def purge_login_history(_tick: int) -> None:
+            from sage.services import moderation
+
+            await moderation.purge_history(self)
+
+        self.tick_manager.every(3600, purge_login_history, name="moderation.purge_login_history")
 
         # 3. HotReloader — watches content/ and commands/; safe to start any time after step 1
         await self.hot_reloader.start(
@@ -472,6 +492,13 @@ class SageServer:
             await session.send_json({"ok": False, "error": "username_required"})
             return None
 
+        from sage.services import moderation
+
+        address = getattr(session.protocol, "address", None)
+        if await moderation.active_ban(self, address):
+            await session.send_json({"ok": False, "error": "address_banned"})
+            return None
+
         async with self.db.session_factory() as db_session:
             account = await resolve_play_account(
                 db_session, self, token=token, username=username, password=password
@@ -512,9 +539,14 @@ class SageServer:
                 return None
 
             account.last_login = datetime.utcnow()
+            # Chat commands check the mute on the session, so no database read per line said.
+            session.account_id = account.id
+            session.muted_until = account.muted_until
+            account_id = account.id
             await db_session.commit()
             await db_session.refresh(character)
 
+        await moderation.record_login(self, account_id, "token" if token else "password", address)
         return _snapshot_from_orm(character)
 
     async def _bootstrap_session(self, session: Session, character: _CharSnapshot):

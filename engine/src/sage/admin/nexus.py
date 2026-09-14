@@ -52,6 +52,7 @@ from sage.admin.routes.forge import build_forge_router
 from sage.admin.routes.lexicon import build_lexicon_router
 from sage.admin.routes.llm_comfyui import build_llm_comfyui_router
 from sage.admin.routes.llm_profiles import build_llm_profiles_router
+from sage.admin.routes.moderation import build_moderation_router
 from sage.admin.routes.play import build_play_router
 from sage.admin.routes.search import build_search_router
 from sage.admin.routes.world import build_world_router
@@ -158,6 +159,7 @@ class NexusApp:
         self.app.include_router(build_about_router(self.server))
         self.app.include_router(build_characters_router(self.server))
         self.app.include_router(build_search_router(self.server))
+        self.app.include_router(build_moderation_router(self.server))
         self.app.include_router(build_play_router(self.server))
         self.app.include_router(build_content_router(self.server))
         self.app.include_router(build_world_router(self.server))

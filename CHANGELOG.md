@@ -22,6 +22,23 @@ Versions built before the first publication have no conversion date.
 
 ## [Unreleased]
 
+- **Moderation** (Players > Moderation, Reports, and the account editor):
+  - **Reports:** players send reports with `report` (also `bug`, `typo`, `idea`). Each report
+    carries the room the player is in and has a cooldown. Staff mark reports fixed, won't fix
+    or duplicate, and can add a note.
+  - **Mutes:** a muted account's characters cannot `say`, `emote` or `tell` until the mute ends.
+    Connected characters are told when the mute starts and when it is lifted.
+  - **Address bans:** a banned address or CIDR range is refused at sign-in, registration and
+    WebSocket play. A ban can have an end date.
+  - **Registration lock:** "New players can create accounts" can be switched off. Existing
+    players can still sign in.
+  - **Sign-in history:** every sign-in records when and how. Recording the address is **off by
+    default**. It is an operator setting because the rules for storing it differ by country.
+    While it is on, the sign-in and sign-up screens tell players. History older than
+    `login_history_days` (default 30) is deleted every hour. Staff can erase one account's
+    addresses or everyone's.
+  - **Settings file:** `config/moderation.toml` (gitignored; see `config/moderation.example.toml`).
+  - **Migration:** `u4v5w6x7y8z9`.
 - **Staff character sheet** (Players > Characters) shows the character as the player sees it:
   - the world's vitals and attributes
   - every panel plugins declare for the player client (levels, skills, gear, standings ...),

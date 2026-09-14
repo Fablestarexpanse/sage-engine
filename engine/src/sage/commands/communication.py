@@ -5,6 +5,7 @@ import time
 from sage.commands.registry import command
 from sage.lexicon import t
 from sage.network.session import Session
+from sage.services.moderation import is_muted
 
 
 async def _chat_notice(target: Session, channel: str, sender: str, text: str, self_line: bool):
@@ -69,6 +70,9 @@ async def say(session: Session, args: list[str]):
     if not session.player_id:
         await session.say("session.not_authenticated")
         return
+    if is_muted(session):
+        await session.say("moderation.muted")
+        return
 
     message = _free_text(session, args)
     from sage.app import app_instance
@@ -104,6 +108,9 @@ async def emote(session: Session, args: list[str]):
     if not session.player_id:
         await session.say("session.not_authenticated")
         return
+    if is_muted(session):
+        await session.say("moderation.muted")
+        return
 
     from sage.app import app_instance
 
@@ -128,6 +135,9 @@ async def tell(session: Session, args: list[str]):
         return
     if not session.player_id:
         await session.say("session.not_authenticated")
+        return
+    if is_muted(session):
+        await session.say("moderation.muted")
         return
 
     from sage.app import app_instance
