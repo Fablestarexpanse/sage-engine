@@ -45,6 +45,6 @@
   },
   "9": {
     "class_type": "SaveImage",
-    "inputs": { "filename_prefix": "FablestarPortrait", "images": ["8", 0] }
+    "inputs": { "filename_prefix": "SagePortrait", "images": ["8", 0] }
   }
 }

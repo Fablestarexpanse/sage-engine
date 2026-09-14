@@ -12,13 +12,14 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: fablestar
-      POSTGRES_USER: fablestar
+      # Only used when the data volume is first created; an existing database keeps its names.
+      POSTGRES_DB: ${POSTGRES_DB:-sage}
+      POSTGRES_USER: ${POSTGRES_USER:-sage}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env (see README quick start)}
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U fablestar"]
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\""]
       interval: 5s
       timeout: 3s
       retries: 5

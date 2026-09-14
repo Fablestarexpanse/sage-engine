@@ -43,3 +43,9 @@ Thumbs.db
 .idea/
 config/agents_llm.toml
 models/
+
+# Local agent tooling (rexyMCP executor config and contract, desloppify state). Not part of the
+# engine; each developer keeps their own copy.
+/rexymcp.toml
+/REXYMCP.md
+/.desloppify/

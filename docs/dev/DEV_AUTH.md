@@ -48,7 +48,7 @@ Everything is marked so it can be removed mechanically:
 - Blocks sit between `DEV-AUTH:BEGIN` and `DEV-AUTH:END` comment lines: the router mount in
   `admin/nexus.py`, the public-path entry in `admin/admin_security.py`, the `dev_login` config
   field, `config/server.example.toml`, the player client (`App.jsx`, `playApi.js`), the admin
-  console `LoginScreen`, and the dev-login sections of `README.md` and `CLAUDE.md`.
+  console `LoginScreen`, and the dev-login sections of `README.md` and `docs/architecture.md`.
 
 When you add dev-only auth code, put it inside markers too, or the release check will flag it.
 
@@ -65,7 +65,7 @@ python -m pytest
 ```
 
 `--strip` refuses to change anything when a marker is unbalanced. After stripping it scans engine
-code, the clients, `config/`, `README.md` and `CLAUDE.md` for leftover dev-login references (for
+code, the clients, `config/`, `README.md`, `CLAUDE.md` and `docs/architecture.md` for leftover dev-login references (for
 example a route name outside the markers) and fails if it finds one. Fix those by hand.
 
 The live world smoke tests register real accounts and create characters through the normal
