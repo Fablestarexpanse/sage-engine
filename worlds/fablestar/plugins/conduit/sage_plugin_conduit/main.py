@@ -8,7 +8,7 @@ import random
 from pathlib import Path
 from typing import Any
 
-from sage.api import PluginAPI
+from sage.api import PluginAPI, t
 
 from . import commands, panels, routes
 from .catalog_loader import load_proficiency_catalog_from_disk
@@ -105,6 +105,8 @@ def setup(api: PluginAPI) -> None:
         """The chargen skill picker: leaves with detail text, point budget and per-leaf cap."""
         leaves = catalog_leaves_for_client(catalog.get())
         return {
+            "kind": "skill_points",
+            "title": t("conduit.chargen.title"),
             "budget": STARTER_POINTS_BUDGET,
             "max_per_leaf": STARTER_MAX_PER_LEAF,
             "domains": sorted({x["domain"] for x in leaves}),

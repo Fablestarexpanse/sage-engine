@@ -1,6 +1,6 @@
 {
   "totals": {
-    "denylist": 98,
+    "denylist": 75,
     "player_literals": 72
   },
   "denylist": {
@@ -9,17 +9,11 @@
     "engine/alembic/versions/p9q0r1s2t3u4_wallet_into_stats.py": 1,
     "engine/alembic/versions/q0r1s2t3u4v5_account_ai_credits.py": 1,
     "engine/alembic/versions/r1s2t3u4v5w6_drop_legacy_world_columns.py": 1,
-    "engine/clients/admin-ui/src/AgentsTab.jsx": 1,
     "engine/clients/admin-ui/src/App.jsx": 1,
     "engine/clients/admin-ui/src/ProficienciesPage.jsx": 6,
-    "engine/clients/admin-ui/src/pages/AiForgePage.jsx": 6,
     "engine/clients/admin-ui/src/storageMigration.js": 8,
-    "engine/clients/player-ui/src/App.jsx": 2,
-    "engine/clients/player-ui/src/ChargenProficienciesStep.jsx": 3,
-    "engine/clients/player-ui/src/mud/06-panels-b.jsx": 1,
     "engine/clients/player-ui/src/storageMigration.js": 8,
     "engine/pyproject.toml": 1,
-    "engine/scripts/ensure_test_user.py": 10,
     "engine/src/sage/core/config.py": 7,
     "engine/tests/test_admin_security.py": 4,
     "engine/tests/test_command_integration.py": 4,

@@ -88,3 +88,12 @@ def test_plugin_provides_chargen_prepare_and_ratings_through_the_host(plugin_hos
     session = StubSession("hero")
     asyncio.run(host.registry.get("score").handler(session, []))
     assert "Top proficiencies:" in session.sent[0]
+
+
+def test_options_declare_the_skill_points_kind(plugin_host):
+    """The player client renders a choices step only for a kind it knows."""
+    host = plugin_host(repo_world(), ["conduit"])
+    options = host.resolvers.get("chargen.options")()
+    assert options["kind"] == "skill_points"
+    assert options["title"] == "Starting proficiencies"
+    assert options["budget"] > 0 and options["max_per_leaf"] > 0 and options["leaves"]

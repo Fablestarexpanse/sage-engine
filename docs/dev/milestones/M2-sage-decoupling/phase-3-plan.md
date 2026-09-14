@@ -39,6 +39,8 @@ by owner G.4 ("every mechanic is a first-party plugin").
 | 3.16 | AI slots and style; prompts into `worlds/fablestar/ai` | done |
 | 3.17 | Move Fablestar content into `worlds/fablestar/content`; remove `[transition]` | done |
 | 3.18 | Delete glyph/ship/system/galaxy surfaces and the admin World Builder (owner G.3, G.6): 3.18a engine + admin-ui, 3.18b WorldForge, player-ui, galaxy.yaml | done |
+| 3.19 | Ratchet sweep of the last Fablestar leftovers in engine code: 3.19a `ensure_test_user.py` (broken since 3.14), 3.19b admin AI Forge lore options and Agents default room, 3.19c player-ui chargen and sign-in copy (skip the skills step when the world has no chargen options), 3.19d Proficiencies admin page out of admin-ui, 3.19e test fixtures | in progress |
+| 3.20 | Remaining hardcoded player text in engine commands behind lexicon keys (72 `player_literals`) | todo |
 
 ## Notes
 
@@ -292,4 +294,24 @@ by owner G.4 ("every mechanic is a first-party plugin").
     player-ui drops the `glyph_cast` narrative line type and the `glyph` entity kind (no server
     ever sent either). Fablestar's empty `worlds/fablestar/content/world/galaxy.yaml` is deleted.
     A folder that holds only a `galaxy.yaml` is no longer recognised as a world root by WorldForge.
+- **3.19 ratchet sweep.** After 3.18 the denylist count is 98. Hits that stay by design, each a
+  named one-release alias or history: `sage.core.config` (`FABLESTAR_` env prefix, renamed comfyui
+  keys, and the default database/user name `fablestar`, which existing deployments rely on),
+  `storageMigration.js` in both clients (old localStorage keys), migration files naming legacy
+  columns, `test_config_env.py` (tests the alias), the `fablestar` console script in
+  `engine/pyproject.toml`, and false positives (`Presence`, `Resolve`, `Pixel` as ordinary words).
+  Everything else is work.
+  - 3.19a (done) `engine/scripts/ensure_test_user.py` creates or resets accounts only (with
+    `ai_credits`); it had written the dropped `digi_balance` column, a nonexistent start room and
+    the renamed `starting_echo_credits` key. Characters come from the player UI create flow.
+  - 3.19b (done) admin AI Forge zone pickers list the running world's zones (`GET /content/zones`)
+    instead of invented lore zones; the Conduit/Resonance item themes and "Fellow Conduit" NPC
+    type are gone. The Agents tab teleport prompt has no Fablestar default room.
+  - 3.19c (done) `chargen.options` declares `kind: "skill_points"` (Conduit adds it, with a lexicon
+    title); player-ui shows the choices step only for that kind, so a world without chargen options
+    creates the character from the identity step. Budget and cap error messages use the world's
+    numbers; sign-in and chargen copy no longer say "conduit". Run: live Fablestar options return
+    the kind and title; create through the API refused an over-cap level and accepted a legal one
+    (probe character deleted). The create screens were not driven in the browser: reaching them
+    needs a password sign-in, and dev login goes straight into play.
 

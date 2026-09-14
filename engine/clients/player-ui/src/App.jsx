@@ -537,7 +537,7 @@ function AuthSignInForm({ onLoggedIn }) {
           </div>
         )}
         <AuthNavLinks>
-          <AuthTextLink href="#/register">New conduit? Create account</AuthTextLink>
+          <AuthTextLink href="#/register">New here? Create account</AuthTextLink>
           <AuthTextLink href="#/">Back to welcome</AuthTextLink>
         </AuthNavLinks>
       </div>
@@ -681,6 +681,8 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
   const [pendingDelete, setPendingDelete] = useState(null);
   const [deleteNameConfirm, setDeleteNameConfirm] = useState("");
   const [profCatalog, setProfCatalog] = useState(null);
+  /** False once the world's chargen options load without a kind this client renders: no choices step. */
+  const [chargenHasSkills, setChargenHasSkills] = useState(true);
   const [profCatalogErr, setProfCatalogErr] = useState("");
   const [profCatalogLoading, setProfCatalogLoading] = useState(false);
   const [starterProf, setStarterProf] = useState({});
@@ -748,13 +750,15 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
     playFetchProficiencyCatalog()
       .then((data) => {
         if (cancelled) return;
-        if (data && typeof data.budget === "number" && Array.isArray(data.leaves)) setProfCatalog(data);
-        else setProfCatalogErr("Proficiency catalog response was unexpected.");
+        const skills = data?.kind === "skill_points" && typeof data.budget === "number" && Array.isArray(data.leaves);
+        setProfCatalog(skills ? data : null);
+        setChargenHasSkills(skills);
       })
       .catch((e) => {
         if (cancelled) return;
-        setProfCatalogErr(e.message || "Could not load proficiency catalog");
+        setProfCatalogErr(e.message || "Could not load character creation options");
         setProfCatalog(null);
+        setChargenHasSkills(true);
       })
       .finally(() => {
         if (!cancelled) setProfCatalogLoading(false);
@@ -953,7 +957,7 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
   };
 
   const runCreateCharacter = async (e) => {
-    e.preventDefault();
+    e?.preventDefault();
     setFormErr("");
     setCreateBusy(true);
     try {
@@ -970,7 +974,7 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
         const err = res.error || "";
         let starterMsg = "";
         if (typeof err === "string") {
-          if (err === "starter_budget_exceeded") starterMsg = "Starter proficiency points exceed the allowed total (15).";
+          if (err === "starter_budget_exceeded") starterMsg = `Starting points exceed the allowed total (${profCatalog?.budget ?? "?"}).`;
           else if (err === "invalid_proficiency_id") starterMsg = "Invalid proficiency id in your picks.";
           else if (err === "invalid_starter_proficiencies") starterMsg = "Invalid proficiency levels — use whole numbers.";
           else if (err.startsWith("unknown_proficiency:"))
@@ -978,7 +982,7 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
           else if (err.startsWith("invalid_level:"))
             starterMsg = `Invalid level for ${err.slice("invalid_level:".length)}.`;
           else if (err.startsWith("level_out_of_range:"))
-            starterMsg = `Each skill can be at most 5 at creation (${err.slice("level_out_of_range:".length)}).`;
+            starterMsg = `Each skill can be at most ${profCatalog?.max_per_leaf ?? "?"} at creation (${err.slice("level_out_of_range:".length)}).`;
         }
         const map = {
           invalid_character_name: "Use 2–50 characters: letters, numbers, single spaces, _ - (start and end with a letter or number)",
@@ -1250,13 +1254,13 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
               {view === "create"
                 ? createPhase === "identity"
                   ? "New character"
-                  : "Starting proficiencies"
+                  : profCatalog?.title || "Starting skills"
                 : "Choose a character"}
             </h2>
-            {view === "create" ? (
+            {view === "create" && chargenHasSkills ? (
               <p style={{ fontSize: 11, color: T.text.muted, marginTop: 4, lineHeight: 1.45 }}>
                 Step {createPhase === "identity" ? "1" : "2"} of 2 ·{" "}
-                {createPhase === "identity" ? "Identity & portrait" : "Optional conduit ranks"}
+                {createPhase === "identity" ? "Identity & portrait" : "Optional starting ranks"}
               </p>
             ) : null}
             <p style={{ fontSize: 12, color: T.text.muted, marginTop: view === "create" ? 2 : 4, lineHeight: 1.45, display: "flex", alignItems: "center", flexWrap: "wrap", gap: 4 }}>
@@ -1341,8 +1345,10 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
             </div>
             <p style={{ fontSize: 12, color: T.text.secondary, lineHeight: 1.45 }}>
               Name your character and set up a portrait prompt (optional). Use{" "}
-              <strong style={{ color: T.text.muted }}>Suggest prompt</strong> for an LLM-polished Comfy line. On the next step you will
-              optionally place starter proficiency ranks — then you submit once to create them in the world.
+              <strong style={{ color: T.text.muted }}>Suggest prompt</strong> for an LLM-polished Comfy line.
+              {chargenHasSkills
+                ? " On the next step you will optionally place starting ranks — then you submit once to create them in the world."
+                : ""}
             </p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 20, alignItems: "flex-start" }}>
               <div style={{ flex: "1 1 280px", display: "flex", flexDirection: "column", gap: 14 }}>
@@ -1563,8 +1569,8 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
             ) : null}
             <button
               type="button"
-              disabled={formLocked || !newName.trim()}
-              onClick={goToProficienciesStep}
+              disabled={formLocked || !newName.trim() || createBusy}
+              onClick={chargenHasSkills ? goToProficienciesStep : () => runCreateCharacter()}
               style={{
                 width: "100%",
                 padding: "12px",
@@ -1577,11 +1583,13 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
                 fontSize: 12,
               }}
             >
-              Continue — starting proficiencies →
+              {chargenHasSkills ? `Continue — ${(profCatalog?.title || "starting skills").toLowerCase()} →` : createBusy ? "Creating…" : "Create character"}
             </button>
-            <p style={{ fontSize: 10, color: T.text.muted, margin: 0, textAlign: "center", lineHeight: 1.45 }}>
-              The skill catalog loads in the background while you work here, so the next screen is ready when you continue.
-            </p>
+            {chargenHasSkills ? (
+              <p style={{ fontSize: 10, color: T.text.muted, margin: 0, textAlign: "center", lineHeight: 1.45 }}>
+                The skill catalog loads in the background while you work here, so the next screen is ready when you continue.
+              </p>
+            ) : null}
             {characters.length > 0 && (
               <button
                 type="button"

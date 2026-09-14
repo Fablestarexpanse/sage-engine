@@ -1,4 +1,6 @@
 conduit:
+  chargen:
+    title: "Starting proficiencies"
   panel:
     attributes: "Conduit"
     skills: "Skills"

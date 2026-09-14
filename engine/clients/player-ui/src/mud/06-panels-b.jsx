@@ -118,7 +118,7 @@ export function CharacterPanel({
   pvpEnabled = null,
   /** Server-pushed live effects: [{name, description, debuff, seconds_left}] or null. */
   effects = null,
-  /** Large Conduit portrait; set false when the cutout is shown behind Narrative instead. */
+  /** Large character portrait; set false when the cutout is shown behind Narrative instead. */
   showHeroPortrait = true,
 }) {
   const { T } = usePlayTheme();
