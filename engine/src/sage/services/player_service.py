@@ -156,6 +156,9 @@ class PlayerService:
         username = (username or "").strip()
         if not username:
             return {"ok": False, "error": "username_required"}
+        restart = getattr(self.server, "restart", None)
+        if restart is not None and restart.signins_closed():
+            return {"ok": False, "error": "server_restarting"}
         if await moderation.active_ban(self.server, address):
             return {"ok": False, "error": "address_banned"}
         async with self.server.db.session_factory() as db_session:
@@ -396,7 +399,14 @@ class PlayerService:
                 select(Character).where(Character.account_id == account_id).order_by(Character.id)
             )
             all_chars = [await self.character_play_dict(c) for c in result.scalars().all()]
+            account_name = (await db_session.get(Account, account_id)).username
 
+        from sage.core.events import CharacterCreated, emit
+
+        await emit(
+            self.server,
+            CharacterCreated(player_id=name, character_id=payload["id"], account=account_name),
+        )
         final_bal = await self.server.economy.read_balance(account_id)
         out: dict[str, Any] = {
             "ok": True,

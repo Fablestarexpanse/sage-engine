@@ -42,6 +42,18 @@ session:
   broadcast: "[Server] {message}"
 
 # What a player is told when staff change their character from the admin console.
+restart:
+  warning: "
+[Server] The server restarts in {when}. Find a safe place; your character is saved first."
+  reason: "({reason})"
+  cancelled: "
+[Server] The restart has been cancelled."
+  now: "
+[Server] Restarting now. Your character is being saved."
+  goodbye: "The server is restarting. Please reconnect in a moment."
+  minutes: "{n} minutes"
+  one_minute: "1 minute"
+  seconds: "{n} seconds"
 moderation:
   muted: "
 You are muted and cannot talk right now."

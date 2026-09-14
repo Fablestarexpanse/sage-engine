@@ -425,3 +425,58 @@ def test_every_staff_change_is_snapshotted_and_can_be_undone(live_config, migrat
             await db.close()
 
     asyncio.run(go())
+
+
+def test_money_overview_sums_each_currency_in_the_database(live_config, migrated_database):
+    from sage.admin import economy
+
+    async def go():
+        db = PostgresState(live_config.database)
+        try:
+            async with open_redis(live_config) as redis:
+                server = _server(live_config, db, redis)
+                char_id, _ = await _character(db, redis, logged_in=False)  # silver 5
+                async with db.session_factory() as session:
+                    account = (
+                        await session.execute(
+                            select(Account).where(Account.username == "tool_tester")
+                        )
+                    ).scalar_one()
+                    rich = (
+                        await session.execute(
+                            select(Character).where(Character.name == "Money Bags")
+                        )
+                    ).scalar_one_or_none()
+                    if rich is not None:
+                        await session.delete(rich)
+                        await session.flush()
+                    session.add(
+                        Character(
+                            account_id=account.id,
+                            name="Money Bags",
+                            room_id="town:bridge",
+                            stats={"hp": 12, "silver": 900},
+                            inventory=[],
+                        )
+                    )
+                    await session.commit()
+                overview = await economy.money_overview(server)
+                silver = next(c for c in overview["currencies"] if c["key"] == "silver")
+                names = [t["name"] for t in silver["top"]]
+                assert names.index("Money Bags") < names.index(NAME)
+                assert silver["total"] >= 905 and silver["holders"] >= 2
+                assert next(t for t in silver["top"] if t["name"] == NAME)["href"] == (
+                    f"#/characters/{char_id}"
+                )
+                async with db.session_factory() as session:
+                    rich = (
+                        await session.execute(
+                            select(Character).where(Character.name == "Money Bags")
+                        )
+                    ).scalar_one()
+                    await session.delete(rich)
+                    await session.commit()
+        finally:
+            await db.close()
+
+    asyncio.run(go())

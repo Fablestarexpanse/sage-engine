@@ -91,6 +91,13 @@ class SageServer:
         )
         self.tick_manager = TickManager(tick_rate=self.config.server.tick_rate)
         self.events = EventBus()
+        from sage.admin.restart import RestartScheduler
+        from sage.admin.staff_feed import StaffFeed
+
+        # What staff see happening (Live > Staff feed) and the scheduled restart countdown.
+        self.staff_feed = StaffFeed()
+        self.staff_feed.attach(self)
+        self.restart = RestartScheduler(self)
         self.resolvers = Resolvers()
         self._define_engine_resolvers()
         from sage.network.snapshot import SnapshotContributors, progression_section
@@ -418,6 +425,7 @@ class SageServer:
             await moderation.purge_history(self)
 
         self.tick_manager.every(3600, purge_login_history, name="moderation.purge_login_history")
+        self.tick_manager.every(1, self.restart.on_tick, name="admin.restart_countdown")
 
         # 3. HotReloader — watches content/ and commands/; safe to start any time after step 1
         await self.hot_reloader.start(
@@ -437,6 +445,14 @@ class SageServer:
         self._tick_task = asyncio.create_task(self.tick_manager.run())
 
         logger.info("Startup complete. Server is running.")
+
+    def request_stop(self) -> None:
+        """Ask the running server to stop: the tick loop ends and Nexus stops serving, after which
+        run_server() shuts every subsystem down. Used by the scheduled restart."""
+        self.tick_manager.stop()
+        nexus = getattr(self, "nexus", None)
+        if nexus is not None:
+            nexus.request_stop()
 
     async def shutdown(self):
         """Gracefully stop all sub-systems."""
@@ -495,6 +511,9 @@ class SageServer:
         from sage.services import moderation
 
         address = getattr(session.protocol, "address", None)
+        if self.restart.signins_closed():
+            await session.send_json({"ok": False, "error": "server_restarting"})
+            return None
         if await moderation.active_ban(self, address):
             await session.send_json({"ok": False, "error": "address_banned"})
             return None

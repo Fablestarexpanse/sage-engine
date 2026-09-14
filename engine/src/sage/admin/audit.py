@@ -101,6 +101,7 @@ NOT_RECORDED = (
     "/forge/generate-content",
     "/forge/room-area-image",
     "/llm/test-completion",
+    "/admin/restart",
     "/comfyui/test-connection",
     "/admin/agents-llm/test",
 )
