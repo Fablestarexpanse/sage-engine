@@ -480,3 +480,118 @@ def test_money_overview_sums_each_currency_in_the_database(live_config, migrated
             await db.close()
 
     asyncio.run(go())
+
+
+def test_the_gm_crown_gives_staff_power_only_with_an_active_staff_account(
+    live_config, migrated_database, monkeypatch
+):
+    from sage import app as app_module
+    from sage import lexicon
+    from sage.commands.registry import registry
+    from sage.parser.dispatcher import CommandDispatcher
+    from sage.services.staff_powers import staff_context
+    from sage.state.models import AdminAuditLog, AdminStaff
+    from tests.fakes import StubSession
+
+    registry.load_module_strict("sage.commands.staff")
+
+    async def go():
+        db = PostgresState(live_config.database)
+        try:
+            async with open_redis(live_config) as redis:
+                server = _server(live_config, db, redis)
+                server.session_manager = SimpleNamespace(
+                    get_session_by_player=lambda name: None, sessions={}, player_to_session={}
+                )
+                server.dispatcher = CommandDispatcher()
+                char_id, account_id = await _character(db, redis, logged_in=False)
+                async with db.session_factory() as session:
+                    await session.execute(
+                        delete_staff := AdminStaff.__table__.delete().where(
+                            AdminStaff.username == "tool_tester"
+                        )
+                    )
+                    account = await session.get(Account, account_id)
+                    account.is_gm = False
+                    await session.commit()
+                gm = StubSession("Tool Tester")
+                gm.account_id = account_id
+
+                assert await staff_context(server, gm) is None  # no crown
+                async with db.session_factory() as session:
+                    (await session.get(Account, account_id)).is_gm = True
+                    await session.commit()
+                assert await staff_context(server, gm) is None  # crown, but no staff account
+                async with db.session_factory() as session:
+                    staff = AdminStaff(
+                        username="tool_tester",
+                        password_hash="x",
+                        role="gm",
+                        is_active=False,
+                        permissions={"tools": ["players"], "zones": ["*"]},
+                    )
+                    session.add(staff)
+                    await session.commit()
+                assert await staff_context(server, gm) is None  # staff account switched off
+                async with db.session_factory() as session:
+                    row = (
+                        await session.execute(
+                            select(AdminStaff).where(AdminStaff.username == "tool_tester")
+                        )
+                    ).scalar_one()
+                    row.is_active = True
+                    await session.commit()
+                ctx = await staff_context(server, gm)
+                assert ctx is not None and ctx.username == "tool_tester"
+
+                saved = app_module.app_instance
+                app_module.app_instance = server  # type: ignore[assignment]
+                try:
+                    await server.dispatcher.dispatch(gm, "transfer tool tester town:market")
+                    assert gm.sent[-1] == lexicon.t(
+                        "staffcmd.transferred", name=NAME, room="town:market"
+                    )
+                    async with db.session_factory() as session:
+                        moved = await session.get(Character, char_id)
+                        assert moved.room_id == "town:market"
+                    snaps = await character_tools.snapshots(server, char_id)
+                    assert (snaps[0]["staff"], snaps[0]["reason"]) == (
+                        "tool_tester",
+                        "move to town:market",
+                    )
+                    # A mute is on the account: a staff member cannot mute their own account.
+                    await server.dispatcher.dispatch(gm, "mute tool tester 5 oops")
+                    assert gm.sent[-1] == lexicon.t("staffcmd.not_yourself")
+                    # Tools are read on every use: take the players tool away and transfer stops.
+                    async with db.session_factory() as session:
+                        row = (
+                            await session.execute(
+                                select(AdminStaff).where(AdminStaff.username == "tool_tester")
+                            )
+                        ).scalar_one()
+                        row.permissions = {"tools": ["world"], "zones": ["*"]}
+                        await session.commit()
+                    await server.dispatcher.dispatch(gm, "transfer tool tester town:bridge")
+                    assert gm.sent[-1] == lexicon.t("staffcmd.tool_denied", verb="transfer")
+                finally:
+                    app_module.app_instance = saved
+                async with db.session_factory() as session:
+                    rows = (
+                        (
+                            await session.execute(
+                                select(AdminAuditLog).where(
+                                    AdminAuditLog.action == "ingame.transfer"
+                                )
+                            )
+                        )
+                        .scalars()
+                        .all()
+                    )
+                    assert any(r.staff_username == "tool_tester" and r.target == NAME for r in rows)
+                    await session.execute(delete_staff)
+                    (await session.get(Account, account_id)).is_gm = False
+                    await session.commit()
+        finally:
+            await db.close()
+
+    asyncio.run(go())

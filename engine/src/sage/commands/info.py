@@ -171,7 +171,7 @@ async def help_cmd(session: Session, args: list[str]):
         return
 
     await session.say("help.header")
-    cmds = sorted(registry._commands.keys())
+    cmds = registry.names()
     for cmd_name in cmds:
         cmd = registry.get(cmd_name)
         if cmd is None:

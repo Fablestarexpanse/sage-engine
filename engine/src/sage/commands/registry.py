@@ -12,10 +12,18 @@ logger = logging.getLogger(__name__)
 class Command:
     """Represents a registered game command."""
 
-    def __init__(self, name: str, handler: Callable, aliases: list[str] | None = None):
+    def __init__(
+        self,
+        name: str,
+        handler: Callable,
+        aliases: list[str] | None = None,
+        staff_only: bool = False,
+    ):
         self.name = name
         self.handler = handler
         self.aliases = aliases or []
+        # Staff commands are left out of help, autocomplete, prefix matching and suggestions.
+        self.staff_only = staff_only
 
 
 class CommandRegistry:
@@ -29,18 +37,24 @@ class CommandRegistry:
         self._aliases: dict[str, str] = {}
         self._modules: dict[str, Any] = {}
 
-    def register(self, name: str, handler: Callable, aliases: list[str] | None = None):
+    def register(
+        self,
+        name: str,
+        handler: Callable,
+        aliases: list[str] | None = None,
+        staff_only: bool = False,
+    ):
         """Register a command and its aliases."""
-        cmd = Command(name, handler, aliases)
+        cmd = Command(name, handler, aliases, staff_only)
         self._commands[name] = cmd
         if aliases:
             for alias in aliases:
                 self._aliases[alias] = name
         logger.debug(f"Registered command: {name} (aliases: {aliases})")
 
-    def names(self) -> list[str]:
-        """Every registered command's primary name, sorted (engine and plugin commands alike)."""
-        return sorted(self._commands)
+    def names(self, include_staff: bool = False) -> list[str]:
+        """Registered primary names, sorted (engine and plugin commands); staff commands on request."""
+        return sorted(n for n, c in self._commands.items() if include_staff or not c.staff_only)
 
     def get(self, name: str) -> Command | None:
         """Retrieve a command by name or alias."""
@@ -105,13 +119,13 @@ class CommandRegistry:
 registry = CommandRegistry()
 
 
-def command(name: str, aliases: list[str] | None = None):
+def command(name: str, aliases: list[str] | None = None, staff_only: bool = False):
     """Decorator to register a function as a command. Handler must be async."""
 
     def decorator(func):
         if not asyncio.iscoroutinefunction(func):
             raise TypeError(f"Command handler '{name}' must be an async function, got {func!r}")
-        registry.register(name, func, aliases)
+        registry.register(name, func, aliases, staff_only)
         return func
 
     return decorator
