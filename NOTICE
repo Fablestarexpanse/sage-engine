@@ -10,8 +10,8 @@ This repository contains two distinct components under different terms:
   No license is granted to this content.
 
 - worlds/rivermoot/ (Rivermoot) is the second reference world used to test the
-  engine. Its license has not been decided yet; until it is, all rights are
-  reserved.
+  engine. It ships with the engine under the same Functional Source License,
+  Version 1.1, ALv2 Future License (FSL-1.1-ALv2) - see worlds/rivermoot/LICENSE.
 
 Copyright 2026 Brian M. Taylor.
 
