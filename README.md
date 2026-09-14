@@ -114,7 +114,6 @@ Do not expose Nexus directly to the public internet — put it behind a reverse 
 
 ```
 engine/        SAGE engine: src/sage (server), tests, alembic, pyproject
-content/world/     Game content (YAML) — zones, rooms, entities, items; hot-reloaded
 engine/clients/admin-ui/          React admin console
 engine/clients/player-ui/         React player client
 engine/tools/worldforge/        Tauri desktop map editor

@@ -37,7 +37,7 @@ by owner G.4 ("every mechanic is a first-party plugin").
 | 3.14 | Schema: JSONB state, `digi_balance`/`reputation`/`echo_credits` columns, retire `agent_state` (backfill → drop) | done |
 | 3.15 | Redis key namespace by world slug | done |
 | 3.16 | AI slots and style; prompts into `worlds/fablestar/ai` | done |
-| 3.17 | Move Fablestar content into `worlds/fablestar/content`; remove `[transition]` | todo |
+| 3.17 | Move Fablestar content into `worlds/fablestar/content`; remove `[transition]` | done |
 | 3.18 | Delete glyph/ship/system/galaxy surfaces and the admin World Builder (owner G.3, G.6) | todo |
 
 ## Notes
@@ -259,4 +259,17 @@ by owner G.4 ("every mechanic is a first-party plugin").
     parser nobody uses yet) and the style `image.negative` field, removed until a graph consumes it.
   - Versioned prompt/style edits in Nexus (B.6 overrides) wait for a user of them (two-world
     ceiling); package files stay the source.
+- **3.17 content move (done).** `content/{world,achievements,agents,factions,proficiencies}` moved
+  to `worlds/fablestar/content/`. The owner's uncommitted room edits (`aipub/rooms/apartment_1,2`
+  modified, `apartment_3,4` deleted) moved with their files and stay unstaged at the new paths;
+  the untracked `content/world_backup_*` folder stays where it was. A patch of that WIP from before
+  the move is in the scratchpad (`owner_wip_content_before_317.patch`). `[transition]` is gone:
+  `WorldManifest` refuses it with a message, `WorldPackage.content_dir` is always
+  `<package>/content` unless code passes `with_content_dir()` / `content_override` (tests use
+  it for temporary content). `tests.fakes.repo_world()` picks the package with the most rooms
+  instead of matching a path. Conduit's catalog scripts and tests read the world's content.
+  Tools: worldforge-mcp defaults to `worlds/<server.world>/content/world` and also falls back to
+  it when `WORLDFORGE_ROOT` names a directory that no longer exists (a local `.mcp.json` still
+  pointing at `content/world` keeps working after the MCP server restarts); the WorldForge app
+  finds `worlds/<id>/content/world` when the repository root is picked or auto-detected.
 

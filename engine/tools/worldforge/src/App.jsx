@@ -351,7 +351,9 @@ function Shell() {
           const direct = candidate + sep + "zones";
           const nested = candidate + sep + "content" + sep + "world" + sep + "zones";
           const worldNested = candidate + sep + "world" + sep + "zones";
+          const packages = candidate + sep + "worlds";
           if (
+            (await fs.pathExists(packages)) ||
             (await fs.pathExists(direct)) ||
             (await fs.pathExists(nested)) ||
             (await fs.pathExists(worldNested))

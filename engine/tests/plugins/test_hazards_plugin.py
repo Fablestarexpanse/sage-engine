@@ -52,10 +52,11 @@ def test_entering_a_hazard_room_applies_effects_and_reports_skill_use(plugin_hos
     (rooms / "lane.yaml").write_text("id: town:lane\nzone: town\ntype: hub\n", encoding="utf-8")
     world = repo_world()
     manifest = world.manifest.model_copy(deep=True)
-    manifest.transition.content_dir = str(tmp_path / "content")
+    content_override = tmp_path / "content"
     manifest.params["hazards.resist_skill"] = "toughness"
     host = plugin_host(
-        type(world)(world.root, manifest, world.stats, world.currencies), ["hazards"]
+        type(world)(world.root, manifest, world.stats, world.currencies, content_override),
+        ["hazards"],
     )
     used: list[str] = []
 

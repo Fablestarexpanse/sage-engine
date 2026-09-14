@@ -10,7 +10,7 @@ from sage.world.models import EntityTemplate, ItemTemplate, RoomModel
 from sage.world.package import Currency
 from sage.world.wallet import Wallet
 
-# Repository root (world content lives at <root>/content during the SAGE transition).
+# Repository root.
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -262,17 +262,16 @@ class StubSession:
 
 
 def repo_world():
-    """The world package whose content is the repository's content/ tree.
+    """The repository's full reference world: the package with the most rooms.
 
-    During the SAGE transition engine tests read that content directly.
+    Engine tests that need real content (zones, factions, agents) read it from here.
     """
     from sage.world.package import available_worlds, load_world_package
 
-    for world_id in available_worlds(ROOT / "worlds"):
-        world = load_world_package(ROOT / "worlds" / world_id)
-        if world.content_dir == (ROOT / "content").resolve():
-            return world
-    raise RuntimeError("no world package points at the repository content/ tree")
+    worlds = [load_world_package(ROOT / "worlds" / w) for w in available_worlds(ROOT / "worlds")]
+    if not worlds:
+        raise RuntimeError("no world packages in the repository")
+    return max(worlds, key=lambda w: len(list(w.zones_dir.glob("*/rooms/*.yaml"))))
 
 
 def make_fake_server() -> SimpleNamespace:

@@ -8,9 +8,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[4]
 PLUGIN = Path(__file__).resolve().parents[1]
-MOUSE_DIR = ROOT / "content" / "proficiencies" / "mouseover"
-OUT_PATH = ROOT / "content" / "proficiencies" / "leaf_descriptions.json"
-CATALOG_PATH = ROOT / "content" / "proficiencies" / "catalog.json"
+MOUSE_DIR = PLUGIN.parents[1] / "content" / "proficiencies" / "mouseover"
+OUT_PATH = PLUGIN.parents[1] / "content" / "proficiencies" / "leaf_descriptions.json"
+CATALOG_PATH = PLUGIN.parents[1] / "content" / "proficiencies" / "catalog.json"
 
 
 def _parse_line(line: str) -> tuple[str, str, str] | None:

@@ -81,9 +81,10 @@ def _host(plugin_host, tmp_path):
         (items / f"{slug}.yaml").write_text(body, encoding="utf-8")
     world = repo_world()
     manifest = world.manifest.model_copy(deep=True)
-    manifest.transition.content_dir = str(tmp_path / "content")
+    content_override = tmp_path / "content"
     host = plugin_host(
-        type(world)(world.root, manifest, world.stats, world.currencies), ["equipment"]
+        type(world)(world.root, manifest, world.stats, world.currencies, content_override),
+        ["equipment"],
     )
     host.redis.stats["hero"] = {"hp": 10}
     host.redis.inventories["hero"] = [

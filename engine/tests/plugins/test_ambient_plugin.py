@@ -69,7 +69,7 @@ def test_occupied_rooms_get_lines_and_leavers_do_not_crash(plugin_host, tmp_path
     (rooms / "square.yaml").write_text(ROOM, encoding="utf-8")
     world = repo_world()
     manifest = world.manifest.model_copy(deep=True)
-    manifest.transition.content_dir = str(tmp_path / "content")
+    content_override = tmp_path / "content"
     session = StubSession("hero")
     server = SimpleNamespace(
         session_manager=SimpleNamespace(
@@ -78,7 +78,9 @@ def test_occupied_rooms_get_lines_and_leavers_do_not_crash(plugin_host, tmp_path
         )
     )
     host = plugin_host(
-        type(world)(world.root, manifest, world.stats, world.currencies), ["ambient"], server=server
+        type(world)(world.root, manifest, world.stats, world.currencies, content_override),
+        ["ambient"],
+        server=server,
     )
     host.redis.locations["hero"] = "town:square"
     api = next(r.api for r in host.loaded if r.id == "ambient")

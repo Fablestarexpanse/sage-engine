@@ -5,22 +5,22 @@ with a ``world.toml`` manifest, a stat schema (``stats.yaml``) and in-world curr
 (``currencies.yaml``). The engine reads everything world-specific through the loaded
 :class:`WorldPackage`, never from hardcoded paths or ids.
 
-Transition: until Phase 3 moves content into the packages, a manifest may point at existing
-directories with ``[transition] content_dir`` / ``prompts_dir`` (relative to the package).
+Everything a world ships lives inside its directory: ``content/``, ``lexicon/``, ``ai/`` and
+``plugins/``.
 """
 
 from __future__ import annotations
 
 import re
 import tomllib
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
 import yaml
 from packaging.specifiers import InvalidSpecifier, SpecifierSet
 from packaging.version import Version
-from pydantic import BaseModel, Field, ValidationError, field_validator
+from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 
 from sage import ENGINE_VERSION
 
@@ -80,20 +80,22 @@ class ContentInfo(BaseModel):
     equipment_slots: list[str] = Field(default_factory=list)
 
 
-class TransitionInfo(BaseModel):
-    """Pre-Phase-3 pointers at content that has not moved into the package yet."""
-
-    content_dir: str | None = None
-    prompts_dir: str | None = None
-
-
 class WorldManifest(BaseModel):
     world: WorldInfo
     start: StartInfo
     content: ContentInfo = Field(default_factory=ContentInfo)
     plugins: dict[str, str] = Field(default_factory=dict)
     params: dict[str, Any] = Field(default_factory=dict)
-    transition: TransitionInfo = Field(default_factory=TransitionInfo)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _no_transition(cls, data: Any) -> Any:
+        if isinstance(data, dict) and "transition" in data:
+            raise ValueError(
+                "[transition] was removed in SAGE 0.2: a world's content, prompts and assets "
+                "live inside its package (content/, ai/)"
+            )
+        return data
 
 
 class Attribute(BaseModel):
@@ -150,6 +152,8 @@ class WorldPackage:
     manifest: WorldManifest
     stats: StatSchema
     currencies: list[Currency] = field(default_factory=list)
+    # Read content from here instead of <root>/content (tests and tools only; not in world.toml).
+    content_override: Path | None = None
 
     @property
     def id(self) -> str:
@@ -165,13 +169,15 @@ class WorldPackage:
 
     @property
     def content_dir(self) -> Path:
-        override = self.manifest.transition.content_dir
-        return (self.root / override).resolve() if override else self.root / "content"
+        return self.content_override or self.root / "content"
+
+    def with_content_dir(self, path: Path | str) -> WorldPackage:
+        """The same package reading content from another directory (tests, tools)."""
+        return replace(self, content_override=Path(path))
 
     @property
     def prompts_dir(self) -> Path:
-        override = self.manifest.transition.prompts_dir
-        return (self.root / override).resolve() if override else self.root / "ai" / "prompts"
+        return self.ai_dir / "prompts"
 
     def param(self, key: str, default: Any = None) -> Any:
         """A world.toml [params] value, or default when the world does not set it."""

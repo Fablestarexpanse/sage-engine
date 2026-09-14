@@ -39,8 +39,8 @@ def _inn_world(tmp_path):
     (rooms / "desk.yaml").write_text(DESK_ROOM, encoding="utf-8")
     world = repo_world()
     manifest = world.manifest.model_copy(deep=True)
-    manifest.transition.content_dir = str(tmp_path / "content")
-    return type(world)(world.root, manifest, world.stats, world.currencies)
+    content_override = tmp_path / "content"
+    return type(world)(world.root, manifest, world.stats, world.currencies, content_override)
 
 
 def _rent(host, player):

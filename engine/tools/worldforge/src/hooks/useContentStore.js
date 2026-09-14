@@ -278,12 +278,30 @@ async function loadYamlDir(worldRoot, subdir) {
 /**
  * Resolve the actual world root from whatever folder the user picked.
  * Tries several common layouts so it doesn't matter which level they click:
- *   picked/content/world/zones  → project root
+ *   picked/worlds/<id>/content/world/zones → SAGE repository root (first world with zones)
+ *   picked/content/world/zones  → world package root
  *   picked/world/zones          → content root   (content/)
  *   picked/zones                → world root     (content/world/)
  * Returns null if none found.
  */
 async function resolveWorldRoot(picked) {
+  const worldsDir = joinPaths(picked, "worlds");
+  if (await fs.pathExists(worldsDir)) {
+    let entries = [];
+    try {
+      entries = await fs.listDir(worldsDir);
+    } catch {
+      entries = [];
+    }
+    const names = entries
+      .map((e) => (typeof e === "string" ? e : e?.name))
+      .filter(Boolean)
+      .sort();
+    for (const name of names) {
+      const candidate = joinPaths(worldsDir, name, "content", "world");
+      if (await fs.pathExists(joinPaths(candidate, "zones"))) return candidate;
+    }
+  }
   const candidates = [
     joinPaths(picked, "content", "world"),
     joinPaths(picked, "world"),

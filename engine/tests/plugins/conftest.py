@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -40,7 +41,7 @@ def plugin_host():
         if plugin_ids is not None:
             manifest = world.manifest.model_copy(deep=True)
             manifest.plugins = {pid: world.manifest.plugins.get(pid, ">=0") for pid in plugin_ids}
-            world = type(world)(world.root, manifest, world.stats, world.currencies)
+            world = replace(world, manifest=manifest)
         host = PluginHost(
             world=world,
             registry=CommandRegistry(),

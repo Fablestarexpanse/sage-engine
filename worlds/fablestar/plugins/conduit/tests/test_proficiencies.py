@@ -26,6 +26,7 @@ from sage_plugin_conduit.state_helpers import (
 from sage_plugin_conduit.validation import validate_leaf_definitions
 
 ROOT = Path(__file__).resolve().parents[5]  # repository root
+WORLD = Path(__file__).resolve().parents[3]  # the world package holding this plugin
 
 
 class TestBuiltinCatalog(unittest.TestCase):
@@ -34,7 +35,7 @@ class TestBuiltinCatalog(unittest.TestCase):
         self.assertEqual(len(rows), EXPECTED_LEAF_COUNT)
 
     def test_catalog_json_matches_builtin(self) -> None:
-        path = ROOT / "content" / "proficiencies" / "catalog.json"
+        path = WORLD / "content" / "proficiencies" / "catalog.json"
         self.assertTrue(
             path.is_file(), "run worlds/fablestar/plugins/conduit/scripts/write_catalog_json.py"
         )
@@ -48,13 +49,13 @@ class TestBuiltinCatalog(unittest.TestCase):
         self.assertTrue(ok, errs)
 
     def test_loader_disk(self) -> None:
-        doc = load_proficiency_catalog_from_disk(ROOT / "content")
+        doc = load_proficiency_catalog_from_disk(WORLD / "content")
         self.assertEqual(len(doc.leaves), EXPECTED_LEAF_COUNT)
 
 
 class TestRegistry(unittest.TestCase):
     def test_internal_nodes(self) -> None:
-        doc = load_proficiency_catalog_from_disk(ROOT / "content")
+        doc = load_proficiency_catalog_from_disk(WORLD / "content")
         reg = ProficiencyRegistry(doc.leaves)
         self.assertIn("combat.melee", reg.nodes)
         self.assertFalse(reg.nodes["combat.melee"].is_leaf)
@@ -63,7 +64,7 @@ class TestRegistry(unittest.TestCase):
 
 class TestEngine(unittest.TestCase):
     def setUp(self) -> None:
-        doc = load_proficiency_catalog_from_disk(ROOT / "content")
+        doc = load_proficiency_catalog_from_disk(WORLD / "content")
         self.reg = ProficiencyRegistry(doc.leaves)
         self.engine = ProficiencyEngine(self.reg)
 

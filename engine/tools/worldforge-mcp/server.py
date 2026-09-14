@@ -6,8 +6,9 @@ Usage:
   python worldforge-mcp/server.py
 
 Environment:
-  WORLDFORGE_ROOT  Path to content/world (the directory that contains zones/).
-                   Defaults to ./content/world relative to the project root.
+  WORLDFORGE_ROOT  Path to a world's content/world (the directory that contains zones/).
+                   Defaults to worlds/<world>/content/world, where <world> is server.world in
+                   config/server.toml (or the only world package present).
 """
 
 from __future__ import annotations
@@ -367,8 +368,41 @@ VALID_ROOM_TYPES = {
 # ---------------------------------------------------------------------------
 
 
+def _project_root() -> Path | None:
+    for base in (Path.cwd(), *Path(__file__).resolve().parents):
+        if (base / "worlds").is_dir():
+            return base
+    return None
+
+
+def _default_world_root() -> Path | None:
+    """worlds/<configured world>/content/world, or the only world package's."""
+    root = _project_root()
+    if root is None:
+        return None
+    worlds = sorted(p.name for p in (root / "worlds").iterdir() if (p / "world.toml").is_file())
+    wanted = None
+    server_toml = root / "config" / "server.toml"
+    if server_toml.is_file():
+        import tomllib
+
+        try:
+            data = tomllib.loads(server_toml.read_text(encoding="utf-8"))
+            wanted = data.get("world") or (data.get("server") or {}).get("world")
+        except (tomllib.TOMLDecodeError, OSError):
+            wanted = None
+    wanted = os.environ.get("SAGE_SERVER__WORLD") or wanted
+    world = wanted if wanted in worlds else (worlds[0] if len(worlds) == 1 else None)
+    return (root / "worlds" / world / "content" / "world") if world else None
+
+
 def _world_root() -> Path:
-    raw = os.environ.get("WORLDFORGE_ROOT", "content/world")
+    raw = os.environ.get("WORLDFORGE_ROOT", "")
+    if not raw:
+        default = _default_world_root()
+        if default is not None:
+            return default
+        raw = "content/world"
     p = Path(raw)
     if p.is_absolute():
         return p
@@ -380,6 +414,10 @@ def _world_root() -> Path:
     for ancestor in Path(__file__).resolve().parents:
         if (ancestor / raw).exists():
             return (ancestor / raw).resolve()
+    # A configured root that no longer exists (world content moved into its package).
+    default = _default_world_root()
+    if default is not None and default.exists():
+        return default
     return (Path.cwd() / raw).resolve()
 
 

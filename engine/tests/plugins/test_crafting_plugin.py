@@ -40,11 +40,12 @@ def _workshop(plugin_host, tmp_path):
         (items / f"{tid}.yaml").write_text(body, encoding="utf-8")
     world = repo_world()
     manifest = world.manifest.model_copy(deep=True)
-    manifest.transition.content_dir = str(tmp_path / "content")
+    content_override = tmp_path / "content"
     manifest.params["crafting.skills"] = {"tool": "tinkering"}
     manifest.params["crafting.deconstruct_skill"] = "salvage"
     host = plugin_host(
-        type(world)(world.root, manifest, world.stats, world.currencies), ["crafting"]
+        type(world)(world.root, manifest, world.stats, world.currencies, content_override),
+        ["crafting"],
     )
     used: list[str] = []
 

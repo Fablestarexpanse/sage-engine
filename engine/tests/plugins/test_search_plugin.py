@@ -63,9 +63,9 @@ def test_a_find_fills_the_pack_counts_and_reports_skill_use(plugin_host, tmp_pat
     (items / "lamp.yaml").write_text("id: lamp\nname: brass lamp\nvalue: 3\n", encoding="utf-8")
     world = repo_world()
     manifest = world.manifest.model_copy(deep=True)
-    manifest.transition.content_dir = str(tmp_path / "content")
+    content_override = tmp_path / "content"
     manifest.params["search.skill"] = "looking"
-    world = type(world)(world.root, manifest, world.stats, world.currencies)
+    world = type(world)(world.root, manifest, world.stats, world.currencies, content_override)
 
     host = plugin_host(world, ["search"])
     used: list[tuple] = []

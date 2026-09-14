@@ -62,8 +62,8 @@ def _market_world(tmp_path):
     (rooms / "bakery.yaml").write_text(BAKERY_ROOM, encoding="utf-8")
     world = repo_world()
     manifest = world.manifest.model_copy(deep=True)
-    manifest.transition.content_dir = str(content)
-    return type(world)(world.root, manifest, world.stats, world.currencies)
+    content_override = content
+    return type(world)(world.root, manifest, world.stats, world.currencies, content_override)
 
 
 def test_buy_and_sell_move_money_goods_counters_and_pay_the_keeper(plugin_host, tmp_path):

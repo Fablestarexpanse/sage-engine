@@ -64,7 +64,7 @@ def _host(plugin_host, tmp_path, ids=("combat",), llm=None, template=NARRATION):
         (content / "items" / f"{slug}.yaml").write_text(body, encoding="utf-8")
     world = repo_world()
     manifest = world.manifest.model_copy(deep=True)
-    manifest.transition.content_dir = str(tmp_path / "content")
+    content_override = tmp_path / "content"
     manifest.params["combat.skills"] = ["brawling"]
     prompt_dir = tmp_path / "ai" / "prompts"
     prompt_dir.mkdir(parents=True)
@@ -82,7 +82,9 @@ def _host(plugin_host, tmp_path, ids=("combat",), llm=None, template=NARRATION):
         session_manager=SimpleNamespace(player_to_session={}, get_session_by_player=lambda p: None),
     )
     host = plugin_host(
-        type(world)(world.root, manifest, world.stats, world.currencies), list(ids), server=server
+        type(world)(world.root, manifest, world.stats, world.currencies, content_override),
+        list(ids),
+        server=server,
     )
     server.events, server.redis, server.content_loader = host.events, host.redis, host.content
     server.spawner = EntitySpawnManager(server)  # type: ignore[arg-type]

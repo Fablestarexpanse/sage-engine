@@ -19,7 +19,7 @@ def _host(plugin_host, tmp_path, session):
         (rooms / f"{slug}.yaml").write_text(body, encoding="utf-8")
     world = repo_world()
     manifest = world.manifest.model_copy(deep=True)
-    manifest.transition.content_dir = str(tmp_path / "content")
+    content_override = tmp_path / "content"
     pushed: list = []
 
     async def push(s):
@@ -34,7 +34,9 @@ def _host(plugin_host, tmp_path, session):
         events=None,
     )
     host = plugin_host(
-        type(world)(world.root, manifest, world.stats, world.currencies), ["effects"], server=server
+        type(world)(world.root, manifest, world.stats, world.currencies, content_override),
+        ["effects"],
+        server=server,
     )
     server.events = host.events
     server.redis = host.redis

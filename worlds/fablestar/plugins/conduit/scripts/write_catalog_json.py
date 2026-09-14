@@ -22,7 +22,7 @@ def main() -> None:
         expected_leaf_count=EXPECTED_LEAF_COUNT,
         leaves=leaves,
     )
-    out = ROOT / "content" / "proficiencies" / "catalog.json"
+    out = PLUGIN.parents[1] / "content" / "proficiencies" / "catalog.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(doc.model_dump_json(indent=2), encoding="utf-8")
     print(f"Wrote {out} ({len(leaves)} leaves)")

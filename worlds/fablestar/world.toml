@@ -61,7 +61,3 @@ morality = "^1"
 "agents.forage_item" = "ration_pack"
 "agents.social_zones" = ["aipub"]
 "agents.evening_room" = "aipub:main_bar"
-
-[transition]
-# Content still lives at the repository root until Phase 3 moves it in here.
-content_dir = "../../content"
