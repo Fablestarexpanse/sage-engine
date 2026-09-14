@@ -3,11 +3,13 @@
 enabled = false
 base_url = "http://127.0.0.1:8188"
 
-workflow_path = "config/comfyui_character_portrait_workflow.json"
+# Empty: the world's ai/comfyui/portrait.json; set a path to override it.
+workflow_path = ""
 positive_prompt_node_id = "57"
 output_node_id = "40"
 
-area_workflow_path = "config/comfyui_scene_workflow.json"
+# Empty: the world's ai/comfyui/area.json.
+area_workflow_path = ""
 area_positive_prompt_node_id = "16"
 area_output_node_id = "17"
 

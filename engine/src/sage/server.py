@@ -1,7 +1,7 @@
 """SageServer — owns all subsystems and drives the startup/shutdown lifecycle.
 
 Play/forge API logic lives in the composed services (see sage.services):
-economy (echo credits), player (accounts/characters), scenes (ComfyUI images + LLM suggests).
+economy (AI art credits), player (accounts/characters), scenes (ComfyUI images + LLM suggests).
 """
 
 import asyncio
@@ -20,7 +20,14 @@ from sage.admin.nexus import NexusApp
 from sage.bootstrap import ensure_dev_defaults
 from sage.commands.registry import registry
 from sage.core.comfyui_persist import save_comfyui_toml
-from sage.core.config import ComfyUIConfig, Config, LLMConfig, load_config, resolve_project_root
+from sage.core.config import (
+    ComfyUIConfig,
+    Config,
+    LLMConfig,
+    load_config,
+    resolve_project_root,
+    set_world_comfyui_dir,
+)
 from sage.core.events import EventBus, SessionEnded, SessionStarted, emit
 from sage.core.llm_persist import save_llm_toml
 from sage.core.resolvers import Resolvers
@@ -105,6 +112,7 @@ class SageServer:
             self.snapshot_contributors.add("wallet", wallet_section(self.wallet), "sage")
         self.content_loader = ContentLoader(self.world.content_dir)
         content_browser.set_content_root(self.world.content_dir)
+        set_world_comfyui_dir(self.world.ai_dir / "comfyui")
         self.spawner = EntitySpawnManager(self)
         self.hot_reloader = HotReloader(self._on_file_changed)
         self.dispatcher = CommandDispatcher(events=self.events)

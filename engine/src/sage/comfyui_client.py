@@ -12,7 +12,7 @@ from typing import Any
 
 import httpx
 
-from sage.core.config import ComfyUIConfig, resolve_config_asset_path
+from sage.core.config import ComfyUIConfig, resolve_workflow_path
 
 logger = logging.getLogger(__name__)
 
@@ -303,14 +303,12 @@ def _resolve_workflow(cfg: ComfyUIConfig, kind: str) -> tuple[Path, str, str]:
     """Return (workflow_path, positive_prompt_node_id, output_node_id). kind is portrait | area."""
     k = (kind or "portrait").lower().strip()
     if k == "area":
-        wp = (cfg.area_workflow_path or "").strip() or cfg.workflow_path
         pid = (cfg.area_positive_prompt_node_id or "").strip() or cfg.positive_prompt_node_id
         oid = (cfg.area_output_node_id or "").strip() or cfg.output_node_id
     else:
-        wp = cfg.workflow_path
         pid = cfg.positive_prompt_node_id
         oid = cfg.output_node_id
-    return resolve_config_asset_path(wp), pid, oid
+    return resolve_workflow_path(cfg, k), pid, oid
 
 
 async def generate_comfy_png(

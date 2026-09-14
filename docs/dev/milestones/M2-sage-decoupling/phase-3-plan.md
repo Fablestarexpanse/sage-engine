@@ -36,7 +36,7 @@ by owner G.4 ("every mechanic is a first-party plugin").
 | 3.13 | Declarative client panels; remove Fablestar panels/branding from player-ui: 3.13a API + renderer, 3.13b Conduit panels, 3.13c mock panels and branding out; 3.13d deferred until an admin panel is needed | done |
 | 3.14 | Schema: JSONB state, `digi_balance`/`reputation`/`echo_credits` columns, retire `agent_state` (backfill → drop) | done |
 | 3.15 | Redis key namespace by world slug | done |
-| 3.16 | AI slots and style; prompts into `worlds/fablestar/ai`: 3.16a slots + prompts moved, 3.16b style done | in progress |
+| 3.16 | AI slots and style; prompts into `worlds/fablestar/ai` | done |
 | 3.17 | Move Fablestar content into `worlds/fablestar/content`; remove `[transition]` | todo |
 | 3.18 | Delete glyph/ship/system/galaxy surfaces and the admin World Builder (owner G.3, G.6) | todo |
 
@@ -247,8 +247,16 @@ by owner G.4 ("every mechanic is a first-party plugin").
     edits hot-reload. Fablestar's templates read their tone and image style from its style file.
     The image-prompt jobs keep their generic engine system prompts ("output only a single
     image-generation prompt"). `image.negative` has no consumer until 3.16c.
-  - 3.16c ComfyUI graphs into `ai/comfyui/<role>.json` with `ai/loras.yaml`; config paths stay as
-    deployment overrides.
+  - 3.16c (done) Fablestar's graphs moved from `config/` to `worlds/fablestar/ai/comfyui/`
+    (`portrait.json`, `area.json`, and the unused 42-node `area_detailed.json`); the generic
+    `*.example.json` graphs stay in `config/`. `sage.core.config.resolve_workflow_path(cfg, role)`
+    is the one resolver (ComfyUI client, status, character-create portrait, workflow library):
+    an existing path in comfyui.toml wins, otherwise the world's `<role>.json`, and an area role
+    with nothing of its own runs the portrait graph. A toml path that no longer exists falls back
+    to the world graph with a warning, so deployments still naming the moved files keep working.
+    The Nexus workflow library lists world graphs (source `world`, not deletable). Deferred:
+    `ai/loras.yaml` (LoRAs live inside LoraManager stack nodes; showing/swapping them needs a
+    parser nobody uses yet) and the style `image.negative` field, removed until a graph consumes it.
   - Versioned prompt/style edits in Nexus (B.6 overrides) wait for a user of them (two-world
     ceiling); package files stay the source.
 

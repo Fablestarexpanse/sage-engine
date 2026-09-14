@@ -9,7 +9,6 @@ tone: "dark, ancient sci-fi; technology is indistinguishable from ritual"
 system_prompt: "You are a master storyteller for a dark sci-fi text game."
 image:
   style: "sci-fi, atmospheric"
-  negative: "text, watermark"
 content_rules:            # regexes narration must not match (replaces the defaults)
   - 'level\\s*\\d+'
 ```
@@ -37,7 +36,6 @@ DEFAULT_CONTENT_RULES = [
 
 class ImageStyle(BaseModel):
     style: str = ""
-    negative: str = ""
 
 
 class AiStyle(BaseModel):

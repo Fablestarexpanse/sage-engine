@@ -12,7 +12,7 @@ import bcrypt
 from sqlalchemy import func, select
 
 from sage.comfyui_client import generate_portrait_png
-from sage.core.config import resolve_config_asset_path
+from sage.core.config import resolve_workflow_path
 from sage.services._shared import (
     authenticate_account,
     resolve_play_account,
@@ -258,7 +258,7 @@ class PlayerService:
         Returns (error_response, portrait_url, portrait_prompt, gen_failed_detail, charged).
         """
         cfg = self.server.config.comfyui
-        if not (cfg.enabled and resolve_config_asset_path(cfg.workflow_path).is_file()):
+        if not (cfg.enabled and resolve_workflow_path(cfg, "portrait").is_file()):
             return None, None, pp, None, 0
         prompt_use = pp if pp else _default_character_portrait_prompt(name)
         cost_c = int(cfg.character_create_portrait_cost)

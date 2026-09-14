@@ -13,7 +13,7 @@ import httpx
 from sqlalchemy import select
 
 from sage.comfyui_client import generate_portrait_png
-from sage.core.config import resolve_config_asset_path
+from sage.core.config import resolve_workflow_path
 from sage.llm.client import LLMGenerationError
 from sage.llm.prompts import SlotDisabled
 from sage.services._shared import (
@@ -88,11 +88,10 @@ class SceneService:
 
     async def comfyui_status(self) -> dict[str, Any]:
         c = self.server.config.comfyui
-        portrait_resolved = resolve_config_asset_path(c.workflow_path)
+        portrait_resolved = resolve_workflow_path(c, "portrait")
         wf = portrait_resolved.is_file()
         ready = bool(c.enabled and wf)
-        area_wp = (c.area_workflow_path or "").strip() or c.workflow_path
-        area_path = resolve_config_asset_path(area_wp)
+        area_path = resolve_workflow_path(c, "area")
         area_wf = area_path.is_file()
         area_ready = bool(c.enabled and area_wf)
         ckpt_set = bool((c.checkpoint_name or "").strip())
@@ -117,7 +116,7 @@ class SceneService:
             "portrait_workflow_uses_checkpoint_loader": portrait_uses_ckpt_loader,
             "area_workflow_present": area_wf,
             "area_ready": area_ready,
-            "area_workflow_path": area_wp,
+            "area_workflow_path": str(area_path),
             "area_workflow_uses_checkpoint_loader": area_uses_ckpt_loader,
             "checkpoint_name_set": ckpt_set,
             "suggest_checkpoint_name_in_toml": suggest_checkpoint_name_in_toml,
@@ -296,8 +295,7 @@ class SceneService:
         if len(ip) > 4000:
             return {"ok": False, "error": "prompt_too_long"}
         cfg = self.server.config.comfyui
-        area_wp = (cfg.area_workflow_path or "").strip() or cfg.workflow_path
-        if not cfg.enabled or not resolve_config_asset_path(area_wp).is_file():
+        if not cfg.enabled or not resolve_workflow_path(cfg, "area").is_file():
             return {
                 "ok": False,
                 "error": "comfyui_not_configured",
@@ -424,13 +422,13 @@ class SceneService:
     ) -> dict[str, Any]:
         """ComfyUI: save PNG; optional zone+slug writes next to room YAML for portable world content."""
         cfg = self.server.config.comfyui
-        area_wp = (cfg.area_workflow_path or "").strip() or cfg.workflow_path
         ip = (image_prompt or "").strip()
         zid = (zone_id or "").strip()
         rslug = (room_slug or "").strip().removesuffix(".yaml")
         seg_ok = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}$")
         bundle = bool(zid and rslug and seg_ok.match(zid) and seg_ok.match(rslug))
-        area_resolved = resolve_config_asset_path(area_wp)
+        area_resolved = resolve_workflow_path(cfg, "area")
+        area_wp = cfg.area_workflow_path or "(world default)"
         logger.info(
             "forge room-area-image: enabled=%s area_workflow=%s resolved=%s exists=%s prompt_len=%s bundle=%s",
             cfg.enabled,
@@ -485,7 +483,7 @@ class SceneService:
 
         cfg = self.server.config.comfyui
         eco = self.server.economy.public_fields()
-        if not cfg.enabled or not resolve_config_asset_path(cfg.workflow_path).is_file():
+        if not cfg.enabled or not resolve_workflow_path(cfg, "portrait").is_file():
             return {
                 "ok": True,
                 "portrait_url": None,

@@ -96,10 +96,13 @@ class ComfyUIConfig(BaseModel):
     base_url: str = "http://127.0.0.1:8188"
     # Defaults match shipped graphs: character portrait (CLIP 57 + SaveImage 40) vs area (34 + 31).
     # If comfyui.toml omits keys, we must NOT fall back to legacy SDXL example workflows.
-    workflow_path: str = "config/comfyui_character_portrait_workflow.json"
+    # Empty: the world's ai/comfyui/portrait.json. A path here (relative to the project root)
+    # overrides it for this deployment.
+    workflow_path: str = ""
     positive_prompt_node_id: str = "57"
     output_node_id: str = "40"
-    area_workflow_path: str = "config/comfyui_scene_workflow.json"
+    # Empty: the world's ai/comfyui/area.json, else the portrait graph.
+    area_workflow_path: str = ""
     area_positive_prompt_node_id: str = "16"
     area_output_node_id: str = "17"
     # If set, replaces inputs.ckpt_name on every CheckpointLoaderSimple node (avoids editing JSON).
@@ -216,6 +219,41 @@ def resolve_project_root() -> Path:
         if (anc / "config").is_dir():
             return anc
     return cwd
+
+
+# The running world's ai/comfyui directory (set by the server at startup).
+_world_comfyui_dir: Path | None = None
+
+
+def set_world_comfyui_dir(path: Path | None) -> None:
+    global _world_comfyui_dir
+    _world_comfyui_dir = Path(path) if path is not None else None
+
+
+def resolve_workflow_path(cfg: ComfyUIConfig, role: str) -> Path:
+    """The ComfyUI graph for a role ("portrait" | "area").
+
+    A path in comfyui.toml wins when the file exists. Otherwise the world's
+    ``ai/comfyui/<role>.json`` is used (a configured path that no longer exists falls back to it
+    with a warning, so a deployment whose toml still names a moved file keeps working). An
+    area role with nothing of its own uses the portrait graph.
+    """
+    role = "area" if (role or "").lower().strip() == "area" else "portrait"
+    configured = (cfg.area_workflow_path if role == "area" else cfg.workflow_path or "").strip()
+    world_file = _world_comfyui_dir / f"{role}.json" if _world_comfyui_dir else None
+    if configured:
+        path = resolve_config_asset_path(configured)
+        if path.is_file() or world_file is None or not world_file.is_file():
+            return path
+        logger.warning(
+            "ComfyUI %s workflow %s not found; using the world's %s", role, path, world_file
+        )
+        return world_file
+    if world_file is not None and world_file.is_file():
+        return world_file
+    if role == "area":
+        return resolve_workflow_path(cfg, "portrait")
+    return world_file if world_file is not None else Path("")
 
 
 def resolve_config_asset_path(relative_or_absolute: str) -> Path:

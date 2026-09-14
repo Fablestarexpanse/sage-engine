@@ -3,4 +3,3 @@ tone: "a dark, ancient sci-fi world where technology is indistinguishable from r
 system_prompt: "You are a master storyteller for Fablestar Expanse, a dark sci-fi text game."
 image:
   style: "sci-fi, atmospheric, dark, weathered metal and salt-stained concrete"
-  negative: "text, watermark, logo, cartoon, bright colours"

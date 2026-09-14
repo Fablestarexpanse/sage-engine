@@ -75,4 +75,4 @@ def test_a_broken_style_file_falls_back_to_defaults(tmp_path):
     style = tmp_path / "style.yaml"
     style.write_text("content_rules: ['(unclosed']\n", encoding="utf-8")
     assert PromptManager(tmp_path, style).style.tone == ""
-    assert PromptManager(tmp_path, tmp_path / "missing.yaml").style.image.negative == ""
+    assert PromptManager(tmp_path, tmp_path / "missing.yaml").style.image.style == ""
