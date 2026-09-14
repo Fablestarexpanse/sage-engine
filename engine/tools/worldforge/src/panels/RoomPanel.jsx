@@ -1,3 +1,4 @@
+import { ALL_DIRECTIONS } from "../utils/worldSchema.js";
 import { useMemo, useState } from "react";
 import yaml from "js-yaml";
 import { useTheme } from "../ThemeContext.jsx";
@@ -6,7 +7,6 @@ import { roomPanelChrome } from "./roomPanelChrome.js";
 
 const TABS = ["General", "Scene", "Exits", "Features", "Hazards", "Entities", "YAML"];
 
-const roomTypes = ["chamber", "corridor", "junction", "alcove", "descent", "danger", "safe", "boss", "hub", "command", "engineering", "airlock"];
 
 export { roomPanelChrome };
 
@@ -28,6 +28,8 @@ export default function RoomPanel({
   roomIndexForPicker,
   nexusUrl,
   nexusToken,
+  roomTypes = [],
+  exitDirs,
 }) {
   const { colors: COLORS } = useTheme();
   const { lbl, inp, btn, btnPrimary, btnDanger } = useMemo(() => roomPanelChrome(COLORS), [COLORS]);
@@ -251,7 +253,7 @@ export default function RoomPanel({
             />
             <label style={lbl}>Type</label>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
-              {roomTypes.map((rt) =>
+              {(merged.type && !roomTypes.includes(merged.type) ? [...roomTypes, merged.type] : roomTypes).map((rt) =>
                 pill(merged.type === rt, () => updateField("type", rt), rt)
               )}
             </div>
@@ -424,6 +426,7 @@ export default function RoomPanel({
             ))}
             <AddExitForm
               existing={Object.keys(exits)}
+              directions={exitDirs}
               onAdd={(dir) => setExit(dir, { destination: "", description: "" })}
             />
           </div>
@@ -487,21 +490,10 @@ export default function RoomPanel({
   );
 }
 
-function AddExitForm({ existing, onAdd }) {
+function AddExitForm({ existing, onAdd, directions = ALL_DIRECTIONS }) {
   const { colors: COLORS } = useTheme();
   const { btn } = useMemo(() => roomPanelChrome(COLORS), [COLORS]);
-  const dirs = [
-    "north",
-    "south",
-    "east",
-    "west",
-    "northeast",
-    "northwest",
-    "southeast",
-    "southwest",
-    "up",
-    "down",
-  ].filter((d) => !existing.includes(d));
+  const dirs = directions.filter((d) => !existing.includes(d));
   if (!dirs.length) return null;
   return (
     <div style={{ marginTop: 8 }}>

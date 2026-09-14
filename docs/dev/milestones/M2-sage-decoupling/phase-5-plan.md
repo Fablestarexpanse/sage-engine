@@ -25,7 +25,7 @@ message, and the full suite runs before each commit.
 | 5.1 | The server sends the command list: the player client autocompletes the running world's commands (engine + enabled plugins), not a hardcoded list. | done |
 | 5.2 | One validator. `sage validate [--world]` runs `sage.world.lint`, and worldforge-mcp's `validate_zone` and room types come from the world package. The MCP instructions lose the sci-fi examples. | done |
 | 5.3 | Content schemas. `sage schema export` and `GET /schema/world` give JSON Schema for rooms, features, entities and items (with every enabled plugin's extension fields) plus the world's lists (room types, exit directions, slots, attributes, currencies). | done |
-| 5.4 | WorldForge reads the world. Room types, exit directions and equipment slots come from the package's `world.toml`. | todo |
+| 5.4 | WorldForge reads the world. Room types, exit directions and equipment slots come from the package's `world.toml`. | done |
 | 5.5 | WorldForge edits plugin content: room, feature and item forms for extension fields, generated from the exported schema. | todo |
 | 5.6 | Credit bundles are deployment config (`comfyui.toml`), served to the admin console. | todo |
 | 5.7 | World theme: `ui/theme.yaml` (accent colours, title glyph) served with `GET /play/world`, applied by player-ui. | todo |
@@ -67,4 +67,18 @@ message, and the full suite runs before each commit.
     - Without a server: `python -m sage schema export [--world] [--out]`. This uses `sage.plugins.offline.registration_host`, which runs plugin setup with no database, Redis or HTTP and reads only what the plugins register.
   - **Offline copies:** each world package commits one at `content.schema.json`, and `test_exported_schema_is_current` fails with the regenerate command when it goes stale.
   - **Run:** the live `/schema/world` on both servers matched the exported files exactly (401 without a token).
+- **5.4 WorldForge reads the world (done).**
+  - **Loading:** WorldForge loads the package's `content.schema.json` (beside `world.toml`, two levels above `content/world`) with the content (`state.worldSchema`). `utils/worldSchema.js` turns it into lists.
+  - **What follows the world:**
+    - The room panel offers the world's room types. A room with an undeclared type still shows it.
+    - "Add exit" offers only the world's directions.
+    - New rooms use the default room type if the world allows it, else the world's first type.
+    - The zone validator errors on undeclared room types and exit directions.
+  - **A folder that is not a package:** falls back to the room types its content already uses and every direction. That replaces Fablestar's hardcoded twelve types.
+  - **Removed:** `utils/itemValidation.js`. Nothing imported it, and it checked Fablestar-era fields no engine code reads (`equip_slot`, `weapon_profile`, `on_use`).
+  - **Run:**
+    - vitest 40 passed, and the app builds.
+    - Loading the real packages with Node gave Rivermoot 13 room types, north/south/east/west and hand/body; a "chamber" default becomes "street".
+    - Fablestar keeps its twelve types and ten directions.
+    - The Tauri app itself was not launched: its file access needs the Tauri runtime.
 

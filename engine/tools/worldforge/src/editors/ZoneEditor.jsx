@@ -1,3 +1,4 @@
+import { pickRoomType, useWorldLists } from "../utils/worldSchema.js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { unstable_batchedUpdates } from "react-dom";
 import {
@@ -252,7 +253,9 @@ function ZoneEditorInner({
   rfRef.current = rf;
   const containerRef = useRef(null);
   const suppressPaneContextUntilRef = useRef(0);
-  const { zones, zoneIds, dispatch, entities, entityIds, items, itemIds, saveZoneRoom } = useContent();
+  const { zones, zoneIds, dispatch, entities, entityIds, items, itemIds, saveZoneRoom, worldSchema } = useContent();
+  const worldLists = useWorldLists(worldSchema, zones);
+  const newRoomType = pickRoomType(defaultRoomType, worldLists.roomTypes);
 
   const [positionsDoc, setPositionsDoc] = useState(() => parsePositionsDoc(null));
   const [groups, setGroups] = useState([]);
@@ -440,17 +443,17 @@ function ZoneEditorInner({
       const zr = zonesRef.current;
       switch (m.mode) {
         case "add": {
-          const base = buildBaseRoomYaml({ zoneId, slug, type: defaultRoomType });
+          const base = buildBaseRoomYaml({ zoneId, slug, type: newRoomType });
           await finalizeNewRoom(slug, base, { floor: currentFloor });
           break;
         }
         case "placeholder": {
-          const base = buildBaseRoomYaml({ zoneId, slug, type: "chamber", name: "?" });
+          const base = buildBaseRoomYaml({ zoneId, slug, type: newRoomType, name: "?" });
           await finalizeNewRoom(slug, base, { floor: currentFloor });
           break;
         }
         case "addHere": {
-          const base = buildBaseRoomYaml({ zoneId, slug, type: defaultRoomType, description: "New room" });
+          const base = buildBaseRoomYaml({ zoneId, slug, type: newRoomType, description: "New room" });
           await finalizeNewRoom(slug, base, { floor: currentFloor, position: m.flowPos });
           break;
         }
@@ -467,7 +470,7 @@ function ZoneEditorInner({
           // "Add above/below": create the new room on m.targetFloor at the source room's
           // x/y, then write the up/down exit pair via linkStairs (write-first, same as the
           // ghost stair-link flow) and jump the view to it.
-          const base = buildBaseRoomYaml({ zoneId, slug, type: defaultRoomType });
+          const base = buildBaseRoomYaml({ zoneId, slug, type: newRoomType });
           await finalizeNewRoom(slug, base, { floor: m.targetFloor, position: m.position });
           await linkStairs(m.fromSlug, m.dir, slug);
           setCurrentFloor(m.targetFloor);
@@ -481,7 +484,7 @@ function ZoneEditorInner({
           break;
       }
     },
-    [zoneId, defaultRoomType, currentFloor, finalizeNewRoom, linkStairs]
+    [zoneId, newRoomType, currentFloor, finalizeNewRoom, linkStairs]
   );
 
   const onRoomSlugModalConfirm = useCallback(
@@ -1295,6 +1298,8 @@ function ZoneEditorInner({
         itemIds,
         allRoomIds,
         entityLoot: entityLootMap,
+        roomTypes: worldLists.declared ? worldLists.roomTypes : [],
+        exitDirs: worldLists.declared ? worldLists.exitDirs : [],
       })
     );
   }, [
@@ -1310,6 +1315,7 @@ function ZoneEditorInner({
     itemIds,
     allRoomIds,
     entityLootMap,
+    worldLists,
     nexusUrl,
     nexusToken,
     rf,
@@ -2400,6 +2406,8 @@ function ZoneEditorInner({
         >
           <RoomPanel
             bundleSceneArtIntoWorld
+            roomTypes={worldLists.roomTypes}
+            exitDirs={worldLists.exitDirs}
             worldRoot={worldRoot}
             zoneId={zoneId}
             roomSlug={selectedSlug}
