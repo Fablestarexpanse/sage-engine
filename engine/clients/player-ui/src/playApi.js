@@ -1,18 +1,16 @@
 /**
- * Nexus HTTP origin, or "" in dev to use the Vite proxy (same-origin /play, /media).
- * Set VITE_NEXUS_URL to talk to Nexus directly (remote API or no proxy).
+ * Nexus HTTP origin, or "" for this page's own origin: the Vite proxy in dev, and Nexus itself in
+ * a build (Nexus serves the built client at /). Set VITE_NEXUS_URL when a build is hosted
+ * somewhere other than the Nexus it talks to.
  */
 function base() {
-  const explicit = (import.meta.env.VITE_NEXUS_URL || "").trim().replace(/\/$/, "");
-  if (explicit) return explicit;
-  if (import.meta.env.DEV) return "";
-  return `http://127.0.0.1:${import.meta.env.VITE_NEXUS_PORT || "8001"}`.replace(/\/$/, "");
+  return (import.meta.env.VITE_NEXUS_URL || "").trim().replace(/\/$/, "");
 }
 
 /** Resolved Nexus HTTP origin (for UI hints). Empty string means same-origin / Vite proxy in dev. */
 export function playApiBaseUrl() {
   const b = base();
-  return b || "(this origin — dev proxy to Nexus)";
+  return b || "(this origin)";
 }
 
 /**

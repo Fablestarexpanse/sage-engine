@@ -8,7 +8,9 @@ Steps, each skipped when already done:
 2. Services: `docker compose up -d redis postgres`, then wait until both accept connections.
 3. Database: create the world's database if it does not exist (one database per world).
 4. Migrations: apply core and plugin migrations (`sage db upgrade`).
-5. Server: run it (unless `--no-server`).
+5. Player client: build `engine/clients/player-ui` when its build is missing or older than its
+   sources (needs Node.js; skipped with a note otherwise). Nexus serves the build at `/`.
+6. Server: run it (unless `--no-server`).
 
 The world is `--world`, else the configured world, else `demo`. A world other than the configured
 one uses the database `sage_<world>`, so switching worlds never mixes their data.
@@ -219,11 +221,59 @@ async def ensure_database(db, name: str) -> bool:
         await conn.close()
 
 
+CLIENT = Path("engine") / "clients" / "player-ui"
+_CLIENT_SOURCES = (
+    "src",
+    "public",
+    "index.html",
+    "package.json",
+    "package-lock.json",
+    "vite.config.js",
+)
+
+
+def client_build_stale(client: Path) -> bool:
+    """True when `dist/index.html` is missing or any client source file is newer."""
+    built = client / "dist" / "index.html"
+    if not built.is_file():
+        return True
+    built_at = built.stat().st_mtime
+    for name in _CLIENT_SOURCES:
+        path = client / name
+        files = path.rglob("*") if path.is_dir() else [path]
+        if any(f.is_file() and f.stat().st_mtime > built_at for f in files):
+            return True
+    return False
+
+
+def build_client(root: Path, say=print) -> str:
+    """Build the player client if needed. Returns "built", "current" or "skipped"."""
+    client = root / CLIENT
+    if not client_build_stale(client):
+        return "current"
+    npm = shutil.which("npm")
+    if npm is None:
+        say(
+            "      Node.js (npm) not found, so the player client was not built. The server still "
+            "runs; install Node.js LTS and run `sage quickstart` again to get the client at /."
+        )
+        return "skipped"
+    steps = [] if (client / "node_modules").is_dir() else [[npm, "ci", "--no-audit", "--no-fund"]]
+    steps.append([npm, "run", "build"])
+    for cmd in steps:
+        done = subprocess.run(cmd, cwd=client, capture_output=True, text=True)
+        if done.returncode != 0:
+            tail = "\n".join((done.stdout + done.stderr).strip().splitlines()[-15:])
+            raise QuickstartError(f"`{' '.join(cmd[1:])}` failed in {CLIENT}:\n{tail}")
+    return "built"
+
+
 def run(
     world: str | None = None,
     *,
     docker: bool = True,
     server: bool = True,
+    client: bool = True,
     root: Path | None = None,
     say=print,
 ) -> int:
@@ -240,7 +290,7 @@ def run(
     if not (root / "worlds" / world / "world.toml").is_file():
         raise QuickstartError(f"no world package at worlds/{world}/ (world.toml not found)")
 
-    say(f"[1/5] config for world {world!r}")
+    say(f"[1/6] config for world {world!r}")
     result = ensure_config(root, world)
     for name in result.written:
         say(f"      wrote {name}")
@@ -254,31 +304,35 @@ def run(
     config = load_config(str(root / "config"))
 
     if docker:
-        say("[2/5] starting Postgres and Redis (docker compose)")
+        say("[2/6] starting Postgres and Redis (docker compose)")
         docker_up(root)
     else:
-        say("[2/5] using Postgres and Redis already running (--no-docker)")
+        say("[2/6] using Postgres and Redis already running (--no-docker)")
     asyncio.run(wait_for_services(config))
 
     created = asyncio.run(ensure_database(config.database, database))
-    say(f"[3/5] database {database!r} " + ("created" if created else "already exists"))
+    say(f"[3/6] database {database!r} " + ("created" if created else "already exists"))
 
-    say("[4/5] applying migrations")
+    say("[4/6] applying migrations")
     # A separate process, as an operator would run it: Alembic configures logging for its own run,
     # and in this process that would double every server log line afterwards.
     upgrade = subprocess.run([sys.executable, "-m", "sage", "db", "upgrade"], cwd=root)
     if upgrade.returncode != 0:
         raise QuickstartError("`sage db upgrade` failed; its output is above.")
 
-    if not server:
-        say("[5/5] skipped (--no-server). Start it with: python -m sage")
-        return 0
+    if client:
+        state = build_client(root, say)
+        say(f"[5/6] player client {state}")
+    else:
+        say("[5/6] player client skipped (--no-client)")
+
     port = config.server.websocket_port
-    say(f"[5/5] starting the server for {world!r} on port {port} (Ctrl+C stops it)")
-    say(
-        "      player client: cd engine/clients/player-ui && npm install && "
-        f"VITE_NEXUS_PORT={port} npm run dev   ->  http://localhost:5173"
-    )
+    if not server:
+        say("[6/6] server skipped (--no-server). Start it with: python -m sage")
+        return 0
+    say(f"[6/6] starting the server for {world!r} (Ctrl+C stops it)")
+    if client and (root / CLIENT / "dist" / "index.html").is_file():
+        say(f"      open http://localhost:{port}/ and press Play")
     from sage.server import run_server
 
     try:

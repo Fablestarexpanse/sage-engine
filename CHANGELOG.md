@@ -22,6 +22,11 @@ Versions built before the first publication have no conversion date.
 
 ## [Unreleased]
 
+- **Nexus serves the built player client at `/`**, so a new install needs one terminal: open
+  http://localhost:8001/. `sage quickstart` builds the client when it is missing or older than its
+  sources (`--no-client` skips it). A client build now talks to the origin it was loaded from;
+  builds hosted elsewhere set `VITE_NEXUS_URL` (they used to assume `127.0.0.1:8001`).
+
 - **`sage quickstart`:** one command from a fresh checkout to a running server. It writes any
   missing config with a generated database password and JWT secret, starts Postgres and Redis with
   Docker Compose, creates the world's database, migrates and runs the server (the SAGE Demo world by

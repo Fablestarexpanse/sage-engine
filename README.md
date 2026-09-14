@@ -76,18 +76,16 @@ done:
 2. starts Redis and PostgreSQL with `docker compose`;
 3. creates the world's database (`sage_demo` for the demo world);
 4. applies the engine and plugin migrations;
-5. runs the server on port 8001 with the **SAGE Demo** world, four rooms to walk around in.
+5. builds the player client when it has not been built or its sources changed;
+6. runs the server with the **SAGE Demo** world, four rooms to walk around in.
 
-The generated `server.toml` is for local development: `dev_mode` is on (it seeds the `staff` and
-`player` test logins) and so are the passwordless loopback logins described below. Then start the
-player client in a second terminal and open http://localhost:5173:
-
-```bash
-cd engine/clients/player-ui && npm install && VITE_NEXUS_PORT=8001 npm run dev
-```
+Open http://localhost:8001/ (the server serves the built player client) and press **Play**. The
+generated `server.toml` is for local development: `dev_mode` is on (it seeds the `staff` and
+`player` test logins) and so are the passwordless loopback logins described below.
 
 Options: `--world rivermoot` runs another world (in its own database, `sage_rivermoot`),
-`--no-docker` uses Postgres and Redis you already run, `--no-server` stops after the migrations.
+`--no-docker` uses Postgres and Redis you already run, `--no-client` skips the client build,
+`--no-server` stops before starting the server.
 
 ### Doing it by hand
 
@@ -104,7 +102,8 @@ python -m sage db upgrade
 python -m sage                                      # Nexus, port 8001
 ```
 
-The clients, each in its own terminal:
+`npm run build` in `engine/clients/player-ui` puts the player client at http://localhost:8001/. For
+client development with hot reload, run the Vite dev servers instead, each in its own terminal:
 
 ```bash
 # Player client -> http://localhost:5173

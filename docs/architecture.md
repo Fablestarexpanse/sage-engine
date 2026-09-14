@@ -342,7 +342,14 @@ Environment overrides: `SAGE_` prefix, double-underscore nesting, e.g. `SAGE_SER
 `sage quickstart` (`engine/src/sage/quickstart.py`) is the one-command path: it writes missing
 `.env`, `config/server.toml` (world, JWT secret, `dev_mode`, `dev_login`) and `config/database.toml`,
 runs `docker compose up -d redis postgres`, waits for both, creates the world's database
-(`sage db create`), runs `sage db upgrade` in a subprocess, then the server. The world is `--world`,
+(`sage db create`), runs `sage db upgrade` in a subprocess, builds the player client when its
+`dist/` is missing or older than its sources, then the server.
+
+Nexus serves the built player client (`server.player_client_dir`, default
+`engine/clients/player-ui/dist`) at `/` from its 404 fallback (`sage.admin.player_client`), so
+routes added later, such as plugin routers, are never shadowed. Only GET/HEAD for `/`, `/assets/*`
+and root-level files reach it; those paths are public in `is_public_admin_path`, and every API
+route keeps its auth. A client build talks to its own origin unless built with `VITE_NEXUS_URL`. The world is `--world`,
 else the configured world, else `demo`; any world other than the configured one uses the database
 `sage_<world>`. It never changes an existing config file.
 

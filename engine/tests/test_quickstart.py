@@ -86,3 +86,39 @@ def test_missing_docker_says_what_to_do(root: Path, monkeypatch):
     monkeypatch.setattr(quickstart.shutil, "which", lambda _name: None)
     with pytest.raises(QuickstartError, match="--no-docker"):
         quickstart.docker_up(root)
+
+
+def _client_tree(root: Path, built: bool) -> Path:
+    client = root / quickstart.CLIENT
+    (client / "src").mkdir(parents=True)
+    (client / "src" / "App.jsx").write_text("export default 1")
+    if built:
+        (client / "dist").mkdir()
+        (client / "dist" / "index.html").write_text("<html></html>")
+    return client
+
+
+def test_client_build_is_stale_until_built_and_again_after_a_source_change(root: Path):
+    import os
+    import time
+
+    client = _client_tree(root, built=False)
+    assert quickstart.client_build_stale(client)
+    (client / "dist").mkdir()
+    (client / "dist" / "index.html").write_text("<html></html>")
+    past = time.time() - 60
+    os.utime(client / "src" / "App.jsx", (past, past))
+    assert not quickstart.client_build_stale(client)
+    assert quickstart.build_client(root, say=lambda *_: None) == "current"
+    (client / "src" / "App.jsx").write_text("export default 2")
+    future = time.time() + 60
+    os.utime(client / "src" / "App.jsx", (future, future))
+    assert quickstart.client_build_stale(client)
+
+
+def test_missing_node_skips_the_client_but_not_the_server(root: Path, monkeypatch):
+    _client_tree(root, built=False)
+    monkeypatch.setattr(quickstart.shutil, "which", lambda _name: None)
+    notes: list[str] = []
+    assert quickstart.build_client(root, say=notes.append) == "skipped"
+    assert "install Node.js" in notes[0]

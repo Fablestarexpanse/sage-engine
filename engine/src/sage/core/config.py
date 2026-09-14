@@ -30,6 +30,9 @@ class ServerConfig(BaseModel):
     # World package to run from worlds_dir (a directory name). Optional when only one exists.
     world: str | None = None
     worlds_dir: str = "worlds"
+    # Built player client Nexus serves at / (relative to the project root); nothing is served
+    # until `npm run build` (or `sage quickstart`) has produced it.
+    player_client_dir: str = "engine/clients/player-ui/dist"
     max_connections: int = 100
     tick_rate: float = 0.25  # 4 ticks per second
     dev_mode: bool = False

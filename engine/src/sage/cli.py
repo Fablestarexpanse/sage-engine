@@ -1,7 +1,7 @@
 """Command line: run the server, migrate the database, uninstall plugins.
 
 python -m sage                                  run the server
-python -m sage quickstart [--world ID] [--no-docker] [--no-server]   config, services, database, server
+python -m sage quickstart [--world ID] [--no-docker] [--no-client] [--no-server]   config, services, database, server
 python -m sage db create                        create the configured database if it is missing
 python -m sage db status                        list unapplied core/plugin migrations
 python -m sage db upgrade                       apply every core and plugin migration
@@ -142,6 +142,7 @@ def main(argv: list[str]) -> int:
         "--no-docker", action="store_true", help="use Postgres and Redis already running"
     )
     quick.add_argument("--no-server", action="store_true", help="stop after migrations")
+    quick.add_argument("--no-client", action="store_true", help="do not build the player client")
     plugin = sub.add_parser("plugin", help="plugin management")
     plugin_sub = plugin.add_subparsers(dest="action", required=True)
     uninstall = plugin_sub.add_parser("uninstall", help="remove a plugin and its tables")
@@ -164,7 +165,12 @@ def main(argv: list[str]) -> int:
         from sage.quickstart import run as quickstart
 
         try:
-            return quickstart(args.world, docker=not args.no_docker, server=not args.no_server)
+            return quickstart(
+                args.world,
+                docker=not args.no_docker,
+                server=not args.no_server,
+                client=not args.no_client,
+            )
         except QuickstartError as exc:
             print(f"error: {exc}", file=sys.stderr)
             return 1
