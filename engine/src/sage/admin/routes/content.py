@@ -3,13 +3,12 @@ editing; creating zones and rooms. Structural room editing is WorldForge's job (
 
 from __future__ import annotations
 
-import re
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Any
+from typing import TYPE_CHECKING, Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from sage.admin import content_browser
 from sage.admin.admin_security import AdminContext
@@ -29,16 +28,6 @@ class ContentInjectBody(BaseModel):
     expected_mtime: float | None = None
 
 
-class CreateRoomBody(BaseModel):
-    slug: str
-    room: dict[str, Any] = Field(default_factory=dict)
-
-
-class CreateZoneBody(BaseModel):
-    id: str
-    name: str = ""
-
-
 def build_content_router(server: SageServer) -> APIRouter:
     router = APIRouter()
 
@@ -56,22 +45,6 @@ def build_content_router(server: SageServer) -> APIRouter:
         _ctx: Annotated[AdminContext, Depends(require_tool("world"))],
     ):
         return content_browser.list_zones()
-
-    @router.post("/content/zones")
-    async def content_create_zone(
-        body: CreateZoneBody,
-        _ctx: Annotated[AdminContext, Depends(require_tool("world"))],
-    ):
-        zid = (body.id or "").strip()
-        try:
-            rooms_path = content_browser.create_zone(zid, body.name or "")
-        except FileExistsError:
-            raise HTTPException(status_code=409, detail="zone_exists") from None
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e)) from e
-        server.content_loader.clear_cache()
-        _mark_reloaded()
-        return {"status": "created", "id": zid, "path": str(rooms_path)}
 
     @router.get("/content/zones/{zone_id}/rooms")
     async def content_zone_rooms(
@@ -195,26 +168,5 @@ def build_content_router(server: SageServer) -> APIRouter:
 
     _register_template_routes("entities", "entities")
     _register_template_routes("items", "items")
-
-    @router.post("/content/zones/{zone_id}/rooms")
-    async def content_create_room(
-        zone_id: str,
-        body: CreateRoomBody,
-        ctx: Annotated[AdminContext, Depends(require_tool("locations"))],
-    ):
-        if not ctx.may_write_zone(zone_id):
-            raise HTTPException(status_code=403, detail="zone_denied")
-        slug = (body.slug or "").strip()
-        if not re.match(r"^[a-zA-Z0-9_-]+$", slug):
-            raise HTTPException(status_code=400, detail="invalid_slug")
-        try:
-            path = content_browser.create_room(zone_id, slug, body.room or None)
-        except FileExistsError:
-            raise HTTPException(status_code=409, detail="room_exists") from None
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e)) from e
-        server.content_loader.invalidate(path)
-        _mark_reloaded()
-        return {"status": "created", "path": str(path), "slug": slug}
 
     return router

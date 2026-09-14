@@ -30,10 +30,8 @@ NAV_TOOL_IDS = frozenset(
         "world",
         "entities",
         "items",
-        "locations",
         "server",
         "content",
-        "settings",
         "team",
         "skills",
         "agents",
@@ -41,6 +39,41 @@ NAV_TOOL_IDS = frozenset(
         "lexicon",
     }
 )
+
+
+# Starting tool sets for common staff jobs. The Team page offers them when creating or editing a
+# staff member; the stored permissions are still the individual tools, so a preset can be adjusted.
+TOOL_PRESETS: dict[str, dict[str, Any]] = {
+    "builder": {
+        "label": "Builder",
+        "description": "World content: templates, skills catalog, lexicon, AI drafts.",
+        "tools": [
+            "dashboard",
+            "world",
+            "content",
+            "entities",
+            "items",
+            "skills",
+            "lexicon",
+            "forge",
+        ],
+    },
+    "game_master": {
+        "label": "Game master",
+        "description": "Players and the live world: characters, broadcast, agents, shops.",
+        "tools": ["dashboard", "players", "operations", "world", "agents", "shops"],
+    },
+    "moderator": {
+        "label": "Moderator",
+        "description": "Players only: find characters, kick, suspend accounts.",
+        "tools": ["dashboard", "players", "operations"],
+    },
+    "operator": {
+        "label": "Operator",
+        "description": "Server health, AI models and the audit log.",
+        "tools": ["dashboard", "server", "operations", "world"],
+    },
+}
 
 
 @dataclass

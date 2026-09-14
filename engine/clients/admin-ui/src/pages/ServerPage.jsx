@@ -9,6 +9,8 @@ import {
   DataTable, StatCard, usePolledList, FetchErrorBanner,
 } from "../adminCommon.jsx";
 import ComfyWorkflowLibrary from "../ComfyWorkflowLibrary.jsx";
+import AgentBrainPanel from "../agentBrainPanel.jsx";
+import { useWorldSummary } from "../useWorldSummary.js";
 
 
 const HostMachinePanel = ({ host, llmDetected, llmConfigured, llmConnected, llmBackend, llmModelsAlign }) => {
@@ -463,14 +465,13 @@ const LmStudioPanel = () => {
 };
 
 
-// ─── ComfyUI Workflows & Economy Panel ──────────────────────────────────────
+// ─── ComfyUI Workflows Panel (AI art credit prices are under Economy › AI art credits) ──────────────────────────────────────
 
 const COMFY_TABS = [
   { id: "status",    label: "Status" },
   { id: "library",   label: "Workflow library" },
   { id: "portrait",  label: "Portrait workflow" },
   { id: "scene",     label: "Scene/Area workflow" },
-  { id: "economy",   label: "Economy" },
 ];
 
 const ComfyUIPanel = () => {
@@ -665,12 +666,6 @@ const ComfyUIPanel = () => {
                 Area workflow uses a CheckpointLoaderSimple node but <strong>checkpoint_name</strong> is not set — set it in the Workflows tab so the server can inject it automatically.
               </div>
             )}
-            <div style={{ fontSize: 12, fontFamily: "'JetBrains Mono', monospace", lineHeight: 1.8 }}>
-              <div><span style={{ color: COLORS.textDim }}>Economy enabled</span> {status?.economy_enabled ? "Yes" : "No"}</div>
-              <div><span style={{ color: COLORS.textDim }}>Currency</span> {status?.currency_display_name || "—"}</div>
-              <div><span style={{ color: COLORS.textDim }}>Portrait cost</span> {status?.portrait_generation_cost ?? "—"}</div>
-              <div><span style={{ color: COLORS.textDim }}>Scene cost</span> {status?.area_generation_cost ?? "—"}</div>
-            </div>
           </div>
         </div>
       )}
@@ -719,28 +714,6 @@ const ComfyUIPanel = () => {
         </div>
       )}
 
-      {tab === "economy" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ fontSize: 11, color: COLORS.textMuted, fontFamily: "'DM Sans', sans-serif", lineHeight: 1.5 }}>
-            Controls the art-credit economy. Its display name is set below; it is separate from the world&apos;s in-game money — it&apos;s spent only on ComfyUI generation.
-          </div>
-          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: COLORS.textMuted, cursor: "pointer" }}>
-            <input type="checkbox" checked={form.economy_enabled} onChange={(e) => setForm((p) => ({ ...p, economy_enabled: e.target.checked }))} />
-            Economy enabled (deduct credits on generation)
-          </label>
-          {F("Currency display name", "currency_display_name")}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-            {F("Portrait cost", "portrait_generation_cost", "number", { min: 0 })}
-            {F("Scene cost", "area_generation_cost", "number", { min: 0 })}
-            {F("Chargen portrait cost", "character_create_portrait_cost", "number", { min: 0 })}
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            {F("Starting credits (new accounts)", "starting_ai_credits", "number", { min: 0 })}
-            {F("Credits per USD (reference only)", "credits_per_usd", "number", { min: 1 })}
-          </div>
-        </div>
-      )}
-
       {tab !== "status" && tab !== "library" && (
         <div style={{ display: "flex", alignItems: "center", gap: 12, paddingTop: 6, borderTop: `1px solid ${COLORS.border}44` }}>
           <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: COLORS.textMuted, cursor: "pointer", flexShrink: 0 }}>
@@ -759,8 +732,30 @@ const ComfyUIPanel = () => {
 // ═══════════════════════════════════════════════════════════════
 // EXISTING PAGE COMPONENTS (condensed from v1)
 
+const TickMetrics = () => {
+  const { colors: COLORS } = useAdminTheme();
+  const [metrics, setMetrics] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    const load = () => axios.get(`${API_BASE}/admin/metrics`).then(({ data }) => alive && setMetrics(data)).catch(() => alive && setMetrics(null));
+    load();
+    const id = setInterval(load, 10000);
+    return () => { alive = false; clearInterval(id); };
+  }, []);
+  return (
+    <details style={{ background: COLORS.bgCard, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 18 }}>
+      <summary style={{ cursor: "pointer", fontSize: 14, fontWeight: 600, color: COLORS.text, fontFamily: "'DM Sans', sans-serif" }}>Tick metrics</summary>
+      <pre style={{ margin: "12px 0 0", fontSize: 12, color: COLORS.textMuted, fontFamily: "'JetBrains Mono', monospace", whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
+        {metrics ? JSON.stringify(metrics, null, 2) : "Could not load /admin/metrics"}
+      </pre>
+    </details>
+  );
+};
+
 const ServerPage = () => {
   const { colors: COLORS } = useAdminTheme();
+  const { summary } = useWorldSummary();
+  const hasAgents = (summary?.plugins || []).some((p) => p.id === "agents");
   const [info, setInfo] = useState(null);
   useEffect(() => {
     const load = async () => {
@@ -820,6 +815,7 @@ const ServerPage = () => {
         />
       )}
       <LmStudioPanel />
+      {hasAgents && <AgentBrainPanel />}
       <ComfyUIPanel />
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 14 }}>
         {metrics.map((m) => (
@@ -849,6 +845,7 @@ const ServerPage = () => {
           </div>
         </div>
       </div>
+      <TickMetrics />
     </div>
   );
 };

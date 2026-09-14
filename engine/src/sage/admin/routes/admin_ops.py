@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import text
 
 from sage.admin import player_accounts, staff_service
-from sage.admin.admin_security import AdminContext, issue_staff_token
+from sage.admin.admin_security import TOOL_PRESETS, AdminContext, issue_staff_token
 from sage.admin.host_metrics import get_host_snapshot
 from sage.admin.route_helpers import (
     admin_actor_payload,
@@ -131,6 +131,12 @@ def build_admin_ops_router(server: SageServer) -> APIRouter:
     ):
         rows = await staff_service.list_staff(server)
         return [staff_service.staff_public(r) for r in rows]
+
+    @router.get("/admin/staff/tool-presets")
+    async def admin_staff_tool_presets(
+        _ctx: Annotated[AdminContext, Depends(require_head_admin)],
+    ):
+        return [{"id": k, **v} for k, v in TOOL_PRESETS.items()]
 
     @router.post("/admin/staff")
     async def admin_staff_create(

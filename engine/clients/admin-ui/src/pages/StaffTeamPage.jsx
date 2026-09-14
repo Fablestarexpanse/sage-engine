@@ -5,14 +5,14 @@ import { API_BASE } from "../apiConfig.js";
 import { Badge, ActionButton, DataTable } from "../adminCommon.jsx";
 
 // Tool ids the server checks, in sidebar order, with what each one opens.
-// entities, items and locations are separate grants that the Content Library combines.
+// entities and items are separate grants that the Content Library combines.
 const TOOL_GROUPS = [
   ["Overview", [["dashboard", "Dashboard"]]],
-  ["World", [["world", "World & plugins, zones and rooms"], ["content", "Content Library"], ["locations", "Create rooms"], ["entities", "Entity templates"], ["items", "Item templates"], ["lexicon", "Lexicon & MOTD"]]],
-  ["Players", [["players", "Players & sessions"]]],
-  ["Plugins", [["skills", "Skills catalog"], ["agents", "Agents"], ["shops", "Shops"]]],
-  ["AI", [["forge", "AI Forge"]]],
-  ["System", [["server", "Server & AI models"], ["operations", "Operations"], ["team", "Team & access (head admins)"], ["settings", "Settings (no page)"]]],
+  ["Live", [["operations", "Broadcast, reload, live world, audit log"]]],
+  ["Players", [["players", "Who's online, characters, accounts"]]],
+  ["World", [["world", "World & plugins, rooms, live world"], ["content", "Content Library"], ["entities", "Creature templates"], ["items", "Item templates"], ["skills", "Skills catalog"], ["lexicon", "Lexicon & MOTD"], ["forge", "AI Forge"]]],
+  ["Economy & NPCs", [["shops", "Shops"], ["agents", "Agents"]]],
+  ["System", [["server", "Server, AI models, AI art credits"], ["team", "Team & access (head admins)"]]],
 ];
 
 const parseZones = (raw) => {
@@ -20,9 +20,25 @@ const parseZones = (raw) => {
   return z === "*" || z === "" ? ["*"] : z.split(",").map((x) => x.trim()).filter(Boolean);
 };
 
-function ToolPicker({ tools, onToggle, idPrefix }) {
+const sameTools = (a, b) => a.length === b.length && a.every((t) => b.includes(t));
+
+// presets come from GET /admin/staff/tool-presets; choosing one replaces the ticked tools.
+function ToolPicker({ tools, onToggle, onPreset, presets = [], idPrefix }) {
   const { colors: COLORS } = useAdminTheme();
   return (
+    <div style={{ display: "grid", gap: 10 }}>
+    {presets.length > 0 && (
+      <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+        <span style={{ fontSize: 11, color: COLORS.textMuted }}>Start from a role:</span>
+        {presets.map((p) => {
+          const active = sameTools(tools, p.tools);
+          return (
+            <button key={p.id} type="button" title={p.description} aria-pressed={active} onClick={() => onPreset(p.tools)}
+              style={{ padding: "4px 10px", borderRadius: 999, fontSize: 12, cursor: "pointer", color: active ? COLORS.accent : COLORS.text, background: active ? COLORS.accentGlow : COLORS.bgInput, border: `1px solid ${active ? COLORS.accent : COLORS.border}` }}>{p.label}</button>
+          );
+        })}
+      </div>
+    )}
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: "10px 16px" }}>
       {TOOL_GROUPS.map(([group, items]) => (
         <fieldset key={group} style={{ border: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 4 }}>
@@ -36,10 +52,11 @@ function ToolPicker({ tools, onToggle, idPrefix }) {
         </fieldset>
       ))}
     </div>
+    </div>
   );
 }
 
-function StaffEditor({ row, onCancel, onSaved }) {
+function StaffEditor({ row, presets, onCancel, onSaved }) {
   const { colors: COLORS } = useAdminTheme();
   const [displayName, setDisplayName] = useState(row.display_name || "");
   const [role, setRole] = useState(row.role);
@@ -92,7 +109,7 @@ function StaffEditor({ row, onCancel, onSaved }) {
       </div>
       {role === "head_admin"
         ? <div style={{ fontSize: 12, color: COLORS.textMuted }}>Head admins can use every tool, so the tool list does not apply.</div>
-        : <ToolPicker tools={tools} onToggle={toggle} idPrefix={`staff-${row.id}-tool`} />}
+        : <ToolPicker tools={tools} onToggle={toggle} onPreset={(t) => setTools([...t])} presets={presets} idPrefix={`staff-${row.id}-tool`} />}
       {error && <div role="alert" style={{ color: COLORS.danger, fontSize: 12 }}>Not saved: {error}</div>}
       <div style={{ display: "flex", gap: 8 }}>
         <button type="submit" disabled={busy} style={{ padding: "6px 14px", background: COLORS.accent, color: "#fff", border: "none", borderRadius: 6, fontWeight: 600, fontSize: 12, cursor: busy ? "wait" : "pointer" }}>{busy ? "Saving…" : "Save changes"}</button>
@@ -112,6 +129,7 @@ const StaffTeamPage = () => {
   });
   const [busy, setBusy] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [presets, setPresets] = useState([]);
 
   const load = useCallback(async () => {
     setLoadErr("");
@@ -124,6 +142,9 @@ const StaffTeamPage = () => {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    axios.get(`${API_BASE}/admin/staff/tool-presets`).then(({ data }) => setPresets(Array.isArray(data) ? data : [])).catch(() => {});
+  }, []);
 
   const toggleTool = (id) => {
     setForm((f) => {
@@ -169,7 +190,7 @@ const StaffTeamPage = () => {
       <p style={{ margin: "0 0 16px", fontSize: 13, color: COLORS.textMuted, fontFamily: "'DM Sans', sans-serif" }}>
         Head admins can add staff, assign roles (admin / GM), and restrict <strong>tools</strong> (sidebar areas) and <strong>zones</strong> (world regions for room edits / forge inject / live spawns).
         Use zones <code style={{ color: COLORS.textDim }}>*</code> for all zones, or comma-separated ids e.g. <code style={{ color: COLORS.textDim }}>test_zone</code>.
-        {" "}Staff accounts are for this admin console only. To give a <strong>play</strong> login the in-game pink <strong>GM</strong> crown, use <strong>Players &amp; sessions → Game accounts</strong> and enable <em>Game Master play account</em> on that row.
+        {" "}Staff accounts are for this admin console only. To give a <strong>play</strong> login the in-game pink <strong>GM</strong> crown, use <strong>Players › Accounts</strong> and enable <em>Game Master play account</em> on that row.
       </p>
       {loadErr && <div style={{ color: COLORS.danger, marginBottom: 12 }}>{loadErr}</div>}
 
@@ -187,7 +208,7 @@ const StaffTeamPage = () => {
             </select>
           </div>
           <input placeholder="Zones (* or zone_id, zone_id2)" value={form.zones} onChange={(e) => setForm((f) => ({ ...f, zones: e.target.value }))} style={{ padding: 8, background: COLORS.bgInput, border: `1px solid ${COLORS.border}`, borderRadius: 6, color: COLORS.text }} />
-          <ToolPicker tools={form.tools} onToggle={toggleTool} idPrefix="new-staff-tool" />
+          <ToolPicker tools={form.tools} onToggle={toggleTool} onPreset={(t) => setForm((f) => ({ ...f, tools: [...t] }))} presets={presets} idPrefix="new-staff-tool" />
           <button type="submit" disabled={busy} style={{ alignSelf: "start", padding: "8px 16px", background: COLORS.accent, color: "#fff", border: "none", borderRadius: 6, fontWeight: 600, cursor: "pointer" }}>Create</button>
         </form>
       </div>
@@ -196,6 +217,7 @@ const StaffTeamPage = () => {
         <StaffEditor
           key={editingId}
           row={rows.find((r) => r.id === editingId)}
+          presets={presets}
           onCancel={() => setEditingId(null)}
           onSaved={async () => { setEditingId(null); await load(); }}
         />
