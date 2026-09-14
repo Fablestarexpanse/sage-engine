@@ -53,6 +53,7 @@ class _CharSnapshot:
     room_id: str
     stats: dict[str, Any]
     inventory: list[Any]
+    digi_balance: int = 0
 
 
 def _snapshot_from_orm(character: Any) -> _CharSnapshot:
@@ -61,6 +62,7 @@ def _snapshot_from_orm(character: Any) -> _CharSnapshot:
         room_id=character.room_id,
         stats=dict(character.stats or {}),
         inventory=list(character.inventory or []),
+        digi_balance=int(character.digi_balance or 0),
     )
 
 
@@ -89,6 +91,10 @@ class FablestarServer:
 
         # LLM Subsystems
         self.llm_client = LLMClient(self.config.llm)
+        # One shared in-process GGUF serves narration AND agent brains when
+        # either selects the "embedded" backend (model loads once).
+        self._embedded_llm = None
+        self.llm_client.embedded_getter = self.embedded_llm
         self.prompt_manager = PromptManager()
 
         # Domain services (each reads config/db through this server so live
@@ -309,6 +315,9 @@ class FablestarServer:
         registry.load_module_strict("fablestar.commands.search")
         registry.load_module_strict("fablestar.commands.factions")
         registry.load_module_strict("fablestar.commands.missions")
+        registry.load_module_strict("fablestar.commands.shop")
+        registry.load_module_strict("fablestar.commands.rent")
+        registry.load_module_strict("fablestar.commands.crafting")
         registry.load_module_strict("fablestar.commands.admin")
 
         # 2. Tick handlers — must be registered before the tick loop starts in step 4
@@ -416,6 +425,20 @@ class FablestarServer:
                 )
                 return None
 
+            # Agents and players share the name-keyed state; a character row
+            # that predates the name guard must not take over a resident agent.
+            try:
+                agent_names = {
+                    p.name.lower() for p in self.content_loader.get_agent_registry().all()
+                }
+            except Exception:
+                agent_names = set()
+            if character.name.lower() in agent_names:
+                await session.send(
+                    json.dumps({"ok": False, "error": "character_name_reserved"}) + "\r\n"
+                )
+                return None
+
             account.last_login = datetime.utcnow()
             await db_session.commit()
             await db_session.refresh(character)
@@ -424,6 +447,7 @@ class FablestarServer:
 
     async def _bootstrap_session(self, session: Session, character: _CharSnapshot):
         """Link the session, seed Redis from the character record, and send the opening view."""
+        await self.session_manager.kick_existing(character.name)
         self.session_manager.link_player(session.id, character.name)
 
         from fablestar.proficiencies.state_helpers import (
@@ -443,15 +467,37 @@ class FablestarServer:
         # half health with death-bound effects cleared, instead of logging in
         # as a corpse that dies to the first breeze.
         respawned = False
+        respawn_bill = 0
         if int(norm_stats.get("hp", 1)) <= 0:
             from fablestar.effects.engine import clear_on_death
+            from fablestar.world.defaults import RESPAWN_ROOM
 
             clear_on_death(norm_stats)
             norm_stats["hp"] = max(1, int(norm_stats.get("max_hp", 20)) // 2)
-            respawn_room = "starter_zone:medbay"
-            if self.content_loader.get_room(respawn_room) is not None:
-                character.room_id = respawn_room
+            if self.content_loader.get_room(RESPAWN_ROOM) is not None:
+                character.room_id = RESPAWN_ROOM
+            # Clinic bill (down to zero) — dying has a price on Tidegate.
+            bill = min(int(character.digi_balance or 0), 10)
+            character.digi_balance = int(character.digi_balance or 0) - bill
             respawned = True
+            respawn_bill = bill
+
+        # A character saved in a room that no longer exists (zone deleted or
+        # renamed) wakes at the world start instead of a void.
+        if self.content_loader.get_room(character.room_id) is None:
+            from fablestar.world.defaults import START_ROOM
+
+            logger.info(
+                "Character %s was in missing room %s; moving to %s",
+                character.name,
+                character.room_id,
+                START_ROOM,
+            )
+            character.room_id = START_ROOM
+
+        # In-game wallet: the DB column is the durable copy; the stats blob is
+        # what shop commands spend from (PersistenceManager mirrors it back).
+        norm_stats["digi"] = int(character.digi_balance or 0)
 
         # Seed Redis with the character's current state
         await self.redis.set_player_location(character.name, character.room_id)
@@ -459,15 +505,23 @@ class FablestarServer:
         await self.redis.set_player_inventory(character.name, character.inventory)
 
         if respawned:
+            currency = self.config.server.game_currency_display_name
+            bill_line = (
+                f" The clinic took {respawn_bill} {currency} for the trouble."
+                if respawn_bill
+                else " You were too broke to bill; they patched you anyway."
+            )
             await session.send(
                 "\r\nYou wake on a diagnostic bed, patched together and aching. "
-                "The dispensary arm gives you an encouraging whir."
+                "The dispensary arm gives you an encouraging whir." + bill_line
             )
 
         await self.push_character_snapshot(session)
 
         # Initial look
         await self.dispatcher.dispatch(session, "look")
+        if not norm_stats.get("visited_rooms"):
+            await session.send("\r\nNew here? Type 'help' to see what you can do.")
         await session.send_prompt()
 
     async def push_character_snapshot(self, session: Session) -> None:
@@ -480,6 +534,10 @@ class FablestarServer:
 
         player_id = session.player_id
         if not player_id:
+            return
+        # Agents have no UI; JSON snapshots would only pollute their
+        # perception buffers (and push real say lines out of the voice window).
+        if getattr(session, "is_agent", False):
             return
         try:
             stats = await self.redis.get_player_stats(player_id)
@@ -506,6 +564,16 @@ class FablestarServer:
                 for e in ensure_effects(stats)
             ]
 
+            # Visited tracking for the client map (list-as-set in the stats blob).
+            visited = stats.get("visited_rooms")
+            if not isinstance(visited, list):
+                visited = []
+            if room_id and room_id not in visited:
+                visited.append(room_id)
+                del visited[:-300]
+                stats["visited_rooms"] = visited
+                await self.redis.set_player_stats(player_id, stats)
+
             snapshot: CharacterSnapshotNotice = {
                 "client_notice": "character_snapshot",
                 "character_name": player_id,
@@ -517,10 +585,76 @@ class FablestarServer:
                 },
                 "effects": effects,
                 "inventory": list(inventory),
+                "map": self._zone_map(room_id, set(visited)) if room_id else None,
             }
             await session.send(json.dumps(snapshot) + "\r\n")
         except Exception:
             logger.debug("character_snapshot push failed for %s", player_id, exc_info=True)
+
+    def embedded_llm(self):
+        """Lazy shared EmbeddedLLM (config from agents_llm: model_path etc.)."""
+        if self._embedded_llm is None:
+            from fablestar.agents.embedded_llm import EmbeddedLLM
+
+            self._embedded_llm = EmbeddedLLM(self.config.agents_llm)
+        return self._embedded_llm
+
+    def _zone_map(self, current_room_id: str, visited: set[str]) -> dict | None:
+        """
+        Zone map for the client MAP panel: rooms with editor x/y positions plus
+        internal exit edges. Geometry is cached per zone (cleared with the
+        content cache on hot reload); the per-player visited flags are applied
+        per call.
+        """
+        try:
+            zone, _, _ = current_room_id.partition(":")
+            if not zone:
+                return None
+            cache_key = f"client_map:{zone}"
+            cached = self.content_loader._cache.get(cache_key)
+            if cached is None:
+                import json as _json
+                from pathlib import Path
+
+                rooms_dir = Path("content/world/zones") / zone / "rooms"
+                if not rooms_dir.is_dir():
+                    return None
+                positions = {}
+                pos_path = rooms_dir.parent / ".positions.json"
+                if pos_path.is_file():
+                    doc = _json.loads(pos_path.read_text(encoding="utf-8"))
+                    positions = doc.get("positions", {}) or {}
+                rooms = []
+                edges: set[tuple[str, str]] = set()
+                for f in sorted(rooms_dir.glob("*.yaml")):
+                    rid = f"{zone}:{f.stem}"
+                    room = self.content_loader.get_room(rid)
+                    if room is None:
+                        continue
+                    pos = positions.get(f.stem, {})
+                    rooms.append(
+                        {
+                            "id": rid,
+                            "name": room.name or f.stem,
+                            "x": float(pos.get("x", 0.0)),
+                            "y": float(pos.get("y", 0.0)),
+                        }
+                    )
+                    for ex in room.exits.values():
+                        dest = ex.destination
+                        if dest.startswith(f"{zone}:"):
+                            edges.add(tuple(sorted((rid, dest))))
+                cached = {"zone": zone, "rooms": rooms, "edges": sorted(edges)}
+                self.content_loader._cache[cache_key] = cached
+            return {
+                "zone": cached["zone"],
+                "current": current_room_id,
+                "rooms": [{**r, "visited": r["id"] in visited} for r in cached["rooms"]],
+                "edges": [list(e) for e in cached["edges"]],
+            }
+        except Exception:
+            logger.debug("zone map build failed for %s", current_room_id, exc_info=True)
+            return None
 
     async def run_session_loop(self, session: Session):
         """Main input/output loop for a single session: authenticate → bootstrap → command loop."""
@@ -547,7 +681,9 @@ class FablestarServer:
             logger.error(f"Error in session loop for {session.id}: {e}", exc_info=True)
         finally:
             # Final sync to DB before the session tears down
-            if session.player_id:
+            # A session evicted by a newer login must not tear down the state
+            # the new session is now using (room set, DB sync).
+            if session.player_id and self.session_manager.owns_player(session):
                 await self.persistence.sync_character(session.player_id)
                 # Ghost fix: leaving the game must leave the room too, or the
                 # room's player set keeps a phantom occupant forever.

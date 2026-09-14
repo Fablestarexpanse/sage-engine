@@ -39,6 +39,7 @@ NAV_TOOL_IDS = frozenset(
         "builder",
         "skills",
         "agents",
+        "shops",
     }
 )
 

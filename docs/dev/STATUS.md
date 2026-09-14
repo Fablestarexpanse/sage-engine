@@ -1,5 +1,10 @@
 # Project Status — updated 2026-09-12
 
+> **SAGE decoupling in progress (2026-09-13).** The brief `docs/sage/BRIEF.md`, the rulings log
+> `docs/sage/DECISIONS.md` and the approved (2026-09-13) `docs/sage/PHASE1_CONTRACTS.md` take precedence
+> over this file, which still describes the pre-split Fablestar-only shape. Audit:
+> `docs/sage/PHASE0_AUDIT.md`.
+
 One page: what's done, what's next. Update this when a milestone lands.
 
 ## Health scores (desloppify)
@@ -46,12 +51,174 @@ Test suites: server **150** pytest, WorldForge **34** vitest — all green.
 
 ## Needs doing
 
+### Tidegate Isle era (2026-09-12: starter_zone deleted, owner call)
+- [x] Agents = computer-controlled players: conduit proficiency block seeded at
+      spawn (same leveling engine), counters tracked (kills, deaths,
+      goals_completed, items_used + per-template for "most used item");
+      agents Lv + K/D in the admin watch table, full metrics in the detail
+      drawer. Agents excluded from admin player/session lists and counts
+      (Agents tab is their home; in-world they remain players)
+- [x] Agents tab data views: detail drawer shows inventory with equipped
+      slots, a skill sheet (FRT/RFX/ACU/RSV/PRS + proficiency leaves), and
+      metrics; new Stat board view — per-agent levels/kills/deaths/goals/
+      items-used/most-used/top-prey/rooms/achievements/memories with an
+      all-agents totals row; unknown future counters (trades, rent, ...)
+      grow columns automatically from the counters blob
+- [x] XP progression: 60s time-series samples (levels/kills/goals/rooms) in
+      the stats blob (cap 400 ≈ 6.5h, durable), multi-line chart in the
+      detail drawer. FINDING: field proficiency gains are dead for everyone —
+      try_field_gain hits depth_gate (tier-3 leaf needs parent branch >= 15,
+      no in-game path raises branches); 68 kills = 0 levels. Owner decision
+      in docs/design/AGENT_LIFE_ROADMAP.md item 9
+- [x] 5 new islander agents (8 total): Aldo Vex (pawnbroker), Meri Harrow
+      (storekeeper), Old Pell (fisherman), Juno Task (orchard/forager),
+      Cutter Vale (lighthouse salvage scout) — routines match their trades
+- [x] docs/design/AGENT_LIFE_ROADMAP.md — gap analysis for agents living
+      full lives (money, shops, hunger, rent, work, society, day cycle,
+      death costs) with build order E1-E3
+- [x] Tidegate Isle (test_isle, 26 rooms): harbor/ferry arrival, town plaza,
+      market with 4 shops (general store, pawn/salvage, apothecary,
+      chandlery), clinic (safe respawn), orchard/meadow/forest, drone gulch +
+      scrap beach + tide caves (hostiles/salvage/radiation), lighthouse with
+      floor-1 lamp room. Cross-zone: town_plaza west <-> aipub:pub_entrance
+      (the AIpub, with apartments upstairs for rent/living tests). Density
+      1.92, validate_zone clean. START_ROOM/RESPAWN_ROOM constants in
+      world/defaults.py; characters saved in deleted rooms auto-relocate
+- [x] World Builder: Export PNG button renders the whole zone graph
+      (html-to-image over the React Flow viewport)
+- [x] E1 survival economy: digi wallet in the stats blob for everyone
+      (players seeded from digi_balance and mirrored back on flush; agents
+      seeded from persona `digi`, durable); shop blocks on room YAML
+      (general store, pawn & salvage [buys 50%], apothecary, chandlery
+      [buys 35%], the AIpub bar w/ algae stout); browse/buy/sell/wallet
+      commands; trades/purchases/sales counters; clinic bill (10 Digi, to
+      zero) on player and agent respawn; agents: sell/buy intent goals +
+      deterministic sell-when-in-buying-shop Body reflex. Verified live:
+      player bought a stout at the AIpub (100→96), sold it at Aldo's,
+      bought a blade (→73); Sela sold 2 power cells on her own (20→32
+      Digi, trades 2)
+- [x] Character redo (owner call): every persona now rolls its own conduit
+      attribute spread + starting wallet (persona `attributes` + `digi`);
+      all 8 restarted with distinct sheets (Aldo PRS 15 / 120 Digi,
+      Pell RSV 15 / 15 Digi, ...)
+- [x] E2: hunger need (rises ~20min; eating settles it; Body eats when
+      hungry); rent command at the AIpub bar (15 Digi, 2 apartments, Redis
+      rentals hash + home_room; own-bed sleep restores more); 40-min world
+      day cycle; deterministic life goals (starving→buy food, homeless+40
+      Digi→rent, exhausted→sleep at home, evening pub drift), throttled
+      2min. Verified: Aldo + Meri rented unprompted; full pub refuses
+- [x] E3a: budgeted agent-to-agent pub talk — an idle agent in the AIpub may
+      open ONE exchange with another agent (5min/agent + 10min/pair
+      cooldowns, one reply via pending-key, replies never re-trigger).
+      Verified live: Juno opened on Old Pell; Pell answered with a weather
+      report, exactly one exchange
+- [x] Shops admin tab: every shop room with keeper (live wallet, current
+      room, home, carried goods), stock + prices + buy policy, and a
+      per-shop transaction ledger (Redis capped list written by buy/sell)
+      with sold/bought totals. shop.owner links a persona id; Meri owns
+      the general store, Aldo the pawn shop
+- [x] E3b: faction missions as agent work — missions pay Digi now
+      (FactionModel.mission_pay; dockworkers 15, salvage union 10); life
+      goals: purpose > 0.8 with no contract → `missions accept`, active
+      kill contract → walk to the target's spawn room (fight reflex + the
+      combat mission hook finish it), active collect contract → walk to a
+      room whose search profiles yield the item and search, deliver when
+      carrying enough. Keeper tills: sales pay into the owner-agent's
+      wallet, buy-backs draw from it (floored at 0, skipped for
+      self-trades). Verified live: Brant and Old Pell both took
+      dockworker kill contracts and marched on the drone gulch; Juno
+      completed a mission and banked the pay
+- [x] Depth-gate bootstrap (owner said continue; smallest-change option):
+      a field gain blocked by the branch-investment gate now trains the
+      deepest ungated ANCESTOR instead — combat rises to 10, opening
+      combat.melee, which rises to 15, opening the leaves; fundamentals
+      never train past the next gate. Investment rule preserved; agent
+      Levels metric counts branch levels so bootstrap progress shows.
+      Verified live: Aldo Vex earned the world's first level (traversal 1)
+      by walking his errands. Revisit if you want option (b)/(c) instead
+
+- [x] World fleshing pass (owner ask): sci-fi arsenal — pulse pistol
+      (ammo-fed: consumes a charge_cell per shot, dry weapon adds nothing,
+      "clicks empty"), shock baton, scrap plate armor; food variety
+      (kelp bread, dried gullwing, stim shot); drop materials (drone core,
+      crab chitin, hound pelt, the Warden's lens). New mobs: grey gullwing
+      (neutral — ignores you unless you start it), razor crab + rust hound
+      (aggro), and the Cave Warden — a 60-hp boss construct guarding the
+      tide caves' humming thing, dropping its lens. Spawns across meadow/
+      shore/beach/forest/pier/orchard/caves; chandlery sells the arsenal,
+      grocers the food; factions hire against the new fauna (dockworkers:
+      hounds + crabs; union wants drone cores + chitin). Density 2.23.
+      Verified live: bought pistol + one cell (broke after), first shot
+      hit for 10, "That was your last charge cell", follow-ups clicked
+      empty at fist damage; two crabs killed, both dropped chitin;
+      gullwings coexisted peacefully; the Warden spawned in the caves
+
+- [x] Crafting + deconstruction (owner ask): recipes on ItemTemplate
+      (recipe inputs, yields batch size, scraps outputs) — recipes/craft/
+      deconstruct commands; equipped gear never counts as parts; crafting
+      trains the fabrication tree, deconstruct trains salvage.disassembly;
+      crafted/deconstructed counters. Recipes: charge cells 3-from-a-power-
+      cell, scrap blade, shock baton, scrap plate (3 chitin), pulse pistol;
+      warden lens + drone core deconstruct-only. Drop RATES (owner ask):
+      loot is now a drop table ({template, chance, count}; bare ids keep
+      legacy 60%) — drone 50% cell/15% core, gullwing 70%, crab 55%,
+      hound 65%, Warden 100% lens + 4 cells + 80% core. Verified live:
+      'charge cell x3' from one dead cell, plate from 3 chitin, strip
+      plate back to chitin, equipped pistol refused
+
+### Playtest punch list (2026-09-12, owner-ordered: most→least important)
+- [x] 1. Agents loot their kills (Body 'loot' reflex, inventory-capped) +
+      floor litter decays after 30 min (spawner sweep; drops timestamped).
+      Verified: 'Aldo Vex — loot: take sealed ration pack'
+- [x] 2. Single session per character — new login kicks the old socket with
+      a farewell line (kick-war with the auto-reconnecting player-ui tab
+      found and understood: sign out the tab when probing)
+- [x] 3. Embedded backend for the MAIN narration LLM — llm.toml
+      primary_backend="embedded" routes look/combat prose through the SAME
+      shared in-process GGUF the agent brains use (one model in RAM);
+      status endpoints report the embedded model. Agent sessions skip
+      narration entirely (their fight/look prose flooded the model and
+      stalled ticks 30s+ — found live, fixed)
+- [x] 4. Narration is now fire-and-forget and labeled 'The scene: ...' —
+      look answers instantly with the deterministic description
+- [x] 5. Achievements 4 → 17 (economy, crafting, living, survival, boss,
+      per-mob, scavenging, missions milestones)
+- [ ] 6. Rep-repair path (donate/fine) so a hated faction isn't a dead end
+- [x] Overnight soak telemetry (2026-09-12 night run): logs/events-YYYYMMDD.jsonl
+      — one JSON line per kill, death, trade, craft, deconstruct, rent,
+      mission completion, intent (incl. unparsed), voice/banter line, life
+      goal, and every agent action with room/hp/digi. Redis heatmaps
+      (heat:presence, heat:presence:<agent>, heat:kills, heat:deaths,
+      heat:trades, heat:kills_by:<name>) served at GET /admin/heatmaps.
+      progress_log cap raised 400→1600 (~26h). Morning analysis: read the
+      JSONL (pandas/grep), /admin/heatmaps, Stat board, shop ledgers, agent
+      memories + XP charts
+- [x] 7. help <command> shows that command's help + aliases
+- [x] 8. `map`/`chart` text command — zone chart with @/*/? markers
+- [x] 9. `stats` → score, `equipment`/`gear` → inventory aliases
+- [ ] 10. chat_message notice field rename (collides with plain text lines
+      in raw clients)
+- [ ] 11. Warden group-fight test once anyone can afford a loadout
+
+### worldforge-mcp gaps found building Tidegate Isle
+- [ ] create_room(from_room, from_dir) positions the room but does NOT create
+      the exit — every link needs a separate connect_rooms call; either add
+      link=True or document loudly
+- [ ] No collision check: two rooms can land on the same canvas x/y silently
+      (hit twice; had to set_room_position manually)
+- [ ] No MCP way to write features/search profiles, entity_spawns, hazards, or
+      ambient blocks — gameplay content still needs direct YAML edits
+- [ ] No cross-zone exit tool (set_exit is same-zone only) — AIpub link was a
+      manual YAML edit
+- [ ] No delete_zone / rename_zone tool (starter_zone removal was rm -rf)
+
 ### Player-UI wiring (from 2026-09-12 live playtest — panels are still mockups)
 - [x] Wire side panels to server state: character_snapshot now pushed after every
       command + effect tick (location/effects/inventory added); LOCATION, VITALS,
       INVENTORY, EFFECTS render live server state (verified in client + ws probe).
       Still fake: MAP / GLYPH LOADOUT / COMMS placeholders
-- [ ] Remove the demo "Corroded Junction" intro block pinned above the real narrative log
+- [x] Demo "Corroded Junction" intro block removed — DEFAULT_NARRATIVE is just
+      the connect line; log opens with the real room (verified live)
 - [x] Disconnect UX: "Connection to the station lost — reconnecting…" banner +
       2.5s auto-reconnect (verified live: kill server → banner, restart → clears)
 - [x] `examine` dead ends now list the room's examinable features (or say nothing
@@ -63,10 +230,14 @@ Test suites: server **150** pytest, WorldForge **34** vitest — all green.
 ### Near-term (small)
 - [ ] **README screenshots** — capture `docs/screenshots/player-client.png` and
       `worldforge-map-tool.png` (instructions in `docs/screenshots/README.md`)
-- [ ] worldforge-mcp `zone.yaml` shape alignment with the app scaffold
-      (neither currently satisfies `ZoneModel`'s required `description`)
-- [ ] `validate_zone` MCP tool (port the app's Validate-panel checks so
-      LLM-drafted zones catch bad entity/item/glyph references)
+- [x] worldforge-mcp `zone.yaml` shape alignment: create_zone always writes
+      id/name/description/depth_range (ZoneModel shape); app scaffold's
+      starter zone.yaml gains the same fields
+- [x] `validate_zone` MCP tool: ports the app Validate panel to Python —
+      descriptions, broken/self/asymmetric exits (one_way honoured),
+      orphans/disconnected, depth jumps, unknown entity templates, loot→item
+      refs, glyph prerequisites, feature density. Verified: starter_zone
+      clean (density 1.50), aipub flags 2 broken exits to deleted rooms
 
 ### Next structural tasks (each is one focused session)
 - [ ] WorldForge `rebuildGraph` split (~289 lines, five responsibilities —
@@ -74,8 +245,10 @@ Test suites: server **150** pytest, WorldForge **34** vitest — all green.
 - [ ] WorldForge jsdom/React-Flow test harness for ZoneEditor component tests
 - [ ] Server proficiencies typing pass (`dict[str, Any]` → TypedDicts) — wants
       mypy installed first
-- [ ] admin-ui `App.jsx` extraction (~3.4k lines → per-page components,
-      following the existing PlayerAccountsTab pattern)
+- [x] admin-ui `App.jsx` extraction: 3426 → 451 lines. adminCommon.jsx
+      (constants, ws helpers, icons, UI atoms, usePolledList) + src/pages/
+      {AiForge,Dashboard,Players,ContentLibrary,Server,Operations,StaffTeam}Page.
+      Build clean, every page click-verified live
 - [ ] `content_browser.py` package split (deferred as not-yet-friction)
 
 ### Agent NPCs (headless players — plan: .claude/plans, 2026-09-12)
@@ -89,11 +262,32 @@ Test suites: server **150** pytest, WorldForge **34** vitest — all green.
       reply gate (addressed by non-agent, 20s cooldown), sanitizer; degrade
       verified live (dead endpoint → '[no reply]' in POV, body unaffected).
       Positive path awaits a real local model in config/agents_llm.toml
-- [ ] M4 intent: wake queue → JSON goals compiled to Body scripts; memory ring
-      into prompts (needs the brain endpoint running to tune)
+- [x] Embedded brain backend + admin controls: llama-cpp-python in-process GGUF
+      inference (EmbeddedLLM, same generate_or_raise contract + own breaker;
+      optional dep `agents-embedded`); backend selectable lm_studio/ollama/
+      embedded from the Agents tab Brain panel (enable toggle, model path/URL,
+      one-shot "Test brain"); settings persist to config/agents_llm.toml and
+      apply live (AgentBrain.reconfigure). Verified live: backend switch saved,
+      test returns graceful "model file not found" with no GGUF present.
+      Positive path verified with Qwen2.5-3B-Instruct-Q4_K_M.gguf (~1.9 GB in
+      models/, gitignored): admin Test brain ✓ 2.16s; live in-game reply
+      ('Sela Varn says: "anythin needs doin?"' to an addressed say). M3 fully
+      closed; no external LLM process needed for agent voices
+- [x] M4 intent: when idle near a real player (90s/agent cooldown, one
+      generation in flight), the brain answers a JSON goal
+      (wander_to/hunt/rest/talk/scavenge/idle) parsed strictly and compiled
+      to a Body command script (BFS route_path for wander_to/hunt); memory
+      ring (agent_memories in stats blob, cap 40) feeds intent + voice
+      prompts and records decisions/completions; POV logs real intent
+      prompts. Verified live with embedded Qwen: Sela chose
+      '{"goal":"scavenge","why":"Find food to replenish health"}' → search
+      executed, goal cleared
+- [x] Durability: agent_state table (Alembic k4l5m6n7o8p9), flushed on the
+      60s persistence cadence; spawn restores stats/inventory/room, admin
+      Restart = reset-to-persona (row deleted). Verified: [restored] spawns
+      at drifted rooms after server restart
 - Phase 2 (explicitly later): pgvector memories + reflection, bonds→long goals,
-      trading, LOD scheduler for dozens+, world chronicle feed, PG agent_state
-      durability (agents currently reset to persona on server restart)
+      trading, LOD scheduler for dozens+, world chronicle feed
 
 ### Game content / product (the actual game)
 - [x] Player command surface v1 complete (2026-09-12 audit): use/eat, rest
@@ -101,7 +295,13 @@ Test suites: server **150** pytest, WorldForge **34** vitest — all green.
       weapon/armor slots feeding combat bonuses; canonical hp/max_hp seeded
       at bootstrap. Two gear items in the alcove search pool. (8 equip tests)
 - [ ] Glyph runtime (cast/inscribe) — glyph content exists, no engine yet
-- [ ] Party/channels backing for the Comms panel; real map data for Map panel
+- [x] Comms panel backed by real chat: say/tell emit chat_message client
+      notices (agents excluded), panel shows Local + Tells with a working
+      send box (say / tell passthrough); fake party roster removed — party
+      system itself is still future work. Verified live in browser + ws
+      (agent reply lands in Local). Map panel real too: zone rooms/edges
+      from editor positions in character_snapshot.map, visited tracking,
+      current-room marker follows moves
 - [ ] Flip `proficiency_combat_hybrid = false` once all 12 combat domains have
       leaf coverage, then delete the legacy stat path (pre-1.0 milestone)
 - [ ] Build out real zones/content (starter_zone currently minimal after
@@ -133,7 +333,8 @@ Epitaph-derived roadmap (design + priorities in `docs/design/EPITAPH_LESSONS.md`
       ambush (spawn-capable room + healthy player), mercy (supplies when hurt),
       dread (atmosphere). Live-verified ambush + dread firings (7 tests).
       LLM-narrated variants: later, modules are the hook point
-- [ ] Feature-density check in WorldForge Validate / `validate_zone` (small)
+- [x] Feature-density check: in app Validate (validation.js) and the
+      validate_zone MCP tool
 - [ ] UX niceties parked from the audit: redo, delete-key, bulk multi-select
       actions, keyboard-shortcut discoverability
 

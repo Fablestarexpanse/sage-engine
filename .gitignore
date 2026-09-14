@@ -41,3 +41,5 @@ config/redis.toml
 .DS_Store
 Thumbs.db
 .idea/
+config/agents_llm.toml
+models/

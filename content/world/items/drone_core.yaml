@@ -1,0 +1,9 @@
+id: drone_core
+name: intact drone core
+type: component
+description: A feral drone's processor core, still warm. The Salvage Union pays
+  well for ones that haven't been hammered out of a hull.
+value: 20
+weight: 0.6
+tags: [component, salvage]
+scraps: {power_cell: 1, charge_cell: 2}

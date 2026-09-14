@@ -1,0 +1,8 @@
+id: regular
+name: The Regular
+story: ate, drank, and kept coming back
+level: minor
+criteria:
+  items_used: 10
+category: [living]
+instructions: Consume 10 items.

@@ -96,5 +96,8 @@ def test_repo_personas_load():
     names = {p.name for p in reg.all()}
     assert {"Sela Varn", "Brant Okoro", "Tessa Moke"} <= names
     sela = reg.get("sela_varn")
-    assert sela is not None and sela.gear == {"weapon": "scrap_blade"}
+    # Gear is persona content (agents currently start empty-handed); only
+    # the shape is contract.
+    assert sela is not None and isinstance(sela.gear, dict)
+    assert set(sela.attributes) <= {"FRT", "RFX", "ACU", "RSV", "PRS"}
     assert reg.get("Sela Varn") is sela

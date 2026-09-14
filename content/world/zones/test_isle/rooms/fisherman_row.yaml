@@ -1,0 +1,43 @@
+id: test_isle:fisherman_row
+zone: test_isle
+type: chamber
+depth: 1
+description:
+  base: A crooked line of shacks leaning shoulder to shoulder along the waterfront,
+    nets drying between them like grey laundry. Fisherfolk mend gear on their stoops
+    and trade weather lies.
+exits:
+  west:
+    destination: test_isle:harbor_docks
+    description: ''
+  east:
+    destination: test_isle:fishing_pier
+    description: ''
+  south:
+    destination: test_isle:bunkhouse
+    description: 'A lantern-lit door under a sign: TIDEWATER BUNKHOUSE — BEDS BY THE
+      NIGHT.'
+features:
+- id: drying_nets
+  name: drying nets
+  keywords:
+  - nets
+  - net
+  description: Nets strung shack to shack, beaded with scale-glitter. Odd things come
+    up in nets.
+  search:
+    items:
+    - ration_pack
+    max_finds: 2
+    respawn_s: 1200
+    chance: 0.35
+entity_spawns: []
+hazards: []
+tags: []
+name: Fisherman's Row
+ambient:
+  min_interval: 35
+  max_interval: 95
+  lines:
+  - Someone guts fish on a stoop, flicking the heads to a patient cat.
+  - Two fisherfolk swap the same storm story, sizes rising.

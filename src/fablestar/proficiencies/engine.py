@@ -142,8 +142,23 @@ class ProficiencyEngine:
         if self._state(stats, leaf_id) != "raise":
             return GainResult(False, "leaf_not_raise_state")
         self._ensure_internal_chain(stats, leaf_id)
-        if not self._gate_ok(stats, leaf_id):
-            return GainResult(False, "depth_gate")
+
+        # Gate bootstrap (2026-09-12): the branch-investment gate previously
+        # dead-ended field play — a tier-3 leaf needs its parent at 15, but no
+        # in-game path raised parents, so nobody ever gained anything. Now a
+        # gated attempt trains the deepest UNGATED ancestor instead:
+        # fundamentals rise (combat, then combat.melee) until each gate opens,
+        # then specialization begins. The investment rule itself is unchanged.
+        gain_target = leaf_id
+        child_of_target = None
+        while True:
+            tier = len(gain_target.split("."))
+            node = self.registry.get_node(gain_target)
+            parent_id = node.parent_id if node else None
+            if not parent_id or self._level(stats, parent_id) >= tier * 5:
+                break  # this node's own gate is satisfied (or it is a root)
+            child_of_target = gain_target
+            gain_target = parent_id
 
         if field_success is True:
             success = True
@@ -160,15 +175,23 @@ class ProficiencyEngine:
         if not success:
             return GainResult(False, "field_roll_failed")
 
-        cur = self._level(stats, leaf_id)
-        if cur >= self.LEAF_CAP:
+        cur = self._level(stats, gain_target)
+        if gain_target == leaf_id and cur >= self.LEAF_CAP:
             return GainResult(False, "leaf_cap")
+        if gain_target != leaf_id and child_of_target is not None:
+            # A branch only ever needs child_tier*5 to open the next gate;
+            # never train fundamentals past that from the field.
+            need = len(child_of_target.split(".")) * 5
+            if cur >= need:
+                return GainResult(False, "depth_gate")
 
         if total_proficiency_levels(stats, None, registry=self.registry) >= self.TOTAL_CAP:
             return GainResult(False, "resonance_cap")
 
-        self._set_level(stats, leaf_id, cur + 1, bump_peak=True)
+        self._set_level(stats, gain_target, cur + 1, bump_peak=True)
         self._enforce_total_cap(stats)
+        if gain_target != leaf_id:
+            return GainResult(True, "parent_gained", delta_levels=1)
         return GainResult(True, "gained", delta_levels=1)
 
     def try_mentored_gain(

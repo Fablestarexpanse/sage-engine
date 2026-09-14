@@ -107,6 +107,35 @@ class TestSessionManager(unittest.TestCase):
         self.assertEqual(p1.sent, [])
         self.assertEqual(p2.sent, ["psst\r\n"])
 
+    def test_kicked_session_no_longer_owns_player(self) -> None:
+        asyncio.run(self._kicked_not_owner())
+
+    async def _kicked_not_owner(self) -> None:
+        mgr = SessionManager()
+        old = await mgr.create_session(StubProtocol())  # type: ignore[arg-type]
+        mgr.link_player(old.id, "frank")
+        self.assertTrue(mgr.owns_player(old))
+        new = await mgr.create_session(StubProtocol())  # type: ignore[arg-type]
+        self.assertTrue(await mgr.kick_existing("frank"))
+        # Before the new login links, the evicted session must already refuse cleanup.
+        self.assertFalse(mgr.owns_player(old))
+        mgr.link_player(new.id, "frank")
+        self.assertTrue(mgr.owns_player(new))
+        await mgr.destroy_session(old.id)
+        self.assertEqual(mgr.player_to_session.get("frank"), new.id)
+
+    def test_destroy_leaves_newer_mapping(self) -> None:
+        asyncio.run(self._destroy_leaves_newer())
+
+    async def _destroy_leaves_newer(self) -> None:
+        mgr = SessionManager()
+        a = await mgr.create_session(StubProtocol())  # type: ignore[arg-type]
+        b = await mgr.create_session(StubProtocol())  # type: ignore[arg-type]
+        mgr.link_player(a.id, "gina")
+        mgr.link_player(b.id, "gina")
+        await mgr.destroy_session(a.id)
+        self.assertEqual(mgr.player_to_session.get("gina"), b.id)
+
 
 if __name__ == "__main__":
     unittest.main()

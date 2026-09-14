@@ -1,5 +1,8 @@
 # Phase 01: Parser + Registry Tests
 
+> **Historical record (marked 2026-09-13).** Kept as written for the reasoning trail; do not
+> treat as current instructions. Superseded by: `docs/dev/milestones/M2-sage-decoupling/` (it remains a good example of the phase-doc format).
+
 **Milestone:** M1 — Code Quality Foundation
 **Status:** done
 **Depends on:** none

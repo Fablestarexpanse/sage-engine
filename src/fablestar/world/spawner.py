@@ -14,6 +14,9 @@ logger = logging.getLogger(__name__)
 
 # Check spawns every 20 ticks (~5 seconds at 4Hz)
 SPAWN_CHECK_INTERVAL = 20
+# Floor items rot: sweep every ~2 min, delete drops older than 30 min.
+LITTER_SWEEP_INTERVAL = 480
+LITTER_TTL_S = 30 * 60
 
 
 class EntitySpawnManager:
@@ -46,6 +49,36 @@ class EntitySpawnManager:
         for room_id in occupied_rooms:
             await self._check_spawns(room_id)
 
+        if tick_count % LITTER_SWEEP_INTERVAL == 0:
+            await self._sweep_litter()
+
+    async def _sweep_litter(self):
+        """Delete floor items past their TTL so the world doesn't silt up."""
+        import time as _time
+
+        now = int(_time.time())
+        removed = 0
+        try:
+            async for key in self.server.redis.client.scan_iter(match="room:*:items", count=200):
+                key_str = key.decode() if isinstance(key, bytes) else key
+                room_id = key_str[len("room:") : -len(":items")]
+                for iid in await self.server.redis.get_room_items(room_id):
+                    iid = iid.decode() if isinstance(iid, bytes) else iid
+                    state = await self.server.redis.get_item_state(iid)
+                    if state is None:
+                        # Orphaned reference — clear it either way.
+                        await self.server.redis.remove_item_from_room(iid, room_id)
+                        continue
+                    dropped_at = int(state.get("dropped_at", 0) or 0)
+                    if dropped_at and now - dropped_at > LITTER_TTL_S:
+                        await self.server.redis.remove_item_from_room(iid, room_id)
+                        await self.server.redis.delete_item_state(iid)
+                        removed += 1
+        except Exception:
+            logger.debug("litter sweep failed", exc_info=True)
+        if removed:
+            logger.info("Litter sweep: %d stale floor items reclaimed by the tide", removed)
+
     # ------------------------------------------------------------------
     # Internal spawn logic
     # ------------------------------------------------------------------
@@ -56,7 +89,7 @@ class EntitySpawnManager:
             return
 
         for spawn_def in room.entity_spawns:
-            current_count = await self._count_template_in_room(room_id, spawn_def.template)
+            current_count = await self.count_template_in_room(room_id, spawn_def.template)
             if current_count >= spawn_def.max_count:
                 continue
             if random.random() > spawn_def.chance:
@@ -65,7 +98,7 @@ class EntitySpawnManager:
             if entity_id:
                 logger.debug(f"Spawner: spawned {spawn_def.template} ({entity_id}) in {room_id}")
 
-    async def _count_template_in_room(self, room_id: str, template: str) -> int:
+    async def count_template_in_room(self, room_id: str, template: str) -> int:
         entity_ids = await self.server.redis.get_room_entities(room_id)
         count = 0
         for eid in entity_ids:
@@ -97,7 +130,7 @@ class EntitySpawnManager:
             "attack": stats.get("attack", 3),
             "defense": stats.get("defense", 1),
             "alive": True,
-            "loot": list(tmpl.loot),
+            "loot": [e.model_dump() for e in tmpl.loot],
             "faction": tmpl.faction or "",
         }
         await self.server.redis.set_entity_state(entity_id, state)
@@ -123,9 +156,17 @@ class EntitySpawnManager:
             return []
 
         dropped: list[str] = []
-        for item_template_id in state.get("loot", []):
-            if random.random() < 0.6:  # 60% drop chance per loot entry
-                item_id = await self._drop_item(room_id, item_template_id)
+        for entry in state.get("loot", []):
+            # Drop-table rows carry their own chance/count; bare template ids
+            # (pre-rate entity states still in Redis) keep the legacy 60%.
+            if isinstance(entry, str):
+                entry = {"template": entry}
+            chance = float(entry.get("chance", 0.6))
+            count = int(entry.get("count", 1))
+            if random.random() >= chance:
+                continue
+            for _ in range(max(1, count)):
+                item_id = await self._drop_item(room_id, entry.get("template", ""))
                 if item_id:
                     dropped.append(item_id)
 
@@ -137,6 +178,8 @@ class EntitySpawnManager:
         if not tmpl:
             return None
         item_id = f"{template_id}_{uuid.uuid4().hex[:8]}"
+        import time as _time
+
         item_state: ItemState = {
             "id": item_id,
             "template": template_id,
@@ -145,6 +188,7 @@ class EntitySpawnManager:
             "description": tmpl.description,
             "value": tmpl.value,
             "weight": tmpl.weight,
+            "dropped_at": int(_time.time()),
         }
         await self.server.redis.set_item_state(item_id, item_state)
         await self.server.redis.add_item_to_room(item_id, room_id)

@@ -1,0 +1,18 @@
+id: cave_warden
+name: the Cave Warden
+type: construct
+description:
+  short: A hulking machine guardian, weed-shrouded and awake.
+  long: The half-buried thing in the tide caves has a body after all — a hulking
+    maintenance frame dragged upright, hung with phosphorescent weed, its great
+    amber eye tracking anything that comes near the humming heart it guards.
+stats:
+  hp: 60
+  max_hp: 60
+  attack: 7
+  defense: 3
+tags: [mechanical, hostile, boss]
+loot:
+- {template: warden_lens, chance: 1.0}
+- {template: drone_core, chance: 0.8}
+- {template: charge_cell, chance: 1.0, count: 4}

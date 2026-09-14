@@ -28,6 +28,9 @@ class Session:
         self.state = SessionState.CONNECTED
         self.player_id: str | None = None
         self.last_activity = 0.0  # Will be updated with monotonic time
+        # Set when a newer login for the same character evicts this session;
+        # the character's shared state then belongs to the new session.
+        self.superseded = False
 
     async def send(self, message: str):
         """Send raw text to the client, adding a newline."""
@@ -40,6 +43,21 @@ class Session:
         if self.protocol.is_connected:
             prompt = "\r\n> "  # Default prompt
             await self.protocol.send(prompt)
+
+    async def end(self, reason: str, text: str | None = None):
+        """Close with a reason the web client can act on.
+
+        reason: "quit" | "died" | "replaced". The client auto-reconnects after
+        a drop or a death (respawn) but must not after quit or being replaced,
+        or two tabs on one character kick each other forever.
+        """
+        if text:
+            await self.send(text)
+        if not getattr(self, "is_agent", False):
+            import json
+
+            await self.send(json.dumps({"client_notice": "session_end", "reason": reason}))
+        await self.close()
 
     async def close(self):
         """Gracefully close the session."""
@@ -72,7 +90,7 @@ class SessionManager:
         """Remove a session from tracking."""
         if session_id in self.sessions:
             session = self.sessions[session_id]
-            if session.player_id and session.player_id in self.player_to_session:
+            if session.player_id and self.player_to_session.get(session.player_id) == session_id:
                 del self.player_to_session[session.player_id]
 
             await session.close()
@@ -85,6 +103,33 @@ class SessionManager:
         if session_id:
             return self.sessions.get(session_id)
         return None
+
+    async def kick_existing(self, player_id: str) -> bool:
+        """One session per character: close any live session already playing it."""
+        old_id = self.player_to_session.get(player_id)
+        if not old_id or old_id not in self.sessions:
+            return False
+        old = self.sessions[old_id]
+        old.superseded = True
+        # Don't touch Redis room state — the new session inherits the same
+        # character position; only the old socket dies.
+        self.player_to_session.pop(player_id, None)
+        try:
+            await old.end(
+                "replaced",
+                "\r\nThis character just signed in from another connection. Goodbye.",
+            )
+        except Exception:
+            pass
+        self.sessions.pop(old_id, None)
+        logger.info("Kicked prior session %s for %s (new login)", old_id, player_id)
+        return True
+
+    def owns_player(self, session: Session) -> bool:
+        """True while this session is the live owner of its character's shared state."""
+        if session.superseded or not session.player_id:
+            return False
+        return self.player_to_session.get(session.player_id) in (None, session.id)
 
     def link_player(self, session_id: str, player_id: str):
         """Link a session to a player ID once authenticated."""

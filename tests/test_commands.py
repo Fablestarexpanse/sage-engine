@@ -143,12 +143,28 @@ class TestFlee(CommandTestCase):
         )
         self.server.content_loader.rooms[ROOM_NORTH] = _room(ROOM_NORTH)
 
+    async def _add_threat(self) -> None:
+        await self.server.redis.set_entity_state("drone_1", {"name": "drone", "alive": True})
+        await self.server.redis.add_entity_to_room("drone_1", ROOM)
+
+    def test_flee_needs_a_threat(self) -> None:
+        asyncio.run(self._flee_no_threat())
+
+    async def _flee_no_threat(self) -> None:
+        self._arm_room_with_exit()
+        await self.server.redis.set_player_location("tester", ROOM)
+        session = StubSession()
+        await flee(session, [])  # type: ignore[arg-type]
+        self.assertEqual(await self.server.redis.get_player_location("tester"), ROOM)
+        self.assertTrue(any("nothing here to flee from" in m for m in session.sent))
+
     def test_flee_success_moves_player(self) -> None:
         asyncio.run(self._flee_success())
 
     async def _flee_success(self) -> None:
         self._arm_room_with_exit()
         await self.server.redis.set_player_location("tester", ROOM)
+        await self._add_threat()
         session = StubSession()
         with mock.patch.object(combat_mod.random, "random", return_value=0.0):
             await flee(session, [])  # type: ignore[arg-type]
@@ -161,6 +177,7 @@ class TestFlee(CommandTestCase):
     async def _flee_failure(self) -> None:
         self._arm_room_with_exit()
         await self.server.redis.set_player_location("tester", ROOM)
+        await self._add_threat()
         session = StubSession()
         with mock.patch.object(combat_mod.random, "random", return_value=0.9):
             await flee(session, [])  # type: ignore[arg-type]
@@ -173,6 +190,7 @@ class TestFlee(CommandTestCase):
     async def _flee_nowhere(self) -> None:
         self.server.content_loader.rooms[ROOM] = _room()  # no exits
         await self.server.redis.set_player_location("tester", ROOM)
+        await self._add_threat()
         session = StubSession()
         await flee(session, [])  # type: ignore[arg-type]
         self.assertTrue(any("nowhere to flee" in m for m in session.sent))

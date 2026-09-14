@@ -36,7 +36,21 @@ def _ambush_interest(ctx: dict[str, Any]) -> int:
 
 async def _ambush_fire(server, session, ctx: dict[str, Any]) -> bool:
     room = ctx["room"]
-    spawn = room.entity_spawns[0]
+    spawn = None
+    for candidate in room.entity_spawns:
+        tmpl = server.content_loader.get_entity_template(candidate.template)
+        # Only something hostile "lunges"; the room's own cap still holds, or
+        # every healthy passer-by stacks another mob into the room.
+        if tmpl is None or "hostile" not in (tmpl.tags or set()):
+            continue
+        if await server.spawner.count_template_in_room(ctx["room_id"], candidate.template) >= (
+            candidate.max_count
+        ):
+            continue
+        spawn = candidate
+        break
+    if spawn is None:
+        return False
     entity_id = await server.spawner.spawn_entity(ctx["room_id"], spawn.template)
     if not entity_id:
         return False

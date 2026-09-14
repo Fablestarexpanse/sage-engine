@@ -2,6 +2,8 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { usePlayTheme } from "./PlayThemeContext.jsx";
 import {
   playLogin,
+  playDevLogin,
+  playDevStatus,
   playRegister,
   playWebSocketUrl,
   playMediaUrl,
@@ -370,6 +372,33 @@ function AuthSignInForm({ onLoggedIn }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [devEnabled, setDevEnabled] = useState(false);
+  const [devName, setDevName] = useState("Dev Tester");
+
+  useEffect(() => {
+    let alive = true;
+    playDevStatus().then((ok) => alive && setDevEnabled(ok));
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const devLogin = async () => {
+    setError("");
+    setBusy(true);
+    try {
+      const res = await playDevLogin(devName.trim());
+      if (!res.ok) {
+        setError(res.error || "Dev login failed");
+        setBusy(false);
+        return;
+      }
+      onLoggedIn(mapPlayAuthPayload(res), "", res.character_id);
+    } catch (err) {
+      setError(err.message || "Network error — is the Nexus running?");
+    }
+    setBusy(false);
+  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -458,6 +487,54 @@ function AuthSignInForm({ onLoggedIn }) {
             {busy ? "…" : "Sign in"}
           </button>
         </form>
+        {devEnabled && (
+          <div
+            data-testid="dev-login"
+            style={{
+              marginTop: 16,
+              padding: "10px",
+              borderRadius: T.radius.md,
+              border: `1px dashed ${T.glyph.amber}`,
+              background: T.bg.surface,
+            }}
+          >
+            <label style={{ display: "block", fontSize: 10, color: T.glyph.amber, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>
+              Dev login (no password, localhost only)
+            </label>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input
+                aria-label="Dev character name"
+                value={devName}
+                onChange={(e) => setDevName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    devLogin();
+                  }
+                }}
+                style={{ ...authInputStyle, marginBottom: 0, flex: 1 }}
+              />
+              <button
+                type="button"
+                disabled={busy || devName.trim().length < 2}
+                onClick={devLogin}
+                style={{
+                  padding: "0 14px",
+                  borderRadius: T.radius.md,
+                  border: `1px solid ${T.glyph.amber}`,
+                  background: "transparent",
+                  color: T.glyph.amber,
+                  fontWeight: 700,
+                  fontFamily: T.font.body,
+                  fontSize: 12,
+                  cursor: busy ? "wait" : "pointer",
+                }}
+              >
+                Play
+              </button>
+            </div>
+          </div>
+        )}
         <AuthNavLinks>
           <AuthTextLink href="#/register">New conduit? Create account</AuthTextLink>
           <AuthTextLink href="#/">Back to welcome</AuthTextLink>
@@ -565,9 +642,9 @@ function AuthRegisterForm({ onLoggedIn }) {
 function PlayAuthFlow({ onLoggedIn }) {
   const route = useHashAuthRoute();
   const finish = useCallback(
-    (payload, pw) => {
+    (payload, pw, autoCharacterId) => {
       window.location.hash = "#/";
-      onLoggedIn(payload, pw);
+      onLoggedIn(payload, pw, autoCharacterId);
     },
     [onLoggedIn]
   );
@@ -903,7 +980,8 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
             starterMsg = `Each skill can be at most 5 at creation (${err.slice("level_out_of_range:".length)}).`;
         }
         const map = {
-          invalid_character_name: "Use 2–50 characters: letters, numbers, spaces, _ -",
+          invalid_character_name: "Use 2–50 characters: letters, numbers, single spaces, _ - (start and end with a letter or number)",
+          character_name_reserved: "That name is reserved. Pick another.",
           character_name_taken: "That character name is already taken.",
           character_limit: "Maximum characters per account reached.",
           invalid_credentials: "Session expired — sign in again.",
@@ -1898,13 +1976,25 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
   );
 }
 
+const MAX_NARRATIVE_LINES = 1500;
+
 export default function App() {
   const [step, setStep] = useState("login");
   const [auth, setAuth] = useState(null);
   const passwordRef = useRef("");
   const [playSession, setPlaySession] = useState(null);
-  const [narrativeLines, setNarrativeLines] = useState(() => [...DEFAULT_NARRATIVE]);
+  const [narrativeLines, setNarrativeLinesRaw] = useState(() => [...DEFAULT_NARRATIVE]);
+  // The log is append-only for hours of play; keep the DOM bounded.
+  const setNarrativeLines = useCallback((update) => {
+    setNarrativeLinesRaw((prev) => {
+      const next = typeof update === "function" ? update(prev) : update;
+      return next.length > MAX_NARRATIVE_LINES ? next.slice(-MAX_NARRATIVE_LINES) : next;
+    });
+  }, []);
   const [wsConnected, setWsConnected] = useState(false);
+  // Set when the server ended the session on purpose (quit, signed in elsewhere,
+  // login refused): show why and wait for the player instead of auto-reconnecting.
+  const [wsStopped, setWsStopped] = useState(null);
   const [wsRetry, setWsRetry] = useState(0); // bumped by onclose to trigger auto-reconnect
   const wsRef = useRef(null);
   const [playerScenePath, setPlayerScenePath] = useState(null);
@@ -1937,7 +2027,10 @@ export default function App() {
     setAuth((a) => (a ? { ...a, characters: chars } : a));
   }, []);
 
-  const onLoggedIn = useCallback((a, pw) => {
+  // Dev login names its character up front; skip the chooser for it.
+  const devAutoCharacterRef = useRef(null);
+  const onLoggedIn = useCallback((a, pw, autoCharacterId) => {
+    devAutoCharacterRef.current = autoCharacterId ?? null;
     passwordRef.current = pw;
     setAuth(a);
     setEchoEconomy({
@@ -2064,13 +2157,34 @@ export default function App() {
   );
 
   useEffect(() => {
+    if (step !== "choose" || !auth || devAutoCharacterRef.current == null) return;
+    const ch = (auth.characters || []).find((c) => c.id === devAutoCharacterRef.current);
+    devAutoCharacterRef.current = null;
+    if (!ch) return;
+    onChosen({
+      characterId: ch.id,
+      characterName: ch.name,
+      password: "",
+      portraitUrl: ch.portrait_url ?? null,
+      digiBalance: typeof ch.digi_balance === "number" ? ch.digi_balance : 0,
+      pvpEnabled: Boolean(ch.pvp_enabled),
+      reputation: typeof ch.reputation === "number" ? ch.reputation : 0,
+      lastSceneImageUrl: ch.last_scene_image_url ?? null,
+      characterStats: ch.stats ?? null,
+      resonanceLevelsTotal: typeof ch.resonance_levels_total === "number" ? ch.resonance_levels_total : null,
+    });
+  }, [step, auth, onChosen]);
+
+  useEffect(() => {
     if (step !== "play" || !playSession) return undefined;
     const url = playWebSocketUrl();
     const ws = new WebSocket(url);
     wsRef.current = ws;
+    let endReason = null;
 
     ws.onopen = () => {
       setWsConnected(true);
+      setWsStopped(null);
       const token = getPlayToken();
       const payload = token
         ? { token }
@@ -2088,7 +2202,12 @@ export default function App() {
         const j = JSON.parse(trimmed);
         if (j && j.ok === false) {
           setNarrativeLines((prev) => [...prev, { type: "alert", text: `Connection refused: ${j.error}`, level: "danger" }]);
+          endReason = "refused";
           ws.close();
+          return;
+        }
+        if (j && j.client_notice === "session_end") {
+          endReason = typeof j.reason === "string" ? j.reason : null;
           return;
         }
         if (j && j.client_notice === "echo_credits_granted") {
@@ -2108,6 +2227,26 @@ export default function App() {
           setNarrativeLines((prev) => [...prev, { type: "pixel_grant", text: msg }]);
           return;
         }
+        if (j && j.client_notice === "chat_message") {
+          setPlaySession((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  chatMessages: [
+                    ...(prev.chatMessages || []).slice(-99),
+                    {
+                      channel: j.channel === "tell" ? "tell" : "local",
+                      from: String(j.from || "?"),
+                      text: String(j.text || ""),
+                      self: Boolean(j.self),
+                      at: typeof j.at === "number" ? j.at : Date.now() / 1000,
+                    },
+                  ],
+                }
+              : prev
+          );
+          return;
+        }
         if (j && j.client_notice === "character_snapshot") {
           setPlaySession((prev) =>
             prev
@@ -2119,6 +2258,7 @@ export default function App() {
                   liveLocation: j.location && typeof j.location === "object" ? j.location : prev.liveLocation,
                   liveEffects: Array.isArray(j.effects) ? j.effects : prev.liveEffects,
                   liveInventory: Array.isArray(j.inventory) ? j.inventory : prev.liveInventory,
+                  liveMap: j.map && typeof j.map === "object" ? j.map : prev.liveMap,
                 }
               : prev
           );
@@ -2161,8 +2301,17 @@ export default function App() {
     ws.onclose = () => {
       setWsConnected(false);
       wsRef.current = null;
-      // Auto-reconnect: bump wsRetry to re-run this effect. Without it a
-      // server restart left a dead socket silently eating commands.
+      const stopped = {
+        quit: "You left the station.",
+        replaced: "This character signed in from another window or device.",
+        refused: "The station refused this login.",
+      }[endReason];
+      if (stopped) {
+        setWsStopped(stopped);
+        return;
+      }
+      // Auto-reconnect after a drop or a death (the server respawns you on
+      // login). Without it a server restart left a dead socket eating commands.
       retryTimer = setTimeout(() => setWsRetry((n) => n + 1), 2500);
     };
 
@@ -2301,11 +2450,18 @@ export default function App() {
             liveLocation: playSession.liveLocation ?? null,
             liveEffects: playSession.liveEffects ?? null,
             liveInventory: playSession.liveInventory ?? null,
+            liveMap: playSession.liveMap ?? null,
+            chatMessages: playSession.chatMessages ?? null,
           }}
           onSignOut={onSignOut}
           narrativeLines={narrativeLines}
           onSendCommand={onSendCommand}
           wsConnected={wsConnected}
+          wsStopped={wsStopped}
+          onReconnect={() => {
+            setWsStopped(null);
+            setWsRetry((n) => n + 1);
+          }}
           sceneImageUrl={resolvedSceneImageUrl}
           sceneRoomLabel={import.meta.env.VITE_SCENE_ROOM_LABEL || undefined}
           sceneDownloadBaseName={`fablestar-scene-${String(playSession.characterName || "character").replace(/[^a-zA-Z0-9_-]+/g, "_")}`}

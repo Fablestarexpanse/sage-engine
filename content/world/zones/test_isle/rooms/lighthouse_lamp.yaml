@@ -1,0 +1,37 @@
+id: test_isle:lighthouse_lamp
+zone: test_isle
+type: chamber
+depth: 2
+description:
+  base: 'The glass crown of the island. The great lamp is dead, its lens crazed with salt, but the view
+    runs the whole isle: harbor smoke south, the gulch''s wreck-glint east, and sea in every other direction
+    until the world gives up.'
+exits:
+  down:
+    destination: test_isle:old_lighthouse
+    description: A spiral stair climbs the tower's throat.
+features:
+- id: dead_lamp
+  name: the dead lamp
+  keywords:
+  - lamp
+  - lens
+  - glass
+  description: A lens the size of a rowboat, crazed white with salt. Its cradle still turns freely — the
+    light wants only power.
+  search:
+    items:
+    - power_cell
+    max_finds: 1
+    respawn_s: 3600
+    chance: 0.3
+entity_spawns: []
+hazards: []
+tags: []
+name: Lighthouse Lamp Room
+ambient:
+  min_interval: 45
+  max_interval: 120
+  lines:
+  - Wind flutes through a cracked pane.
+  - The whole island lies below, minding its business.

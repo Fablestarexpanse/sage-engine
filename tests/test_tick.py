@@ -61,6 +61,40 @@ class TestTickManager(unittest.TestCase):
         await asyncio.wait_for(tm.run(), timeout=2.0)
         self.assertGreaterEqual(len(good_calls), 2)
 
+    def test_handler_exception_is_logged_with_handler_name(self) -> None:
+        asyncio.run(self._exception_logged())
+
+    async def _exception_logged(self) -> None:
+        tm = TickManager(tick_rate=0.01)
+
+        async def exploding_job(tick: int) -> None:
+            tm.stop()
+            raise RuntimeError("boom")
+
+        tm.register(exploding_job)
+        with self.assertLogs("fablestar.core.tick", level="ERROR") as logs:
+            await asyncio.wait_for(tm.run(), timeout=2.0)
+        text = "\n".join(logs.output)
+        self.assertIn("exploding_job", text)
+        self.assertIn("boom", text)
+
+    def test_repeated_handler_error_logged_once(self) -> None:
+        asyncio.run(self._repeat_quiet())
+
+    async def _repeat_quiet(self) -> None:
+        tm = TickManager(tick_rate=0.001)
+
+        async def broken_every_tick(tick: int) -> None:
+            if tick >= 5:
+                tm.stop()
+            raise RuntimeError("same")
+
+        tm.register(broken_every_tick)
+        with self.assertLogs("fablestar.core.tick", level="ERROR") as logs:
+            await asyncio.wait_for(tm.run(), timeout=2.0)
+        failures = [line for line in logs.output if "broken_every_tick" in line]
+        self.assertEqual(len(failures), 1)
+
     def test_run_with_no_handlers(self) -> None:
         asyncio.run(self._no_handlers())
 

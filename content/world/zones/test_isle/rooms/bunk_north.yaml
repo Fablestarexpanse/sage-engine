@@ -1,0 +1,17 @@
+id: test_isle:bunk_north
+zone: test_isle
+type: safe
+depth: 1
+description:
+  base: A curtained sleeping nook barely wider than its straw mattress. A shelf holds
+    a candle stub and a previous tenant's carved initials. Quiet enough to hear the
+    tide.
+exits:
+  north:
+    destination: test_isle:bunkhouse
+    description: ''
+features: []
+entity_spawns: []
+hazards: []
+tags: []
+name: Harbor Bunk

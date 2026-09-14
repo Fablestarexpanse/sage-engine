@@ -1,9 +1,9 @@
 id: brant_okoro
 name: Brant Okoro
-spawn_room: starter_zone:plaza
+spawn_room: test_isle:harbor_docks
 enabled: true
 temperament: {warmth: 0.4, caution: 0.8, ambition: 0.3, humor: 0.2}
-wants: to keep the plaza quiet and the shutters unbroken
+wants: to keep the harbor quiet and the manifests honest
 fears: another breach like the one that took his crew
 speech: slow, formal, counts things out loud when nervous
 baseline_mood: {valence: -0.1, arousal: 0.2}
@@ -11,6 +11,8 @@ hard_facts:
   - "profession: dock steward"
   - "faction: dockworkers"
   - "walks with a limp"
-routine: [plaza, station_street, entrance, station_street]
-gear: {armor: padded_vest}
+routine: [harbor_docks, ferry_landing, harbor_docks, warehouse, harbor_docks, south_road, town_plaza, south_road]
+gear: {}
 stats: {hp: 80, max_hp: 80}
+attributes: {FRT: 14, RFX: 8, ACU: 9, RSV: 13, PRS: 10}
+digi: 35

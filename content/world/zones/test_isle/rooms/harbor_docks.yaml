@@ -1,0 +1,45 @@
+id: test_isle:harbor_docks
+zone: test_isle
+type: corridor
+depth: 1
+description:
+  base: Crates, coiled rope, and rusting winches crowd a long stone quay. Gulls fight over fish guts by
+    the mooring posts, and dockworkers haul cargo between the warehouse and whatever boat limped in last.
+exits:
+  south:
+    destination: test_isle:ferry_landing
+    description: ''
+  west:
+    destination: test_isle:warehouse
+    description: ''
+  east:
+    destination: test_isle:fisherman_row
+    description: ''
+  north:
+    destination: test_isle:south_road
+    description: ''
+features:
+- id: cargo_crates
+  name: stacked cargo crates
+  keywords:
+  - crates
+  - cargo
+  - stack
+  description: Crates stenciled with a dozen shipping marks, some so old the ports they name are gone.
+  search:
+    items:
+    - ration_pack
+    max_finds: 2
+    respawn_s: 900
+    chance: 0.4
+entity_spawns: []
+hazards: []
+tags: []
+name: Harbor Docks
+ambient:
+  min_interval: 35
+  max_interval: 95
+  lines:
+  - A winch chain rattles taut, hauls, and slacks again.
+  - Dockworkers argue amiably about whose turn it isn't.
+  - Bilge water slaps against the quay stones.

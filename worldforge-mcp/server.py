@@ -694,14 +694,15 @@ def get_zone(zone_id: str) -> dict[str, Any]:
 
 
 @mcp.tool()
-def create_zone(zone_id: str, *, display_name: str = "") -> str:
+def create_zone(zone_id: str, *, display_name: str = "", description: str = "") -> str:
     """
     Create a new zone (map area). Zone ID is the folder name used in all room IDs.
     After creating, use create_room to populate it.
 
     Args:
         zone_id:      Slug, e.g. "space_station_alpha". Letters, numbers, _ and - only.
-        display_name: Human-readable name written to zone.yaml (optional).
+        display_name: Human-readable name written to zone.yaml (defaults to the slug titled).
+        description:  One-line zone description written to zone.yaml.
     """
     _require_slug(zone_id)
     zd = _zone_dir(zone_id)
@@ -709,9 +710,15 @@ def create_zone(zone_id: str, *, display_name: str = "") -> str:
         return f"Zone '{zone_id}' already exists"
     zd.mkdir(parents=True)
     (zd / "rooms").mkdir()
-    if display_name:
-        with open(zd / "zone.yaml", "w", encoding="utf-8") as f:
-            yaml.dump({"id": zone_id, "name": display_name}, f, allow_unicode=True, sort_keys=False)
+    # Always write zone.yaml in the server's ZoneModel shape (id/name/description).
+    meta = {
+        "id": zone_id,
+        "name": display_name or zone_id.replace("_", " ").replace("-", " ").title(),
+        "description": description or f"The {display_name or zone_id.replace('_', ' ')} area.",
+        "depth_range": [1, 3],
+    }
+    with open(zd / "zone.yaml", "w", encoding="utf-8") as f:
+        yaml.dump(meta, f, allow_unicode=True, sort_keys=False)
     return f"Created zone '{zone_id}'" + (f" ({display_name})" if display_name else "")
 
 
@@ -1520,6 +1527,222 @@ def get_layout_guide() -> dict:
             ),
             "critical": "basement/upper rooms on floor=0 collide on the ground canvas — always set the correct floor value.",
         },
+    }
+
+
+@mcp.tool()
+def validate_zone(zone_id: str) -> dict[str, Any]:
+    """
+    Validate a zone's rooms the way the WorldForge app's Validate panel does.
+    Run after drafting or editing a zone to catch broken references before play.
+
+    Checks: missing room/feature descriptions, unknown exit destinations,
+    self-referencing and asymmetric exits (one_way honoured), orphaned and
+    disconnected rooms, depth jumps, unknown entity templates in spawns,
+    entity loot referencing unknown items, glyph prerequisite cycles to
+    unknown glyphs, and the feature-density metric (aim >= 0.5 draws/room).
+
+    Returns {"errors": [...], "warnings": [...], "info": [...], "counts": {...}}.
+    """
+    _require_zone(zone_id)
+    errors: list[str] = []
+    warnings: list[str] = []
+    info: list[str] = []
+
+    def _load_ids(subdir: str) -> set[str]:
+        d = _world_root() / subdir
+        ids: set[str] = set()
+        if d.exists():
+            for f in d.glob("*.yaml"):
+                try:
+                    doc = yaml.safe_load(f.read_text(encoding="utf-8")) or {}
+                except Exception:
+                    errors.append(f"{subdir}/{f.name}: unparseable YAML")
+                    continue
+                ids.add(str(doc.get("id", f.stem)))
+        return ids
+
+    entity_ids = _load_ids("entities")
+    item_ids = _load_ids("items")
+
+    # All room ids across every zone (cross-zone exit targets).
+    all_room_ids: set[str] = set()
+    for zdir in _zones_dir().iterdir() if _zones_dir().exists() else []:
+        rd = zdir / "rooms"
+        if rd.is_dir():
+            for f in rd.glob("*.yaml"):
+                all_room_ids.add(f"{zdir.name}:{f.stem}")
+
+    rooms: dict[str, dict] = {}
+    for f in sorted(_rooms_dir(zone_id).glob("*.yaml")):
+        try:
+            rooms[f.stem] = yaml.safe_load(f.read_text(encoding="utf-8")) or {}
+        except Exception:
+            errors.append(f"{f.stem}: unparseable YAML")
+    if not rooms:
+        return {
+            "errors": ["zone has no rooms"],
+            "warnings": [],
+            "info": [],
+            "counts": {"err": 1, "warn": 0},
+        }
+
+    def _dest_id(dest: str) -> str:
+        dest = str(dest or "")
+        return dest if ":" in dest else f"{zone_id}:{dest}"
+
+    def _exits(doc: dict) -> dict[str, str]:
+        raw = doc.get("exits")
+        out = {}
+        if isinstance(raw, dict):
+            for direction, ex in raw.items():
+                if isinstance(ex, dict):
+                    out[str(direction)] = _dest_id(ex.get("destination", ""))
+                elif isinstance(ex, str):
+                    out[str(direction)] = _dest_id(ex)
+        return out
+
+    multi = len(rooms) > 1
+    neighbors: dict[str, set[str]] = {slug: set() for slug in rooms}
+
+    for slug, doc in rooms.items():
+        rid = f"{zone_id}:{slug}"
+        desc = doc.get("description")
+        base = desc.get("base") if isinstance(desc, dict) else desc
+        if not str(base or "").strip():
+            warnings.append(f"Missing description: {slug}")
+
+        exits = _exits(doc)
+        if not exits and multi:
+            warnings.append(f"Orphaned room (no exits): {slug}")
+
+        for direction, dest in exits.items():
+            if dest == rid:
+                errors.append(f"Self-referencing exit: {slug} ({direction})")
+                continue
+            dzone, _, dslug = dest.partition(":")
+            if dest not in all_room_ids:
+                errors.append(f"Broken exit target: {slug} {direction} -> {dest}")
+                continue
+            if dzone != zone_id:
+                info.append(f"External exit {slug} {direction} -> {dest}")
+                continue
+            neighbors[slug].add(dslug)
+            neighbors.setdefault(dslug, set()).add(slug)
+            # Return-exit check (one_way honoured when present on the exit).
+            raw_exit = doc["exits"][direction] if isinstance(doc.get("exits"), dict) else {}
+            one_way = bool(raw_exit.get("one_way")) if isinstance(raw_exit, dict) else False
+            back = any(d == rid for d in _exits(rooms.get(dslug, {})).values())
+            if not back and one_way:
+                info.append(f"One-way: {slug} -> {dslug} ({direction})")
+            elif not back:
+                warnings.append(
+                    f"Asymmetric exit (no return, not marked one_way): "
+                    f"{slug} -> {dslug} ({direction})"
+                )
+
+        feats = doc.get("features")
+        if isinstance(feats, list):
+            for feat in feats:
+                if isinstance(feat, dict) and feat.get("name"):
+                    if not str(feat.get("description", "") or "").strip():
+                        warnings.append(f'Feature "{feat["name"]}" missing description ({slug})')
+
+        spawns = doc.get("entity_spawns")
+        if isinstance(spawns, list):
+            for s in spawns:
+                tid = s.get("template") if isinstance(s, dict) else None
+                if tid and tid not in entity_ids:
+                    errors.append(f'Unknown entity template "{tid}" in {slug}')
+
+    # Connectivity: everything reachable (undirected) from the first room.
+    if multi:
+        start = next(iter(rooms))
+        seen = {start}
+        stack = [start]
+        while stack:
+            for nxt in neighbors.get(stack.pop(), ()):
+                if nxt in rooms and nxt not in seen:
+                    seen.add(nxt)
+                    stack.append(nxt)
+        for slug in rooms:
+            if slug not in seen:
+                warnings.append(f"Disconnected room: {slug}")
+            if len(neighbors.get(slug, ())) <= 1:
+                info.append(f"Dead-end (<=1 connected neighbor): {slug}")
+
+    # Depth discontinuity across internal exits.
+    depth_of = {slug: int(doc.get("depth", 0) or 0) for slug, doc in rooms.items()}
+    for slug, doc in rooms.items():
+        for direction, dest in _exits(doc).items():
+            dzone, _, dslug = dest.partition(":")
+            if dzone == zone_id and dslug in depth_of:
+                da, db = depth_of[slug], depth_of[dslug]
+                if abs(da - db) >= 2:
+                    info.append(f"Depth jump {da} -> {db}: {slug} to {dslug}")
+
+    # Entity loot -> known items (only entities actually spawned in this zone).
+    spawned = {
+        s.get("template")
+        for doc in rooms.values()
+        for s in (doc.get("entity_spawns") or [])
+        if isinstance(s, dict)
+    }
+    ent_dir = _world_root() / "entities"
+    if ent_dir.exists():
+        for f in ent_dir.glob("*.yaml"):
+            try:
+                doc = yaml.safe_load(f.read_text(encoding="utf-8")) or {}
+            except Exception:
+                continue
+            eid = str(doc.get("id", f.stem))
+            if eid not in spawned:
+                continue
+            for entry in doc.get("loot") or []:
+                iid = entry.get("item") if isinstance(entry, dict) else entry
+                if iid and iid not in item_ids:
+                    errors.append(f'Entity {eid} loot references unknown item "{iid}"')
+
+    # Glyph prerequisites (global check, cheap).
+    glyph_dir = _world_root() / "glyphs"
+    if glyph_dir.exists():
+        glyph_docs = {}
+        for f in glyph_dir.glob("*.yaml"):
+            try:
+                doc = yaml.safe_load(f.read_text(encoding="utf-8")) or {}
+            except Exception:
+                continue
+            glyph_docs[str(doc.get("id", f.stem))] = doc
+        for gid, doc in glyph_docs.items():
+            for p in doc.get("prerequisites") or []:
+                if p and p not in glyph_docs:
+                    errors.append(f"Glyph {gid} prerequisite unknown: {p}")
+
+    # Feature density (Epitaph metric): gameplay draws per room, aim >= 0.5.
+    if multi:
+        draws = 0
+        for doc in rooms.values():
+            draws += len(doc.get("features") or [])
+            draws += len(doc.get("entity_spawns") or [])
+            draws += len(doc.get("hazards") or [])
+            ambient = doc.get("ambient")
+            if isinstance(ambient, dict) and ambient.get("lines"):
+                draws += 1
+        density = draws / len(rooms)
+        line = f"Feature density {density:.2f} ({draws} draws / {len(rooms)} rooms)"
+        if density < 0.5:
+            warnings.append(
+                f"Low feature density: {density:.2f} ({draws} draws / {len(rooms)} rooms; "
+                "aim >= 0.5 — add features, spawns, hazards or ambient)"
+            )
+        else:
+            info.append(line)
+
+    return {
+        "errors": errors,
+        "warnings": warnings,
+        "info": info,
+        "counts": {"err": len(errors), "warn": len(warnings)},
     }
 
 

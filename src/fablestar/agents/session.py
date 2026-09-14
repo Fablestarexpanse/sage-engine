@@ -18,7 +18,8 @@ class NullProtocol:
     async def send(self, message: str):
         for line in message.replace("\r", "").split("\n"):
             line = line.strip()
-            if line and line != ">":
+            # JSON client notices are UI plumbing, not world perception.
+            if line and line != ">" and not line.startswith("{"):
                 self._perception.append({"at": time.time(), "text": line})
 
     async def close(self):
@@ -27,6 +28,8 @@ class NullProtocol:
 
 class AgentSession(Session):
     """Same contract as a player Session; the world cannot tell the difference."""
+
+    is_agent = True  # client-only JSON notices are skipped for agents
 
     def __init__(self, agent_id: str, name: str, perception_size: int = 60):
         self.perception: deque = deque(maxlen=perception_size)

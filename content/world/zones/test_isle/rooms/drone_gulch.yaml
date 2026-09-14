@@ -1,0 +1,43 @@
+id: test_isle:drone_gulch
+zone: test_isle
+type: danger
+depth: 3
+description:
+  base: A ravine of torn earth and wreckage where a cargo lifter came down years back. Feral scrap drones
+    nest in the hull like wasps, stripping anything that glints — including visitors. Good salvage, if
+    you can keep it.
+exits:
+  west:
+    destination: test_isle:wild_meadow
+    description: ''
+features:
+- id: lifter_wreck
+  name: wrecked cargo lifter
+  keywords:
+  - wreck
+  - lifter
+  - hull
+  - wreckage
+  description: The downed lifter's ribs arch overhead, picked bright in patches. The drones' nest glitters
+    inside like a wound full of coins.
+  search:
+    items:
+    - power_cell
+    - scrap_blade
+    max_finds: 3
+    respawn_s: 800
+    chance: 0.5
+entity_spawns:
+- template: scrap_drone
+  chance: 0.6
+  max_count: 3
+hazards: []
+tags: []
+name: Drone Gulch
+ambient:
+  min_interval: 30
+  max_interval: 75
+  lines:
+  - Metal skitters over metal somewhere in the wreck.
+  - A drone's optics glint from the hull shadow, then vanish.
+  - The wreck ticks in the sun like a slow clock.

@@ -1,0 +1,17 @@
+id: test_isle:bunk_west
+zone: test_isle
+type: safe
+depth: 1
+description:
+  base: The warmest nook in the bunkhouse, backing onto the chimney. The curtain is
+    patched from three different coats. The best bunk, and priced exactly the same
+    as the rest.
+exits:
+  northeast:
+    destination: test_isle:bunkhouse
+    description: ''
+features: []
+entity_spawns: []
+hazards: []
+tags: []
+name: Chimney Bunk

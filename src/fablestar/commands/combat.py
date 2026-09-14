@@ -34,7 +34,7 @@ def _roll_damage(attacker_attack: int, defender_defense: int) -> int:
     return max(1, raw)
 
 
-@command("attack", aliases=["a", "kill", "hit"])
+@command("attack", aliases=["a", "k", "kill", "hit"])
 async def attack(session: Session, args: list[str]):
     """Attack an entity in the room. Usage: attack <target>"""
     from fablestar.app import app_instance
@@ -98,6 +98,33 @@ async def attack(session: Session, args: list[str]):
     except Exception as exc:
         logger.warning("Equipment bonuses skipped: %s", exc)
 
+    # Ammo-fed weapons: consume one round per attack; dry weapons contribute
+    # nothing (you're swinging a very expensive club).
+    ammo_note = None
+    weapon_item = (player_stats.get("equipment") or {}).get("weapon")
+    if weapon_item:
+        weapon_tmpl = app_instance.content_loader.get_item_template(weapon_item.get("template", ""))
+        if weapon_tmpl and weapon_tmpl.ammo:
+            inv = await app_instance.redis.get_player_inventory(player_id)
+            round_item = next((it for it in inv if it.get("template") == weapon_tmpl.ammo), None)
+            ammo_tmpl = app_instance.content_loader.get_item_template(weapon_tmpl.ammo)
+            ammo_name = ammo_tmpl.name if ammo_tmpl else weapon_tmpl.ammo
+            if round_item is None:
+                player_attack -= weapon_tmpl.attack
+                ammo_note = f"Your {weapon_tmpl.name} clicks empty — no {ammo_name} left."
+            else:
+                await app_instance.redis.set_player_inventory(
+                    player_id, [it for it in inv if it.get("id") != round_item.get("id")]
+                )
+                remaining = sum(
+                    1
+                    for it in inv
+                    if it.get("template") == weapon_tmpl.ammo
+                    and it.get("id") != round_item.get("id")
+                )
+                if remaining == 0:
+                    ammo_note = f"That was your last {ammo_name}."
+
     async with _entity_lock(target_id):
         # Re-read under the lock: another attacker may have hit (or killed)
         # the target between the room search above and now.
@@ -133,8 +160,31 @@ async def attack(session: Session, args: list[str]):
     except Exception as exc:
         logger.warning("Combat proficiency gain skipped: %s", exc)
 
+    from fablestar.telemetry import heat, log_event
+
+    if entity_dead:
+        log_event(
+            "kill",
+            killer=player_id,
+            is_agent=bool(getattr(session, "is_agent", False)),
+            template=target_state.get("template", ""),
+            room=room_id,
+        )
+        await heat(app_instance.redis, "kills", room_id)
+        await heat(app_instance.redis, f"kills_by:{player_id}", target_state.get("template", "?"))
     # Achievement counters: total kills plus per-template kills.
     newly_granted = []
+    if player_stats.get("hp", 1) <= 0:
+        from fablestar.effects.death import record_player_death
+
+        newly_granted += await record_player_death(
+            app_instance,
+            session,
+            player_id,
+            player_stats,
+            room_id,
+            target_state.get("template", ""),
+        )
     faction_messages: list[str] = []
     if entity_dead:
         try:
@@ -194,23 +244,43 @@ async def attack(session: Session, args: list[str]):
             f"Player remaining HP: {player_stats.get('hp', 0)}\n"
         )
 
-    try:
-        prompt = app_instance.prompt_manager.render(
-            "combat_narration",
-            narration_facts=narration_facts,
+    # The outcome line is sent now, always; the LLM must never make a player
+    # wait or stand in for the numbers. Prose follows as optional flavour.
+    if entity_dead:
+        outcome_line = f"You strike {entity_name} for {damage_dealt} damage. It falls."
+    else:
+        outcome_line = (
+            f"You hit {entity_name} for {damage_dealt} damage. "
+            f"It strikes back for {counter_damage}."
         )
-        narration = await app_instance.llm_client.generate_or_raise(prompt, max_tokens=200)
-    except Exception as e:
-        logger.warning(f"Combat narration failed: {e}")
-        if entity_dead:
-            narration = f"You strike {entity_name} for {damage_dealt} damage. It falls."
-        else:
-            narration = (
-                f"You hit {entity_name} for {damage_dealt} damage. "
-                f"It strikes back for {counter_damage}."
-            )
 
-    await session.send(f"\r\n{narration}")
+    # Agents read nothing; one pending narration per player, so a slow backend
+    # drops extra flavour instead of queueing it behind later commands.
+    if not getattr(session, "is_agent", False) and not getattr(
+        session, "combat_narration_pending", False
+    ):
+        session.combat_narration_pending = True
+
+        async def _narrate():
+            try:
+                prompt = app_instance.prompt_manager.render(
+                    "combat_narration",
+                    narration_facts=narration_facts,
+                )
+                prose = await app_instance.llm_client.generate_or_raise(prompt, max_tokens=200)
+                prose = (prose or "").strip()
+                if prose:
+                    await session.send(f"\r\n{prose}")
+            except Exception as e:
+                logger.warning(f"Combat narration failed: {e}")
+            finally:
+                session.combat_narration_pending = False
+
+        asyncio.get_running_loop().create_task(_narrate())
+
+    await session.send(f"\r\n{outcome_line}")
+    if ammo_note:
+        await session.send(ammo_note)
 
     # --- Post-combat cleanup ---
     if entity_dead:
@@ -237,8 +307,7 @@ async def attack(session: Session, args: list[str]):
             await session.send(f"\r\n{announcement(ach)}")
 
     if player_stats.get("hp", 1) <= 0:
-        await session.send("\r\nYou have been slain. Disconnecting...")
-        await session.close()
+        await session.end("died", "\r\nYou have been slain. Disconnecting...")
 
 
 @command("flee", aliases=["run", "escape"])
@@ -252,6 +321,16 @@ async def flee(session: Session, args: list[str]):
 
     room_id = await app_instance.redis.get_player_location(player_id)
     if not room_id:
+        return
+
+    threats = False
+    for eid in await app_instance.redis.get_room_entities(room_id):
+        state = await app_instance.redis.get_entity_state(eid)
+        if state and state.get("alive", True):
+            threats = True
+            break
+    if not threats:
+        await session.send("There's nothing here to flee from.")
         return
 
     room = app_instance.content_loader.get_room(room_id)

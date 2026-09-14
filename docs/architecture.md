@@ -1,6 +1,11 @@
 # Fablestar — Architecture
 
-> **Status:** Living design doc. M1 (Code Quality Foundation) is in progress.
+> **SAGE decoupling in progress (2026-09-13).** The brief `docs/sage/BRIEF.md`, the rulings log
+> `docs/sage/DECISIONS.md` and the approved (2026-09-13) `docs/sage/PHASE1_CONTRACTS.md` take precedence
+> over this file, which still describes the pre-split Fablestar-only shape. Audit:
+> `docs/sage/PHASE0_AUDIT.md`.
+
+> **Status:** Living design doc, pre-SAGE. M1 (Code Quality Foundation) is complete.
 > This document is the source of truth for the intended design; the code under
 > `src/fablestar/` is the source of truth for what actually runs.
 

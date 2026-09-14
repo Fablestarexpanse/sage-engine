@@ -1,0 +1,47 @@
+id: test_isle:town_plaza
+zone: test_isle
+type: hub
+depth: 1
+description:
+  base: 'The heart of Tidegate: a broad plaza around a barnacle-crusted fountain that hasn''t run in living
+    memory. Notices flap on a community board, the AIpub''s sign glows to the west, and the clinic''s
+    lamp burns steady to the east.'
+exits:
+  south:
+    destination: test_isle:south_road
+    description: ''
+  east:
+    destination: test_isle:clinic
+    description: ''
+  north:
+    destination: test_isle:market_square
+    description: ''
+  west:
+    destination: aipub:pub_entrance
+    description: The AIpub's sign glows over a well-worn door — beer, beds, and island gossip.
+features:
+- id: notice_board
+  name: community notice board
+  keywords:
+  - board
+  - notices
+  - notice
+  description: 'Work wanted, rooms to let above the AIpub, a reward for whoever keeps stealing Harrow''s
+    ladder, and one very old MISSING: FERRY SCHEDULE.'
+- id: dry_fountain
+  name: barnacle-crusted fountain
+  keywords:
+  - fountain
+  - barnacles
+  description: Dry as a sermon. Kids race beetles in the empty basin.
+entity_spawns: []
+hazards: []
+tags: []
+name: Tidegate Plaza
+ambient:
+  min_interval: 35
+  max_interval: 95
+  lines:
+  - The AIpub's door swings and lets out a bar of light and laughter.
+  - Somebody pins a fresh notice to the board, reads it twice, and leaves.
+  - The clinic's lamp gutters, steadies, keeps its vigil.

@@ -1,0 +1,43 @@
+id: test_isle:forest_edge
+zone: test_isle
+type: chamber
+depth: 2
+description:
+  base: Old pines close overhead and the light goes green and hushed. Resin beads on the bark, needles
+    swallow footsteps, and deadfall makes for good foraging — or good ambush cover, depending which side
+    of it you are.
+exits:
+  east:
+    destination: test_isle:wild_meadow
+    description: ''
+features:
+- id: deadfall
+  name: deadfall tangles
+  keywords:
+  - deadfall
+  - branches
+  - logs
+  description: Storm-dropped pines going soft with moss. Forage collects beneath them — and sometimes
+    strays from the gulch.
+  search:
+    items:
+    - ration_pack
+    max_finds: 2
+    respawn_s: 900
+    chance: 0.45
+entity_spawns:
+- template: rust_hound
+  chance: 0.4
+  max_count: 1
+- template: scrap_drone
+  chance: 0.1
+  max_count: 1
+hazards: []
+tags: []
+name: Forest Edge
+ambient:
+  min_interval: 35
+  max_interval: 95
+  lines:
+  - Resin ticks as bark cools in the shade.
+  - A branch cracks deeper in — once, and not again.

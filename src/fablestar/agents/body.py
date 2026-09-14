@@ -36,6 +36,10 @@ class BodyContext:
     goal_commands: list[str] = field(default_factory=list)
     next_routine_direction: str | None = None
     wander_ready: bool = True
+    in_buying_shop: bool = False  # this room's shop buys goods
+    sellable_count: int = 0  # unequipped items with value > 0
+    hungry: bool = False  # hunger need past threshold
+    floor_valuables: list[str] = field(default_factory=list)  # item names worth taking
 
 
 def decide(ctx: BodyContext, rng: random.Random | None = None) -> tuple[str, str | None]:
@@ -47,10 +51,16 @@ def decide(ctx: BodyContext, rng: random.Random | None = None) -> tuple[str, str
         return ("flee", rng.choice(ctx.exits))
     if ctx.hostiles:
         return ("fight", f"attack {ctx.hostiles[0]}")
-    if hp_frac < EAT_HP_FRACTION and ctx.consumables:
+    if (hp_frac < EAT_HP_FRACTION or ctx.hungry) and ctx.consumables:
         return ("eat", f"use {ctx.consumables[0]}")
     if hp_frac < 1.0 and ctx.room_type == "safe" and not ctx.resting:
         return ("rest", "rest")
+    # Merchant instinct: standing in a shop that buys while carrying goods.
+    if ctx.in_buying_shop and ctx.sellable_count > 0:
+        return ("sell", "sell all")
+    # Nobody leaves money on the floor: pick up valuable drops when safe.
+    if ctx.floor_valuables:
+        return ("loot", f"take {ctx.floor_valuables[0]}")
     if ctx.goal_commands:
         return ("goal", ctx.goal_commands[0])
     if ctx.next_routine_direction and ctx.wander_ready:
@@ -89,6 +99,36 @@ def route_step(
             if nxt not in seen:
                 seen.add(nxt)
                 queue.append((first_direction, nxt, depth + 1))
+    return None
+
+
+def route_path(
+    current_room: str,
+    target_room: str,
+    exits_of: dict[str, dict[str, str]],
+    max_depth: int = 24,
+) -> list[str] | None:
+    """Full BFS direction list from current to target; None when unreachable."""
+    if current_room == target_room:
+        return []
+    seen = {current_room}
+    queue: list[tuple[list[str], str, int]] = []
+    for direction, dest in exits_of.get(current_room, {}).items():
+        if dest not in seen:
+            seen.add(dest)
+            queue.append(([direction], dest, 1))
+    i = 0
+    while i < len(queue):
+        path, node, depth = queue[i]
+        i += 1
+        if node == target_room:
+            return path
+        if depth >= max_depth:
+            continue
+        for direction, nxt in exits_of.get(node, {}).items():
+            if nxt not in seen:
+                seen.add(nxt)
+                queue.append(([*path, direction], nxt, depth + 1))
     return None
 
 

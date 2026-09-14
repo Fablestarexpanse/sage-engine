@@ -37,7 +37,7 @@ async def rest(session: Session, args: list[str]):
     room_id = await app_instance.redis.get_player_location(player_id)
     room = app_instance.content_loader.get_room(room_id) if room_id else None
     if room is None or room.type != "safe":
-        await session.send("Too dangerous to rest here. Find somewhere safe — a medbay, say.")
+        await session.send("Too dangerous to rest here. Find somewhere safe — the clinic, say.")
         return
 
     stats = await app_instance.redis.get_player_stats(player_id)

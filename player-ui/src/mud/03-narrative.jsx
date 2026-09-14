@@ -69,11 +69,6 @@ function readPortraitBackdropXOffsetFromLs() {
 
 export const DEFAULT_NARRATIVE = [
   { type: "system", text: "— Connected to Fablestar Expanse —", ts: "" },
-  { type: "room_title", text: "Corroded Junction — Sector 7, Depth 2" },
-  { type: "room_desc", text: "Three corridors converge beneath a fractured ceiling. Violet |item:glyph-channels:glyph_channels| glimmer in the plating." },
-  { type: "exits", exits: [{ dir: "north", label: "Glyph Chamber Alpha" }, { dir: "east", label: "Maintenance Shaft 03" }, { dir: "down", label: "Sub-level Access" }] },
-  { type: "entity", text: "A |npc:Corroded Sentinel:sentinel_01| stands motionless in the arch." },
-  { type: "sep" },
 ];
 
 export function stripMudMarkup(text) {
@@ -916,7 +911,27 @@ export function NarrativePanel({
     }
   }, []);
 
-  useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, [lines]);
+  // Follow new output only while the reader is already at the bottom; someone
+  // scrolled up into history keeps their place.
+  const stickToBottomRef = useRef(true);
+  const onNarrativeScroll = useCallback((e) => {
+    const el = e.currentTarget;
+    stickToBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 48;
+  }, []);
+  useEffect(() => {
+    if (scrollRef.current && stickToBottomRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [lines]);
+  // Content can grow after the lines effect (late layout, merged lines), so
+  // also follow DOM changes while pinned to the bottom.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || typeof MutationObserver === "undefined") return undefined;
+    const obs = new MutationObserver(() => {
+      if (stickToBottomRef.current) el.scrollTop = el.scrollHeight;
+    });
+    obs.observe(el, { childList: true, subtree: true, characterData: true });
+    return () => obs.disconnect();
+  }, []);
   useEffect(() => {
     if (!sceneGen || !openSceneGallerySignal) return;
     setGalleryModalKey((k) => k + 1);
@@ -1170,6 +1185,7 @@ export function NarrativePanel({
         ) : null}
         <div
           ref={scrollRef}
+          onScroll={onNarrativeScroll}
           role="log"
           aria-live="polite"
           aria-label="Game narrative"
@@ -1343,7 +1359,8 @@ export function CommandInput({ onSubmitCommand }) {
   const [histIdx, setHistIdx] = useState(-1);
   const [suggestions, setSuggestions] = useState([]);
   const inputRef = useRef(null);
-  const CMDS = ["look","examine","inventory","north","south","east","west","up","down","inscribe","attack","cast","say","tell","whisper","get","drop","use","equip","unequip","map","who","score","prof","cap","bonus","raise","lower","lock","help","glyphs","delve","rest","quest","journal","stats","keybinds","triggers","config"];
+  // Mirrors the server's command registry (fablestar/commands); keep in sync when adding commands.
+  const CMDS = ["achievements","attack","bonus","browse","buy","cap","craft","deconstruct","down","drop","east","effects","emote","equip","examine","factions","flee","help","inventory","lock","look","lower","map","missions","north","northeast","northwest","prof","quit","raise","recipes","rent","rest","say","score","search","sell","south","southeast","southwest","take","tell","unequip","up","use","wallet","west","who"];
   const handleKey = (e) => {
     if (e.key === "Enter" && value.trim()) {
       const cmd = value.trim();

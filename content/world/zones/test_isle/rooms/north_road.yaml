@@ -1,0 +1,28 @@
+id: test_isle:north_road
+zone: test_isle
+type: corridor
+depth: 1
+description:
+  base: The cobbles give out to packed dirt as the road leaves town, hedged by drystone walls. An orchard's
+    crooked rows show to the west, and beyond, the island goes green and wild.
+exits:
+  south:
+    destination: test_isle:market_square
+    description: ''
+  west:
+    destination: test_isle:orchard
+    description: ''
+  north:
+    destination: test_isle:wild_meadow
+    description: ''
+features: []
+entity_spawns: []
+hazards: []
+tags: []
+name: North Road
+ambient:
+  min_interval: 50
+  max_interval: 120
+  lines:
+  - A drystone wall sheds one pebble, as they do.
+  - Wind off the meadow carries grass-seed and quiet.

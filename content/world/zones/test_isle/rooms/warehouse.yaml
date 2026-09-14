@@ -1,0 +1,38 @@
+id: test_isle:warehouse
+zone: test_isle
+type: chamber
+depth: 1
+description:
+  base: A cavernous storehouse smelling of salt, tar, and old grain. Stacked crates form aisles deep enough
+    to get lost in, and a chalkboard by the door tracks cargo nobody has claimed in months.
+exits:
+  east:
+    destination: test_isle:harbor_docks
+    description: ''
+features:
+- id: unclaimed_cargo
+  name: unclaimed cargo aisles
+  keywords:
+  - cargo
+  - crates
+  - aisles
+  - chalkboard
+  description: Aisles of goods nobody ever came back for. The chalkboard's oldest entry just says 'ASK
+    MERI'.
+  search:
+    items:
+    - ration_pack
+    - power_cell
+    max_finds: 3
+    respawn_s: 900
+    chance: 0.55
+entity_spawns: []
+hazards: []
+tags: []
+name: Harbor Warehouse
+ambient:
+  min_interval: 35
+  max_interval: 95
+  lines:
+  - Dust sifts down from the rafters where something small moves.
+  - A tarp settles with a long, tired exhale.

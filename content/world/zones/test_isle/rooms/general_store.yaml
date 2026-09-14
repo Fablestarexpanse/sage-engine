@@ -1,0 +1,52 @@
+id: test_isle:general_store
+zone: test_isle
+type: chamber
+depth: 1
+description:
+  base: 'Shelves floor to ceiling: ration packs, rope, boot laces, lamp wicks, and one dusty jar labeled
+    ASSORTED. Old Harrow knows the price of everything and rounds up. If the island sells it, it''s here
+    — for a margin.'
+exits:
+  south:
+    destination: test_isle:market_west
+    description: ''
+features:
+- id: stocked_shelves
+  name: floor-to-ceiling shelves
+  keywords:
+  - shelves
+  - stock
+  - jar
+  - assorted
+  description: Everything the island needs and a jar labeled ASSORTED that nobody has dared open. Harrow
+    watches the till like a lighthouse watches rocks.
+  search:
+    items:
+    - ration_pack
+    max_finds: 1
+    respawn_s: 1800
+    chance: 0.25
+entity_spawns: []
+hazards: []
+tags: []
+name: Harrow's General Store
+ambient:
+  min_interval: 50
+  max_interval: 130
+  lines:
+  - Harrow licks a pencil and adjusts a price, upward.
+  - The door bell gives its dusty jingle.
+shop:
+  name: Harrow's General Store
+  sells:
+  - template: ration_pack
+    price: 8
+  - template: kelp_bread
+    price: 7
+  - template: dried_gullwing
+    price: 4
+  - template: power_cell
+    price: 20
+  - template: charge_cell
+    price: 5
+  owner: meri_harrow

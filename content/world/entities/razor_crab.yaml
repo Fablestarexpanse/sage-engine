@@ -1,0 +1,15 @@
+id: razor_crab
+name: razor crab
+type: creature
+description:
+  short: A dog-sized crab armored in blade-edged shell.
+  long: A dog-sized crab in overlapping iridescent shell, each plate edge worn
+    razor-fine by the surf. It sidles between the wrack heaps and does not share.
+stats:
+  hp: 12
+  max_hp: 12
+  attack: 3
+  defense: 2
+tags: [animal, hostile]
+loot:
+- {template: crab_chitin, chance: 0.55}

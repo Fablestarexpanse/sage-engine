@@ -1,0 +1,8 @@
+id: crab_chitin
+name: razor crab chitin
+type: material
+description: A palm-sized plate of iridescent shell, edge sharp enough to shave
+  with. Chandlers buy it for tool grips.
+value: 8
+weight: 0.4
+tags: [material]

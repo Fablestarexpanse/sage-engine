@@ -1,0 +1,15 @@
+id: gullwing
+name: grey gullwing
+type: creature
+description:
+  short: A fat grey shore bird with a scavenger's eye.
+  long: A fat grey shore bird, all appetite and nerve, working the tideline for
+    anything smaller or deader than itself. It ignores you unless you start something.
+stats:
+  hp: 4
+  max_hp: 4
+  attack: 1
+  defense: 0
+tags: [animal, neutral]
+loot:
+- {template: dried_gullwing, chance: 0.7}

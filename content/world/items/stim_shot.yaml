@@ -1,0 +1,9 @@
+id: stim_shot
+name: stim shot
+type: consumable
+description: A single-use autoinjector of clinic-grade stimulant. Closes wounds
+  fast and bills you for it later.
+value: 18
+weight: 0.1
+heal: 15
+tags: [medical]

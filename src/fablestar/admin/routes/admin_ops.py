@@ -224,10 +224,13 @@ def build_admin_ops_router(server: FablestarServer) -> APIRouter:
 
     @router.get("/status", response_model=ServerStatus)
     async def get_status():
+        human_sessions = sum(
+            1 for s in server.session_manager.sessions.values() if not getattr(s, "is_agent", False)
+        )
         return ServerStatus(
             is_running=server.tick_manager.is_running,
             tick_count=server.tick_manager.tick_count,
-            active_sessions=len(server.session_manager.sessions),
+            active_sessions=human_sessions,
             uptime_seconds=server.tick_manager.tick_count * server.config.server.tick_rate,
         )
 
@@ -238,6 +241,10 @@ def build_admin_ops_router(server: FablestarServer) -> APIRouter:
         players: list[dict[str, Any]] = []
         redis = server.redis
         for sid, session in server.session_manager.sessions.items():
+            # Agents live in the Agents tab, not the player views — keeping
+            # them out here is what makes "real player or agent?" answerable.
+            if getattr(session, "is_agent", False):
+                continue
             room_id = None
             if session.player_id and redis.is_connected:
                 try:
@@ -296,7 +303,11 @@ def build_admin_ops_router(server: FablestarServer) -> APIRouter:
         return {
             "tick_count": tm.tick_count,
             "tick_rate_hz": hz,
-            "active_sessions": len(server.session_manager.sessions),
+            "active_sessions": sum(
+                1
+                for s2 in server.session_manager.sessions.values()
+                if not getattr(s2, "is_agent", False)
+            ),
             "is_running": tm.is_running,
             "uptime_seconds": tm.tick_count * cfg.tick_rate,
             "command_metrics": {
@@ -340,7 +351,11 @@ def build_admin_ops_router(server: FablestarServer) -> APIRouter:
             "llm_chat_model_auto": llm_probe.get("chat_model_auto"),
             "llm_connected": llm_probe["connected"],
             "llm_latency_ms": llm_probe["latency_ms"],
-            "sessions": len(server.session_manager.sessions),
+            "sessions": sum(
+                1
+                for s2 in server.session_manager.sessions.values()
+                if not getattr(s2, "is_agent", False)
+            ),
             "tick_count": server.tick_manager.tick_count,
             "redis_ok": redis_ok,
             "postgres_ok": db_ok,

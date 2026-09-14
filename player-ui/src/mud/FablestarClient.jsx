@@ -62,6 +62,9 @@ export default function FablestarClient({
   narrativeLines,
   onSendCommand,
   wsConnected,
+  /** Why the server ended the session (quit / replaced / refused); null while reconnecting normally. */
+  wsStopped = null,
+  onReconnect,
   /** Absolute URL for current room scene art (from room YAML area_image_url + Nexus base). */
   sceneImageUrl,
   /** ComfyUI scene render in progress (spinner on Scene panel). */
@@ -198,10 +201,10 @@ export default function FablestarClient({
         effects={session?.liveEffects ?? null}
       />
     ) },
-    { id: "map", title: "Map — Sector 7", icon: "🗺", accent: T.glyph.cyan, minW: 220, minH: 160, content: <MiniMap/> },
+    { id: "map", title: "Map", icon: "🗺", accent: T.glyph.cyan, minW: 220, minH: 160, content: <MiniMap map={session?.liveMap ?? null}/> },
     { id: "glyphs", title: "Glyph Loadout", icon: "✦", accent: T.glyph.violet, minW: 320, minH: 70, content: <GlyphBar/> },
     { id: "inventory", title: "Inventory", icon: "◻", accent: T.glyph.amber, minW: 200, minH: 180, content: <InventoryPanel onContextMenu={openCtx} items={session?.liveInventory ?? null}/> },
-    { id: "social", title: "Comms", icon: "💬", accent: T.glyph.cyan, minW: 220, minH: 140, badge: (notifications.tells||0)+(notifications.guild||0), content: <SocialPanel unreadCounts={notifications}/> },
+    { id: "social", title: "Comms", icon: "💬", accent: T.glyph.cyan, minW: 220, minH: 140, content: <SocialPanel messages={session?.chatMessages ?? null}/> },
     { id: "afflictions", title: "Effects", icon: "⊘", accent: T.glyph.crimson, minW: 200, minH: 180, content: <AfflictionTracker effects={session?.liveEffects ?? null}/> },
     { id: "quests", title: "Quest Journal", icon: "📖", accent: T.glyph.emerald, minW: 260, minH: 250, content: <QuestJournal gameCurrencyLabel={gameCurrencyDisplayName} /> },
     { id: "target", title: "Target", icon: "⎯", accent: T.glyph.amber, minW: 220, minH: 180, content: <TargetPanel/> },
@@ -223,7 +226,7 @@ export default function FablestarClient({
     { id: "keybinds", title: "Keybinds", icon: "⌨", accent: T.text.muted, minW: 240, minH: 280, content: <KeybindManager/> },
     { id: "triggers", title: "Triggers", icon: "⚡", accent: T.glyph.amber, minW: 260, minH: 260, content: <TriggerBuilder/> },
     { id: "quickactions", title: "Quick Actions", icon: "▶", accent: T.glyph.cyan, minW: 200, minH: 60, content: <QuickActions/> },
-  ], [narrativeLines, openCtx, sendCommand, focusProficienciesPanel, notifications, session?.characterName, session?.username, session?.portraitImageUrl, session?.digiBalance, session?.pvpEnabled, session?.reputation, session?.characterStats, session?.resonanceLevelsTotal, session?.liveEffects, session?.liveInventory, sceneImageUrl, sceneGenerating, sceneRoomLabel, sceneDownloadBaseName, sceneGen, conduitLocation, gameCurrencyDisplayName, narrativeBackdropUrl, narrativeBackdropSource, openSceneGallerySignal]);
+  ], [narrativeLines, openCtx, sendCommand, focusProficienciesPanel, notifications, session?.characterName, session?.username, session?.portraitImageUrl, session?.digiBalance, session?.pvpEnabled, session?.reputation, session?.characterStats, session?.resonanceLevelsTotal, session?.liveEffects, session?.liveInventory, session?.liveMap, session?.chatMessages, sceneImageUrl, sceneGenerating, sceneRoomLabel, sceneDownloadBaseName, sceneGen, conduitLocation, gameCurrencyDisplayName, narrativeBackdropUrl, narrativeBackdropSource, openSceneGallerySignal]);
 
   return (
     <GameCmdContext.Provider value={{ sendCommand, focusProficienciesPanel }}>
@@ -232,10 +235,12 @@ export default function FablestarClient({
         role="alert"
         style={{
           position: "fixed",
-          top: 0,
+          // Below the 36px top bar (also fixed, z 9999), which otherwise covers
+          // the banner and swallows clicks on its Reconnect button.
+          top: 36,
           left: 0,
           right: 0,
-          zIndex: 9999,
+          zIndex: 10001,
           padding: "6px 14px",
           textAlign: "center",
           background: T.glyph.crimson,
@@ -245,7 +250,30 @@ export default function FablestarClient({
           letterSpacing: "0.06em",
         }}
       >
-        Connection to the station lost — reconnecting…
+        {wsStopped ? (
+          <>
+            {wsStopped}{" "}
+            <button
+              type="button"
+              onClick={onReconnect}
+              style={{
+                marginLeft: 8,
+                padding: "2px 10px",
+                borderRadius: 4,
+                border: "1px solid #fff",
+                background: "transparent",
+                color: "#fff",
+                cursor: "pointer",
+                fontFamily: T.font.body,
+                fontSize: 12,
+              }}
+            >
+              Reconnect
+            </button>
+          </>
+        ) : (
+          "Connection to the station lost — reconnecting…"
+        )}
       </div>
     )}
     <div style={{

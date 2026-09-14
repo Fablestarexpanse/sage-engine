@@ -1,0 +1,8 @@
+id: steady_work
+name: Steady Work
+story: became somebody the guilds could count on
+level: small
+criteria:
+  missions_completed: 10
+category: [factions]
+instructions: Complete 10 faction missions.

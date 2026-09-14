@@ -57,6 +57,9 @@ class NarrationCase(unittest.TestCase):
         await self.server.redis.set_entity_state("stalker_1", dict(STALKER))
         await self.server.redis.add_entity_to_room("stalker_1", ROOM)
         await self.server.dispatcher.dispatch(self.session, "attack stalker")
+        # narration is fire-and-forget; let it finish before asserting
+        for _ in range(5):
+            await asyncio.sleep(0)
 
     def test_llm_narration_reaches_player(self) -> None:
         self.server.llm_client = _FakeLLM()
@@ -65,6 +68,23 @@ class NarrationCase(unittest.TestCase):
         joined = "\n".join(self.session.sent)
         self.assertIn("The stalker crumples in a spray of static.", joined)
         # deterministic outcome regardless of narration
+        self.assertIn("Void Stalker is dead.", joined)
+
+    def test_outcome_line_never_waits_for_llm(self) -> None:
+        class _HangingLLM:
+            async def generate_or_raise(self, prompt: str, max_tokens: int = 250) -> str:
+                await asyncio.sleep(3600)
+                return ""
+
+        self.server.llm_client = _HangingLLM()
+        self.server.prompt_manager = _FakePrompts()
+
+        async def run():
+            await asyncio.wait_for(self._kill_stalker(), timeout=1.0)
+
+        asyncio.run(run())
+        joined = "\n".join(self.session.sent)
+        self.assertIn("You strike Void Stalker for", joined)
         self.assertIn("Void Stalker is dead.", joined)
 
     def test_fallback_when_narration_setup_raises(self) -> None:

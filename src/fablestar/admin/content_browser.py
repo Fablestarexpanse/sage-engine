@@ -23,7 +23,9 @@ SYSTEMS_DIR = Path("content/world/systems")
 SHIPS_DIR = Path("content/world/ships")
 GALAXY_FILE = Path("content/world/galaxy.yaml")
 POSITIONS_FILENAME = ".positions.json"
-_POSITIONS_DOC_KEYS = frozenset({"version", "positions", "notes", "reference_image", "muted_edges"})
+_POSITIONS_DOC_KEYS = frozenset(
+    {"version", "positions", "notes", "reference_image", "muted_edges", "floors"}
+)
 
 
 def _is_safe_segment(segment: str) -> bool:
@@ -324,9 +326,32 @@ def save_room_yaml_text(zone_id: str, room_slug: str, text: str) -> Path:
     """Write raw room YAML through the content seam (validated segments, atomic write)."""
     if not _is_safe_segment(zone_id) or not _is_safe_segment(room_slug):
         raise ValueError("invalid_slug")
+    validate_room_yaml_text(zone_id, room_slug, text)
     path = ZONES_ROOT / zone_id / "rooms" / f"{room_slug}.yaml"
     _atomic_write_text(path, text)
     return path
+
+
+def validate_room_yaml_text(zone_id: str, room_slug: str, text: str) -> None:
+    """Refuse room YAML the loader couldn't use; raises ValueError with a short reason."""
+    from pydantic import ValidationError
+
+    from fablestar.world.models import RoomModel
+
+    try:
+        data = yaml.safe_load(text)
+    except yaml.YAMLError as e:
+        raise ValueError(f"invalid_yaml: {e}") from None
+    if not isinstance(data, dict):
+        raise ValueError("invalid_yaml: top level must be a mapping")
+    try:
+        room = RoomModel.model_validate(data)
+    except ValidationError as e:
+        raise ValueError(
+            f"invalid_room: {e.error_count()} validation error(s): {e.errors()[0]['loc']} {e.errors()[0]['msg']}"
+        ) from None
+    if room.id != f"{zone_id}:{room_slug}":
+        raise ValueError(f"id_mismatch: expected {zone_id}:{room_slug}, got {room.id}")
 
 
 def save_template_yaml_text(kind: str, slug: str, text: str) -> Path:
@@ -394,11 +419,19 @@ def save_zone_positions(zone_id: str, positions: dict[str, Any]) -> str:
     if not isinstance(muted, list):
         muted = []
     ref_img = existing.get("reference_image")
+    # Keep keys this builder doesn't edit (WorldForge/MCP `floors`, future fields): dropping
+    # them on save silently erased multi-floor layouts.
+    extras: dict[str, Any] = {}
+    if existing.get("version") == 2:
+        extras = {k: v for k, v in existing.items() if k not in _POSITIONS_DOC_KEYS}
+        if isinstance(existing.get("floors"), dict):
+            extras["floors"] = existing["floors"]
     out_doc: dict[str, Any] = {
         "version": 2,
         "positions": pos_merged,
         "notes": notes,
         "muted_edges": muted,
+        **extras,
     }
     if isinstance(ref_img, dict):
         out_doc["reference_image"] = ref_img

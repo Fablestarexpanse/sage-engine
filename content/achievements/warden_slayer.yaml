@@ -1,0 +1,8 @@
+id: warden_slayer
+name: Lens Taker
+story: put out the amber eye in the tide caves
+level: large
+criteria:
+  kills.cave_warden: 1
+category: [combat, boss]
+instructions: Kill the Cave Warden.

@@ -121,6 +121,8 @@ class TestFleeIntegration(IntegrationCase):
 
     async def _flee_success(self) -> None:
         await self._login()
+        await self.server.redis.set_entity_state("drone_1", {"name": "drone", "alive": True})
+        await self.server.redis.add_entity_to_room("drone_1", ROOM)
         with mock.patch.object(combat_mod.random, "random", return_value=0.0):
             await self.server.dispatcher.dispatch(self.session, "flee")
         self.assertEqual(await self.server.redis.get_player_location("tester"), ROOM_NORTH)

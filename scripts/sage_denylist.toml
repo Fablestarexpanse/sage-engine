@@ -1,0 +1,36 @@
+# SAGE invariant denylist (docs/sage/BRIEF.md section 3, invariants 2 and 4).
+# Terms that must not appear in engine code. scripts/sage_invariants.py counts them per file
+# and fails CI if any file's count rises above scripts/sage_invariants_baseline.json.
+# Attribute and currency keys from every worlds/*/stats.yaml and currencies.yaml are added
+# automatically, so the engine can't name either reference world's stats.
+
+# Case-insensitive; snake_case and camelCase boundaries are respected, plural "s" included.
+insensitive = [
+    # brief seed list
+    "fablestar",
+    "conduit",
+    "glyph",
+    "glyphstream",
+    "resonance",
+    "digi",
+    "fortitude",
+    "acuity",
+    # Phase 0 audit additions
+    "tidegate",
+    "aipub",
+    "test_isle",
+    "starter_zone",
+    "echo_credits",
+    "pixels",
+]
+
+# Exact case: ordinary English or code words in lowercase (resolve_project_root, Promise.resolve).
+sensitive = [
+    "Resolve",
+    "Presence",
+    "Reflex",
+    "Pixel",
+]
+
+# Exact case, standalone: Conduit stat abbreviations.
+acronyms = ["FRT", "RFX", "ACU", "RSV", "PRS"]

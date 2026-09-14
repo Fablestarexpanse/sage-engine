@@ -1,0 +1,7 @@
+id: test_isle
+name: Tidegate Isle
+description: 'A small test island: a harbor town with shops and the AIpub, farmland,
+  and a wild north shore — the sandbox where agents live, work, and get in trouble.'
+depth_range:
+- 1
+- 3

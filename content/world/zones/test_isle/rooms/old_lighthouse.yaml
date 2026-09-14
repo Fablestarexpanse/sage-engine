@@ -1,0 +1,40 @@
+id: test_isle:old_lighthouse
+zone: test_isle
+type: chamber
+depth: 2
+description:
+  base: The ground floor of a stone lighthouse, door long gone, floor drifted with sand and gull feathers.
+    Storm gear rusts on wall hooks and a spiral stair winds up into the dark of the tower.
+exits:
+  up:
+    destination: test_isle:lighthouse_lamp
+    description: A spiral stair climbs the tower's throat.
+  west:
+    destination: test_isle:cliff_path
+    description: ''
+features:
+- id: storm_gear
+  name: rusting storm gear
+  keywords:
+  - gear
+  - hooks
+  - coats
+  - storm
+  description: Oilskins gone stiff as bark and gear hooks browned with rust. Keepers left in a hurry,
+    or meant to come back.
+  search:
+    items:
+    - padded_vest
+    max_finds: 1
+    respawn_s: 3600
+    chance: 0.2
+entity_spawns: []
+hazards: []
+tags: []
+name: Old Lighthouse
+ambient:
+  min_interval: 45
+  max_interval: 110
+  lines:
+  - Sand hisses across the stone floor.
+  - The tower moans softly, remembering wind.

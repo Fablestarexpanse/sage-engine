@@ -51,6 +51,17 @@ class CommandRegistry:
 
         return None
 
+    def _unregister_module(self, module_name: str) -> None:
+        """Remove every command (and its aliases) whose handler was defined in module_name."""
+        gone = {
+            name
+            for name, cmd in self._commands.items()
+            if getattr(cmd.handler, "__module__", None) == module_name
+        }
+        for name in gone:
+            del self._commands[name]
+        self._aliases = {a: target for a, target in self._aliases.items() if target not in gone}
+
     def load_module_strict(self, module_name: str):
         """Import a command module, re-raising on failure.
 
@@ -58,7 +69,15 @@ class CommandRegistry:
         instead of logging an error and reporting "Startup complete".
         """
         if module_name in self._modules:
-            module = importlib.reload(self._modules[module_name])
+            # Drop this module's commands first so ones deleted from the source disappear;
+            # restore everything if the new source fails to import.
+            commands, aliases = dict(self._commands), dict(self._aliases)
+            self._unregister_module(module_name)
+            try:
+                module = importlib.reload(self._modules[module_name])
+            except BaseException:
+                self._commands, self._aliases = commands, aliases
+                raise
         else:
             module = importlib.import_module(module_name)
             self._modules[module_name] = module

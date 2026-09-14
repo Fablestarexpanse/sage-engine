@@ -1,0 +1,35 @@
+id: test_isle:wild_meadow
+zone: test_isle
+type: chamber
+depth: 2
+description:
+  base: Waist-high grass rolling toward the island's wild north, loud with insects and moving in long
+    silver waves. Trails braid off toward a dark treeline west and a scarred gulch east where nothing
+    sings.
+exits:
+  south:
+    destination: test_isle:north_road
+    description: ''
+  west:
+    destination: test_isle:forest_edge
+    description: ''
+  east:
+    destination: test_isle:drone_gulch
+    description: ''
+  north:
+    destination: test_isle:north_shore
+    description: ''
+features: []
+entity_spawns:
+- template: gullwing
+  chance: 0.4
+  max_count: 2
+hazards: []
+tags: []
+name: Wild Meadow
+ambient:
+  min_interval: 35
+  max_interval: 95
+  lines:
+  - The grass moves in one long silver wave, unbothered by wind direction.
+  - Insect song stops — then, deciding you're harmless, resumes.

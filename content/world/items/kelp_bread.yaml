@@ -1,0 +1,9 @@
+id: kelp_bread
+name: kelp bread loaf
+type: consumable
+description: Dense green-brown bread from the island ovens. Tastes like low tide
+  but fills you up properly.
+value: 6
+weight: 0.5
+heal: 7
+tags: [food]

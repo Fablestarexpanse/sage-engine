@@ -1,0 +1,16 @@
+id: rust_hound
+name: rust hound
+type: creature
+description:
+  short: A lean red-furred predator with tarnished-metal teeth.
+  long: A lean, long-legged predator the color of old rust, jaws glinting with
+    the metallic teeth its line grew after generations of chewing wreckage.
+    It hunts the pine shadows and considers the island's paths its own.
+stats:
+  hp: 16
+  max_hp: 16
+  attack: 4
+  defense: 1
+tags: [animal, hostile]
+loot:
+- {template: hound_pelt, chance: 0.65}

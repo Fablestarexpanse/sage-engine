@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import logging
+import os
 import re
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 import bcrypt
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from fablestar.comfyui_client import generate_portrait_png
 from fablestar.core.config import resolve_config_asset_path
@@ -19,14 +20,69 @@ from fablestar.services._shared import (
 )
 from fablestar.services.play_tokens import issue_play_token
 from fablestar.state.models import Account, Character
+from fablestar.world.defaults import START_ROOM
 
 if TYPE_CHECKING:
     from fablestar.server import FablestarServer
 
 logger = logging.getLogger(__name__)
 
-CHAR_NAME_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9 _-]{1,49}$")
+CHAR_NAME_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9 _-]{0,48}[a-zA-Z0-9]$")
+MIN_PASSWORD_LENGTH = 8
+
+# Names that would read as staff, as the parser, or as a direction in chat.
+RESERVED_CHAR_NAMES = frozenset(
+    {
+        "admin",
+        "administrator",
+        "staff",
+        "gm",
+        "moderator",
+        "mod",
+        "system",
+        "server",
+        "nexus",
+        "god",
+        "nobody",
+        "someone",
+        "anyone",
+        "everyone",
+        "self",
+        "me",
+        "you",
+        "north",
+        "south",
+        "east",
+        "west",
+        "up",
+        "down",
+        "northeast",
+        "northwest",
+        "southeast",
+        "southwest",
+    }
+)
+
+
+def reserved_name_reason(name: str, agent_names: set[str]) -> str | None:
+    """Why a character name can't be used, or None. Compares case-insensitively."""
+    from fablestar.commands.registry import registry
+
+    key = " ".join(name.split()).lower()
+    if key in agent_names:
+        return "character_name_taken"
+    if key in RESERVED_CHAR_NAMES or registry.get(key) is not None:
+        return "character_name_reserved"
+    if any(
+        part in RESERVED_CHAR_NAMES - {"up", "down", "me", "you", "self"} for part in key.split()
+    ):
+        return "character_name_reserved"
+    return None
+
+
 MAX_CHARACTERS_PER_ACCOUNT = 8
+# Owner of passwordless dev-login characters (see PlayerService.dev_login).
+DEV_LOGIN_ACCOUNT = "dev-login"
 
 
 def _default_character_portrait_prompt(character_name: str) -> str:
@@ -42,6 +98,13 @@ class PlayerService:
 
     def __init__(self, server: FablestarServer):
         self.server = server
+
+    def _agent_names(self) -> set[str]:
+        try:
+            return {p.name.lower() for p in self.server.content_loader.get_agent_registry().all()}
+        except Exception:
+            logger.debug("agent registry unavailable for name check", exc_info=True)
+            return set()
 
     # ------------------------------------------------------------------
     # Shared response building
@@ -115,7 +178,9 @@ class PlayerService:
         username = (username or "").strip()
         if len(username) < 2:
             return {"ok": False, "error": "username_too_short"}
-        if len(password) < 4:
+        if len(username) > 50:
+            return {"ok": False, "error": "username_too_long"}
+        if len(password) < MIN_PASSWORD_LENGTH:
             return {"ok": False, "error": "password_too_short"}
         async with self.server.db.session_factory() as db_session:
             result = await db_session.execute(select(Account).where(Account.username == username))
@@ -170,7 +235,7 @@ class PlayerService:
         name: str, portrait_url: str, portrait_prompt: str
     ) -> tuple[dict[str, Any] | None, str | None, str | None]:
         """Pure validation. Returns (error_response, portrait_url, portrait_prompt)."""
-        if not CHAR_NAME_RE.match(name):
+        if not CHAR_NAME_RE.match(name) or "  " in name:
             return {"ok": False, "error": "invalid_character_name"}, None, None
         p_url = (portrait_url or "").strip() or None
         if p_url and (
@@ -186,7 +251,10 @@ class PlayerService:
         self, starter_proficiencies: dict[str, int] | None
     ) -> tuple[dict[str, Any] | None, dict[str, int]]:
         """Coerce and validate the chargen skill allocation. Returns (error_response, cleaned)."""
+        from fablestar.proficiencies.starter import coerce_starter_level
+
         starter_clean: dict[str, int] = {}
+        seen: set[str] = set()
         if starter_proficiencies:
             for k, v in starter_proficiencies.items():
                 if not isinstance(k, str):
@@ -194,9 +262,12 @@ class PlayerService:
                 kid = k.strip()
                 if not kid:
                     continue
-                try:
-                    n = int(v)
-                except (TypeError, ValueError):
+                if kid in seen:
+                    # " combat.melee.blades" and "combat.melee.blades" both given.
+                    return {"ok": False, "error": "invalid_starter_proficiencies"}, {}
+                seen.add(kid)
+                n = coerce_starter_level(v)
+                if n is None:
                     return {"ok": False, "error": "invalid_starter_proficiencies"}, {}
                 if n != 0:
                     starter_clean[kid] = n
@@ -235,6 +306,101 @@ class PlayerService:
             logger.warning("ComfyUI portrait on character create failed: %s", e, exc_info=True)
             return None, None, pp, str(e), charged
 
+    async def _insert_character(
+        self,
+        db_session,
+        account_id: int,
+        name: str,
+        portrait_url: str | None,
+        portrait_prompt: str | None,
+        starter_clean: dict[str, int] | None,
+    ) -> Character:
+        """Insert a fresh character row with initialised stats (caller validated the name)."""
+        from fablestar.proficiencies.starter import apply_starter_to_stats
+        from fablestar.proficiencies.state_helpers import (
+            ensure_proficiency_block,
+            migrate_legacy_stats,
+        )
+
+        character = Character(
+            account_id=account_id,
+            name=name,
+            room_id=START_ROOM,
+            portrait_url=portrait_url,
+            portrait_prompt=portrait_prompt,
+            digi_balance=int(self.server.config.server.starting_digi_balance),
+            pvp_enabled=False,
+            reputation=0,
+        )
+        db_session.add(character)
+        await db_session.commit()
+        await db_session.refresh(character)
+        merged_stats = migrate_legacy_stats(dict(character.stats or {}))
+        ensure_proficiency_block(merged_stats)
+        if starter_clean:
+            apply_starter_to_stats(
+                merged_stats,
+                starter_clean,
+                self.server.content_loader.get_proficiency_registry(),
+            )
+        character.stats = merged_stats
+        await db_session.commit()
+        await db_session.refresh(character)
+        return character
+
+    def dev_login_enabled(self) -> bool:
+        cfg = self.server.config.server
+        return bool(getattr(cfg, "dev_mode", False) and getattr(cfg, "dev_login", False))
+
+    async def dev_login(self, character_name: str) -> dict[str, Any]:
+        """Passwordless test login: find or create `character_name` on the dev account.
+
+        Returns the normal login payload (play token included) plus `character_id`.
+        Characters owned by any other account are refused, so this can't be used
+        to step into a real player. Callers must gate on dev_login_enabled() and a
+        loopback client.
+        """
+        name = " ".join((character_name or "").split())
+        err, _, _ = self._validate_create_character_inputs(name, "", "")
+        if err:
+            return err
+        async with self.server.db.session_factory() as db_session:
+            acc = await db_session.execute(
+                select(Account).where(Account.username == DEV_LOGIN_ACCOUNT)
+            )
+            account = acc.scalar_one_or_none()
+            if account is None:
+                unusable = bcrypt.hashpw(os.urandom(24), bcrypt.gensalt()).decode()
+                account = Account(
+                    username=DEV_LOGIN_ACCOUNT,
+                    password_hash=unusable,
+                    last_login=datetime.utcnow(),
+                    echo_credits=int(self.server.config.comfyui.starting_echo_credits),
+                )
+                db_session.add(account)
+                await db_session.commit()
+                await db_session.refresh(account)
+
+            found = await db_session.execute(
+                select(Character).where(func.lower(Character.name) == name.lower())
+            )
+            character = found.scalar_one_or_none()
+            if character is not None and character.account_id != account.id:
+                return {"ok": False, "error": "character_not_dev"}
+            if character is None:
+                reason = reserved_name_reason(name, self._agent_names())
+                if reason:
+                    return {"ok": False, "error": reason}
+                character = await self._insert_character(
+                    db_session, account.id, name, None, None, None
+                )
+            account.last_login = datetime.utcnow()
+            response = await self.account_characters_response(db_session, account)
+            response["play_token"] = issue_play_token(self.server, account.id)
+            response["character_id"] = character.id
+            await db_session.commit()
+        return response
+
     async def create_character(
         self,
         username: str,
@@ -272,8 +438,13 @@ class PlayerService:
             if len(list(result.scalars().all())) >= MAX_CHARACTERS_PER_ACCOUNT:
                 return {"ok": False, "error": "character_limit"}
 
-            taken = await db_session.execute(select(Character).where(Character.name == name))
-            if taken.scalar_one_or_none():
+            reason = reserved_name_reason(name, self._agent_names())
+            if reason:
+                return {"ok": False, "error": reason}
+            taken = await db_session.execute(
+                select(Character.id).where(func.lower(Character.name) == name.lower())
+            )
+            if taken.first() is not None:
                 return {"ok": False, "error": "character_name_taken"}
 
         portrait_gen_failed: str | None = None
@@ -290,37 +461,9 @@ class PlayerService:
                 return err
 
         async with self.server.db.session_factory() as db_session:
-            start_digi = int(self.server.config.server.starting_digi_balance)
-            character = Character(
-                account_id=account_id,
-                name=name,
-                room_id="starter_zone:entrance",
-                portrait_url=p_url,
-                portrait_prompt=pp,
-                digi_balance=start_digi,
-                pvp_enabled=False,
-                reputation=0,
+            character = await self._insert_character(
+                db_session, account_id, name, p_url, pp, starter_clean
             )
-            db_session.add(character)
-            await db_session.commit()
-            await db_session.refresh(character)
-            from fablestar.proficiencies.starter import apply_starter_to_stats
-            from fablestar.proficiencies.state_helpers import (
-                ensure_proficiency_block,
-                migrate_legacy_stats,
-            )
-
-            merged_stats = migrate_legacy_stats(dict(character.stats or {}))
-            ensure_proficiency_block(merged_stats)
-            if starter_clean:
-                apply_starter_to_stats(
-                    merged_stats,
-                    starter_clean,
-                    self.server.content_loader.get_proficiency_registry(),
-                )
-            character.stats = merged_stats
-            await db_session.commit()
-            await db_session.refresh(character)
             payload = self.character_play_dict(character)
             result = await db_session.execute(
                 select(Character).where(Character.account_id == account_id).order_by(Character.id)

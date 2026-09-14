@@ -42,6 +42,8 @@ class FactionModel(BaseModel):
     wanted_items: list[str] = Field(default_factory=list)
     # Rep granted for completing one generated mission.
     mission_rep: int = 10
+    # Digi paid out on mission completion.
+    mission_pay: int = 12
     tags: list[str] = Field(default_factory=list)
 
     def offers_missions(self) -> bool:

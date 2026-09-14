@@ -1,0 +1,40 @@
+id: test_isle:orchard
+zone: test_isle
+type: alcove
+depth: 1
+description:
+  base: Rows of salt-stunted apple trees that fruit out of pure spite. Windfalls rot sweetly in the grass,
+    ladders lean where pickers left them, and a scarecrow wears somebody's old dock coat.
+exits:
+  east:
+    destination: test_isle:north_road
+    description: ''
+features:
+- id: windfalls
+  name: windfall apples
+  keywords:
+  - apples
+  - windfalls
+  - fruit
+  - grass
+  description: Sweet rot and wasps below; stubborn hard little apples above. The pickers' ladders lean
+    where the last shift ended.
+  search:
+    items:
+    - ration_pack
+    max_finds: 3
+    respawn_s: 700
+    chance: 0.6
+entity_spawns:
+- template: gullwing
+  chance: 0.3
+  max_count: 1
+hazards: []
+tags: []
+name: Windfall Orchard
+ambient:
+  min_interval: 35
+  max_interval: 95
+  lines:
+  - Wasps drone over the sweet rot.
+  - The scarecrow's dock coat flaps one empty sleeve.

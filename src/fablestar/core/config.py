@@ -1,10 +1,10 @@
 """TOML config loading — merges all config/*.toml files into a single Config object."""
 
 import os
+import tomllib
 from pathlib import Path
 from typing import Any
 
-import tomli
 from pydantic import BaseModel, Field, SecretStr, field_validator
 
 
@@ -15,6 +15,9 @@ class ServerConfig(BaseModel):
     max_connections: int = 100
     tick_rate: float = 0.25  # 4 ticks per second
     dev_mode: bool = False
+    # Passwordless test logins via POST /play/dev/login, loopback clients only.
+    # Needs dev_mode too; never enable on a networked host.
+    dev_login: bool = False
     # Shown in client UI for in-world economy (wallet / vendors); not the ComfyUI art balance.
     game_currency_display_name: str = "Digi"
     # Starting in-world balance for each new character (existing rows default 0 until granted in-game).
@@ -101,9 +104,17 @@ class LLMConfig(BaseModel):
 
 
 class AgentsLLMConfig(LLMConfig):
-    """Separate endpoint for agent brains so thinking never competes with narration."""
+    """Agent-brain LLM: an external endpoint OR an in-process GGUF model.
+
+    primary_backend accepts "lm_studio" / "ollama" (OpenAI-compatible HTTP)
+    or "embedded" (llama-cpp-python loads model_path inside the server).
+    """
 
     enabled: bool = False
+    # GGUF file for the embedded backend, e.g. "models/qwen2.5-3b-instruct-q4_k_m.gguf".
+    model_path: str = ""
+    # Embedded context window; small models + short prompts keep this modest.
+    embedded_ctx: int = 4096
 
 
 class Config(BaseModel):
@@ -126,7 +137,7 @@ def load_config(config_dir: str = "config") -> Config:
         for toml_file in config_path.glob("*.toml"):
             section_name = toml_file.stem
             with open(toml_file, "rb") as f:
-                section_data = tomli.load(f)
+                section_data = tomllib.load(f)
                 data[section_name] = section_data
 
     # Environment variables can override (e.g., FABLESTAR_SERVER__WEBSOCKET_PORT=8001)

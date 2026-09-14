@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { usePlayTheme } from "../PlayThemeContext.jsx";
+import { GameCmdContext } from "./00-ctx.jsx";
 import { ReputationThermometer } from "../ReputationThermometer.jsx";
 import { PORTRAIT_ASPECT_RATIO_CSS } from "../portraitProfile.js";
 import { Tooltip } from "./01-primitives.jsx";
@@ -450,60 +451,67 @@ export function InventoryPanel({ onContextMenu, items: liveItems = null }) {
   );
 }
 
-export function SocialPanel({ unreadCounts }) {
+export function SocialPanel({ messages = null }) {
   const { T } = usePlayTheme();
-  const [ch, setCh] = useState("party");
+  const { sendCommand } = useContext(GameCmdContext);
+  const [ch, setCh] = useState("local");
+  const [draft, setDraft] = useState("");
+  const logRef = useRef(null);
   const channels = [
-    { id: "party", label: "Party", color: T.glyph.cyan },
     { id: "local", label: "Local", color: T.text.secondary },
-    { id: "tells", label: "Tells", color: T.glyph.violet },
+    { id: "tell", label: "Tells", color: T.glyph.violet },
   ];
-  const msgs = {
-    party: [{ from: "Lyra", text: "Sentinel suppressed — go now", time: "19:43" }, { from: "You", text: "Moving to Glyph Chamber", time: "19:43" }],
-    local: [{ from: "Sentinel", text: "*optics flicker*", time: "19:43", emote: true }],
-    tells: [{ from: "Syra Vane", text: "Spare filaments?", time: "19:35" }],
+  const all = Array.isArray(messages) ? messages : [];
+  const msgs = all.filter((m) => m.channel === ch);
+  useEffect(() => {
+    const el = logRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [msgs.length, ch]);
+  const fmt = (at) => {
+    try {
+      const d = new Date(at * 1000);
+      return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+    } catch {
+      return "";
+    }
   };
-  const party = [
-    { name: "You", role: "Inscriptor", hp: 73, status: "active", you: true },
-    { name: "Lyra Ashfen", role: "Wardkeeper", hp: 88, status: "active" },
-  ];
+  const send = () => {
+    const text = draft.trim();
+    if (!text) return;
+    // Local sends say; Tells expects "<player> <message>" and sends tell.
+    sendCommand(ch === "local" ? `say ${text}` : `tell ${text}`);
+    setDraft("");
+  };
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
-      <div style={{ padding: 4, borderBottom: `1px solid ${T.border.subtle}` }}>
-        {party.map((p,i) => (
-          <div key={i} style={{ display: "flex", alignItems: "center", gap: 5, padding: "2px 4px", borderRadius: T.radius.sm, background: p.you?T.glyph.violetDim:"transparent" }}>
-            <div style={{ width: 5, height: 5, borderRadius: "50%", background: p.status==="combat"?T.glyph.crimson:T.glyph.emerald }}/>
-            <span style={{ flex: 1, fontSize: 10, fontFamily: T.font.body, color: p.you?T.text.accent:T.text.primary }}>{p.name}</span>
-            <span style={{ fontSize: 8, fontFamily: T.font.mono, color: T.text.muted }}>{p.role}</span>
-            <div style={{ width: 28, height: 3, borderRadius: 2, background: T.bg.void }}><div style={{ height: "100%", borderRadius: 2, width: `${p.hp}%`, background: p.hp<30?T.glyph.crimson:T.glyph.emerald }}/></div>
-          </div>
+      <div style={{ display: "flex", borderBottom: `1px solid ${T.border.subtle}` }}>
+        {channels.map(c => (
+          <button key={c.id} type="button" onClick={()=>setCh(c.id)} aria-label={`${c.label} channel`}
+            style={{ flex: 1, padding: "4px 0", background: "none", border: "none", borderBottom: ch===c.id?`2px solid ${c.color}`:"2px solid transparent", color: ch===c.id?c.color:T.text.muted, fontFamily: T.font.body, fontSize: 8, textTransform: "uppercase", letterSpacing: "0.06em", cursor: "pointer" }}>
+            {c.label}
+          </button>
         ))}
       </div>
-      <div style={{ display: "flex", borderBottom: `1px solid ${T.border.subtle}` }}>
-        {channels.map(c => {
-          const unread = (unreadCounts||{})[c.id] || 0;
-          return (
-            <button key={c.id} type="button" onClick={()=>setCh(c.id)} aria-label={`${c.label} channel`}
-              style={{ flex: 1, padding: "4px 0", background: "none", border: "none", borderBottom: ch===c.id?`2px solid ${c.color}`:"2px solid transparent", color: ch===c.id?c.color:T.text.muted, fontFamily: T.font.body, fontSize: 8, textTransform: "uppercase", letterSpacing: "0.06em", cursor: "pointer", position: "relative" }}>
-              {c.label}
-              {unread > 0 && <span style={{ position: "absolute", top: 1, right: 2, width: 8, height: 8, borderRadius: 4, background: T.glyph.crimson, fontSize: 0 }}/>}
-            </button>
-          );
-        })}
-      </div>
-      <div role="log" aria-label={`${ch} messages`} style={{ flex: 1, overflow: "auto", padding: 4 }}>
-        {(msgs[ch]||[]).map((m,i) => (
+      <div ref={logRef} role="log" aria-label={`${ch} messages`} style={{ flex: 1, overflow: "auto", padding: 4 }}>
+        {msgs.length === 0 && (
+          <div style={{ padding: 8, fontSize: 10, fontFamily: T.font.body, color: T.text.muted }}>
+            {ch === "local" ? "Nothing said nearby yet. Speak below or with `say`." : "No tells yet. Send one: <player> <message>."}
+          </div>
+        )}
+        {msgs.map((m,i) => (
           <div key={i} style={{ marginBottom: 5 }}>
             <div style={{ display: "flex", gap: 4, alignItems: "baseline" }}>
-              <span style={{ fontSize: 9, fontFamily: T.font.mono, color: T.text.muted, opacity: 0.4 }}>{m.time}</span>
-              <span style={{ fontSize: 10, fontFamily: T.font.body, fontWeight: 600, color: m.from==="You"?T.text.accent:T.glyph.cyan }}>{m.from}</span>
+              <span style={{ fontSize: 9, fontFamily: T.font.mono, color: T.text.muted, opacity: 0.4 }}>{fmt(m.at)}</span>
+              <span style={{ fontSize: 10, fontFamily: T.font.body, fontWeight: 600, color: m.self?T.text.accent:T.glyph.cyan }}>{m.self && ch==="local" ? "You" : m.from}</span>
             </div>
-            <div style={{ fontSize: 11, fontFamily: m.emote?T.font.body:T.font.mono, fontStyle: m.emote?"italic":"normal", color: T.text.secondary, paddingLeft: 36, lineHeight: 1.4 }}>{m.text}</div>
+            <div style={{ fontSize: 11, fontFamily: T.font.mono, color: T.text.secondary, paddingLeft: 36, lineHeight: 1.4 }}>{m.text}</div>
           </div>
         ))}
       </div>
       <div style={{ display: "flex", gap: 4, padding: "3px 4px", borderTop: `1px solid ${T.border.subtle}` }}>
-        <input placeholder={`${ch}...`} aria-label={`Send to ${ch}`}
+        <input placeholder={ch === "local" ? "say..." : "tell <player> <message>"} aria-label={`Send to ${ch}`}
+          value={draft} onChange={(e)=>setDraft(e.target.value)}
+          onKeyDown={(e)=>{ if (e.key === "Enter") send(); }}
           style={{ flex: 1, background: T.bg.surface, border: `1px solid ${T.border.subtle}`, borderRadius: T.radius.sm, padding: "3px 6px", outline: "none", color: T.text.primary, fontFamily: T.font.mono, fontSize: 10 }}/>
       </div>
     </div>

@@ -1,0 +1,8 @@
+id: stripper_of_parts
+name: Nothing Wasted
+story: saw the parts inside the whole
+level: minor
+criteria:
+  deconstructed: 5
+category: [crafting]
+instructions: Deconstruct 5 items into parts.

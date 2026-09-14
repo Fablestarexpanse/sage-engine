@@ -1,0 +1,18 @@
+id: juno_task
+name: Juno Task
+spawn_room: test_isle:orchard
+enabled: true
+temperament: {warmth: 0.6, caution: 0.4, ambition: 0.6, humor: 0.5}
+wants: to buy the orchard outright from the estate that forgot it exists
+fears: wasps, and letting the trees down
+speech: cheerful, mud-flecked, talks to plants mid-sentence
+baseline_mood: {valence: 0.3, arousal: 0.35}
+hard_facts:
+  - "profession: orchard hand and forager"
+  - "sells windfalls at the market"
+  - "knows every trail in the north wilds"
+routine: [orchard, north_road, market_square, north_road, wild_meadow, forest_edge, wild_meadow, north_road]
+gear: {}
+stats: {hp: 55, max_hp: 55}
+attributes: {FRT: 12, RFX: 11, ACU: 10, RSV: 11, PRS: 9}
+digi: 25

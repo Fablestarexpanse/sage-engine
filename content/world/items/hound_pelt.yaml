@@ -1,0 +1,8 @@
+id: hound_pelt
+name: rust hound pelt
+type: material
+description: Wiry red-brown fur over skin like old tarp. Smells of pine sap and
+  bad decisions, tans up surprisingly well.
+value: 10
+weight: 0.8
+tags: [material]

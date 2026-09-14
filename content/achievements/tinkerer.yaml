@@ -1,0 +1,8 @@
+id: tinkerer
+name: Tinkerer
+story: made something new from something old
+level: minor
+criteria:
+  crafted: 1
+category: [crafting]
+instructions: Craft any item from a recipe.

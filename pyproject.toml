@@ -4,7 +4,7 @@ version = "0.2.0"
 description = "Vibe-coded MUD platform with LLM integration and hot-reload."
 readme = "README.md"
 requires-python = ">=3.11"
-license = {text = "MIT"}
+license = {file = "engine/LICENSE"}  # FSL-1.1-ALv2; scope in NOTICE
 dependencies = [
     "redis[hiredis]>=5.0.0",
     "asyncpg>=0.29.0",
@@ -27,6 +27,10 @@ dependencies = [
 
 [project.optional-dependencies]
 worldforge = ["mcp>=1.0.0"]
+# In-process GGUF agent brains (admin Agents panel "embedded" backend).
+agents-embedded = ["llama-cpp-python>=0.3.0"]
+# Gate tools, pinned to the versions CI and the rexyMCP executor run.
+dev = ["ruff==0.12.7", "pytest==9.0.3"]
 
 [project.scripts]
 fablestar = "fablestar.__main__:main"
@@ -34,6 +38,11 @@ fablestar = "fablestar.__main__:main"
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+markers = [
+    "live: needs real Postgres and Redis; runs only when SAGE_LIVE_TESTS=1",
+]
 
 [tool.ruff]
 line-length = 100

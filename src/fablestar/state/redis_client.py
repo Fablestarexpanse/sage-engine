@@ -69,7 +69,7 @@ class RedisState:
     async def disconnect(self):
         """Close the Redis connection."""
         if self._client:
-            await self._client.close()
+            await self._client.aclose()
             self._client = None
             logger.info("Disconnected from Redis")
 

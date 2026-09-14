@@ -67,3 +67,37 @@ def test_pick_module_handles_broken_interest():
     rng = random.Random(1)
     broken = [{"name": "boom", "interest": lambda ctx: 1 / 0, "fire": None}]
     assert pick_module(broken, _ctx(), rng, nothing_weight=0) is None
+
+
+def test_ambush_respects_cap_and_skips_neutral():
+    import asyncio
+
+    from fablestar.maestro.modules import _ambush_fire
+    from fablestar.world.models import EntityTemplate
+    from tests.fakes import StubSession, make_fake_server
+
+    server = make_fake_server()
+    server.content_loader.entity_templates = {
+        "gullwing": EntityTemplate(id="gullwing", name="grey gullwing", tags={"neutral"}),
+        "scrap_drone": EntityTemplate(id="scrap_drone", name="scrap drone", tags={"hostile"}),
+    }
+    room = RoomModel(
+        id="z:r",
+        zone="z",
+        type="chamber",
+        entity_spawns=[
+            {"template": "gullwing", "max_count": 5},
+            {"template": "scrap_drone", "max_count": 1},
+        ],
+    )
+    ctx = {"room": room, "room_id": "z:r", "stats": {"hp": 100, "max_hp": 100}}
+
+    async def run():
+        first = await _ambush_fire(server, StubSession(), ctx)
+        second = await _ambush_fire(server, StubSession(), ctx)
+        return first, second, await server.redis.get_room_entities("z:r")
+
+    first, second, ents = asyncio.run(run())
+    assert first is True
+    assert second is False
+    assert len(ents) == 1

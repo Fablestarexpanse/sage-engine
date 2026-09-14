@@ -270,8 +270,9 @@ def build_content_router(server: FablestarServer) -> APIRouter:
         _check_room_write_conflict(zone_id, room_slug, body.expected_mtime)
         try:
             path = content_browser.save_room_yaml_text(zone_id, room_slug, body.yaml_content)
-        except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid zone or room slug") from None
+        except ValueError as e:
+            detail = "Invalid zone or room slug" if str(e) == "invalid_slug" else str(e)
+            raise HTTPException(status_code=400, detail=detail) from None
         server.content_loader.invalidate(path)
         return {"status": "saved", "path": str(path)}
 

@@ -77,7 +77,15 @@ export async function createWorldScaffold(contentRoot) {
 
   if (!(await fs.pathExists(entrancePath))) {
     await fs.createDir(roomsDir);
-    const zoneMeta = { name: "Starter Zone", type: "exploration", status: "active" };
+    // Matches the server's ZoneModel shape (id/name/description required).
+    const zoneMeta = {
+      id: STARTER_ZONE,
+      name: "Starter Zone",
+      description: "The first zone of a new world.",
+      depth_range: [1, 3],
+      type: "exploration",
+      status: "active",
+    };
     await fs.writeText(joinPaths(zoneRoot, "zone.yaml"), yaml.dump(zoneMeta, { lineWidth: 120, quotingType: '"', noRefs: true }));
 
     const entrance = {

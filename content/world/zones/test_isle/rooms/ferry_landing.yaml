@@ -1,0 +1,30 @@
+id: test_isle:ferry_landing
+zone: test_isle
+type: hub
+depth: 1
+description:
+  base: A weathered ferry ramp juts into grey harbor water, its planks patched with deck plating scavenged
+    from three different ships. A tide-stained sign reads WELCOME TO TIDEGATE ISLE — someone has scratched
+    "good luck" underneath. This is where everyone arrives, and where some swear they'll leave from.
+exits:
+  north:
+    destination: test_isle:harbor_docks
+    description: ''
+features:
+- id: welcome_sign
+  name: tide-stained welcome sign
+  keywords:
+  - sign
+  - welcome
+  description: 'WELCOME TO TIDEGATE ISLE. Beneath the official paint, in scratched letters: "good luck".'
+entity_spawns: []
+hazards: []
+tags: []
+name: Ferry Landing
+ambient:
+  min_interval: 35
+  max_interval: 95
+  lines:
+  - The ferry ramp groans as a swell rolls under it.
+  - A gull lands on the mooring post, judges you, and leaves.
+  - Somewhere out in the grey, a foghorn clears its throat.

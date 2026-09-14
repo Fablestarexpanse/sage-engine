@@ -1,5 +1,13 @@
 # CLAUDE.md — Fablestar MUD Platform
 
+> **SAGE decoupling in progress (2026-09-13).** This codebase is being split into a
+> world-agnostic engine (SAGE), world packages (Fablestar is the first) and plugins. The brief
+> `docs/sage/BRIEF.md`, the rulings log `docs/sage/DECISIONS.md` and the approved (2026-09-13)
+> `docs/sage/PHASE1_CONTRACTS.md` take precedence over this file. This file still describes the
+> pre-split shape, where Fablestar mechanics (Conduit, Digi, Tidegate rooms) sit inside the
+> engine — do not add new world-specific code to the engine on the strength of it. Current
+> audit: `docs/sage/PHASE0_AUDIT.md`.
+
 Developer guide for working with this codebase. Read this before touching game logic.
 
 ---
@@ -38,17 +46,20 @@ admin-ui/               React admin console (Vite, port 5174)
 player-ui/              React player client (Vite, port 5173)
 worldforge/             Tauri desktop WorldForge editor
 worldforge-mcp/         MCP server exposing map-building tools (mcp__worldforge__*)
-content/world/          Game content (YAML — gitignored changes hot-reload)
-  galaxy.yaml           Galaxy definition (systems index)
+content/world/          Game content (YAML, tracked in git; changes hot-reload)
+  galaxy.yaml           Galaxy stub (no runtime loader; admin builder only)
   entities/             Entity templates (NPC/mob definitions)
   items/                Item templates
-  ships/                Ship templates
-  systems/              Star system definitions
-  zones/                Game zones
+  zones/                Game zones (test_isle "Tidegate Isle", aipub)
     {zone_id}/
       zone.yaml         Zone metadata
+      .positions.json   Editor layout (v2: positions, floors, notes)
       rooms/            Room YAML files; file stem = room slug
-  stamps/               WorldForge copy-paste stamp data (editor only, not loaded by server)
+  (ships/, systems/, glyphs/, stamps/ are referenced by the editors but do not exist today)
+content/achievements/   Achievement YAML
+content/agents/         Agent personas (computer-controlled players)
+content/factions/       Faction YAML
+content/proficiencies/  Conduit proficiency catalog (catalog.json, 278 leaves)
 prompts/                Jinja2 prompt templates (*.j2)
 config/                 TOML config files (gitignored; copy from *.example.toml)
 scripts/                Admin bootstrap and maintenance scripts
@@ -90,9 +101,9 @@ from fablestar.app import app_instance  # import inside handler, not at module t
 
 - **Rate:** 4 Hz (0.25s tick) — configurable via `tick_rate` in `server.toml`
 - **Drift compensation:** measures elapsed time and skips ticks if behind
-- Publishes `"tick"` event on the `EventBus`
-- `PersistenceManager` subscribes and flushes Redis → Postgres every 240 ticks (~60 s)
-- `EntitySpawnManager` runs per-tick respawn logic
+- Handlers attach with `TickManager.register(fn)` (`server.py` startup): spawner, ambient, effects, maestro, agent_manager, persistence. A failing handler is logged and the loop keeps running.
+- `PersistenceManager` flushes Redis → Postgres every 240 ticks (~60 s)
+- `core/events.py` defines an `EventBus` that nothing uses yet
 
 ---
 
@@ -286,6 +297,8 @@ cd player-ui
 VITE_NEXUS_PORT=8001 npm run dev -- --port 5173 --host
 ```
 
+**Playtesting without passwords:** with `dev_mode = true` and `dev_login = true` in `config/server.toml`, loopback clients can `POST /play/dev/login {"character": "Qa Tester"}` to get a play token for that character (created on the `dev-login` account if missing; other accounts' characters and agent names are refused). Connect the WebSocket with `{"token": ..., "character_id": ...}`. The player UI shows a "Dev login" box on the sign-in screen when it's enabled. Never enable on a networked host.
+
 Default ports: Nexus 8001, player UI 5173, admin UI 5174, Postgres 5432, Redis 6379.
 
 ---
@@ -294,7 +307,7 @@ Default ports: Nexus 8001, player UI 5173, admin UI 5174, Postgres 5432, Redis 6
 
 WorldForge is a Tauri desktop app (`worldforge/`) for visually editing zones and rooms. It exports content directly into `content/world/`. Stamps (reusable room groups) are saved to `content/world/stamps/`.
 
-**Known issue:** WorldForge historically wrote exports to a nested `content/world/content/world/` path due to a root path misconfiguration. If you see a `content/world/content/` subtree appear after a WorldForge export, the room YAMLs must be moved to `content/world/zones/{zone_id}/rooms/` and the duplicate tree removed. This was corrected manually; check the WorldForge content root setting if it recurs.
+**Resolved (kept for history):** WorldForge historically wrote exports to a nested `content/world/content/world/` path due to a root path misconfiguration. If you see a `content/world/content/` subtree appear after a WorldForge export, the room YAMLs must be moved to `content/world/zones/{zone_id}/rooms/` and the duplicate tree removed. This was corrected manually; check the WorldForge content root setting if it recurs.
 
 ### How WorldForge saves (and the conflict risk)
 
@@ -330,7 +343,18 @@ python -m alembic upgrade head
 pytest tests/
 ```
 
-Tests cover config loading, command dispatch, proficiency math, admin auth, and session state. Integration tests expect a live Postgres (use Docker). Do not mock the database — mocked tests have masked real migration failures in the past.
+Tests cover config loading, command dispatch, proficiency math, admin auth, and session state.
+
+**Two tiers (owner ruling 2026-09-13, `docs/dev/STANDARDS.md` §3.5):** the default suite is hermetic — `python -m pytest` passes with no services, using in-memory fakes in `tests/fakes.py`. A live tier (`@pytest.mark.live`, run with `SAGE_LIVE_TESTS=1` against Docker Postgres/Redis, required in CI) covers migrations, persistence, plugin install/uninstall and world smoke tests. Never test migrations or persistence against fakes alone — mocked tests have masked real migration failures in the past.
+
+```bash
+docker compose up -d redis postgres
+SAGE_LIVE_TESTS=1 python -m pytest -m live
+```
+
+Live tests create and drop their own `sage_live_*` database and use Redis db 15, so they never touch the dev database. `tests/live/test_migrations.py::test_models_match_migrations` fails when the ORM models and migrations disagree — fix the model or add a migration, never weaken the test.
+
+**SAGE invariant ratchet** (CI step, `scripts/sage_invariants.py`): counts world-specific terms (`scripts/sage_denylist.toml`) and hardcoded player-facing strings (`session.send("...")`) per engine file, and fails if any file's count rises above `scripts/sage_invariants_baseline.json`. Run `python scripts/sage_invariants.py check` before committing. When you remove hits, run `python scripts/sage_invariants.py update` to lock in the lower counts. Never raise the baseline to make CI pass — put the term in a world package or the text behind a lexicon key instead.
 
 ---
 
