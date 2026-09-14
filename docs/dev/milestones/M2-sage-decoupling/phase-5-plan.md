@@ -4,7 +4,7 @@
 
 Living plan. The tool surface was decided as a set at the Phase 1 review (`PHASE1_CONTRACTS.md`
 D.E, owner G.1/G.6). Phase 3 already retired the admin World Builder (3.18a) and the
-galaxy/ship/glyph editors (3.18). Phase 5 does the rest of D.E. The rules are unchanged: both
+galaxy/ship/mark editors (3.18). Phase 5 does the rest of D.E. The rules are unchanged: both
 worlds stay playable at every commit, the ratchet only goes down, a real run goes in every commit
 message, and the full suite runs before each commit.
 
@@ -28,7 +28,7 @@ message, and the full suite runs before each commit.
 | 5.4 | WorldForge reads the world. Room types, exit directions and equipment slots come from the package's `world.toml`. | done |
 | 5.5 | WorldForge edits plugin content: room, feature and item forms for extension fields, generated from the exported schema. | done |
 | 5.6 | Credit bundles are deployment config (`comfyui.toml`), served to the admin console. | done |
-| 5.7 | World theme: `ui/theme.yaml` (accent colours, title glyph) served with `GET /play/world`, applied by player-ui. | todo |
+| 5.7 | World theme: `ui/theme.yaml` (accent colours, title mark) served with `GET /play/world`, applied by player-ui. | done |
 | 5.8 | Nexus write-through for WorldForge: decide (build or defer) and record. | todo |
 
 ## Notes
@@ -101,4 +101,13 @@ message, and the full suite runs before each commit.
     - Live `/admin/economy` returns the four bundles, "pixels" and 100 (401 without a token).
     - `test_credit_bundles.py` loads bundles from TOML, survives an admin save, and checks the route.
     - The admin screen was not opened: signing in needs a password.
+- **5.7 world theme (done).**
+  - **The file:** a package's `ui/theme.yaml` sets `mark` (the symbol beside the world's name; not `glyph`, which the ratchet reserves as a Fablestar term) and `accent.dark` / `accent.light` (`#rrggbb`). `sage.world.ui_theme` validates it; an invalid file logs and reads as empty.
+  - **How it reaches the client:** `GET /play/world` now carries `theme`. player-ui puts `WorldProvider` outside `PlayThemeProvider`. `withAccent()` swaps the built-in violet accent tokens (text, border, hue, glow) for the world's colour, and the five header and portrait-placeholder marks use the world's mark.
+  - **Worlds:** Fablestar keeps ◈ and violet; Rivermoot gets ≈ and brass.
+  - **New launch config:** `player-ui-rivermoot` (port 5175) runs the client against the Rivermoot server.
+  - **Run:**
+    - Rivermoot sign-in page (light mode): the ≈ mark is `rgb(138, 90, 28)` (`#8a5a1c`) and the Sign in button runs brass to cyan.
+    - Dev login into Rivermoot's play view shows ≈ RIVERMOOT with brass accents.
+    - Fablestar's `/play/world` returns ◈ and violet.
 

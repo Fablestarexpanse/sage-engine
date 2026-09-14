@@ -128,8 +128,14 @@ def build_play_router(server: SageServer) -> APIRouter:
 
     @router.get("/play/world")
     async def play_world():
-        """Public: which world this server runs, for client titles and headers."""
-        return {"id": server.world.id, "name": server.world.manifest.world.name}
+        """Public: which world this server runs, for client titles, headers and look."""
+        from sage.world.ui_theme import load_ui_theme
+
+        return {
+            "id": server.world.id,
+            "name": server.world.manifest.world.name,
+            "theme": load_ui_theme(server.world.root),
+        }
 
     @router.get("/play/commands")
     async def play_commands():

@@ -1,0 +1,5 @@
+# Fablestar Expanse — player client look (proprietary; see NOTICE).
+mark: "◈"
+accent:
+  dark: "#a78bfa"
+  light: "#6d4ed6"

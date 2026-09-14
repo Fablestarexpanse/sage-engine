@@ -82,7 +82,7 @@ export default function PlayClient({
   /** Optional: narrative toolbar → ComfyUI scene generation (credentials + callbacks). */
   sceneGen,
 }) {
-  const { T } = usePlayTheme();
+  const { T, mark } = usePlayTheme();
   const [layout, setLayout] = useState("standard");
   const [collapsed, setCollapsed] = useState({});
   const [focusStack, setFocusStack] = useState([]);
@@ -285,7 +285,7 @@ export default function PlayClient({
         borderBottom: `1px solid ${T.border.dim}`,
         display: "flex", alignItems: "center", padding: "0 10px", gap: 8,
       }}>
-        <span style={{ fontSize: 16, color: T.hue.violet }}>◈</span>
+        <span style={{ fontSize: 16, color: T.hue.violet }}>{mark}</span>
         <span style={{ fontFamily: T.font.display, fontSize: 12, fontWeight: 700, color: T.text.primary, letterSpacing: "0.08em", textTransform: "uppercase", whiteSpace: "nowrap" }}>{worldName}</span>
 
         {session && (

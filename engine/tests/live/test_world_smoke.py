@@ -201,10 +201,9 @@ def test_world_boots_and_plays(world_id, live_config, world_database, tmp_path):
     direction, destination = _first_exit(world)
     with _running_world(world_id, live_config, world_database, tmp_path) as (port, log_path):
         # Clients title themselves from this; it must be the package's name, not a default.
-        assert _get(f"http://127.0.0.1:{port}/play/world") == {
-            "id": world_id,
-            "name": world.manifest.world.name,
-        }
+        announced = _get(f"http://127.0.0.1:{port}/play/world")
+        assert (announced["id"], announced["name"]) == (world_id, world.manifest.world.name)
+        assert announced["theme"]["mark"], announced
         back = OPPOSITE.get(direction, direction)
         text = "\n".join(
             asyncio.run(_play(port, ["say smoke test", direction, back, "who", "quit"]))

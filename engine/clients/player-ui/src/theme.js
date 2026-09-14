@@ -66,3 +66,22 @@ export const PLAY_THEMES = {
 };
 
 export const clamp = (v, mn, mx) => Math.max(mn, Math.min(mx, v));
+
+function rgba(hex, alpha) {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`;
+}
+
+/** A palette with a world's accent colour (#rrggbb) in place of the built-in violet accent. */
+export function withAccent(T, hex, mode) {
+  if (typeof hex !== "string" || !/^#[0-9a-fA-F]{6}$/.test(hex)) return T;
+  const dark = mode !== "light";
+  return {
+    ...T,
+    text: { ...T.text, accent: hex, accentStrong: hex },
+    border: { ...T.border, accent: rgba(hex, dark ? 0.25 : 0.22), accentHot: rgba(hex, dark ? 0.5 : 0.45) },
+    hue: { ...T.hue, violet: hex, violetDim: rgba(hex, dark ? 0.15 : 0.12), violetGlow: rgba(hex, dark ? 0.3 : 0.22) },
+    shadow: { ...T.shadow, glow: `0 0 20px ${rgba(hex, dark ? 0.15 : 0.12)}` },
+  };
+}
+

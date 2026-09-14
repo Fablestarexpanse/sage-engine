@@ -128,7 +128,9 @@ def test_play_commands_lists_the_registry(client):
 def test_play_world_names_the_running_world(client, server):
     r = client.get("/play/world")
     assert r.status_code == 200
-    assert r.json() == {"id": server.world.id, "name": server.world.manifest.world.name}
+    body = r.json()
+    assert (body["id"], body["name"]) == (server.world.id, server.world.manifest.world.name)
+    assert set(body["theme"]) <= {"mark", "accent"}
 
 
 def test_valid_staff_token_resolves_context(client, server):

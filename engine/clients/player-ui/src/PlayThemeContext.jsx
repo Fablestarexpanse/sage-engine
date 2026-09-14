@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { PLAY_THEMES } from "./theme.js";
+import { PLAY_THEMES, withAccent } from "./theme.js";
+import { useWorld } from "./WorldContext.jsx";
 
 const LS_KEY = "sage_player_ui_theme";
 
@@ -33,13 +34,16 @@ export function PlayThemeProvider({ children }) {
     setMode(mode === "dark" ? "light" : "dark");
   }, [mode, setMode]);
 
-  const T = useMemo(() => PLAY_THEMES[mode], [mode]);
+  // The world's ui/theme.yaml may recolour the accent and set the header mark.
+  const { theme } = useWorld();
+  const T = useMemo(() => withAccent(PLAY_THEMES[mode], theme?.accent?.[mode], mode), [mode, theme]);
+  const mark = theme?.mark || "◈";
 
   useEffect(() => {
     document.documentElement.setAttribute("data-play-theme", mode);
   }, [mode]);
 
-  const value = useMemo(() => ({ mode, setMode, toggleMode, T }), [mode, setMode, toggleMode, T]);
+  const value = useMemo(() => ({ mode, setMode, toggleMode, T, mark }), [mode, setMode, toggleMode, T, mark]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

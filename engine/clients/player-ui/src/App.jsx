@@ -240,11 +240,11 @@ function useAuthChrome() {
 }
 
 function AuthBrandHeader({ subtitle }) {
-  const { T } = usePlayTheme();
+  const { T, mark } = usePlayTheme();
   const world = useWorld();
   return (
     <div style={{ textAlign: "center", marginBottom: 22 }}>
-      <div style={{ fontSize: 28, color: T.hue.violet, marginBottom: 6 }}>◈</div>
+      <div style={{ fontSize: 28, color: T.hue.violet, marginBottom: 6 }}>{mark}</div>
       <h1 style={{ fontFamily: T.font.display, fontSize: 22, color: T.text.primary, letterSpacing: "0.12em", fontWeight: 700, textTransform: "uppercase" }}>{world.name}</h1>
       {subtitle != null && subtitle !== "" && (
         <p style={{ fontSize: 11, color: T.text.muted, marginTop: 6 }}>{subtitle}</p>
@@ -660,7 +660,7 @@ function PlayAuthFlow({ onLoggedIn }) {
 }
 
 function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacters, aiEconomy, mergeEchoFromPlayRes }) {
-  const { T } = usePlayTheme();
+  const { T, mark } = usePlayTheme();
   const { username, characters, gameCurrencyDisplayName, isGm } = auth;
   const gameCurrencyLabel = gameCurrencyDisplayName || "";
   const [selectedId, setSelectedId] = useState(characters[0]?.id ?? null);
@@ -839,7 +839,7 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
           color: T.hue.violet,
         }}
       >
-        ◈
+        {mark}
       </div>
     );
 

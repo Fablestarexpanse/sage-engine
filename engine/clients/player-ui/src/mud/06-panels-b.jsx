@@ -121,7 +121,7 @@ export function CharacterPanel({
   /** Large character portrait; set false when the cutout is shown behind Narrative instead. */
   showHeroPortrait = true,
 }) {
-  const { T } = usePlayTheme();
+  const { T, mark } = usePlayTheme();
   const [tab, setTab] = useState("vitals");
   const hp = typeof characterStats?.hp === "number" ? characterStats.hp : 0;
   const hpMax = typeof characterStats?.max_hp === "number" ? characterStats.max_hp : Math.max(hp, 1);
@@ -256,7 +256,7 @@ export function CharacterPanel({
                 color: T.hue.violet + "40",
               }}
             >
-              ◈
+              {mark}
             </div>
           ) : null}
           <div
