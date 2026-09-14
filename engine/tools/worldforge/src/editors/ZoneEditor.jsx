@@ -258,6 +258,9 @@ function ZoneEditorInner({
   const newRoomType = pickRoomType(defaultRoomType, worldLists.roomTypes);
 
   const [positionsDoc, setPositionsDoc] = useState(() => parsePositionsDoc(null));
+  // The layout doc most recently read from disk: the first rebuild that sees it places nodes from
+  // the file, not from wherever the placeholder grid put them before the read finished.
+  const loadedPositionsDocRef = useRef(null);
   const [groups, setGroups] = useState([]);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const setNodesRef = useRef(setNodes);
@@ -911,6 +914,8 @@ function ZoneEditorInner({
 
   const rebuildGraph = useCallback(() => {
     const doc = positionsDoc;
+    const freshFromDisk = doc === loadedPositionsDocRef.current;
+    if (freshFromDisk) loadedPositionsDocRef.current = null;
     const muted = mutedEdgeSetFromDoc(doc);
     const { nodes: rn, edges: re, externalExits } = buildZoneFlow(zoneId, roomsMap, doc, {
       mutedEdgeSet: muted,
@@ -933,7 +938,7 @@ function ZoneEditorInner({
       const docP = doc.positions?.[slug];
       const locked = Boolean(docP?.locked);
       const live = liveByRoomId.get(n.id);
-      if (!locked && live) {
+      if (!locked && live && !freshFromDisk) {
         n.position = { x: live.position.x, y: live.position.y };
         const built = n.style || {};
         const lv = live.style || {};
@@ -1337,7 +1342,9 @@ function ZoneEditorInner({
       try {
         const raw = (await fs.pathExists(positionsPath)) ? JSON.parse(await fs.readText(positionsPath)) : {};
         if (cancelled) return;
-        setPositionsDoc(parsePositionsDoc(raw));
+        const loaded = parsePositionsDoc(raw);
+        loadedPositionsDocRef.current = loaded;
+        setPositionsDoc(loaded);
       } catch {
         if (!cancelled) setPositionsDoc(parsePositionsDoc(null));
       }
