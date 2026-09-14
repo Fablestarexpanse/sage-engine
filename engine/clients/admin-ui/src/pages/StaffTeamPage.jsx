@@ -1,13 +1,106 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { useAdminTheme } from "../AdminThemeContext.jsx";
-import { API_BASE, WS_BASE } from "../apiConfig.js";
-import {
-  LS_ADMIN_TOKEN, ALL_ADMIN_TOOLS, adminWsBase, adminPresenceWsUrl, adminLogsWsUrl,
-  sendWsAuthToken, parseLeadingInt, parseRoomType, extractYamlRoomId, Icons,
-  Badge, StatusDot, Pill, ActionButton, PlannedAction, SearchBar, TabBar,
-  DataTable, StatCard, usePolledList, FetchErrorBanner,
-} from "../adminCommon.jsx";
+import { API_BASE } from "../apiConfig.js";
+import { Badge, ActionButton, DataTable } from "../adminCommon.jsx";
+
+// Tool ids the server checks, in sidebar order, with what each one opens.
+// entities, items and locations are separate grants that the Content Library combines.
+const TOOL_GROUPS = [
+  ["Overview", [["dashboard", "Dashboard"]]],
+  ["World", [["world", "World & plugins, zones and rooms"], ["content", "Content Library"], ["locations", "Create rooms"], ["entities", "Entity templates"], ["items", "Item templates"], ["lexicon", "Lexicon & MOTD"]]],
+  ["Players", [["players", "Players & sessions"]]],
+  ["Plugins", [["skills", "Skills catalog"], ["agents", "Agents"], ["shops", "Shops"]]],
+  ["AI", [["forge", "AI Forge"]]],
+  ["System", [["server", "Server & AI models"], ["operations", "Operations"], ["team", "Team & access (head admins)"], ["settings", "Settings (no page)"]]],
+];
+
+const parseZones = (raw) => {
+  const z = (raw || "").trim();
+  return z === "*" || z === "" ? ["*"] : z.split(",").map((x) => x.trim()).filter(Boolean);
+};
+
+function ToolPicker({ tools, onToggle, idPrefix }) {
+  const { colors: COLORS } = useAdminTheme();
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: "10px 16px" }}>
+      {TOOL_GROUPS.map(([group, items]) => (
+        <fieldset key={group} style={{ border: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 4 }}>
+          <legend style={{ fontSize: 10, fontWeight: 600, color: COLORS.textDim, textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: "'JetBrains Mono', monospace", marginBottom: 2 }}>{group}</legend>
+          {items.map(([tid, label]) => (
+            <label key={tid} htmlFor={`${idPrefix}-${tid}`} style={{ fontSize: 12, color: COLORS.text, display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }} title={tid}>
+              <input id={`${idPrefix}-${tid}`} type="checkbox" checked={tools.includes(tid)} onChange={() => onToggle(tid)} />
+              {label}
+            </label>
+          ))}
+        </fieldset>
+      ))}
+    </div>
+  );
+}
+
+function StaffEditor({ row, onCancel, onSaved }) {
+  const { colors: COLORS } = useAdminTheme();
+  const [displayName, setDisplayName] = useState(row.display_name || "");
+  const [role, setRole] = useState(row.role);
+  const [zones, setZones] = useState((row.permissions?.zones || ["*"]).join(", "));
+  const [tools, setTools] = useState(row.permissions?.tools || []);
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const input = { padding: 8, background: COLORS.bgInput, border: `1px solid ${COLORS.border}`, borderRadius: 6, color: COLORS.text };
+
+  const toggle = (tid) => setTools((t) => (t.includes(tid) ? t.filter((x) => x !== tid) : [...t, tid]));
+
+  const save = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    setError("");
+    const patch = { display_name: displayName.trim(), role, permissions: { ...(row.permissions || {}), tools, zones: parseZones(zones) } };
+    if (password) patch.password = password;
+    try {
+      await axios.patch(`${API_BASE}/admin/staff/${row.id}`, patch);
+      onSaved();
+    } catch (ex) {
+      const d = ex.response?.data?.detail;
+      setError(typeof d === "string" ? d : Array.isArray(d) ? d.map((x) => x.msg).join("; ") : ex.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <form onSubmit={save} style={{ background: COLORS.bgCard, border: `1px solid ${COLORS.borderActive}`, borderRadius: 10, padding: 18, marginBottom: 20, display: "grid", gap: 12 }}>
+      <h3 style={{ margin: 0, fontSize: 14, color: COLORS.text }}>Edit {row.display_name} <span style={{ fontFamily: "'JetBrains Mono', monospace", color: COLORS.textDim, fontWeight: 400 }}>{row.username}</span></h3>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
+        <label style={{ display: "grid", gap: 4, fontSize: 11, color: COLORS.textMuted }}>Display name
+          <input id={`staff-${row.id}-name`} value={displayName} onChange={(e) => setDisplayName(e.target.value)} style={input} />
+        </label>
+        <label style={{ display: "grid", gap: 4, fontSize: 11, color: COLORS.textMuted }}>Role
+          <select id={`staff-${row.id}-role`} value={role} onChange={(e) => setRole(e.target.value)} style={input}>
+            <option value="gm">GM</option>
+            <option value="admin">Admin</option>
+            <option value="head_admin">Head admin (every tool and zone)</option>
+          </select>
+        </label>
+        <label style={{ display: "grid", gap: 4, fontSize: 11, color: COLORS.textMuted }}>Zones (* or ids, comma-separated)
+          <input id={`staff-${row.id}-zones`} value={zones} onChange={(e) => setZones(e.target.value)} style={input} />
+        </label>
+        <label style={{ display: "grid", gap: 4, fontSize: 11, color: COLORS.textMuted }}>New password (leave empty to keep)
+          <input id={`staff-${row.id}-password`} type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} style={input} />
+        </label>
+      </div>
+      {role === "head_admin"
+        ? <div style={{ fontSize: 12, color: COLORS.textMuted }}>Head admins can use every tool, so the tool list does not apply.</div>
+        : <ToolPicker tools={tools} onToggle={toggle} idPrefix={`staff-${row.id}-tool`} />}
+      {error && <div role="alert" style={{ color: COLORS.danger, fontSize: 12 }}>Not saved: {error}</div>}
+      <div style={{ display: "flex", gap: 8 }}>
+        <button type="submit" disabled={busy} style={{ padding: "6px 14px", background: COLORS.accent, color: "#fff", border: "none", borderRadius: 6, fontWeight: 600, fontSize: 12, cursor: busy ? "wait" : "pointer" }}>{busy ? "Saving…" : "Save changes"}</button>
+        <ActionButton small variant="ghost" onClick={onCancel}>Cancel</ActionButton>
+      </div>
+    </form>
+  );
+}
 
 
 const StaffTeamPage = () => {
@@ -18,6 +111,7 @@ const StaffTeamPage = () => {
     username: "", password: "", display_name: "", role: "gm", tools: ["dashboard", "players"], zones: "*",
   });
   const [busy, setBusy] = useState(false);
+  const [editingId, setEditingId] = useState(null);
 
   const load = useCallback(async () => {
     setLoadErr("");
@@ -43,8 +137,7 @@ const StaffTeamPage = () => {
     e.preventDefault();
     setBusy(true);
     try {
-      const zonesRaw = (form.zones || "").trim();
-      const zones = zonesRaw === "*" || zonesRaw === "" ? ["*"] : zonesRaw.split(",").map((z) => z.trim()).filter(Boolean);
+      const zones = parseZones(form.zones);
       await axios.post(`${API_BASE}/admin/staff`, {
         username: form.username.trim(),
         password: form.password,
@@ -76,7 +169,7 @@ const StaffTeamPage = () => {
       <p style={{ margin: "0 0 16px", fontSize: 13, color: COLORS.textMuted, fontFamily: "'DM Sans', sans-serif" }}>
         Head admins can add staff, assign roles (admin / GM), and restrict <strong>tools</strong> (sidebar areas) and <strong>zones</strong> (world regions for room edits / forge inject / live spawns).
         Use zones <code style={{ color: COLORS.textDim }}>*</code> for all zones, or comma-separated ids e.g. <code style={{ color: COLORS.textDim }}>test_zone</code>.
-        {" "}Staff accounts are for this admin console only. To give a <strong>play</strong> login the in-game pink <strong>GM</strong> crown, use <strong>Players → Game accounts</strong> and enable <em>Game Master play account</em> on that row.
+        {" "}Staff accounts are for this admin console only. To give a <strong>play</strong> login the in-game pink <strong>GM</strong> crown, use <strong>Players &amp; sessions → Game accounts</strong> and enable <em>Game Master play account</em> on that row.
       </p>
       {loadErr && <div style={{ color: COLORS.danger, marginBottom: 12 }}>{loadErr}</div>}
 
@@ -94,18 +187,19 @@ const StaffTeamPage = () => {
             </select>
           </div>
           <input placeholder="Zones (* or zone_id, zone_id2)" value={form.zones} onChange={(e) => setForm((f) => ({ ...f, zones: e.target.value }))} style={{ padding: 8, background: COLORS.bgInput, border: `1px solid ${COLORS.border}`, borderRadius: 6, color: COLORS.text }} />
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {ALL_ADMIN_TOOLS.map((tid) => (
-              <label key={tid} style={{ fontSize: 11, color: COLORS.textMuted, display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}>
-                <input type="checkbox" checked={form.tools.includes(tid)} onChange={() => toggleTool(tid)} />
-                {tid}
-              </label>
-            ))}
-          </div>
+          <ToolPicker tools={form.tools} onToggle={toggleTool} idPrefix="new-staff-tool" />
           <button type="submit" disabled={busy} style={{ alignSelf: "start", padding: "8px 16px", background: COLORS.accent, color: "#fff", border: "none", borderRadius: 6, fontWeight: 600, cursor: "pointer" }}>Create</button>
         </form>
       </div>
 
+      {editingId != null && rows.some((r) => r.id === editingId) && (
+        <StaffEditor
+          key={editingId}
+          row={rows.find((r) => r.id === editingId)}
+          onCancel={() => setEditingId(null)}
+          onSaved={async () => { setEditingId(null); await load(); }}
+        />
+      )}
       <div style={{ background: COLORS.bgCard, border: `1px solid ${COLORS.border}`, borderRadius: 10, overflow: "hidden" }}>
         <DataTable
           columns={[
@@ -113,10 +207,11 @@ const StaffTeamPage = () => {
             { label: "Login", key: "username", mono: true },
             { label: "Role", key: "role", mono: true },
             { label: "Active", render: (r) => <Badge color={r.is_active ? COLORS.success : COLORS.danger}>{r.is_active ? "yes" : "no"}</Badge> },
-            { label: "Tools", render: (r) => <span style={{ fontSize: 10, color: COLORS.textDim }}>{(r.permissions?.tools || []).join(", ") || "—"}</span> },
+            { label: "Tools", render: (r) => <span style={{ fontSize: 10, color: COLORS.textDim }}>{r.role === "head_admin" ? "all" : (r.permissions?.tools || []).join(", ") || "—"}</span> },
             { label: "Zones", render: (r) => <span style={{ fontSize: 10, color: COLORS.textDim }}>{(r.permissions?.zones || []).join(", ") || "*"}</span> },
             { label: "", render: (r) => (
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                <ActionButton small variant="ghost" onClick={() => setEditingId(r.id)}>Edit</ActionButton>
                 <ActionButton small variant="ghost" onClick={() => patchStaff(r.id, { is_active: !r.is_active })}>{r.is_active ? "Deactivate" : "Activate"}</ActionButton>
               </div>
             ) },

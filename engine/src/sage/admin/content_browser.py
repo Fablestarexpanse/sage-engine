@@ -228,6 +228,26 @@ def list_items() -> list[dict[str, Any]]:
     return _scan_simple_content_dir(ITEMS_DIR)
 
 
+def list_entity_template_rows() -> list[dict[str, Any]]:
+    return _scan_simple_content_dir(CONTENT_WORLD / "entities")
+
+
+def room_detail(zone_id: str, slug: str) -> dict[str, Any] | None:
+    """A room file as text and parsed data (None when the file does not exist)."""
+    if not _is_safe_segment(zone_id) or not _is_safe_segment(slug):
+        raise ValueError("invalid_slug")
+    path = ZONES_ROOT / zone_id / "rooms" / f"{slug}.yaml"
+    if not path.is_file():
+        return None
+    text = path.read_text(encoding="utf-8")
+    try:
+        data = yaml.safe_load(text) or {}
+        error = None
+    except yaml.YAMLError as e:
+        data, error = {}, str(e).splitlines()[0]
+    return {"id": f"{zone_id}:{slug}", "yaml": text, "data": data, "parse_error": error}
+
+
 def content_overview() -> dict[str, Any]:
     zones = list_zones()
     total_rooms = sum(z["rooms"] for z in zones)
@@ -237,7 +257,7 @@ def content_overview() -> dict[str, Any]:
         "zones": zones,
         "zone_count": len(zones),
         "room_count": total_rooms,
-        "entity_templates": len(spawns),
+        "entity_templates": len(list_entity_template_rows()),
         "entity_spawn_references": spawn_total,
         "item_count": len(list_items()),
     }
@@ -290,12 +310,36 @@ def validate_room_yaml_text(zone_id: str, room_slug: str, text: str) -> None:
         raise ValueError(f"id_mismatch: expected {zone_id}:{room_slug}, got {room.id}")
 
 
+def validate_template_yaml_text(kind: str, slug: str, text: str) -> None:
+    """Refuse template YAML the loader couldn't use; raises ValueError with a short reason."""
+    from pydantic import ValidationError
+
+    from sage.world.models import EntityTemplate, ItemTemplate
+
+    try:
+        data = yaml.safe_load(text)
+    except yaml.YAMLError as e:
+        raise ValueError(f"invalid_yaml: {str(e).splitlines()[0]}") from None
+    if not isinstance(data, dict):
+        raise ValueError("invalid_yaml: top level must be a mapping")
+    model = EntityTemplate if kind == "entities" else ItemTemplate
+    try:
+        template = model.model_validate(data)
+    except ValidationError as e:
+        first = e.errors()[0]
+        where = ".".join(str(part) for part in first["loc"]) or "template"
+        raise ValueError(f"invalid_template: {where}: {first['msg']}") from None
+    if template.id != slug:
+        raise ValueError(f"id_mismatch: expected {slug}, got {template.id}")
+
+
 def save_template_yaml_text(kind: str, slug: str, text: str) -> Path:
-    """Write raw entity/item template YAML (validated slug, atomic write)."""
+    """Write entity/item template YAML after checking it loads (validated slug, atomic write)."""
     if kind not in ("entities", "items"):
         raise ValueError("invalid_kind")
     if not slug.replace("_", "").isalnum():
         raise ValueError("invalid_slug")
+    validate_template_yaml_text(kind, slug, text)
     path = CONTENT_WORLD / kind / f"{slug}.yaml"
     _atomic_write_text(path, text)
     return path

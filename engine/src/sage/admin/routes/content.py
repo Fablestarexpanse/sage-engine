@@ -85,6 +85,33 @@ def build_content_router(server: SageServer) -> APIRouter:
             raise HTTPException(status_code=404, detail="Zone not found")
         return rows
 
+    @router.get("/content/rooms/{zone_id}/{room_slug}")
+    async def content_room_detail(
+        zone_id: str,
+        room_slug: str,
+        ctx: Annotated[AdminContext, Depends(require_tool("world"))],
+    ):
+        """One room: its YAML, parsed fields, and the content check's findings for it."""
+        import asyncio
+
+        from sage.world.lint import lint_world
+
+        if not ctx.may_read_zone(zone_id):
+            raise HTTPException(status_code=403, detail="zone_denied")
+        try:
+            detail = content_browser.room_detail(zone_id, room_slug)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="invalid_slug") from None
+        if detail is None:
+            raise HTTPException(status_code=404, detail="room_not_found")
+        report = await asyncio.to_thread(lint_world, server.world, zone_id)
+        mine = (f"{detail['id']}:", f"{detail['id']} ", f"{zone_id}/{room_slug}.yaml:")
+        detail["problems"] = {
+            "errors": [e for e in report.errors if e.startswith(mine)],
+            "warnings": [w for w in report.warnings if w.startswith(mine)],
+        }
+        return detail
+
     @router.get("/content/entities/spawns")
     async def content_entity_spawns(
         _ctx: Annotated[AdminContext, Depends(require_any_tool("entities", "world"))],
@@ -115,11 +142,14 @@ def build_content_router(server: SageServer) -> APIRouter:
             return server.world.content_dir / "world" / kind
 
         label = kind[:-1].capitalize()  # "entities" -> "Entity"
+        # A default value, not Annotated[...]: with postponed annotations FastAPI cannot see the
+        # local `tool` inside a string annotation, and every call failed with 422 (_ctx query).
+        tool_dependency = Depends(require_tool(tool))
 
         @router.get(f"/content/{kind}/{{template_id}}/yaml")
         async def get_template_yaml(
             template_id: str,
-            _ctx: Annotated[AdminContext, Depends(require_tool(tool))],
+            _ctx: AdminContext = tool_dependency,
         ):
             if not template_id.replace("_", "").isalnum():
                 raise HTTPException(status_code=400, detail=f"Invalid {label.lower()} id")
@@ -132,25 +162,27 @@ def build_content_router(server: SageServer) -> APIRouter:
         async def save_template_yaml(
             template_id: str,
             body: ContentInjectBody,
-            _ctx: Annotated[AdminContext, Depends(require_tool(tool))],
+            _ctx: AdminContext = tool_dependency,
         ):
             try:
                 path = content_browser.save_template_yaml_text(kind, template_id, body.yaml_content)
-            except ValueError:
-                raise HTTPException(status_code=400, detail=f"Invalid {label.lower()} id") from None
+            except ValueError as e:
+                detail = f"Invalid {label.lower()} id" if str(e) == "invalid_slug" else str(e)
+                raise HTTPException(status_code=400, detail=detail) from None
             server.content_loader.clear_cache()
             return {"status": "saved", "path": str(path)}
 
         @router.post(f"/content/{kind}/inject")
         async def inject_template(
             body: ContentInjectBody,
-            _ctx: Annotated[AdminContext, Depends(require_tool(tool))],
+            _ctx: AdminContext = tool_dependency,
         ):
             slug = body.path.lstrip("/").removeprefix(f"{kind}/").replace("/", "_")
             try:
                 path = content_browser.save_template_yaml_text(kind, slug, body.yaml_content)
-            except ValueError:
-                raise HTTPException(status_code=400, detail="Invalid path") from None
+            except ValueError as e:
+                detail = "Invalid path" if str(e) == "invalid_slug" else str(e)
+                raise HTTPException(status_code=400, detail=detail) from None
             server.content_loader.clear_cache()
             return {"status": "injected", "path": str(path)}
 
@@ -158,9 +190,8 @@ def build_content_router(server: SageServer) -> APIRouter:
     async def list_entity_templates(
         _ctx: Annotated[AdminContext, Depends(require_tool("entities"))],
     ):
-        """List all entity templates defined on disk."""
-        templates = server.content_loader.list_entity_templates()
-        return [t.model_dump() for t in templates]
+        """List all entity templates defined on disk (a file that does not parse is listed too)."""
+        return content_browser.list_entity_template_rows()
 
     _register_template_routes("entities", "entities")
     _register_template_routes("items", "items")
