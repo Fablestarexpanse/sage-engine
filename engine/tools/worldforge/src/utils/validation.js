@@ -7,7 +7,7 @@ import { resolveExitDestination } from "./zoneGraph.js";
  * @property {string[]} [itemIds] Known item ids — loot referencing others errors.
  * @property {string[]} [roomTypes] The world's room types; other types error (empty: unchecked).
  * @property {string[]} [exitDirs] The world's exit directions; others error (empty: unchecked).
- * @property {Object<string, string[]>} [entityLoot] Map of entity id → loot item ids.
+ * @property {Object<string, (string|{template: string})[]>} [entityLoot] Map of entity id → loot rows (ids or {template, ...}).
  * @property {string[]} [allRoomIds] Every room id across zones (for cross-zone exit checks).
  */
 
@@ -244,7 +244,9 @@ export function runZoneValidation(nodes, edges, opts = {}) {
   if (ctx.entityLoot && typeof ctx.entityLoot === "object") {
     for (const [eid, loot] of Object.entries(ctx.entityLoot)) {
       if (!Array.isArray(loot)) continue;
-      for (const itemId of loot) {
+      for (const entry of loot) {
+        // Loot rows are bare item ids or {template, chance, count} (EntityTemplate.loot).
+        const itemId = typeof entry === "string" ? entry : entry?.template;
         if (itemId && !itemSet.has(itemId)) {
           issues.push({
             level: "error",

@@ -24,12 +24,14 @@ describe("runZoneValidation", () => {
         zoneId: "z1",
         entityIds: ["stalker"],
         itemIds: ["shard"],
-        entityLoot: { stalker: ["shard", "phantom_item"] },
+        entityLoot: { stalker: ["shard", "phantom_item", { template: "shard", chance: 0.5 }, { template: "ghost_item" }] },
       }
     );
     const msgs = issues.map((i) => i.msg).join("\n");
     expect(msgs).not.toContain('Unknown entity template "stalker"');
     expect(msgs).toContain('unknown item "phantom_item"');
+    expect(msgs).toContain('unknown item "ghost_item"');
+    expect(msgs).not.toContain("[object Object]");
   });
 
   it("errors on room types and exit directions the world does not declare", () => {

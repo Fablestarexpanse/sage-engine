@@ -1,0 +1,72 @@
+{
+  "version": 2,
+  "positions": {
+    "bog_path": {
+      "x": 400.0,
+      "y": 300.0,
+      "width": 176,
+      "height": 108
+    },
+    "crossroads": {
+      "x": 840.0,
+      "y": 300.0,
+      "width": 176,
+      "height": 108
+    },
+    "fen_edge": {
+      "x": 620.0,
+      "y": 300.0,
+      "width": 176,
+      "height": 108
+    },
+    "gallows_hill": {
+      "x": 840.0,
+      "y": 170.0,
+      "width": 176,
+      "height": 108
+    },
+    "hermit_hut": {
+      "x": 180.0,
+      "y": 300.0,
+      "width": 176,
+      "height": 108
+    },
+    "mill_floor": {
+      "x": 1060.0,
+      "y": 170.0,
+      "width": 176,
+      "height": 108
+    },
+    "mill_loft": {
+      "x": 1060.0,
+      "y": 40.0,
+      "width": 176,
+      "height": 108
+    },
+    "mill_yard": {
+      "x": 1060.0,
+      "y": 300.0,
+      "width": 176,
+      "height": 108
+    },
+    "north_road": {
+      "x": 840.0,
+      "y": 430.0,
+      "width": 176,
+      "height": 108
+    }
+  },
+  "notes": [],
+  "muted_edges": [],
+  "floors": {
+    "bog_path": 0,
+    "crossroads": 0,
+    "fen_edge": 0,
+    "gallows_hill": 0,
+    "hermit_hut": 0,
+    "mill_floor": 0,
+    "mill_loft": 0,
+    "mill_yard": 0,
+    "north_road": 0
+  }
+}
