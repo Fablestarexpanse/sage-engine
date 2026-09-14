@@ -1,3 +1,4 @@
+import ExtensionBlocks from "../components/ExtensionBlocks.jsx";
 import { useEffect, useMemo, useState, useRef } from "react";
 import { deepClone } from "../utils/clone.js";
 import yaml from "js-yaml";
@@ -53,7 +54,7 @@ export default function ItemEditor({ worldRoot, selectedId, onSelect }) {
     }),
     [COLORS]
   );
-  const { items, itemIds, dispatch, saveItem } = useContent();
+  const { items, itemIds, dispatch, saveItem, worldSchema } = useContent();
   const [draft, setDraft] = useState(null);
   const [dirty, setDirty] = useState(false);
   const [newIdOpen, setNewIdOpen] = useState(false);
@@ -114,6 +115,17 @@ export default function ItemEditor({ worldRoot, selectedId, onSelect }) {
             <input type="number" style={inp} value={block.value ?? 0} onChange={(e) => { setDraft({ ...draft, value: Number(e.target.value) }); setDirty(true); }} />
             <label style={lbl}>Weight</label>
             <input type="number" step={0.1} style={inp} value={block.weight ?? 0} onChange={(e) => { setDraft({ ...draft, weight: Number(e.target.value) }); setDirty(true); }} />
+            <label style={lbl}>Plugin fields</label>
+            <div style={{ maxWidth: 480 }}>
+              <ExtensionBlocks
+                worldSchema={worldSchema}
+                kind="item"
+                doc={draft}
+                choices={{ slot: worldSchema?.content?.equipment_slots || [] }}
+                onChange={(next) => { setDraft(next); setDirty(true); }}
+                emptyNote="No enabled plugin adds fields to items in this world."
+              />
+            </div>
             <label style={lbl}>YAML</label>
             <textarea style={{ ...inp, minHeight: 140, fontFamily: "monospace", fontSize: 11 }} readOnly value={yaml.dump(draft, { lineWidth: 120, quotingType: '"' })} />
             <div style={{ marginTop: 12, display: "flex", gap: 8 }}>

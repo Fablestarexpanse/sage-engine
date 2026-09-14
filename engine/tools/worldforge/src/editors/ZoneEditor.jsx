@@ -2407,6 +2407,7 @@ function ZoneEditorInner({
           <RoomPanel
             bundleSceneArtIntoWorld
             roomTypes={worldLists.roomTypes}
+            worldSchema={worldSchema}
             exitDirs={worldLists.exitDirs}
             worldRoot={worldRoot}
             zoneId={zoneId}

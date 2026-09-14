@@ -26,7 +26,7 @@ message, and the full suite runs before each commit.
 | 5.2 | One validator. `sage validate [--world]` runs `sage.world.lint`, and worldforge-mcp's `validate_zone` and room types come from the world package. The MCP instructions lose the sci-fi examples. | done |
 | 5.3 | Content schemas. `sage schema export` and `GET /schema/world` give JSON Schema for rooms, features, entities and items (with every enabled plugin's extension fields) plus the world's lists (room types, exit directions, slots, attributes, currencies). | done |
 | 5.4 | WorldForge reads the world. Room types, exit directions and equipment slots come from the package's `world.toml`. | done |
-| 5.5 | WorldForge edits plugin content: room, feature and item forms for extension fields, generated from the exported schema. | todo |
+| 5.5 | WorldForge edits plugin content: room, feature and item forms for extension fields, generated from the exported schema. | done |
 | 5.6 | Credit bundles are deployment config (`comfyui.toml`), served to the admin console. | todo |
 | 5.7 | World theme: `ui/theme.yaml` (accent colours, title glyph) served with `GET /play/world`, applied by player-ui. | todo |
 | 5.8 | Nexus write-through for WorldForge: decide (build or defer) and record. | todo |
@@ -81,4 +81,15 @@ message, and the full suite runs before each commit.
     - Loading the real packages with Node gave Rivermoot 13 room types, north/south/east/west and hand/body; a "chamber" default becomes "street".
     - Fablestar keeps its twelve types and ten directions.
     - The Tauri app itself was not launched: its file access needs the Tauri runtime.
+- **5.5 WorldForge edits plugin content (done).**
+  - **`components/ExtensionBlocks.jsx`:** renders a form for each plugin field a content kind carries in this world, read from `content.schema.json`.
+    - Handles objects, `$defs` references, lists of values or objects, maps, numbers, booleans, strings and enums.
+    - Each block has Add (seeded with schema defaults) and Remove.
+  - **Where it appears:**
+    - Rooms: a Plugins tab (shop, lodging, ambient, hazards). It replaces the hand-built Hazards tab.
+    - Features: an inline form under each feature (search).
+    - Items: a "Plugin fields" section. `slot` is a select of the world's equipment slots.
+  - **A folder without a schema:** the form says to use the YAML tab.
+  - **Run:** vitest 45 passed. The new tests render the forms from Rivermoot's real exported schema and check helper defaults and `$ref` resolution. The app builds.
+  - **Not launched:** the Tauri app itself.
 
