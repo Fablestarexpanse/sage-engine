@@ -91,3 +91,27 @@ class _Staff:
         row.id, row.username, row.display_name = pk, "head", "Head"
         row.role, row.permissions, row.is_active = "head_admin", {}, True
         return row
+
+
+def test_check_reports_lint_and_survives_a_database_that_is_down():
+    import asyncio
+
+    from sage.admin.routes.about import world_check
+
+    demo = load_world_package(ROOT / "worlds" / "demo")
+    srv = SimpleNamespace(
+        world=demo,
+        plugins=SimpleNamespace(loaded=[]),
+        db=SimpleNamespace(url="postgresql+asyncpg://nobody:nothing@127.0.0.1:1/none"),
+    )
+    result = asyncio.run(world_check(srv))
+    assert result["lint"]["counts"] == {"err": 0, "warn": 0}
+    assert (result["lint"]["rooms"], result["lint"]["zones"]) == (4, 1)
+    assert result["migrations"]["ok"] is False and result["migrations"]["error"]
+
+
+def test_summary_lists_what_each_plugin_declares(plugin_host):
+    world = load_world_package(ROOT / "worlds" / "rivermoot")
+    [plugin] = world_summary(_server(plugin_host(world, ["consumables"]), world))["plugins"]
+    assert plugin["declared"]["commands"] == ["use"]
+    assert plugin["declared"]["lexicon_prefix"] == "consumables."

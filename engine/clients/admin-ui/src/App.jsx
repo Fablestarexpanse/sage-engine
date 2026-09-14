@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import axios from "axios";
 import PlayerAccountsTab from "./PlayerAccountsTab.jsx";
 import AgentsTab from "./AgentsTab.jsx";
@@ -20,6 +20,7 @@ import ServerPage from "./pages/ServerPage.jsx";
 import OperationsPage from "./pages/OperationsPage.jsx";
 import StaffTeamPage from "./pages/StaffTeamPage.jsx";
 import LexiconPage from "./pages/LexiconPage.jsx";
+import WorldPluginsPage from "./pages/WorldPluginsPage.jsx";
 
 // ═══════════════════════════════════════════════════════════════
 // ADMIN AUTH, PRESENCE & TEAM (staff / head admin)
@@ -177,6 +178,8 @@ function SettingsPlaceholderPage() {
 
 const NAV_ITEMS = [
   { id: "dashboard", label: "Dashboard", icon: <Icons.Dashboard /> },
+  // The running world package, its plugins, content check and migration status.
+  { id: "world", label: "World & plugins", icon: <Icons.World />, anyOf: ["world", "server", "dashboard"] },
   { id: "forge", label: "AI Forge", icon: <Icons.Forge />, highlight: true },
   { id: "operations", label: "Operations", icon: <Icons.Alert /> },
   { id: "players", label: "Players & accounts", icon: <Icons.Players /> },
@@ -208,6 +211,7 @@ const ShopsPage = ({ pluginBase }) => (
 
 const PAGES = {
   dashboard: DashboardPage,
+  world: WorldPluginsPage,
   forge: AiForgePage,
   operations: OperationsPage,
   players: PlayersPage,
@@ -349,13 +353,13 @@ export default function App() {
       }
       // Legacy page ids from before the Content Library consolidation.
       // Legacy page ids, including the retired World Builder (structural editing is WorldForge's).
-      if (["world", "locations", "entities", "items", "builder"].includes(d.page)) {
+      if (["locations", "entities", "items", "builder"].includes(d.page)) {
         setActivePage("content");
       }
     };
     window.addEventListener("fs-admin-nav", onNav);
     return () => window.removeEventListener("fs-admin-nav", onNav);
-  }, []);
+  }, [setActivePage]);
 
   const allowedSet = useMemo(() => {
     if (staffProfile?.tools_effective == null) return new Set(ALL_ADMIN_TOOLS);

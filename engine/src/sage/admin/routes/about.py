@@ -60,6 +60,11 @@ def plugin_summary(host: Any) -> list[dict[str, Any]]:
                     kind: sorted(names) for kind, names in record.registered.items() if names
                 },
                 "admin_tool": tools.get(info.id),
+                "declared": {
+                    key: value
+                    for key, value in record.manifest.touches.model_dump().items()
+                    if value
+                },
             }
         )
     return out
@@ -100,4 +105,32 @@ def build_about_router(server: SageServer) -> APIRouter:
         """The running world, engine version, loaded plugins, AI slots and online counts."""
         return world_summary(server)
 
+    @router.get("/admin/world/check")
+    async def admin_world_check(
+        _ctx: Annotated[
+            AdminContext, Depends(require_any_tool("dashboard", "server", "world", "content"))
+        ],
+    ):
+        """Content validation (sage validate) and migration status for the running world."""
+        return await world_check(server)
+
     return router
+
+
+async def world_check(server: Any) -> dict[str, Any]:
+    import asyncio
+
+    from sage.plugins.migrations import alembic_config, pending_heads_async
+    from sage.world.lint import lint_world
+
+    report = await asyncio.to_thread(lint_world, server.world)
+    lint = report.as_dict()
+    lint["rooms"] = len(report.rooms)
+    lint["zones"] = len({room.zone for room in report.rooms.values()})
+    try:
+        cfg = alembic_config([r.path for r in getattr(server.plugins, "loaded", []) or []])
+        pending = await pending_heads_async(cfg, server.db.url)
+        migrations = {"ok": not pending, "pending": pending, "error": None}
+    except Exception as exc:  # the database may be down; the lint result still stands
+        migrations = {"ok": False, "pending": [], "error": str(exc).splitlines()[0][:300]}
+    return {"lint": lint, "migrations": migrations}
