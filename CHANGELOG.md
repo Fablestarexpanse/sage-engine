@@ -22,6 +22,23 @@ Versions built before the first publication have no conversion date.
 
 ## [Unreleased]
 
+- **Fixed: entity and item template YAML routes never worked.** `GET` and `PUT
+  /content/{entities,items}/{id}/yaml` returned 422 on every call. The tool check was a postponed
+  annotation FastAPI could not resolve, so it became a required query parameter. AI Forge's Deploy
+  for entity and item templates used the same routes, so it had never saved anything.
+- **Template saves are validated:** the YAML must parse, match the entity or item template fields,
+  and keep its id. Otherwise the save is refused with the reason, and nothing is written.
+- **Content Library:**
+  - **Rooms:** select one to see its description, exits (linked to the rooms they lead to), features,
+    spawns, plugin fields, who and what is in it now, its content check findings, and its YAML
+    (`GET /content/rooms/{zone}/{slug}`).
+  - **Entities:** lists every template on disk, with how many rooms spawn it, instead of only
+    spawned ones.
+  - **Entities and Items:** open a validated YAML editor.
+  - **Dashboard count:** "Entity templates" counts template files.
+- **Team & access:** existing staff can be edited (display name, role, zones, tools, new password).
+  Tools are grouped and named like the sidebar.
+
 - **Admin console navigation is grouped:** Overview, World, Players, Plugins, AI and System. Plugin pages sit under Plugins.
 - **One live sessions table:** it is on Players & sessions; the Dashboard shows a one-line summary and Operations no longer repeats it.
 - **Settings removed:** the empty page is gone; the theme toggle stays in the sidebar.

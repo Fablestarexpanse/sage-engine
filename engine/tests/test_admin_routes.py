@@ -408,3 +408,31 @@ def test_lexicon_rejects_unknown_keys_and_versions(lexicon_client, server):
         ).status_code
         == 404
     )
+
+
+# ---- entity / item template YAML routes --------------------------------------------------
+
+
+def test_template_yaml_routes_authorise_by_tool_and_read_the_world(client, server):
+    # These routes 422'd on every call before: the tool dependency sat in a postponed annotation
+    # that FastAPI could not resolve, so `_ctx` became a required query parameter.
+    item = next(server.world.content_dir.joinpath("world", "items").glob("*.yaml")).stem
+    ok = client.get(f"/content/items/{item}/yaml", headers=_auth(server, 1))
+    assert ok.status_code == 200, ok.text
+    assert f"id: {item}" in ok.json()["yaml"]
+    assert client.get(f"/content/items/{item}/yaml", headers=_auth(server, 2)).status_code == 403
+    assert client.get(f"/content/items/{item}/yaml").status_code == 401
+
+
+def test_template_yaml_save_refuses_a_template_the_loader_cannot_use(client, server):
+    item = next(server.world.content_dir.joinpath("world", "items").glob("*.yaml")).stem
+    path = server.world.content_dir / "world" / "items" / f"{item}.yaml"
+    before = path.read_bytes()
+    r = client.put(
+        f"/content/items/{item}/yaml",
+        json={"path": f"items/{item}", "yaml_content": "id: something_else\nname: x\n"},
+        headers=_auth(server, 1),
+    )
+    assert r.status_code == 400
+    assert r.json()["detail"].startswith("id_mismatch")
+    assert path.read_bytes() == before
