@@ -59,38 +59,59 @@ form generated from the plugins' content schema (ambient lines, hazards, lodging
 
 ## Quick start
 
-Prerequisites: **Python 3.11+**, **Node.js LTS**, **Docker** (Redis and PostgreSQL).
+Prerequisites: **Python 3.11+**, **Node.js LTS**, **Docker** (it runs Redis and PostgreSQL).
 
 ```bash
-# 1. Install the engine and the web clients
-pip install -e "./engine[dev]"
-(cd engine/clients/player-ui && npm install)
-(cd engine/clients/admin-ui && npm install)
-
-# 2. Create live config from the examples (gitignored), and choose a database password:
-#    put it in .env for docker compose and in config/database.toml for the server
-cp config/server.example.toml config/server.toml
-cp config/database.example.toml config/database.toml
-echo "POSTGRES_PASSWORD=choose-a-strong-password" > .env
-#    and give the server a JWT secret (it refuses to start without one while admin auth is on):
-python -c "import secrets; open('config/server.toml', 'a').write(f'\nadmin_jwt_secret = \"{secrets.token_hex(32)}\"\n')"
-
-# 3. Start Redis and PostgreSQL, then apply engine and plugin migrations
-docker compose up -d redis postgres
-python -m sage db upgrade
-
-# 4. Run the server (Nexus, port 8001)
-python -m sage
+git clone https://github.com/Fablestarexpanse/sage-engine && cd sage-engine
+python -m venv .venv && . .venv/bin/activate      # Windows: .venv\Scripts\activate
+pip install -e ./engine
+sage quickstart
 ```
 
-Then the clients, each in its own terminal:
+`sage quickstart` does the rest in one terminal, and a second run changes nothing that is already
+done:
+
+1. writes `.env`, `config/server.toml` and `config/database.toml` if they are missing, with a
+   generated database password and JWT secret (existing files are never changed);
+2. starts Redis and PostgreSQL with `docker compose`;
+3. creates the world's database (`sage_demo` for the demo world);
+4. applies the engine and plugin migrations;
+5. runs the server on port 8001 with the **SAGE Demo** world, four rooms to walk around in.
+
+The generated `server.toml` is for local development: `dev_mode` is on (it seeds the `staff` and
+`player` test logins) and so are the passwordless loopback logins described below. Then start the
+player client in a second terminal and open http://localhost:5173:
+
+```bash
+cd engine/clients/player-ui && npm install && VITE_NEXUS_PORT=8001 npm run dev
+```
+
+Options: `--world rivermoot` runs another world (in its own database, `sage_rivermoot`),
+`--no-docker` uses Postgres and Redis you already run, `--no-server` stops after the migrations.
+
+### Doing it by hand
+
+```bash
+pip install -e "./engine[dev]"                      # [dev] adds the test and lint tools
+cp config/server.example.toml config/server.toml
+cp config/database.example.toml config/database.toml
+echo "POSTGRES_PASSWORD=choose-a-strong-password" > .env   # and the same password in config/database.toml
+# The server refuses to start without a JWT secret while admin auth is on:
+python -c "import secrets; open('config/server.toml', 'a').write(f'\nadmin_jwt_secret = \"{secrets.token_hex(32)}\"\n')"
+docker compose up -d redis postgres
+python -m sage db create                            # the database named in config/database.toml
+python -m sage db upgrade
+python -m sage                                      # Nexus, port 8001
+```
+
+The clients, each in its own terminal:
 
 ```bash
 # Player client -> http://localhost:5173
-cd engine/clients/player-ui && VITE_NEXUS_PORT=8001 npm run dev -- --port 5173 --host
+cd engine/clients/player-ui && npm install && VITE_NEXUS_PORT=8001 npm run dev -- --port 5173 --host
 
 # Admin console -> http://localhost:5174
-cd engine/clients/admin-ui && VITE_API_BASE=http://localhost:8001 VITE_WS_BASE=ws://localhost:8001 npm run dev -- --port 5174 --host
+cd engine/clients/admin-ui && npm install && VITE_API_BASE=http://localhost:8001 VITE_WS_BASE=ws://localhost:8001 npm run dev -- --port 5174 --host
 ```
 
 On PowerShell, set the variables first (`$env:VITE_NEXUS_PORT="8001"`), then `npm run dev`.
@@ -103,7 +124,8 @@ SAGE_SERVER__WORLD=rivermoot SAGE_DATABASE__DATABASE=sage_rivermoot python -m sa
 SAGE_SERVER__WORLD=rivermoot SAGE_DATABASE__DATABASE=sage_rivermoot SAGE_SERVER__WEBSOCKET_PORT=8002 python -m sage
 ```
 
-(Create the `sage_rivermoot` database in PostgreSQL first.)
+(Create its database first: `SAGE_DATABASE__DATABASE=sage_rivermoot python -m sage db create`, or
+use `sage quickstart --world rivermoot`, which does all of it.)
 
 <!-- DEV-AUTH:BEGIN -->
 **Testing without passwords (development only).** With `dev_mode = true` and `dev_login = true`

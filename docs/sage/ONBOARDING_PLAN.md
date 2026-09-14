@@ -1,7 +1,7 @@
 # Zero to first world: onboarding plan
 
-Status: **approved by the owner 2026-09-14.** Stage 1 items 1 (JWT secret refusal) and 2 (demo
-world) are implemented; the rest is not yet.
+Status: **approved by the owner 2026-09-14.** Stage 1 items 1 (JWT secret refusal), 2 (demo
+world) and 3 (`sage quickstart`, `sage db create`) are implemented; the rest is not yet.
 
 Revised 2026-09-14 after owner feedback: *starting a world should not include building the map,
 which is the tools' job (the map builder); get the player set up with the engine first, world
@@ -416,5 +416,5 @@ day, M two to four days, L a week or more.
 | 11 | Revisit `sage plugin install` when a first external plugin exists | — | — | Section 5. |
 
 Item 1 is small enough to ship before the rest is approved, if the owner wants. Item 2 needs the
-owner's licensing call for `worlds/demo/`. Status 2026-09-14: owner approved the plan and FSL for the demo; items 1 and 2 are done.
+owner's licensing call for `worlds/demo/`. Status 2026-09-14: owner approved the plan and FSL for the demo; items 1, 2 and 3 are done.
 

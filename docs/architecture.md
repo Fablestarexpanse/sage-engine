@@ -339,12 +339,22 @@ Environment overrides: `SAGE_` prefix, double-underscore nesting, e.g. `SAGE_SER
 
 ## Development setup
 
+`sage quickstart` (`engine/src/sage/quickstart.py`) is the one-command path: it writes missing
+`.env`, `config/server.toml` (world, JWT secret, `dev_mode`, `dev_login`) and `config/database.toml`,
+runs `docker compose up -d redis postgres`, waits for both, creates the world's database
+(`sage db create`), runs `sage db upgrade` in a subprocess, then the server. The world is `--world`,
+else the configured world, else `demo`; any world other than the configured one uses the database
+`sage_<world>`. It never changes an existing config file.
+
+By hand:
+
 ```bash
 # 1. Start backing services (docker compose reads POSTGRES_PASSWORD from the gitignored .env;
 #    config/database.toml must use the same password)
 docker compose up -d redis postgres
 
-# 2. Run migrations (core + the world's plugin branches)
+# 2. Create the configured database if missing, then run migrations (core + plugin branches)
+python -m sage db create
 python -m sage db upgrade
 
 # 3. (Optional) Bootstrap head admin

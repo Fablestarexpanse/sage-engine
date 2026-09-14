@@ -1,6 +1,8 @@
 """Command line: run the server, migrate the database, uninstall plugins.
 
 python -m sage                                  run the server
+python -m sage quickstart [--world ID] [--no-docker] [--no-server]   config, services, database, server
+python -m sage db create                        create the configured database if it is missing
 python -m sage db status                        list unapplied core/plugin migrations
 python -m sage db upgrade                       apply every core and plugin migration
 python -m sage plugin uninstall ID [--purge-state]
@@ -33,6 +35,19 @@ def _world_context():
 def _db(args: argparse.Namespace) -> int:
     from alembic import command
     from sage.plugins.migrations import alembic_config, pending_heads
+
+    if args.action == "create":
+        from sage.core.config import load_config
+        from sage.quickstart import QuickstartError, ensure_database
+
+        config = load_config()
+        try:
+            created = asyncio.run(ensure_database(config.database, config.database.database))
+        except (QuickstartError, OSError) as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        print(f"{config.database.database}: " + ("created" if created else "already exists"))
+        return 0
 
     config, world, records, url = _world_context()
     cfg = alembic_config([r.path for r in records])
@@ -118,7 +133,15 @@ def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(prog="sage", description=__doc__.splitlines()[0])
     sub = parser.add_subparsers(dest="group")
     db = sub.add_parser("db", help="database migrations")
-    db.add_argument("action", choices=["status", "upgrade"])
+    db.add_argument("action", choices=["create", "status", "upgrade"])
+    quick = sub.add_parser(
+        "quickstart", help="config, Postgres and Redis, database and migrations, then the server"
+    )
+    quick.add_argument("--world", help="world id (default: the configured world, else demo)")
+    quick.add_argument(
+        "--no-docker", action="store_true", help="use Postgres and Redis already running"
+    )
+    quick.add_argument("--no-server", action="store_true", help="stop after migrations")
     plugin = sub.add_parser("plugin", help="plugin management")
     plugin_sub = plugin.add_subparsers(dest="action", required=True)
     uninstall = plugin_sub.add_parser("uninstall", help="remove a plugin and its tables")
@@ -136,6 +159,15 @@ def main(argv: list[str]) -> int:
 
     if args.group == "db":
         return _db(args)
+    if args.group == "quickstart":
+        from sage.quickstart import QuickstartError
+        from sage.quickstart import run as quickstart
+
+        try:
+            return quickstart(args.world, docker=not args.no_docker, server=not args.no_server)
+        except QuickstartError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
     if args.group == "plugin":
         return _plugin(args)
     if args.group == "validate":

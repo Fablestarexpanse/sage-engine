@@ -22,6 +22,12 @@ Versions built before the first publication have no conversion date.
 
 ## [Unreleased]
 
+- **`sage quickstart`:** one command from a fresh checkout to a running server. It writes any
+  missing config with a generated database password and JWT secret, starts Postgres and Redis with
+  Docker Compose, creates the world's database, migrates and runs the server (the SAGE Demo world by
+  default). Re-running it changes nothing already done; `--world`, `--no-docker`, `--no-server`.
+- **`sage db create`** creates the configured database if it is missing.
+
 - **SAGE Demo world.** `worlds/demo/` ships four rooms around a hub with no plugins, and
   `config/server.example.toml` now runs it instead of Fablestar Expanse. It is licensed with the
   engine.
