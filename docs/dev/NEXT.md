@@ -2,15 +2,15 @@
 
 Active milestone: **M2 — SAGE engine decoupling** (`docs/dev/milestones/M2-sage-decoupling/`).
 
-Active phase: **none — stages 2a and 2b complete.** Stage 2a is in PR #7; stage 2b (package
-`sage`, engine under `engine/`) is on branch `sage/stage-2b`. Next: stage 2c phase docs (plugin
-loader, lexicon, world loader, resolver registry, real event bus, state blocks, skeleton second
-world).
+Active phase: **none — Phase 3 complete (2026-09-14), awaiting owner review.** Stages 2a, 2b and 2c
+and Phase 3 are up as stacked PRs #7 → #8 → #9 → #10. Next: Phase 4, the full-size second
+reference world. The live breadcrumb is the `NEXT:` line at the top of `docs/sage/DECISIONS.md`;
+Phase 3 step notes are in `docs/dev/milestones/M2-sage-decoupling/phase-3-plan.md`.
 
-Layout after 2b: `engine/src/sage` (server, `python -m sage`), `engine/tests`
-(`python -m pytest` from the repo root), `engine/alembic`, `engine/clients/{admin-ui,player-ui}`,
-`engine/tools/{worldforge,worldforge-mcp}`. World content, config and prompts are still at the
-root until Phase 3.
+Layout: `engine/src/sage` (server, `python -m sage`), `engine/tests` (`python -m pytest` from the
+repo root), `engine/alembic`, `engine/clients/{admin-ui,player-ui}`,
+`engine/tools/{worldforge,worldforge-mcp}`, first-party plugins in `plugins/`, world packages in
+`worlds/{fablestar,rivermoot}` (content, lexicon, AI prompts/style/ComfyUI graphs, world plugins).
 
 Phase 1 contracts were approved by the owner on 2026-09-13 (`docs/sage/PHASE1_CONTRACTS.md`,
 amendments in Part H). Rulings log: `docs/sage/DECISIONS.md`. Stage 2a (CI and ratchets) is done;
