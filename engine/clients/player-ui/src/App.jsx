@@ -416,7 +416,11 @@ function AuthSignInForm({ onLoggedIn }) {
       const p = password.trim();
       const res = await playLogin(u, p);
       if (!res.ok) {
-        setError(res.error === "invalid_credentials" ? "Unknown user or wrong password." : res.error || "Login failed");
+        setError(
+          res.error === "invalid_credentials" ? "Unknown user or wrong password."
+            : res.error === "account_suspended" ? "This account is suspended. Contact the staff of this world."
+            : res.error || "Login failed"
+        );
         setBusy(false);
         return;
       }

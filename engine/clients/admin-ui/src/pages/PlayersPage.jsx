@@ -9,6 +9,7 @@ import {
   DataTable, StatCard, usePolledList, FetchErrorBanner,
 } from "../adminCommon.jsx";
 import PlayerAccountsTab from "../PlayerAccountsTab.jsx";
+import CharacterTools from "../characterTools.jsx";
 
 const PlayersPage = () => {
   const { colors: COLORS } = useAdminTheme();
@@ -109,6 +110,10 @@ const PlayersPage = () => {
           <StatCard label="Matches filter" value={String(filtered.length)} color={COLORS.accent} icon={<Icons.Search />} />
           <StatCard label="Players API" value={liveSessions === null ? "offline" : "ok"} color={liveSessions === null ? COLORS.danger : COLORS.success} icon={<Icons.Server />} />
         </div>
+      </section>
+
+      <section style={{ background: COLORS.bgCard, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 16 }}>
+        <CharacterTools />
       </section>
 
       <section ref={accountsSectionRef}>

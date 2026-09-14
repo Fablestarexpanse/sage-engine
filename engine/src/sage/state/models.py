@@ -31,6 +31,9 @@ class Account(Base):
     ai_credits: Mapped[int] = mapped_column(Integer, default=0)
     # In-game GM crown / staff-visible play account (separate from admin_staff console logins).
     is_gm: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Set by staff (migration s2t3u4v5w6x7): a suspended account cannot sign in or use a play token.
+    suspended_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    suspended_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     # Relationships
     characters: Mapped[list["Character"]] = relationship(
@@ -140,3 +143,17 @@ class WorldOverride(Base):
     author_staff_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class AdminAuditLog(Base):
+    """One staff action in the admin console: who, what, on which target, with details."""
+
+    __tablename__ = "admin_audit_log"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    staff_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    staff_username: Mapped[str] = mapped_column(String(64))
+    action: Mapped[str] = mapped_column(String(64), index=True)
+    target: Mapped[str] = mapped_column(String(255))
+    detail: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)

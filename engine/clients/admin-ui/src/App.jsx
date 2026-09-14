@@ -21,6 +21,7 @@ import OperationsPage from "./pages/OperationsPage.jsx";
 import StaffTeamPage from "./pages/StaffTeamPage.jsx";
 import LexiconPage from "./pages/LexiconPage.jsx";
 import WorldPluginsPage from "./pages/WorldPluginsPage.jsx";
+import AuditLogPage from "./pages/AuditLogPage.jsx";
 
 // ═══════════════════════════════════════════════════════════════
 // ADMIN AUTH, PRESENCE & TEAM (staff / head admin)
@@ -163,6 +164,7 @@ const NAV_ITEMS = [
   { id: "server", group: "System", label: "Server & AI models", icon: <Icons.Server /> },
   { id: "operations", group: "System", label: "Operations", icon: <Icons.Alert /> },
   { id: "team", group: "System", label: "Team & access", icon: <Icons.Players />, headOnly: true },
+  { id: "audit", group: "System", label: "Audit log", icon: <Icons.History />, anyOf: ["team", "operations"] },
 ];
 
 const AgentsPage = ({ pluginBase }) => (
@@ -190,6 +192,7 @@ const PAGES = {
   lexicon: LexiconPage,
   server: ServerPage,
   team: StaffTeamPage,
+  audit: AuditLogPage,
 };
 
 export default function App() {

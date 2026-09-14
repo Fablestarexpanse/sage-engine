@@ -39,6 +39,8 @@ def _account_summary_dict(a: Account, char_count: int) -> dict[str, Any]:
         "created_at": a.created_at.isoformat() + "Z" if a.created_at else None,
         "last_login": a.last_login.isoformat() + "Z" if a.last_login else None,
         "character_count": char_count,
+        "suspended_at": a.suspended_at.isoformat() + "Z" if a.suspended_at else None,
+        "suspended_reason": a.suspended_reason,
     }
 
 
@@ -210,6 +212,13 @@ async def patch_character(
         await session.commit()
         await session.refresh(char)
         out = _character_admin_dict(char)
+        new_room = char.room_id if "room_id" in patch else None
+        new_stats = dict(char.stats or {}) if "stats" in patch else None
+
+    # A character with live state would have this edit copied back over by the next flush.
+    from sage.admin.character_tools import sync_live_state
+
+    await sync_live_state(server, char_name, room_id=new_room, stats=new_stats)
 
     lines: list[str] = []
     if "room_id" in patch:

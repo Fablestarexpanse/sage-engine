@@ -46,6 +46,7 @@ from sage.admin.route_helpers import (
 )
 from sage.admin.routes.about import build_about_router
 from sage.admin.routes.admin_ops import build_admin_ops_router
+from sage.admin.routes.characters import build_characters_router
 from sage.admin.routes.content import build_content_router
 from sage.admin.routes.forge import build_forge_router
 from sage.admin.routes.lexicon import build_lexicon_router
@@ -81,6 +82,10 @@ class NexusApp:
         self._setup_middleware()
 
     def _setup_middleware(self):
+        # Innermost (added first): runs after the auth middleware has resolved the staff member.
+        from sage.admin.audit import AdminAuditMiddleware
+
+        self.app.add_middleware(AdminAuditMiddleware, server=self.server)
         cors_origins = list(self.server.config.server.cors_origins or [])
         self.app.add_middleware(
             CORSMiddleware,
@@ -150,6 +155,7 @@ class NexusApp:
         # Domain routers (see sage.admin.routes)
         self.app.include_router(build_admin_ops_router(self.server))
         self.app.include_router(build_about_router(self.server))
+        self.app.include_router(build_characters_router(self.server))
         self.app.include_router(build_play_router(self.server))
         self.app.include_router(build_content_router(self.server))
         self.app.include_router(build_world_router(self.server))
