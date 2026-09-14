@@ -22,6 +22,15 @@ Versions built before the first publication have no conversion date.
 
 ## [Unreleased]
 
+- **Admin console: World & plugins page.**
+  - **World package:** its name, id, version, path and room types.
+  - **Content check:** the same check as `sage validate` (errors, warnings, notes), run from the console.
+  - **Migrations:** status for core and every enabled plugin.
+  - **Plugins:** each one with version, source, dependencies, what it registered and what its
+    manifest declares, plus a link to its admin page.
+  - **AI slots:** each one on or off.
+  - **New route:** `GET /admin/world/check`.
+
 - **Admin console shows what is really running.** New `GET /admin/world`: engine version, the running
   world (id, name, version, room types), loaded plugins (version, where they live, what they
   registered), AI slot status, and players and agents online, counted apart. The Dashboard uses it:
