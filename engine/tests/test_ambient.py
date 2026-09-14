@@ -66,3 +66,22 @@ def test_next_due_handles_swapped_bounds():
     amb = _ambient(min_interval=20, max_interval=10)
     due = next_due(amb, 0.0, rng)
     assert 10.0 <= due <= 20.0
+
+
+def test_on_tick_survives_players_leaving_mid_scan():
+    """A disconnect during the per-player await must not crash the tick job."""
+    import asyncio
+    from types import SimpleNamespace
+
+    from sage.world.ambient import AMBIENT_CHECK_INTERVAL, AmbientManager
+    from tests.fakes import make_fake_server
+
+    server = make_fake_server()
+    server.session_manager = SimpleNamespace(player_to_session={"a": "s1", "b": "s2"})
+
+    async def leaving_location(player_id):
+        server.session_manager.player_to_session.pop("b", None)
+        return None
+
+    server.redis.get_player_location = leaving_location
+    asyncio.run(AmbientManager(server).on_tick(AMBIENT_CHECK_INTERVAL))

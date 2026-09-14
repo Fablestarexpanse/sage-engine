@@ -106,7 +106,7 @@ def build_world_router(server: SageServer) -> APIRouter:
         """List all live entities currently in the world (scans occupied rooms)."""
         results = []
         seen_rooms: set[str] = set()
-        for player_id in server.session_manager.player_to_session:
+        for player_id in list(server.session_manager.player_to_session):
             room_id = await server.redis.get_player_location(player_id)
             if room_id and room_id not in seen_rooms:
                 seen_rooms.add(room_id)

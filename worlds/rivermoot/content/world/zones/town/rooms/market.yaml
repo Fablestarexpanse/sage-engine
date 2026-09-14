@@ -1,0 +1,21 @@
+id: town:market
+zone: town
+name: Market Square
+type: square
+depth: 1
+description:
+  base: Stalls of turnips, cheap knives and river eels crowd a square of packed earth. A rat as big
+    as a cat is working its way along the fish stall.
+exits:
+  south:
+    destination: town:bridge
+    description: Back to the bridge.
+  east:
+    destination: town:shrine
+    description: A lane to the river shrine.
+features: []
+entity_spawns:
+  - template: river_rat
+    chance: 1.0
+    max_count: 1
+tags: [outdoor]

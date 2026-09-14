@@ -282,7 +282,7 @@ Environment overrides: `SAGE_` prefix, double-underscore nesting, e.g. `SAGE_SER
 docker compose up -d redis postgres
 
 # 2. Run migrations
-python -m alembic -c engine/alembic.ini upgrade head
+python -m sage db upgrade
 
 # 3. (Optional) Bootstrap head admin
 python engine/scripts/bootstrap_admin.py --username admin --password 'your-password'
@@ -330,11 +330,11 @@ Zone write permissions are controlled by `AdminStaff.permissions.zones` — `["*
 
 ## Database migrations
 
-Alembic manages schema: `engine/alembic/versions/`. After changing SQLAlchemy models in `state/models.py`:
+Alembic manages schema: `engine/alembic/versions/`. The core chain is labelled `sage_core`; plugins with tables ship their own branch (`plg_<id>`, tables `plg_<id>_*`) in `<plugin>/migrations/versions/`. The server refuses to start while any core or enabled-plugin migration is unapplied — run `python -m sage db upgrade` (or `db status` to list them). `python -m sage plugin uninstall <id> [--purge-state]` drops a plugin's tables, optionally its character state, and its `world.toml` entry. After changing SQLAlchemy models in `state/models.py`:
 
 ```bash
-python -m alembic -c engine/alembic.ini revision --autogenerate -m "describe change"
-python -m alembic -c engine/alembic.ini upgrade head
+python -m alembic -c engine/alembic.ini revision --autogenerate -m "describe change"   # core schema only
+python -m sage db upgrade
 ```
 
 ---
@@ -356,7 +356,7 @@ SAGE_LIVE_TESTS=1 python -m pytest -m live
 
 Live tests create and drop their own `sage_live_*` database and use Redis db 15, so they never touch the dev database. `engine/tests/live/test_migrations.py::test_models_match_migrations` fails when the ORM models and migrations disagree — fix the model or add a migration, never weaken the test.
 
-**SAGE invariant ratchet** (CI step, `scripts/sage_invariants.py`): counts world-specific terms (`scripts/sage_denylist.toml`) and hardcoded player-facing strings (`session.send("...")`) per engine file, and fails if any file's count rises above `scripts/sage_invariants_baseline.json`. Run `python scripts/sage_invariants.py check` before committing. When you remove hits, run `python scripts/sage_invariants.py update` to lock in the lower counts. Never raise the baseline to make CI pass — put the term in a world package or the text behind a lexicon key instead.
+**SAGE invariant ratchet** (CI step, `scripts/sage_invariants.py`): counts world-specific terms (`scripts/sage_denylist.toml`) and hardcoded player-facing strings (`session.send("...")`) per engine file, and fails if any file's count rises above `scripts/sage_invariants_baseline.json`. Run `python scripts/sage_invariants.py check` before committing. When you remove hits, run `python scripts/sage_invariants.py update` to lock in the lower counts. Never raise the baseline to make CI pass — put the term in a world package or the text behind a lexicon key instead. The same check enforces the import boundary with zero tolerance: engine code never imports `sage_plugins`/`sage_worlds` (dynamic imports only in the plugin loader and command registry), and plugin code imports only `sage.api`.
 
 ---
 

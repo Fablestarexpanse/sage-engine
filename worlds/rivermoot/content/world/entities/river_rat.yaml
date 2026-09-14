@@ -1,0 +1,13 @@
+id: river_rat
+name: a river rat
+type: beast
+description:
+  short: A fat, bold river rat.
+  long: Wet fur, yellow teeth, and no fear of people whatsoever.
+stats:
+  hp: 3
+  max_hp: 3
+  attack: 1
+  defense: 0
+tags: [beast, hostile]
+loot: []

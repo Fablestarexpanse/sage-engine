@@ -1,0 +1,22 @@
+login:
+  banner: "~ Rivermoot ~  a market town where the old bridge crosses the Moot."
+  motd: "The river is high this season. Mind the eels."
+
+who:
+  empty: "The square is empty; even the pigeons have gone home."
+
+death:
+  wake: "\r\nYou wake on the cool stones of the river shrine, a priest humming over you.{bill}"
+  bill: " You leave {amount} {currency} in the offering bowl."
+  no_bill: " Your purse is empty; the priest waves it away."
+
+stat:
+  mgt: {name: Might, short: MGT}
+  wts: {name: Wits, short: WTS}
+  nrv: {name: Nerve, short: NRV}
+
+vital:
+  hp: {name: Health}
+
+currency:
+  silver: {name: silver}

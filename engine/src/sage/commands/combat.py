@@ -227,6 +227,19 @@ async def attack(session: Session, args: list[str]):
         except Exception as exc:
             logger.warning("Mission progress skipped: %s", exc)
 
+        from sage.core.events import EntityKilled, emit
+
+        killed = EntityKilled(
+            killer_id=player_id,
+            entity_id=target_id,
+            template=target_state.get("template", ""),
+            room_id=room_id,
+            faction=target_state.get("faction", ""),
+            stats=player_stats,
+        )
+        await emit(app_instance, killed)
+        faction_messages += killed.messages
+
     await app_instance.redis.set_player_stats(player_id, player_stats)
 
     # --- LLM narrates the exchange ---

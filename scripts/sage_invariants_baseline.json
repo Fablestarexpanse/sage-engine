@@ -1,7 +1,7 @@
 {
   "totals": {
-    "denylist": 2188,
-    "player_literals": 177
+    "denylist": 2186,
+    "player_literals": 169
   },
   "denylist": {
     "engine/alembic/versions/b3c4d5e6f7a8_account_echo_credits.py": 5,
@@ -36,7 +36,7 @@
     "engine/pyproject.toml": 1,
     "engine/scripts/ensure_test_user.py": 10,
     "engine/src/sage/admin/admin_security.py": 1,
-    "engine/src/sage/admin/content_browser.py": 8,
+    "engine/src/sage/admin/content_browser.py": 9,
     "engine/src/sage/admin/player_accounts.py": 28,
     "engine/src/sage/admin/routes/admin_ops.py": 3,
     "engine/src/sage/admin/routes/agents.py": 12,
@@ -78,14 +78,13 @@
     "engine/src/sage/proficiencies/registry_cache.py": 1,
     "engine/src/sage/proficiencies/starter.py": 11,
     "engine/src/sage/proficiencies/state_helpers.py": 29,
-    "engine/src/sage/server.py": 30,
+    "engine/src/sage/server.py": 29,
     "engine/src/sage/services/economy.py": 8,
     "engine/src/sage/services/player_service.py": 14,
     "engine/src/sage/services/scene_service.py": 12,
     "engine/src/sage/state/models.py": 12,
     "engine/src/sage/state/persistence.py": 3,
     "engine/src/sage/state/state_types.py": 12,
-    "engine/src/sage/world/defaults.py": 2,
     "engine/src/sage/world/models.py": 9,
     "engine/tests/live/test_persistence_live.py": 2,
     "engine/tests/test_admin_security.py": 4,
@@ -118,11 +117,11 @@
     "engine/src/sage/commands/achievements.py": 2,
     "engine/src/sage/commands/admin.py": 1,
     "engine/src/sage/commands/combat.py": 15,
-    "engine/src/sage/commands/communication.py": 18,
+    "engine/src/sage/commands/communication.py": 17,
     "engine/src/sage/commands/crafting.py": 10,
     "engine/src/sage/commands/effects.py": 7,
     "engine/src/sage/commands/factions.py": 2,
-    "engine/src/sage/commands/info.py": 15,
+    "engine/src/sage/commands/info.py": 13,
     "engine/src/sage/commands/items.py": 28,
     "engine/src/sage/commands/missions.py": 8,
     "engine/src/sage/commands/movement.py": 7,
@@ -133,8 +132,7 @@
     "engine/src/sage/effects/manager.py": 3,
     "engine/src/sage/maestro/modules.py": 3,
     "engine/src/sage/network/session.py": 2,
-    "engine/src/sage/parser/dispatcher.py": 3,
-    "engine/src/sage/server.py": 10,
+    "engine/src/sage/server.py": 8,
     "engine/src/sage/world/ambient.py": 1,
     "engine/tests/test_agents_body.py": 1,
     "engine/tests/test_session.py": 4

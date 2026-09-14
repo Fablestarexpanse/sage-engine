@@ -1,0 +1,15 @@
+id: town:shrine
+zone: town
+name: River Shrine
+type: shrine
+depth: 1
+description:
+  base: A small stone shrine sits right at the waterline, candles guttering in niches. It smells of
+    wet moss and wax. People who fall in the river tend to wake up here.
+exits:
+  west:
+    destination: town:market
+    description: Back to the market.
+features: []
+entity_spawns: []
+tags: [safe]

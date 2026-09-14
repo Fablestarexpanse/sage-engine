@@ -103,10 +103,10 @@ _MEDIA_SEG_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}$")
 _MEDIA_PNG_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_.-]{1,120}\.png$")
 
 
-def _room_art_file_response(*parts: str) -> FileResponse:
-    """Serve a room-art PNG under content/world/zones, 404 on any traversal attempt."""
-    path = Path("content/world/zones").joinpath(*parts).resolve()
-    zones_root = Path("content/world/zones").resolve()
+def _room_art_file_response(zones_dir: Path, *parts: str) -> FileResponse:
+    """Serve a room-art PNG under the world's zones directory, 404 on any traversal attempt."""
+    path = zones_dir.joinpath(*parts).resolve()
+    zones_root = zones_dir.resolve()
     try:
         path.relative_to(zones_root)
     except ValueError:
@@ -133,14 +133,18 @@ def build_play_router(server: SageServer) -> APIRouter:
             or not _MEDIA_PNG_RE.match(filename)
         ):
             raise HTTPException(status_code=404, detail="not_found")
-        return _room_art_file_response(zone_id, "rooms", "art", room_slug, filename)
+        return _room_art_file_response(
+            server.world.zones_dir, zone_id, "rooms", "art", room_slug, filename
+        )
 
     @router.get("/media/room-art/{zone_id}/{slug}.png")
     async def media_room_art_png(zone_id: str, slug: str):
         """Legacy flat file: zones/{zone}/rooms/art/{slug}.png (bundled with zone)."""
         if not _MEDIA_SEG_RE.match(zone_id) or not _MEDIA_SEG_RE.match(slug):
             raise HTTPException(status_code=404, detail="not_found")
-        return _room_art_file_response(zone_id, "rooms", "art", f"{slug}.png")
+        return _room_art_file_response(
+            server.world.zones_dir, zone_id, "rooms", "art", f"{slug}.png"
+        )
 
     @router.post("/play/auth/login")
     @limiter.limit("10/minute")

@@ -358,9 +358,7 @@ class AgentManager:
                 record_counter(stats, server.content_loader.get_achievement_registry(), "deaths")
             except Exception:
                 logger.debug("death counter skipped", exc_info=True)
-            from sage.world.defaults import RESPAWN_ROOM
-
-            respawn_room = RESPAWN_ROOM
+            respawn_room = server.world.respawn_room
             if server.content_loader.get_room(respawn_room) is None:
                 respawn_room = state.persona.spawn_room
             await server.redis.set_player_stats(name, stats)
@@ -651,7 +649,6 @@ class AgentManager:
         from sage.agents.body import route_path
         from sage.factions.missions import active_mission
         from sage.world.clock import day_phase
-        from sage.world.defaults import RESPAWN_ROOM
 
         zone = state.persona.spawn_zone()
         exits_of = self._exits_map(zone)
@@ -674,7 +671,7 @@ class AgentManager:
         if hp_frac < 0.5:
             current = self.server.content_loader.get_room(room_id)
             if current is None or current.type != "safe":
-                g = go("retreat to heal", home or RESPAWN_ROOM)
+                g = go("retreat to heal", home or self.server.world.respawn_room)
                 if g:
                     return g
 

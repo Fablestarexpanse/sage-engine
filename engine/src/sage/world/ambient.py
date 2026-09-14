@@ -47,7 +47,7 @@ class AmbientManager:
             return
 
         occupied: dict[str, list[str]] = {}
-        for player_id in self.server.session_manager.player_to_session:
+        for player_id in list(self.server.session_manager.player_to_session):
             room_id = await self.server.redis.get_player_location(player_id)
             if room_id:
                 occupied.setdefault(room_id, []).append(player_id)

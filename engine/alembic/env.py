@@ -6,6 +6,7 @@ from alembic import context
 from sage.state.postgres import Base
 from sage.state.models import Account, Character # Ensure models are imported for metadata
 from sage.core.config import load_config
+from sage.plugins.migrations import is_core_object
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -36,6 +37,7 @@ def run_migrations_offline() -> None:
     context.configure(
         url=url,
         target_metadata=target_metadata,
+        include_object=is_core_object,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
     )
@@ -62,7 +64,9 @@ def run_migrations_online() -> None:
         await connectable.dispose()
 
     def do_run_sync_migrations(connection):
-        context.configure(connection=connection, target_metadata=target_metadata)
+        context.configure(
+            connection=connection, target_metadata=target_metadata, include_object=is_core_object
+        )
         with context.begin_transaction():
             context.run_migrations()
 

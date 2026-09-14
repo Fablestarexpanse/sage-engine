@@ -14,14 +14,17 @@ from typing import Any
 
 from sqlalchemy import select
 
-from sage import app
+from sage import app, lexicon
+from sage.admin import content_browser
 from sage.admin.nexus import NexusApp
 from sage.agents.manager import AgentManager
 from sage.bootstrap import ensure_dev_defaults
 from sage.commands.registry import registry
 from sage.core.comfyui_persist import save_comfyui_toml
-from sage.core.config import ComfyUIConfig, Config, LLMConfig, load_config
+from sage.core.config import ComfyUIConfig, Config, LLMConfig, load_config, resolve_project_root
+from sage.core.events import EventBus, SessionEnded, SessionStarted, emit
 from sage.core.llm_persist import save_llm_toml
+from sage.core.resolvers import Resolvers
 from sage.core.tick import TickManager
 from sage.effects.manager import EffectsManager
 from sage.hot_reload import HotReloader
@@ -30,6 +33,7 @@ from sage.llm.prompts import PromptManager
 from sage.maestro.director import MaestroDirector
 from sage.network.session import Session, SessionManager
 from sage.parser.dispatcher import CommandDispatcher
+from sage.plugins import PluginHost
 from sage.services._shared import resolve_play_account
 from sage.services.economy import EconomyService
 from sage.services.player_service import PlayerService
@@ -40,6 +44,7 @@ from sage.state.postgres import PostgresState
 from sage.state.redis_client import RedisState
 from sage.world.ambient import AmbientManager
 from sage.world.loader import ContentLoader
+from sage.world.package import select_world
 from sage.world.spawner import EntitySpawnManager
 
 logger = logging.getLogger(__name__)
@@ -77,19 +82,38 @@ class SageServer:
 
     def __init__(self, config: Config | None = None):
         self.config = config or load_config()
+        # The world package this deployment runs (docs/sage/PHASE1_CONTRACTS.md Part B).
+        self.project_root = resolve_project_root()
+        self.world = select_world(
+            self.project_root / self.config.server.worlds_dir, self.config.server.world
+        )
         self.tick_manager = TickManager(tick_rate=self.config.server.tick_rate)
+        self.events = EventBus()
+        self.resolvers = Resolvers()
+        self._define_engine_resolvers()
         self.session_manager = SessionManager()
         self.redis = RedisState(self.config.redis)
         self.db = PostgresState(self.config.database)
         self.persistence = PersistenceManager(self)
-        self.content_loader = ContentLoader()
+        self.content_loader = ContentLoader(self.world.content_dir)
+        content_browser.set_content_root(self.world.content_dir)
         self.spawner = EntitySpawnManager(self)
         self.ambient = AmbientManager(self)
         self.effects = EffectsManager(self)
         self.maestro = MaestroDirector(self)
         self.agent_manager = AgentManager(self)
         self.hot_reloader = HotReloader(self._on_file_changed)
-        self.dispatcher = CommandDispatcher()
+        self.dispatcher = CommandDispatcher(events=self.events)
+        self.plugins = PluginHost(
+            world=self.world,
+            registry=registry,
+            events=self.events,
+            resolvers=self.resolvers,
+            tick_manager=self.tick_manager,
+            redis=self.redis,
+            plugins_root=self.project_root / "plugins",
+            trusted_roots=[self.project_root / "plugins", self.project_root / "worlds"],
+        )
         self.nexus = NexusApp(self)
 
         # LLM Subsystems
@@ -98,7 +122,12 @@ class SageServer:
         # either selects the "embedded" backend (model loads once).
         self._embedded_llm = None
         self.llm_client.embedded_getter = self.embedded_llm
-        self.prompt_manager = PromptManager()
+        self.prompt_manager = PromptManager(self.world.prompts_dir)
+        from sage.lexicon.overrides import LexiconOverrides
+
+        self.lexicon_overrides = LexiconOverrides(self.db.session_factory)
+        self._active_lexicon_overrides: dict[str, str] = {}
+        self.lexicon = self._build_lexicon()
 
         # Domain services (each reads config/db through this server so live
         # settings updates are always observed)
@@ -299,9 +328,22 @@ class SageServer:
     async def startup(self):
         """Initialize and start all sub-systems."""
         logger.info("SAGE engine starting up...")
+        manifest = self.world.manifest.world
+        logger.info(
+            "World: %s (%s %s) from %s",
+            manifest.id,
+            manifest.name,
+            manifest.version,
+            self.world.root,
+        )
 
         # 0. State stores — Redis must be ready before EntitySpawnManager and PersistenceManager
         await self.redis.connect()
+
+        # 0b. The world's plugins are validated first, and the database must already carry every
+        #     core and plugin migration (contracts C.3 step 4: never auto-migrate on boot).
+        plugin_records = self.plugins.discover()
+        await self._require_migrated(plugin_records)
 
         # 0a. Bootstrap dev accounts (requires Postgres; best-effort, never fatal)
         await ensure_dev_defaults(self.db, self.config)
@@ -323,6 +365,10 @@ class SageServer:
         registry.load_module_strict("sage.commands.crafting")
         registry.load_module_strict("sage.commands.admin")
 
+        # 1b. The world's plugins, after engine commands so verb conflicts are caught.
+        self.plugins.load(plugin_records)
+        await self.reload_lexicon_overrides()
+
         # 2. Tick handlers — must be registered before the tick loop starts in step 4
         self.tick_manager.register(self.spawner.on_tick)
         self.tick_manager.register(self.ambient.on_tick)
@@ -333,7 +379,13 @@ class SageServer:
 
         # 3. HotReloader — watches content/ and commands/; safe to start any time after step 1
         await self.hot_reloader.start(
-            ["content", str(PACKAGE_DIR / "commands"), "config", "prompts"]
+            [
+                str(self.world.content_dir),
+                str(PACKAGE_DIR / "commands"),
+                str(self.project_root / "config"),
+                str(self.world.prompts_dir),
+                str(self.world.lexicon_dir),
+            ]
         )
 
         # 4. NexusApp (FastAPI HTTP + WebSocket) — requires command registry (step 1) to be ready
@@ -350,6 +402,7 @@ class SageServer:
 
         self.hot_reloader.stop()
         self.tick_manager.stop()
+        self.plugins.teardown()
         await self.redis.disconnect()
         await self.db.close()
 
@@ -473,32 +526,30 @@ class SageServer:
         # as a corpse that dies to the first breeze.
         respawned = False
         respawn_bill = 0
-        if int(norm_stats.get("hp", 1)) <= 0:
+        if self.resolvers.get("death.check")(norm_stats):
             from sage.effects.engine import clear_on_death
-            from sage.world.defaults import RESPAWN_ROOM
 
             clear_on_death(norm_stats)
-            norm_stats["hp"] = max(1, int(norm_stats.get("max_hp", 20)) // 2)
-            if self.content_loader.get_room(RESPAWN_ROOM) is not None:
-                character.room_id = RESPAWN_ROOM
-            # Clinic bill (down to zero) — dying has a price on Tidegate.
-            bill = min(int(character.digi_balance or 0), 10)
-            character.digi_balance = int(character.digi_balance or 0) - bill
+            plan = self.resolvers.get("death.respawn")(
+                self.world, norm_stats, int(character.digi_balance or 0)
+            )
+            norm_stats["hp"] = plan.hp
+            if self.content_loader.get_room(plan.room_id) is not None:
+                character.room_id = plan.room_id
+            character.digi_balance = int(character.digi_balance or 0) - plan.bill
             respawned = True
-            respawn_bill = bill
+            respawn_bill = plan.bill
 
         # A character saved in a room that no longer exists (zone deleted or
         # renamed) wakes at the world start instead of a void.
         if self.content_loader.get_room(character.room_id) is None:
-            from sage.world.defaults import START_ROOM
-
             logger.info(
                 "Character %s was in missing room %s; moving to %s",
                 character.name,
                 character.room_id,
-                START_ROOM,
+                self.world.start_room,
             )
-            character.room_id = START_ROOM
+            character.room_id = self.world.start_room
 
         # In-game wallet: the DB column is the durable copy; the stats blob is
         # what shop commands spend from (PersistenceManager mirrors it back).
@@ -511,22 +562,25 @@ class SageServer:
 
         if respawned:
             currency = self.config.server.game_currency_display_name
-            bill_line = (
-                f" The clinic took {respawn_bill} {currency} for the trouble."
+            bill = (
+                lexicon.t("death.bill", amount=respawn_bill, currency=currency)
                 if respawn_bill
-                else " You were too broke to bill; they patched you anyway."
+                else lexicon.t("death.no_bill")
             )
-            await session.send(
-                "\r\nYou wake on a diagnostic bed, patched together and aching. "
-                "The dispensary arm gives you an encouraging whir." + bill_line
-            )
+            await session.say("death.wake", bill=bill)
 
         await self.push_character_snapshot(session)
+
+        for key in ("login.banner", "login.motd"):
+            if text := lexicon.t(key).strip():
+                await session.send(text)
+
+        await emit(self, SessionStarted(player_id=character.name))
 
         # Initial look
         await self.dispatcher.dispatch(session, "look")
         if not norm_stats.get("visited_rooms"):
-            await session.send("\r\nNew here? Type 'help' to see what you can do.")
+            await session.say("onboarding.new_player")
         await session.send_prompt()
 
     async def push_character_snapshot(self, session: Session) -> None:
@@ -619,9 +673,8 @@ class SageServer:
             cached = self.content_loader._cache.get(cache_key)
             if cached is None:
                 import json as _json
-                from pathlib import Path
 
-                rooms_dir = Path("content/world/zones") / zone / "rooms"
+                rooms_dir = self.world.zones_dir / zone / "rooms"
                 if not rooms_dir.is_dir():
                     return None
                 positions = {}
@@ -689,6 +742,7 @@ class SageServer:
             # A session evicted by a newer login must not tear down the state
             # the new session is now using (room set, DB sync).
             if session.player_id and self.session_manager.owns_player(session):
+                await emit(self, SessionEnded(player_id=session.player_id))
                 await self.persistence.sync_character(session.player_id)
                 # Ghost fix: leaving the game must leave the room too, or the
                 # room's player set keeps a phantom occupant forever.
@@ -700,14 +754,65 @@ class SageServer:
                     logger.debug("Room-set cleanup failed for %s", session.player_id, exc_info=True)
             await self.session_manager.destroy_session(session.id)
 
+    async def _require_migrated(self, plugin_records) -> None:
+        from sage.plugins.migrations import (
+            alembic_config,
+            pending_heads_async,
+            unexpected_tables_async,
+        )
+        from sage.state.postgres import Base
+
+        cfg = alembic_config([r.path for r in plugin_records])
+        pending = await pending_heads_async(cfg, self.db.url)
+        if pending:
+            raise RuntimeError(
+                f"Database {self.config.database.database!r} is missing migrations "
+                f"(unapplied heads: {', '.join(pending)}). Run: python -m sage db upgrade"
+            )
+        strays = await unexpected_tables_async(
+            self.db.url, Base.metadata.tables.keys(), [r.id for r in plugin_records]
+        )
+        if strays:
+            logger.warning(
+                "Tables owned by neither the engine nor an enabled plugin: %s", ", ".join(strays)
+            )
+
+    def _define_engine_resolvers(self) -> None:
+        """Engine resolver slots and their defaults (contracts catalog #4)."""
+        from sage.world.death import default_death_check, default_respawn
+
+        self.resolvers.define("death.check", default_death_check)
+        self.resolvers.define("death.respawn", default_respawn)
+
+    async def reload_lexicon_overrides(self) -> None:
+        """Re-read active Nexus lexicon edits and rebuild the live lexicon (no restart)."""
+        self._active_lexicon_overrides = await self.lexicon_overrides.active()
+        self.lexicon = self._build_lexicon()
+
+    def _build_lexicon(self) -> lexicon.Lexicon:
+        """World strings over engine defaults; installed for Session.say and lexicon.t."""
+        plugin_layers = self.plugins.lexicon_layers() if hasattr(self, "plugins") else []
+        built = lexicon.build_lexicon(
+            self.world.lexicon_dir,
+            self.world.manifest.world.locale,
+            overrides=getattr(self, "_active_lexicon_overrides", None),
+            plugin_layers=plugin_layers,
+        )
+        lexicon.set_active(built)
+        return built
+
     async def _on_file_changed(self, path: Path):
         """Handle hot-reload requests from the watcher."""
         logger.info(f"Hot-reload triggered for: {path}")
 
-        if "content" in path.parts:
+        world = getattr(self, "world", None)
+        if world is not None and path.resolve().is_relative_to(world.lexicon_dir):
+            self.lexicon = self._build_lexicon()
+
+        if world is not None and path.resolve().is_relative_to(world.content_dir):
             self.content_loader.invalidate(path)
 
-        if "prompts" in path.parts:
+        if world is not None and path.resolve().is_relative_to(world.prompts_dir):
             self.prompt_manager.reload()
 
         if "commands" in path.parts:

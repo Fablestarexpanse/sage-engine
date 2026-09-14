@@ -1,0 +1,12 @@
+# Conduit attributes. Stored today as conduit.conduit_attributes.{FRT..PRS} in the character
+# blob; Phase 3 migrates storage to these lowercase keys.
+attributes:
+  - {key: frt, label: stat.frt.name, short: stat.frt.short, min: 8, max: 23, default: 13}
+  - {key: rfx, label: stat.rfx.name, short: stat.rfx.short, min: 8, max: 23, default: 13}
+  - {key: acu, label: stat.acu.name, short: stat.acu.short, min: 8, max: 23, default: 13}
+  - {key: rsv, label: stat.rsv.name, short: stat.rsv.short, min: 8, max: 23, default: 13}
+  - {key: prs, label: stat.prs.name, short: stat.prs.short, min: 8, max: 23, default: 13}
+vitals:
+  - {key: hp, label: vital.hp.name, default_max: 100}
+chargen:
+  attribute_points: 65

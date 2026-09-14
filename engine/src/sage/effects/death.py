@@ -18,6 +18,14 @@ async def record_player_death(
 
     is_agent = bool(getattr(session, "is_agent", False))
     log_event("player_death", player=player_id, is_agent=is_agent, room=room_id or "", by=cause)
+    from sage.core.events import PlayerDied, emit
+
+    await emit(
+        server,
+        PlayerDied(
+            player_id=player_id, room_id=room_id, cause=cause, is_agent=is_agent, stats=stats
+        ),
+    )
     if room_id:
         await heat(server.redis, "deaths", room_id)
     if is_agent:

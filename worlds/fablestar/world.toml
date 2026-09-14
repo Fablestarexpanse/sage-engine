@@ -1,0 +1,33 @@
+# Fablestar Expanse — world package manifest (docs/sage/PHASE1_CONTRACTS.md Part B).
+# Proprietary, all rights reserved (see NOTICE).
+
+[world]
+id = "fablestar"
+name = "Fablestar Expanse"
+version = "0.1.0"
+engine = ">=0.2,<0.3"
+locale = "en"
+
+[start]
+room = "test_isle:ferry_landing"
+respawn = "test_isle:clinic"
+
+[content]
+room_types = ["chamber", "corridor", "junction", "alcove", "descent", "danger", "safe", "boss",
+              "hub", "command", "engineering", "airlock"]
+exit_dirs = ["north", "south", "east", "west", "up", "down",
+             "northeast", "northwest", "southeast", "southwest"]
+equipment_slots = ["weapon", "armor"]
+
+[plugins]
+# Populated as Fablestar systems become plugins (stage 2c loader, Phase 3 migration).
+
+[params]
+# Tidegate clinic bills up to 10 Digi on respawn; half health on waking.
+"engine.death.respawn_bill_max" = 10
+"engine.death.respawn_hp_fraction" = 0.5
+
+[transition]
+# Content and prompts still live at the repository root until Phase 3 moves them in here.
+content_dir = "../../content"
+prompts_dir = "../../prompts"

@@ -1,0 +1,31 @@
+# SAGE engine default strings (English). Worlds override any key in lexicon/<locale>.yaml.
+# Keep these generic: no setting, genre or world names (brief invariants 2 and 3).
+
+prompt: "\r\n> "
+
+login:
+  banner: ""
+  motd: ""
+
+onboarding:
+  new_player: "\r\nNew here? Type 'help' to see what you can do."
+
+parser:
+  rate_limited: "Slow down — commands are arriving faster than the world can act."
+  command_error: "An error occurred while processing your command."
+  unknown_command: "Unknown command: '{verb}'.{hint} Type 'help' for assistance."
+  did_you_mean: " Did you mean: {suggestions}?"
+
+help:
+  header: "--- Available Commands ---"
+  no_such_command: "No command called '{verb}'. Plain 'help' lists them all."
+  no_description: "No description."
+
+who:
+  empty: "Nobody is connected."
+  header: "Online ({count}):"
+
+death:
+  wake: "\r\nYou come to, patched up and aching.{bill}"
+  bill: " Recovery cost you {amount} {currency}."
+  no_bill: " You had nothing to pay with; you were patched up anyway."

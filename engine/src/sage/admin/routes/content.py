@@ -173,7 +173,7 @@ def build_content_router(server: SageServer) -> APIRouter:
             out = content_browser.write_proficiency_catalog_document(body)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
-        server.content_loader.invalidate(Path("content/proficiencies/catalog.json").resolve())
+        server.content_loader.invalidate(content_browser.PROFICIENCIES_CATALOG_JSON.resolve())
         _mark_reloaded()
         return out
 
@@ -203,7 +203,10 @@ def build_content_router(server: SageServer) -> APIRouter:
 
     def _register_template_routes(kind: str, tool: str) -> None:
         """Register get/put/inject YAML routes for a flat template dir (entities, items)."""
-        base_dir = Path("content/world") / kind
+
+        def base_dir() -> Path:
+            return server.world.content_dir / "world" / kind
+
         label = kind[:-1].capitalize()  # "entities" -> "Entity"
 
         @router.get(f"/content/{kind}/{{template_id}}/yaml")
@@ -213,7 +216,7 @@ def build_content_router(server: SageServer) -> APIRouter:
         ):
             if not template_id.replace("_", "").isalnum():
                 raise HTTPException(status_code=400, detail=f"Invalid {label.lower()} id")
-            path = base_dir / f"{template_id}.yaml"
+            path = base_dir() / f"{template_id}.yaml"
             if not path.is_file():
                 raise HTTPException(status_code=404, detail=f"{label} not found")
             return {"yaml": path.read_text(encoding="utf-8")}
@@ -358,7 +361,7 @@ def build_content_router(server: SageServer) -> APIRouter:
             raise HTTPException(status_code=404, detail="Room not found") from None
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
-        path = Path("content/world/zones") / zone_id / "rooms" / f"{room_slug}.yaml"
+        path = server.world.zones_dir / zone_id / "rooms" / f"{room_slug}.yaml"
         server.content_loader.invalidate(path)
         _mark_reloaded()
         return {"status": "deleted", "slug": room_slug}

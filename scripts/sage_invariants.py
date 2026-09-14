@@ -28,7 +28,20 @@ BASELINE_FILE = ROOT / "scripts" / "sage_invariants_baseline.json"
 
 # Engine code (NOTICE) plus repository tooling that ships beside it.
 ENGINE_PATHS = ["engine", "scripts"]
-EXTENSIONS = {".py", ".js", ".jsx", ".ts", ".tsx", ".html", ".css", ".json", ".toml", ".rs"}
+EXTENSIONS = {
+    ".py",
+    ".js",
+    ".jsx",
+    ".ts",
+    ".tsx",
+    ".html",
+    ".css",
+    ".json",
+    ".toml",
+    ".rs",
+    ".yaml",
+    ".yml",
+}
 SKIP_DIRS = {"node_modules", "dist", "target", "__pycache__", ".desloppify", ".pytest_cache"}
 SKIP_FILES = {
     "package-lock.json",
@@ -39,6 +52,17 @@ SKIP_FILES = {
     "engine/tests/test_sage_invariants.py",
 }
 CATEGORIES = ("denylist", "player_literals")
+
+# Invariant 1 (zero tolerance, not a ratchet): the engine never imports world or plugin code,
+# and plugins reach the engine only through sage.api.
+ENGINE_SOURCE = "engine/src"
+FORBIDDEN_ENGINE_IMPORTS = ("sage_plugins", "sage_worlds")
+# The only engine modules allowed to import by computed name or touch sys.path.
+DYNAMIC_IMPORT_ALLOWED = {
+    "engine/src/sage/plugins/loader.py",  # loads plugins by path
+    "engine/src/sage/commands/registry.py",  # loads and hot-reloads engine command modules
+}
+PLUGIN_API = "sage.api"
 
 
 @dataclass
@@ -168,6 +192,84 @@ def _tracked_files(root: Path) -> set[str] | None:
     return {p for p in out.split("\0") if p}
 
 
+def _imported_modules(tree: ast.AST) -> Iterator[tuple[int, str]]:
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                yield node.lineno, alias.name
+        elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+            if node.module == "sage":
+                for alias in node.names:
+                    yield node.lineno, f"sage.{alias.name}"
+            else:
+                yield node.lineno, node.module
+
+
+def _dynamic_imports(tree: ast.AST) -> Iterator[int]:
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        name = ast.unparse(func) if isinstance(func, ast.Attribute | ast.Name) else ""
+        if name in {"__import__", "importlib.import_module", "import_module"} or name.startswith(
+            ("importlib.util.spec_from", "sys.path.insert", "sys.path.append")
+        ):
+            yield node.lineno
+
+
+def engine_import_violations(rel: str, source: str) -> list[str]:
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return []
+    found = [
+        f"{rel}:{line} imports {module} (engine must not import world or plugin code)"
+        for line, module in _imported_modules(tree)
+        if module.split(".")[0] in FORBIDDEN_ENGINE_IMPORTS
+    ]
+    if rel not in DYNAMIC_IMPORT_ALLOWED:
+        found += [
+            f"{rel}:{line} imports dynamically (only the plugin loader and command registry may)"
+            for line in _dynamic_imports(tree)
+        ]
+    return found
+
+
+def plugin_import_violations(rel: str, source: str) -> list[str]:
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return []
+    return [
+        f"{rel}:{line} imports {module} (plugins may import only {PLUGIN_API})"
+        for line, module in _imported_modules(tree)
+        if (module == "sage" or module.startswith("sage."))
+        and module != PLUGIN_API
+        and not module.startswith(PLUGIN_API + ".")
+    ]
+
+
+def plugin_source_files(root: Path = ROOT) -> Iterator[tuple[str, Path]]:
+    bases = [root / "plugins", *sorted((root / "worlds").glob("*/plugins"))]
+    for base in bases:
+        if base.is_dir():
+            for path in sorted(base.rglob("*.py")):
+                if "__pycache__" not in path.parts and "migrations" not in path.parts:
+                    yield path.relative_to(root).as_posix(), path
+
+
+def boundary_violations(root: Path = ROOT) -> list[str]:
+    found: list[str] = []
+    for path in sorted((root / ENGINE_SOURCE).rglob("*.py")):
+        if "__pycache__" in path.parts:
+            continue
+        rel = path.relative_to(root).as_posix()
+        found += engine_import_violations(rel, path.read_text(encoding="utf-8", errors="replace"))
+    for rel, path in plugin_source_files(root):
+        found += plugin_import_violations(rel, path.read_text(encoding="utf-8", errors="replace"))
+    return found
+
+
 def iter_engine_files(root: Path = ROOT) -> Iterator[tuple[str, Path]]:
     tracked = _tracked_files(root)
     for top in ENGINE_PATHS:
@@ -245,7 +347,11 @@ def main(argv: list[str]) -> int:
 
     baseline = json.loads(BASELINE_FILE.read_text(encoding="utf-8"))
     violations = compare(baseline, current)
+    boundary = boundary_violations()
     print(f"current {_totals(current)} / baseline {baseline.get('totals')}")
+    print(f"import boundary: {len(boundary)} violation(s)")
+    for line in boundary:
+        print(f"FAIL boundary: {line}")
     for line in violations:
         print(f"FAIL {line}")
     improved = sum(
@@ -259,8 +365,9 @@ def main(argv: list[str]) -> int:
     if violations:
         print("Engine code gained world-specific terms or hardcoded player text. Move it to a")
         print("world package or lexicon key; never raise the baseline to make this pass.")
-        return 1
-    return 0
+    if boundary:
+        print("The engine/world/plugin import boundary was crossed (brief invariant 1).")
+    return 1 if violations or boundary else 0
 
 
 if __name__ == "__main__":

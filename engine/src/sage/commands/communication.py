@@ -164,6 +164,9 @@ async def who(session: Session, args: list[str]):
 
     names = sorted(app_instance.session_manager.player_to_session)
     if not names:
-        await session.send("The station is silent. Nobody is connected.")
+        await session.say("who.empty")
         return
-    await session.send("\r\n".join([f"Online ({len(names)}):", *[f"  {name}" for name in names]]))
+    from sage import lexicon
+
+    header = lexicon.t("who.header", count=len(names))
+    await session.send("\r\n".join([header, *[f"  {name}" for name in names]]))

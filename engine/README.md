@@ -8,7 +8,7 @@ Layout (stage 2b of `docs/sage/PHASE1_CONTRACTS.md` Part A):
 
 - `src/sage/` — the engine package (`python -m sage`)
 - `tests/` — engine tests; run from the repository root with `python -m pytest`
-- `alembic/`, `alembic.ini` — core migrations (`python -m alembic -c engine/alembic.ini upgrade head`)
+- `alembic/`, `alembic.ini` — core migrations (`python -m sage db upgrade`)
 - `scripts/` — admin bootstrap scripts
 - `pyproject.toml`, `requirements.lock` — packaging (`pip install -e "./engine[dev]"`)
 - `clients/admin-ui`, `clients/player-ui` — Nexus console and player client (Vite)

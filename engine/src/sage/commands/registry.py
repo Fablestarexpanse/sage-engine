@@ -84,6 +84,11 @@ class CommandRegistry:
         # Registration happens via the @command decorator on import/reload.
         logger.info(f"Loaded command module: {module_name}")
 
+    def unregister(self, name: str) -> None:
+        """Remove a command and every alias pointing at it (plugin teardown)."""
+        self._commands.pop(name, None)
+        self._aliases = {a: target for a, target in self._aliases.items() if target != name}
+
     def reload_module(self, module_name: str):
         """Hot-reload commands from a specific module (lenient: log and keep running)."""
         try:

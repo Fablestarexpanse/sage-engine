@@ -70,7 +70,7 @@ cp config/database.example.toml config/database.toml
 
 # 3. Start backing services and run migrations
 docker compose up -d redis postgres
-python -m alembic -c engine/alembic.ini upgrade head
+python -m sage db upgrade
 
 # 4. Start the game server (Nexus, port 8001)
 python -m sage

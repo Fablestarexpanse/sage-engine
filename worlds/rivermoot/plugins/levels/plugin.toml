@@ -1,0 +1,14 @@
+# Simple level progression for Rivermoot: experience from kills, a level every N points.
+[plugin]
+id = "levels"
+name = "Levels"
+version = "1.0.0"
+engine = ">=0.2,<0.3"
+entry = "sage_plugin_levels.main:setup"
+first_party = true
+
+[touches]
+commands = ["level"]
+events_subscribe = ["EntityKilled"]
+state_blocks = ["levels"]
+lexicon_prefix = "levels."

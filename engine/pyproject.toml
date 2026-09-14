@@ -14,6 +14,8 @@ dependencies = [
     "bcrypt>=4.1.0",
     "fastapi>=0.109.0",
     "uvicorn>=0.27.0",
+    # uvicorn needs a WebSocket implementation to serve /ws/play and the admin sockets.
+    "websockets>=13.0",
     "alembic>=1.13.0",
     "python-multipart>=0.0.9",
     "httpx>=0.26.0",
@@ -33,9 +35,12 @@ agents-embedded = ["llama-cpp-python>=0.3.0"]
 dev = ["ruff==0.12.7", "pytest==9.0.3"]
 
 [project.scripts]
-sage = "sage.__main__:main"
+sage = "sage.cli:run"
 # Deprecated alias for one release (docs/sage/PHASE1_CONTRACTS.md F.1).
-fablestar = "sage.__main__:main"
+fablestar = "sage.cli:run"
+
+[tool.setuptools.package-data]
+sage = ["lexicon/*.yaml"]
 
 [build-system]
 requires = ["setuptools>=61.0"]

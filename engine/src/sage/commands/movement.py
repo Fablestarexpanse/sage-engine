@@ -69,6 +69,17 @@ def move_to(direction: str):
         # 3. Update location, telling both rooms
         await _announce(app_instance, room_id, player_id, f"{player_id} leaves {direction}.")
         await app_instance.redis.set_player_location(player_id, target_room_id)
+        from sage.core.events import RoomEntered, emit
+
+        await emit(
+            app_instance,
+            RoomEntered(
+                player_id=player_id,
+                room_id=target_room_id,
+                from_room_id=room_id,
+                direction=direction,
+            ),
+        )
         arrival = OPPOSITE.get(direction)
         await _announce(
             app_instance,
