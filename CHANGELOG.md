@@ -22,6 +22,10 @@ Versions built before the first publication have no conversion date.
 
 ## [Unreleased]
 
+- **Tutorial 1, run the engine** (`docs/tutorial/01-run-the-engine.md`): from `git clone` to
+  walking the demo world and changing a room while the server runs, with what each quickstart step
+  did and how to recover from a broken room file.
+
 - **Nexus serves the built player client at `/`**, so a new install needs one terminal: open
   http://localhost:8001/. `sage quickstart` builds the client when it is missing or older than its
   sources (`--no-client` skips it). A client build now talks to the origin it was loaded from;

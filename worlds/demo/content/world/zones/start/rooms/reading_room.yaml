@@ -3,8 +3,7 @@ zone: start
 type: room
 depth: 1
 description:
-  base: Tall shelves of books surround a pair of worn armchairs by a window. It is very quiet. The doorway
-    east leads back to the square.
+  base: Tall shelves of books surround a pair of worn armchairs by a window. It is very quiet. The doorway east leads back to the square.
 exits:
   east:
     destination: start:commons

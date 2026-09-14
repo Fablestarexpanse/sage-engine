@@ -3,8 +3,7 @@ zone: start
 type: hub
 depth: 1
 description:
-  base: A small square of swept flagstones with a stone bench at its centre. Paths lead north to a garden,
-    east to a workshop and west to a reading room.
+  base: A small square of swept flagstones with a stone bench at its centre. Paths lead north to a garden, east to a workshop and west to a reading room.
 exits:
   north:
     destination: start:garden

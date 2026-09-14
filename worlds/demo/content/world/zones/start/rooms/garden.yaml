@@ -3,8 +3,7 @@ zone: start
 type: garden
 depth: 1
 description:
-  base: Raised beds of herbs and a pear tree fill a garden enclosed by old brick walls. The only way out
-    is the gate south to the square.
+  base: Raised beds of herbs and a pear tree fill a garden enclosed by old brick walls. The only way out is the gate south to the square.
 exits:
   south:
     destination: start:commons

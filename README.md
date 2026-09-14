@@ -79,7 +79,9 @@ done:
 5. builds the player client when it has not been built or its sources changed;
 6. runs the server with the **SAGE Demo** world, four rooms to walk around in.
 
-Open http://localhost:8001/ (the server serves the built player client) and press **Play**. The
+Open http://localhost:8001/ (the server serves the built player client) and press **Play**. New to
+text worlds? [`docs/tutorial/01-run-the-engine.md`](docs/tutorial/01-run-the-engine.md) walks
+through this step by step and ends with changing a room while the server runs. The
 generated `server.toml` is for local development: `dev_mode` is on (it seeds the `staff` and
 `player` test logins) and so are the passwordless loopback logins described below.
 

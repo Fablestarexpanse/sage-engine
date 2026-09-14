@@ -3,8 +3,7 @@ zone: start
 type: room
 depth: 1
 description:
-  base: Tools hang in tidy rows above a long workbench scarred by years of use. Shavings curl on the floor.
-    The door west opens onto the square.
+  base: Tools hang in tidy rows above a long workbench scarred by years of use. Shavings curl on the floor. The door west opens onto the square.
 exits:
   west:
     destination: start:commons
