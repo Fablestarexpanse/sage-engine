@@ -31,7 +31,7 @@ by owner G.4 ("every mechanic is a first-party plugin").
 | 3.8 | Effects API in engine (`api.effects`); hazards → `plugins/hazards` over `RoomEntered` | done |
 | 3.9 | Agents → `plugins/agents` (owner ruling); agent wallet reads (`stats["digi"]`, clinic bill, pending takings) move onto `api.wallet`, and the transitional `AgentManager._factions()` service lookup becomes a declared `depends` on `factions` | done |
 | 3.10 | Conduit (proficiencies, FRT..PRS, combat ratings, chargen) → `worlds/fablestar/plugins/conduit` | done |
-| 3.11 | Combat, equipment, ambient, effects → first-party plugins (owner G.4) | next |
+| 3.11 | Combat, equipment, ambient, effects → first-party plugins (owner G.4): ambient and effects done; combat + equipment + consumables (`use`) next | in progress |
 | 3.12 | Snapshot contributors (`api.snapshot.contribute`); `resonance_levels_total` out of the protocol | done |
 | 3.13 | Declarative client panels; remove Fablestar panels/branding from player-ui | todo |
 | 3.14 | Schema: JSONB state, `digi_balance`/`reputation`/`echo_credits` columns, retire `agent_state` (backfill → drop) | todo |
@@ -129,3 +129,12 @@ by owner G.4 ("every mechanic is a first-party plugin").
   reads it, no plugin id in the client), `/plugins/conduit/admin/catalog` for the admin Skills page.
   `server.proficiency_combat_hybrid` config became the world param `conduit.combat_hybrid`. World
   plugin tests run with the suite (`pytest.ini` testpaths include `worlds`).
+- **3.11 remaining plan.** One commit for combat, equipment and consumables because combat reads
+  gear bonuses and ammo: `plugins/equipment` (item.slot/attack/defense/ammo extensions, equip/
+  unequip/gear, service bonuses/fire/equip — agents switch from api.equipment to it),
+  `plugins/consumables` (item.heal, `use`, service for agents), `plugins/combat` (attack/flee,
+  combat.skills param, narration via an engine AI call, EntityKilled). Engine keeps entity locks
+  (move out of commands/combat.py into the spawner) and gains `[touches].stats_keys` so a plugin
+  may declare engine-owned stats it writes (combat and consumables write `hp`). Rivermoot must
+  enable combat (its levels plugin listens for kills). Engine combat tests (test_commands,
+  test_death, test_combat_narration, test_equipment) move to plugin host tests.

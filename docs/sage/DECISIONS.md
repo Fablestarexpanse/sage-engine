@@ -4,9 +4,9 @@ NEXT: Phase 3 on sage/phase-3 (plan: docs/dev/milestones/M2-sage-decoupling/phas
 3.1 achievements, 3.2 wallet, 3.3 factions, 3.4 content extensions + plugin admin routes, 3.5 shop and
 lodging, 3.6 search and crafting (+ progression slots), 3.7 maestro, 3.8 hazards: DONE. 3.9 agents (virtual
 sessions, engine seams, plugins/agents with plg_agents_state) DONE; agent_state retirement moved to 3.14 (order-
-safe rename first). 3.12 snapshot sections, 3.10 Conduit world plugin DONE. Next: 3.11 combat, equipment,
-ambient, effects -> first-party plugins. Dev DB at n7o8p9q0r1s2.
-Ratchet 948/107. Commit 9a831ea does not boot (be48da3 completes it).
+safe rename first). 3.12 snapshot sections, 3.10 Conduit world plugin, 3.11 ambient + effects plugins DONE.
+Next: 3.11 combat + equipment + consumables (plan notes in phase-3-plan.md). Dev DB at n7o8p9q0r1s2.
+Ratchet 948/96. Commit 9a831ea does not boot (be48da3 completes it).
 Open owner questions: Rivermoot license; PRs for sage/stage-2b and sage/stage-2c.
 Review page: https://claude.ai/code/artifact/2d488113-1ca9-4f45-b993-ac0253e0670c
 
