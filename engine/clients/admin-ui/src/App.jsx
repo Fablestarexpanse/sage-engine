@@ -194,15 +194,15 @@ const NAV_ITEMS = [
   { id: "team", label: "Team & access", icon: <Icons.Players />, headOnly: true },
 ];
 
-const AgentsPage = () => (
+const AgentsPage = ({ pluginBase }) => (
   <div style={{ display: "grid", gap: 16 }}>
-    <AgentsTab />
+    <AgentsTab pluginBase={pluginBase} />
   </div>
 );
 
-const ShopsPage = () => (
+const ShopsPage = ({ pluginBase }) => (
   <div style={{ display: "grid", gap: 16 }}>
-    <ShopsTab />
+    <ShopsTab pluginBase={pluginBase} />
   </div>
 );
 
@@ -223,7 +223,18 @@ const PAGES = {
 
 export default function App() {
   const { colors: COLORS, toggleMode, mode } = useAdminTheme();
-  const [activePage, setActivePage] = useState("dashboard");
+  // The open page lives in the URL (#/players), so reloading or sharing a link keeps it.
+  const pageFromHash = () => (window.location.hash.replace(/^#\/?/, "").split("/")[0] || "dashboard");
+  const [activePage, setActivePageState] = useState(pageFromHash);
+  const setActivePage = useCallback((page) => {
+    setActivePageState(page);
+    if (pageFromHash() !== page) window.location.hash = `/${page}`;
+  }, []);
+  useEffect(() => {
+    const onHash = () => setActivePageState(pageFromHash());
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
   const [sidebarHovered, setSidebarHovered] = useState(null);
   const [serverInfo, setServerInfo] = useState(null);
   const [staffProfile, setStaffProfile] = useState(null);
@@ -364,6 +375,11 @@ export default function App() {
     : (navFiltered[0]?.id ?? "dashboard");
 
   const PageComponent = PAGES[resolvedPage] || PAGES.dashboard;
+
+  useEffect(() => {
+    const label = NAV_ITEMS.find((n) => n.id === resolvedPage)?.label;
+    document.title = label ? `${label} · SAGE Nexus` : "SAGE Nexus";
+  }, [resolvedPage]);
 
   const logout = () => {
     localStorage.removeItem(LS_ADMIN_TOKEN);

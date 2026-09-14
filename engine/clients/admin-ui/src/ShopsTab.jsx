@@ -14,7 +14,8 @@ const fmtTime = (at) => {
   }
 };
 
-export default function ShopsTab() {
+// base: the shop plugin's admin URL from GET /admin/plugin-pages (e.g. /plugins/shop/admin).
+export default function ShopsTab({ pluginBase: base = "/plugins/shop/admin" }) {
   const { colors: COLORS } = useAdminTheme();
   const [rows, setRows] = useState([]);
   const [error, setError] = useState("");
@@ -22,7 +23,7 @@ export default function ShopsTab() {
 
   const refresh = useCallback(async () => {
     try {
-      const r = await axios.get(`${API_BASE}/plugins/shop/admin/shops`);
+      const r = await axios.get(`${API_BASE}${base}/shops`);
       setRows(Array.isArray(r.data) ? r.data : []);
       setError("");
     } catch (e) {

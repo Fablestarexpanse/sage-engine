@@ -105,7 +105,7 @@ const OperationsPage = () => {
         <div>
           <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: COLORS.text, fontFamily: "'Space Grotesk', sans-serif" }}>Operations</h2>
           <p style={{ margin: "4px 0 0", fontSize: 12, color: COLORS.textMuted, fontFamily: "'DM Sans', sans-serif", maxWidth: 560, lineHeight: 1.5 }}>
-            Sessions, server-wide broadcast, content cache reload, and Redis world snapshot. These endpoints are not authenticated — use only on trusted networks (see README).
+            Sessions, server-wide broadcast, content cache reload, and a Redis snapshot of the live world. Every action here needs a staff login with the Operations tool.
           </p>
         </div>
         <ActionButton small variant="ghost" icon={<Icons.Refresh />} onClick={() => refresh()} disabled={busy}>Refresh</ActionButton>
@@ -180,7 +180,7 @@ const OperationsPage = () => {
             <>
               <div style={{ display: "flex", flexWrap: "wrap", gap: "12px 24px", fontSize: 13, fontFamily: "'JetBrains Mono', monospace", color: COLORS.textMuted }}>
                 <span>Redis: <strong style={{ color: COLORS.text }}>{worldLive.redis_connected ? "up" : "down"}</strong></span>
-                <span>Rooms w/ players: <strong style={{ color: COLORS.text }}>{worldLive.rooms_with_players ?? "—"}</strong></span>
+                <span title="Rooms whose occupant set is not empty, counting players and agents">Occupied rooms (players and agents): <strong style={{ color: COLORS.text }}>{worldLive.rooms_with_players ?? "—"}</strong></span>
                 <span>Combat keys: <strong style={{ color: COLORS.text }}>{worldLive.combat_keys ?? "—"}</strong></span>
                 <span>Entity state keys: <strong style={{ color: COLORS.text }}>{worldLive.entity_state_keys ?? "—"}</strong></span>
                 <span>Item state keys: <strong style={{ color: COLORS.text }}>{worldLive.item_state_keys ?? "—"}</strong></span>

@@ -44,6 +44,7 @@ from sage.admin.route_helpers import (
     limiter,
     rate_limit_exceeded_handler,
 )
+from sage.admin.routes.about import build_about_router
 from sage.admin.routes.admin_ops import build_admin_ops_router
 from sage.admin.routes.content import build_content_router
 from sage.admin.routes.forge import build_forge_router
@@ -148,6 +149,7 @@ class NexusApp:
     def _setup_routes(self):
         # Domain routers (see sage.admin.routes)
         self.app.include_router(build_admin_ops_router(self.server))
+        self.app.include_router(build_about_router(self.server))
         self.app.include_router(build_play_router(self.server))
         self.app.include_router(build_content_router(self.server))
         self.app.include_router(build_world_router(self.server))
@@ -238,12 +240,12 @@ class NexusApp:
             name="room_area_art",
         )
 
-    async def broadcast_log(self, message: str):
+    async def broadcast_log(self, message: str, level: str = "info"):
         """Send a log message to all connected admin consoles."""
         dead: list[WebSocket] = []
-        for ws in self._active_sockets:
+        for ws in list(self._active_sockets):
             try:
-                await ws.send_json({"type": "log", "content": message})
+                await ws.send_json({"type": "log", "level": level, "content": message})
             except Exception as e:
                 logger.debug("broadcast_log: dropping dead admin socket: %s", e)
                 dead.append(ws)
@@ -260,5 +262,33 @@ class NexusApp:
             log_level="info",
         )
         server = uvicorn.Server(config)
-        # Handle the server gracefully
-        await server.serve()
+        handler = AdminLogBroadcastHandler(self, asyncio.get_running_loop())
+        logging.getLogger().addHandler(handler)
+        try:
+            await server.serve()
+        finally:
+            logging.getLogger().removeHandler(handler)
+
+
+class AdminLogBroadcastHandler(logging.Handler):
+    """Forwards server log records (WARNING and above) to admin consoles on /ws/logs."""
+
+    def __init__(
+        self, nexus: NexusApp, loop: asyncio.AbstractEventLoop, level: int = logging.WARNING
+    ):
+        super().__init__(level)
+        self.nexus = nexus
+        self.loop = loop
+        self.setFormatter(logging.Formatter("%(name)s: %(message)s"))
+
+    def emit(self, record: logging.LogRecord) -> None:
+        # Never feed the socket's own failures back into it.
+        if record.name == __name__ or not self.nexus._active_sockets:
+            return
+        try:
+            message = self.format(record).splitlines()[0][:500]
+            level = record.levelname.lower()
+            coro_factory = lambda: self.nexus.broadcast_log(message, level)  # noqa: E731
+            self.loop.call_soon_threadsafe(lambda: self.loop.create_task(coro_factory()))
+        except Exception:
+            self.handleError(record)
