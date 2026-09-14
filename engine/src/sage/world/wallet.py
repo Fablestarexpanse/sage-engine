@@ -4,9 +4,8 @@ The engine knows *that* characters carry money, never *which* money. The first c
 declares is its primary one; callers that don't name a currency use it. A balance lives in the
 character's stats blob under the currency key, so it travels with Redis hot state like any stat.
 
-Durability: until the JSONB state step of the phase-3 plan, the primary balance is mirrored to the
-character's legacy wallet column on login and flush (``server._bootstrap_session``,
-``PersistenceManager``).
+Durability: the stats blob is the only copy (JSONB ``characters.stats``); clients read the
+primary balance from the ``wallet`` snapshot section.
 
 Out-of-world AI-art credit is a separate engine ledger (``EconomyService``), not a currency here.
 """

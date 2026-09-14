@@ -59,7 +59,7 @@ def test_sync_character_writes_real_row(live_config, migrated_database):
                 ).scalar_one()
             assert row.room_id == "probe:end"
             assert row.stats["hp"] == 7
-            assert row.digi_balance == 42
+            assert row.stats["coin"] == 42  # the wallet lives in the JSONB stats blob
             assert len(row.inventory) == 1
         finally:
             await db.close()

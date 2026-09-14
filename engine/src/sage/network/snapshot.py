@@ -52,3 +52,12 @@ def progression_section(resolvers: Any) -> Callable[[str, dict[str, Any]], dict[
         return {"levels_total": int(resolvers.get(TOTAL_LEVELS)(stats))}
 
     return contribute
+
+
+def wallet_section(wallet: Any) -> Callable[[str, dict[str, Any]], dict[str, Any]]:
+    """The engine's wallet section: the primary currency's name and the character's balance."""
+
+    def contribute(character: str, stats: dict[str, Any]) -> dict[str, Any]:
+        return {"key": wallet.key(), "label": wallet.name(), "amount": wallet.balance(stats)}
+
+    return contribute

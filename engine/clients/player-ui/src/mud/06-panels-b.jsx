@@ -6,7 +6,7 @@ import { PORTRAIT_ASPECT_RATIO_CSS } from "../portraitProfile.js";
 import { Tooltip } from "./01-primitives.jsx";
 
 /** Frosted quick-read: account, wallet, PVP, reputation, location, progress (pixels in header). */
-function CharacterStrip({ locationLabel, level, accountName, digiBalance, gameCurrencyLabel, pvpEnabled, reputation }) {
+function CharacterStrip({ locationLabel, level, accountName, walletBalance, gameCurrencyLabel, pvpEnabled, reputation }) {
   const { T } = usePlayTheme();
   const glass = {
     padding: "10px 10px 8px",
@@ -32,7 +32,7 @@ function CharacterStrip({ locationLabel, level, accountName, digiBalance, gameCu
           <span style={{ color: T.text.secondary }}>{accountName}</span>
         </div>
       ) : null}
-      {digiBalance != null && gameCurrencyLabel ? (
+      {walletBalance != null && gameCurrencyLabel ? (
         <div
           style={{
             display: "flex",
@@ -42,12 +42,12 @@ function CharacterStrip({ locationLabel, level, accountName, digiBalance, gameCu
             marginBottom: 10,
             padding: "6px 8px",
             borderRadius: T.radius.md,
-            background: T.currency.digi.bg,
-            border: `1px solid ${T.currency.digi.border}`,
+            background: T.currency.world.bg,
+            border: `1px solid ${T.currency.world.border}`,
           }}
         >
-          <div style={{ ...micro, marginBottom: 0, color: T.currency.digi.fg }}>{gameCurrencyLabel}</div>
-          <div style={{ fontSize: 15, fontFamily: T.font.mono, fontWeight: 700, color: T.currency.digi.fg }}>{digiBalance}</div>
+          <div style={{ ...micro, marginBottom: 0, color: T.currency.world.fg }}>{gameCurrencyLabel}</div>
+          <div style={{ fontSize: 15, fontFamily: T.font.mono, fontWeight: 700, color: T.currency.world.fg }}>{walletBalance}</div>
         </div>
       ) : null}
       {typeof pvpEnabled === "boolean" ? (
@@ -115,8 +115,8 @@ export function CharacterPanel({
   characterStats = null,
   /** The world's single progress number (snapshot section progression.levels_total). */
   levelsTotal = null,
-  digiBalance = null,
-  gameCurrencyLabel = "Digi",
+  walletBalance = null,
+  gameCurrencyLabel = "",
   pvpEnabled = null,
   reputation = null,
   /** Server-pushed live effects: [{name, description, debuff, seconds_left}] or null. */
@@ -282,7 +282,7 @@ export function CharacterPanel({
         locationLabel={locationLabel}
         level={levelsTotal}
         accountName={accountName}
-        digiBalance={digiBalance}
+        walletBalance={walletBalance}
         gameCurrencyLabel={gameCurrencyLabel}
         pvpEnabled={pvpEnabled}
         reputation={reputation}

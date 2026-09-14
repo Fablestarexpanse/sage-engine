@@ -77,8 +77,8 @@ export default function PlayClient({
   worldName = "",
   /** Optional: { credits, label } for ComfyUI / pixel economy display. */
   echoEconomy,
-  /** In-world currency label from server (e.g. Digi). */
-  gameCurrencyDisplayName = "Digi",
+  /** The world's primary currency name from the server; empty when the world has no money. */
+  gameCurrencyDisplayName = "",
   /** Optional: narrative toolbar → ComfyUI scene generation (credentials + callbacks). */
   sceneGen,
 }) {
@@ -120,15 +120,15 @@ export default function PlayClient({
 
   const onArtCreditsInfo = useCallback(() => {
     const art = echoEconomy?.label || "pixels";
-    const game = gameCurrencyDisplayName || "Digi";
+    const game = gameCurrencyDisplayName || "in-world money";
     window.alert(
       `${art} is your account balance for AI portraits and scene art (ComfyUI). It is shared by every character and is not the same as in-world ${game}.\n\n` +
         "Your host can grant more, or future progression may award it. There is no in-client purchase yet."
     );
   }, [echoEconomy?.label, gameCurrencyDisplayName]);
 
-  const onDigiWalletInfo = useCallback(() => {
-    const game = gameCurrencyDisplayName || "Digi";
+  const onWalletInfo = useCallback(() => {
+    const game = gameCurrencyDisplayName || "in-world money";
     const art = echoEconomy?.label || "pixels";
     window.alert(
       `${game} is your in-world wallet for this character only — loot, quests, trades. It is separate from ${art} (AI portrait / scene balance on your account).\n\n` +
@@ -187,7 +187,7 @@ export default function PlayClient({
         locationLabel={characterLocation}
         characterStats={session?.characterStats ?? null}
         levelsTotal={session?.levelsTotal ?? null}
-        digiBalance={session?.digiBalance}
+        walletBalance={session?.walletBalance}
         gameCurrencyLabel={gameCurrencyDisplayName}
         pvpEnabled={session?.pvpEnabled}
         reputation={session?.reputation}
@@ -207,7 +207,7 @@ export default function PlayClient({
       minH: 140,
       content: <DeclaredPanel spec={spec} data={session?.liveSections?.[spec.section]} />,
     })),
-  ], [session?.declaredPanels, session?.liveSections, narrativeLines, openCtx, sendCommand, notifications, session?.characterName, session?.username, session?.portraitImageUrl, session?.digiBalance, session?.pvpEnabled, session?.reputation, session?.characterStats, session?.levelsTotal, session?.liveEffects, session?.liveInventory, session?.liveMap, session?.chatMessages, sceneImageUrl, sceneGenerating, sceneRoomLabel, sceneDownloadBaseName, sceneGen, characterLocation, gameCurrencyDisplayName, narrativeBackdropUrl, narrativeBackdropSource, openSceneGallerySignal]);
+  ], [session?.declaredPanels, session?.liveSections, narrativeLines, openCtx, sendCommand, notifications, session?.characterName, session?.username, session?.portraitImageUrl, session?.walletBalance, session?.pvpEnabled, session?.reputation, session?.characterStats, session?.levelsTotal, session?.liveEffects, session?.liveInventory, session?.liveMap, session?.chatMessages, sceneImageUrl, sceneGenerating, sceneRoomLabel, sceneDownloadBaseName, sceneGen, characterLocation, gameCurrencyDisplayName, narrativeBackdropUrl, narrativeBackdropSource, openSceneGallerySignal]);
 
   return (
     <GameCmdContext.Provider value={{ sendCommand }}>
@@ -336,7 +336,7 @@ export default function PlayClient({
                     background: T.currency.pixel.bg,
                     maxWidth: 200,
                   }}
-                  title="Shared by all your characters. Spent on AI portrait and scene generation (not Digi)."
+                  title="Shared by all your characters. Spent on AI portrait and scene generation (not in-world money)."
                 >
                   <div style={{ minWidth: 0, lineHeight: 1.2 }}>
                     <div
@@ -394,8 +394,8 @@ export default function PlayClient({
                   gap: 8,
                   padding: "4px 10px 4px 12px",
                   borderRadius: T.radius.md,
-                  border: `1px solid ${T.currency.digi.border}`,
-                  background: T.currency.digi.bg,
+                  border: `1px solid ${T.currency.world.border}`,
+                  background: T.currency.world.bg,
                   maxWidth: 200,
                 }}
                 title={`In-world wallet for ${session.characterName} (this character only).`}
@@ -405,7 +405,7 @@ export default function PlayClient({
                     style={{
                       fontSize: 8,
                       fontWeight: 600,
-                      color: T.currency.digi.label,
+                      color: T.currency.world.label,
                       textTransform: "uppercase",
                       letterSpacing: "0.07em",
                       fontFamily: T.font.body,
@@ -418,27 +418,27 @@ export default function PlayClient({
                       fontSize: 13,
                       fontFamily: T.font.mono,
                       fontWeight: 600,
-                      color: T.currency.digi.fg,
+                      color: T.currency.world.fg,
                       marginTop: 1,
                     }}
                   >
                     {String(gameCurrencyDisplayName).toLowerCase()}{" "}
-                    {typeof session.digiBalance === "number" ? session.digiBalance : 0}
+                    {typeof session.walletBalance === "number" ? session.walletBalance : 0}
                   </div>
                 </div>
                 <button
                   type="button"
-                  onClick={onDigiWalletInfo}
-                  title="What Digi is (in-world vs pixels)"
+                  onClick={onWalletInfo}
+                  title="What this currency is (in-world money vs AI art balance)"
                   style={{
                     flexShrink: 0,
                     width: 22,
                     height: 22,
                     padding: 0,
                     borderRadius: T.radius.sm,
-                    border: `1px solid ${T.currency.digi.border}`,
+                    border: `1px solid ${T.currency.world.border}`,
                     background: T.bg.deep,
-                    color: T.currency.digi.fg,
+                    color: T.currency.world.fg,
                     fontSize: 12,
                     fontWeight: 700,
                     cursor: "pointer",

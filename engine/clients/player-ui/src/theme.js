@@ -5,7 +5,7 @@ export const PLAY_THEME_DARK = {
   text: { primary: "#e2e4ea", secondary: "#8b8fa4", muted: "#5a5e72", accent: "#a78bfa", accentStrong: "#c4b5fd", danger: "#f87171", success: "#34d399", gold: "#fbbf24", info: "#60a5fa", narrative: "#d1cfe0" },
   currency: {
     /** Small caps line above balance (must stay readable on tinted bg in light + dark). */
-    digi: {
+    world: {
       fg: "#fb923c",
       bg: "rgba(251,146,60,0.14)",
       border: "rgba(251,146,60,0.5)",
@@ -36,7 +36,7 @@ export const PLAY_THEME_LIGHT = {
   border: { subtle: "rgba(0,0,0,0.06)", dim: "rgba(0,0,0,0.1)", medium: "rgba(0,0,0,0.14)", accent: "rgba(109,78,214,0.22)", accentHot: "rgba(109,78,214,0.45)", danger: "rgba(220,38,38,0.35)", success: "rgba(5,150,105,0.35)" },
   text: { primary: "#1a1d28", secondary: "#4b5163", muted: "#6b7280", accent: "#6d4ed6", accentStrong: "#5b3cc4", danger: "#dc2626", success: "#059669", gold: "#b45309", info: "#2563eb", narrative: "#3d4354" },
   currency: {
-    digi: {
+    world: {
       fg: "#c2410c",
       bg: "rgba(234,88,12,0.12)",
       border: "rgba(234,88,12,0.45)",

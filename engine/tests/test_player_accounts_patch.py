@@ -79,7 +79,6 @@ def _character(account_id=7):
     c.account_id = account_id
     c.name = "Hero"
     c.room_id = "zone:room"
-    c.digi_balance = 10
     c.pvp_enabled = False
     c.reputation = 0
     c.stats = {}
@@ -144,19 +143,20 @@ def test_patch_character_rejects_wrong_account():
     async def check():
         char = _character(account_id=42)  # belongs to another account
         srv, _ = _server(_FakeSession(get_row=char))
-        assert await player_accounts.patch_character(srv, 7, 3, {"digi_balance": 5}) is None
+        assert await player_accounts.patch_character(srv, 7, 3, {"pvp_enabled": True}) is None
 
     asyncio.run(check())
 
 
-def test_patch_character_clamps_balance_and_audits():
+def test_patch_character_audits_and_ignores_the_removed_wallet_column():
     async def check():
         char = _character()
         srv, calls = _server(_FakeSession(get_row=char))
+        # Balances live in stats now (edited through the stats JSON); the old field is inert.
         out = await player_accounts.patch_character(
             srv, 7, 3, {"digi_balance": -5, "pvp_enabled": True}, actor={"username": "gm1"}
         )
-        assert out["digi_balance"] == 0
+        assert "digi_balance" not in out
         assert out["pvp_enabled"] is True
         assert len(calls["audit"]) == 1
         _, kw = calls["audit"][0]

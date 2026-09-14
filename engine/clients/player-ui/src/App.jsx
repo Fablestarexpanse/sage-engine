@@ -32,7 +32,7 @@ function AccountArtCreditsBar({ echoEconomy, gameCurrencyLabel, onTopUp }) {
   const { T } = usePlayTheme();
   if (echoEconomy?.credits == null) return null;
   const lab = echoEconomy.label || "pixels";
-  const gameLab = gameCurrencyLabel || "Digi";
+  const gameLab = gameCurrencyLabel || "in-world money";
   const n = echoEconomy.credits;
   const low = n < (echoEconomy.warnBelow ?? 12);
   return (
@@ -56,7 +56,7 @@ function AccountArtCreditsBar({ echoEconomy, gameCurrencyLabel, onTopUp }) {
         </div>
         <p style={{ margin: "6px 0 0", fontSize: 12, color: T.text.muted, lineHeight: 1.5, fontFamily: T.font.body }}>
           Same balance for every character. Spent when you use AI portrait or scene generation (separate from in-world{" "}
-          <span style={{ color: T.currency.digi.fg, fontWeight: 600 }}>{gameLab}</span>).
+          <span style={{ color: T.currency.world.fg, fontWeight: 600 }}>{gameLab}</span>).
         </p>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
@@ -662,7 +662,7 @@ function PlayAuthFlow({ onLoggedIn }) {
 function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacters, echoEconomy, mergeEchoFromPlayRes }) {
   const { T } = usePlayTheme();
   const { username, characters, gameCurrencyDisplayName, isGm } = auth;
-  const gameCurrencyLabel = gameCurrencyDisplayName || "Digi";
+  const gameCurrencyLabel = gameCurrencyDisplayName || "";
   const [selectedId, setSelectedId] = useState(characters[0]?.id ?? null);
   const [view, setView] = useState(() => (characters.length ? "pick" : "create"));
   const [newName, setNewName] = useState("");
@@ -1775,14 +1775,14 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
                         style={{
                           fontSize: 11,
                           fontFamily: T.font.mono,
-                          color: T.currency.digi.fg,
+                          color: T.currency.world.fg,
                           marginTop: 5,
                           letterSpacing: "0.02em",
                         }}
                         title={`In-world wallet for this character (${gameCurrencyLabel})`}
                       >
                         {gameCurrencyLabel}{" "}
-                        <span style={{ fontWeight: 600 }}>{typeof c.digi_balance === "number" ? c.digi_balance : 0}</span>
+                        <span style={{ fontWeight: 600 }}>{walletOf(c) ?? 0}</span>
                       </div>
                       <div
                         style={{
@@ -1872,7 +1872,7 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
                   characterName: ch?.name ?? username,
                   password,
                   portraitUrl: ch?.portrait_url ?? null,
-                  digiBalance: typeof ch?.digi_balance === "number" ? ch.digi_balance : 0,
+                  walletBalance: walletOf(ch) ?? 0,
                   pvpEnabled: Boolean(ch?.pvp_enabled),
                   reputation: typeof ch?.reputation === "number" ? ch.reputation : 0,
                   lastSceneImageUrl: ch?.last_scene_image_url ?? null,
@@ -1981,6 +1981,12 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
 const MAX_NARRATIVE_LINES = 1500;
 
 /** The world's single progress number, from the snapshot's "progression" section. */
+/** The primary currency balance from the engine's wallet section (character list or snapshot). */
+function walletOf(payload) {
+  const n = payload?.sections?.wallet?.amount;
+  return typeof n === "number" ? n : null;
+}
+
 function levelsTotalOf(payload) {
   const n = payload?.sections?.progression?.levels_total;
   return typeof n === "number" ? n : null;
@@ -2077,7 +2083,7 @@ export default function App() {
 
   const explainPlayPixels = useCallback(() => {
     const lab = echoEconomy?.label || "pixels";
-    const game = auth?.gameCurrencyDisplayName ?? "Digi";
+    const game = auth?.gameCurrencyDisplayName || "in-world money";
     const ppu = echoEconomy?.pixelsPerUsd ?? playComfyScene?.pixelsPerUsd ?? 100;
     const sceneCost = typeof playComfyScene?.areaCost === "number" ? playComfyScene.areaCost : 3;
     window.alert(
@@ -2143,7 +2149,7 @@ export default function App() {
   }, [step, playSession?.username, playSession?.characterId]);
 
   const onChosen = useCallback(
-    ({ characterId, characterName, password, portraitUrl, digiBalance, pvpEnabled, reputation, lastSceneImageUrl, characterStats, levelsTotal }) => {
+    ({ characterId, characterName, password, portraitUrl, walletBalance, pvpEnabled, reputation, lastSceneImageUrl, characterStats, levelsTotal }) => {
       passwordRef.current = password;
       setPlaySession({
         username: auth.username,
@@ -2151,7 +2157,7 @@ export default function App() {
         characterId,
         characterName,
         portraitUrl: portraitUrl || null,
-        digiBalance: typeof digiBalance === "number" ? digiBalance : 0,
+        walletBalance: typeof walletBalance === "number" ? walletBalance : 0,
         pvpEnabled: typeof pvpEnabled === "boolean" ? pvpEnabled : false,
         reputation: typeof reputation === "number" ? reputation : 0,
         isGm: Boolean(auth.isGm),
@@ -2175,7 +2181,7 @@ export default function App() {
       characterName: ch.name,
       password: "",
       portraitUrl: ch.portrait_url ?? null,
-      digiBalance: typeof ch.digi_balance === "number" ? ch.digi_balance : 0,
+      walletBalance: walletOf(ch) ?? 0,
       pvpEnabled: Boolean(ch.pvp_enabled),
       reputation: typeof ch.reputation === "number" ? ch.reputation : 0,
       lastSceneImageUrl: ch.last_scene_image_url ?? null,
@@ -2263,6 +2269,7 @@ export default function App() {
                   ...prev,
                   characterStats: j.stats && typeof j.stats === "object" ? j.stats : prev.characterStats,
                   levelsTotal: levelsTotalOf(j) ?? prev.levelsTotal,
+                  walletBalance: walletOf(j) ?? prev.walletBalance,
                   liveLocation: j.location && typeof j.location === "object" ? j.location : prev.liveLocation,
                   liveEffects: Array.isArray(j.effects) ? j.effects : prev.liveEffects,
                   liveInventory: Array.isArray(j.inventory) ? j.inventory : prev.liveInventory,
@@ -2451,7 +2458,7 @@ export default function App() {
             characterName: playSession.characterName,
             characterId: playSession.characterId,
             portraitImageUrl: playSession.portraitUrl ? playMediaUrl(playSession.portraitUrl) : null,
-            digiBalance: playSession.digiBalance ?? 0,
+            walletBalance: playSession.walletBalance ?? 0,
             pvpEnabled: playSession.pvpEnabled,
             reputation: playSession.reputation ?? 0,
             isGm: playSession.isGm,
@@ -2478,7 +2485,7 @@ export default function App() {
           sceneRoomLabel={import.meta.env.VITE_SCENE_ROOM_LABEL || undefined}
           worldName={world.name}
           sceneDownloadBaseName={`scene-${String(playSession.characterName || "character").replace(/[^a-zA-Z0-9_-]+/g, "_")}`}
-          gameCurrencyDisplayName={auth?.gameCurrencyDisplayName ?? "Digi"}
+          gameCurrencyDisplayName={auth?.gameCurrencyDisplayName ?? ""}
           echoEconomy={echoEconomy}
           sceneGen={{
             username: playSession.username,

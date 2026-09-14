@@ -60,11 +60,6 @@ class PersistenceManager:
                             character.room_id = current_room
                         if current_stats:
                             character.stats = current_stats
-                            # The wallet spends from the stats blob; mirror the primary
-                            # balance to the account-visible column.
-                            wallet = self.server.wallet
-                            if wallet.enabled and isinstance(current_stats.get(wallet.key()), int):
-                                character.digi_balance = current_stats[wallet.key()]
                         if current_inventory is not None:
                             character.inventory = current_inventory
                         character.updated_at = datetime.utcnow()

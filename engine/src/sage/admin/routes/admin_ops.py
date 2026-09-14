@@ -66,7 +66,6 @@ class PlayerAccountPatchBody(BaseModel):
 
 
 class PlayerCharacterPatchBody(BaseModel):
-    digi_balance: int | None = None
     pvp_enabled: bool | None = None
     reputation: int | None = None
     room_id: str | None = None

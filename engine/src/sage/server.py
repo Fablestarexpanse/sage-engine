@@ -58,7 +58,6 @@ class _CharSnapshot:
     room_id: str
     stats: dict[str, Any]
     inventory: list[Any]
-    digi_balance: int = 0
 
 
 def _snapshot_from_orm(character: Any) -> _CharSnapshot:
@@ -67,7 +66,6 @@ def _snapshot_from_orm(character: Any) -> _CharSnapshot:
         room_id=character.room_id,
         stats=dict(character.stats or {}),
         inventory=list(character.inventory or []),
-        digi_balance=int(character.digi_balance or 0),
     )
 
 
@@ -101,6 +99,10 @@ class SageServer:
         self.persistence = PersistenceManager(self)
         # In-world money in the world's currencies (sage.world.wallet).
         self.wallet = Wallet(self.world, self.redis)
+        if self.wallet.enabled:
+            from sage.network.snapshot import wallet_section
+
+            self.snapshot_contributors.add("wallet", wallet_section(self.wallet), "sage")
         self.content_loader = ContentLoader(self.world.content_dir)
         content_browser.set_content_root(self.world.content_dir)
         self.spawner = EntitySpawnManager(self)
@@ -521,13 +523,13 @@ class SageServer:
             from sage.effects.engine import clear_on_death
 
             clear_on_death(norm_stats)
-            plan = self.resolvers.get("death.respawn")(
-                self.world, norm_stats, int(character.digi_balance or 0)
-            )
+            balance = self.wallet.balance(norm_stats)
+            plan = self.resolvers.get("death.respawn")(self.world, norm_stats, balance)
             norm_stats["hp"] = plan.hp
             if self.content_loader.get_room(plan.room_id) is not None:
                 character.room_id = plan.room_id
-            character.digi_balance = int(character.digi_balance or 0) - plan.bill
+            if self.wallet.enabled:
+                self.wallet.set(norm_stats, balance - plan.bill)
             respawned = True
             respawn_bill = plan.bill
 
@@ -542,11 +544,10 @@ class SageServer:
             )
             character.room_id = self.world.start_room
 
-        # In-world wallet: the DB column is the durable copy of the primary balance until the
-        # JSONB state step; the stats blob is what the wallet spends from (PersistenceManager
-        # mirrors it back).
-        if self.wallet.enabled:
-            self.wallet.set(norm_stats, int(character.digi_balance or 0))
+        # In-world wallet: balances live in the stats blob (migration p9q0r1s2t3u4 moved them
+        # there); a character from before the world declared money starts with the default.
+        if self.wallet.enabled and self.wallet.key() not in norm_stats:
+            self.wallet.set(norm_stats, self.wallet.starting())
 
         # Seed Redis with the character's current state
         await self.redis.set_player_location(character.name, character.room_id)

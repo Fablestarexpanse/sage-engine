@@ -21,7 +21,6 @@ def _character_admin_dict(c: Character) -> dict[str, Any]:
         "portrait_url": c.portrait_url,
         "portrait_prompt": c.portrait_prompt,
         "last_scene_image_url": c.last_scene_image_url,
-        "digi_balance": int(c.digi_balance),
         "pvp_enabled": bool(c.pvp_enabled),
         "reputation": int(c.reputation),
         "stats": dict(c.stats or {}),
@@ -195,8 +194,6 @@ async def patch_character(
         if char is None or char.account_id != account_id:
             return None
         char_name = char.name
-        if "digi_balance" in patch:
-            char.digi_balance = max(0, int(patch["digi_balance"]))
         if "pvp_enabled" in patch:
             char.pvp_enabled = bool(patch["pvp_enabled"])
         if "reputation" in patch:
@@ -220,8 +217,6 @@ async def patch_character(
         out = _character_admin_dict(char)
 
     lines: list[str] = []
-    if "digi_balance" in patch:
-        lines.append(f"Character {char_name}: Digi → {out['digi_balance']}.")
     if "reputation" in patch:
         lines.append(f"Character {char_name}: Reputation → {out['reputation']}.")
     if "room_id" in patch:

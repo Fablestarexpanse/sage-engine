@@ -61,3 +61,59 @@ def test_models_match_migrations(live_config, migrated_database):
         return compare_metadata(MigrationContext.configure(conn), Base.metadata)
 
     assert _run_sync(live_config, diff) == []
+
+
+def test_wallet_balances_move_into_stats_and_back(live_config, alembic_cfg, migrated_database):
+    """p9q0r1s2t3u4 copies the legacy wallet column into stats; downgrade copies it back."""
+    from alembic.script import ScriptDirectory
+
+    legacy = (
+        ScriptDirectory.from_config(alembic_cfg).get_revision("p9q0r1s2t3u4").module.LEGACY_COLUMN
+    )
+    from sqlalchemy import text
+
+    from sage.core.config import resolve_project_root
+    from sage.world.package import select_world
+
+    world = select_world(
+        resolve_project_root() / live_config.server.worlds_dir, live_config.server.world
+    )
+    if not world.currencies:
+        pytest.skip(f"world {world.id} declares no currencies")
+    key = world.currencies[0].key
+
+    def execute(sql, **params):
+        def run(conn):
+            result = conn.execute(text(sql), params)
+            rows = result.all() if result.returns_rows else None
+            conn.commit()
+            return rows
+
+        return _run_sync(live_config, run)
+
+    command.downgrade(alembic_cfg, "o8p9q0r1s2t3")
+    try:
+        execute(
+            "INSERT INTO accounts (username, password_hash, is_gm, created_at) "
+            "VALUES ('wallet_mig', 'x', false, now())"
+        )
+        execute(
+            f"INSERT INTO characters (account_id, name, room_id, {legacy}, pvp_enabled, "
+            "reputation, stats, inventory, created_at, updated_at) "
+            "SELECT id, 'wallet_hero', 'probe:start', 17, false, 0, '{\"hp\": 5}', '[]', now(), now() "
+            "FROM accounts WHERE username = 'wallet_mig'"
+        )
+        command.upgrade(alembic_cfg, "head")
+        [(stats,)] = execute("SELECT stats FROM characters WHERE name = 'wallet_hero'")
+        assert stats == {"hp": 5, key: 17}
+
+        execute(
+            f"UPDATE characters SET stats = jsonb_set(stats, '{{{key}}}', '30') WHERE name = 'wallet_hero'"
+        )
+        command.downgrade(alembic_cfg, "o8p9q0r1s2t3")
+        [(balance,)] = execute(f"SELECT {legacy} FROM characters WHERE name = 'wallet_hero'")
+        assert balance == 30
+    finally:
+        command.upgrade(alembic_cfg, "head")
+        execute("DELETE FROM characters WHERE name = 'wallet_hero'")
+        execute("DELETE FROM accounts WHERE username = 'wallet_mig'")

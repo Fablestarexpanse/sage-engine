@@ -125,7 +125,6 @@ class PlayerService:
             "portrait_url": character.portrait_url,
             "portrait_prompt": character.portrait_prompt,
             "last_scene_image_url": character.last_scene_image_url,
-            "digi_balance": int(character.digi_balance),
             "pvp_enabled": bool(character.pvp_enabled),
             "reputation": int(character.reputation),
             "stats": stats,
@@ -297,7 +296,6 @@ class PlayerService:
             room_id=self.server.world.start_room,
             portrait_url=portrait_url,
             portrait_prompt=portrait_prompt,
-            digi_balance=self.server.wallet.starting() if self.server.wallet.enabled else 0,
             pvp_enabled=False,
             reputation=0,
         )
@@ -306,6 +304,8 @@ class PlayerService:
         await db_session.refresh(character)
         merged_stats = self.server.resolvers.get(PREPARE)(dict(character.stats or {}))
         self.server.resolvers.get(SEED)(merged_stats, dict(chargen_clean or {}))
+        if self.server.wallet.enabled:
+            self.server.wallet.set(merged_stats, self.server.wallet.starting())
         character.stats = merged_stats
         await db_session.commit()
         await db_session.refresh(character)

@@ -34,7 +34,7 @@ by owner G.4 ("every mechanic is a first-party plugin").
 | 3.11 | Combat, equipment, ambient, effects → first-party plugins (owner G.4): ambient, effects, combat, equipment, consumables (`use`) | done |
 | 3.12 | Snapshot contributors (`api.snapshot.contribute`); `resonance_levels_total` out of the protocol | done |
 | 3.13 | Declarative client panels; remove Fablestar panels/branding from player-ui: 3.13a API + renderer, 3.13b Conduit panels, 3.13c mock panels and branding out; 3.13d deferred until an admin panel is needed | done |
-| 3.14 | Schema: JSONB state, `digi_balance`/`reputation`/`echo_credits` columns, retire `agent_state` (backfill → drop): 3.14a JSONB + agent_state rename done | in progress |
+| 3.14 | Schema: JSONB state, `digi_balance`/`reputation`/`echo_credits` columns, retire `agent_state` (backfill → drop): 3.14a JSONB + agent_state rename, 3.14b wallet into stats done | in progress |
 | 3.15 | Redis key namespace by world slug | todo |
 | 3.16 | AI slots and style; prompts into `worlds/fablestar/ai` | todo |
 | 3.17 | Move Fablestar content into `worlds/fablestar/content`; remove `[transition]` | todo |
@@ -185,9 +185,15 @@ by owner G.4 ("every mechanic is a first-party plugin").
     proven by a live test that runs core head first); ORM `Character.room_id` loses its
     Fablestar default (every insert already passes the world's start room); plugin uninstall
     purges `characters` only.
-  - 3.14b `digi_balance`: the wallet in `stats` is already the truth (3.2); stop mirroring the
-    column, send the wallet to clients as a generic `{label, amount}` instead of `digi_balance`,
-    backfill any stats blob missing its primary-currency key from the column.
+  - 3.14b (done) core `p9q0r1s2t3u4` copies the column into `stats[<primary currency key>]` for
+    every row (the column was the login-time truth) and downgrade copies it back; the key comes
+    from the configured world (one DB per world). Engine code no longer reads or writes the
+    column: login, respawn bill, flush and new characters use the wallet over stats, and clients
+    get an engine `wallet` snapshot section `{key, label, amount}` in both the character list and
+    live snapshots (the chip now updates after a purchase). The admin editor's separate "Digi"
+    field is gone; balances are edited in the stats JSON under the currency key. The migration
+    must name the legacy column once, so its file is the one new ratchet entry (1 hit; see
+    DECISIONS).
   - 3.14c `echo_credits` → engine `ai_credits` (account column rename + wire/config names, with
     the old config key read for one release); `reputation` becomes a state block owned by a
     Fablestar `morality` world plugin with a declared panel (backfill from the column).
