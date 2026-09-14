@@ -1,6 +1,6 @@
 # Phase 3 plan: migrate Fablestar out of the engine
 
-**Milestone:** M2 — SAGE engine decoupling · **Branch:** `sage/phase-3` · **Status:** in progress
+**Milestone:** M2 — SAGE engine decoupling · **Branch:** `sage/phase-3` · **Status:** done
 
 Living plan. Each step is one or more commits; the game stays playable after every commit
 (both world smoke tests green). Order follows `docs/sage/PHASE1_CONTRACTS.md` D.G item 4, amended
@@ -40,7 +40,7 @@ by owner G.4 ("every mechanic is a first-party plugin").
 | 3.17 | Move Fablestar content into `worlds/fablestar/content`; remove `[transition]` | done |
 | 3.18 | Delete glyph/ship/system/galaxy surfaces and the admin World Builder (owner G.3, G.6): 3.18a engine + admin-ui, 3.18b WorldForge, player-ui, galaxy.yaml | done |
 | 3.19 | Ratchet sweep of the last Fablestar leftovers in engine code: 3.19a `ensure_test_user.py` (broken since 3.14), 3.19b admin AI Forge lore options and Agents default room, 3.19c player-ui chargen and sign-in copy (skip the skills step when the world has no chargen options), 3.19d plugin admin pages follow the running world, 3.19e test fixtures and scaffold names | done |
-| 3.20 | Remaining hardcoded player text in engine commands behind lexicon keys (72 `player_literals`) | todo |
+| 3.20 | Remaining hardcoded player text in engine commands behind lexicon keys (72 `player_literals`) | done |
 
 ## Notes
 
@@ -330,4 +330,16 @@ by owner G.4 ("every mechanic is a first-party plugin").
     The retired `glyphs` admin page id and a "pixels" docstring are gone. Denylist 98 -> 43; every
     remaining hit is in the by-design list above (config aliases and default DB name, storage key
     migration, migration history, the env-alias tests, the legacy console script).
+- **3.20 engine text in the lexicon (done).** look, map, help, say, emote, tell, who, movement,
+  inventory, take, drop, examine, quit, the second-login eviction and the admin broadcast speak
+  through engine lexicon keys (`session.*`, `void.*`, `look.*`, `map.*`, `say.*`, `emote.*`,
+  `tell.*`, `move.*`, `items.*`, `inventory.*`, `take.*`, `drop.*`, `examine.*`, plus `help.entry`
+  and `who.row`), English text unchanged, so a world can override any of them. JSON protocol
+  frames go through `Session.send_json` (they were counted as literals because of the `+ "
+"`).
+  The ratchet's `player_literals` is 72 -> 4; the four left are `test_session.py` sending to test
+  `send` itself. `test_every_engine_key_has_an_engine_default` now also sees bare `t("key")` calls
+  and every branch of `t("a" if x else "b")`. Run: a dev-login websocket session on live Fablestar
+  drove look, map, help say, inventory, take/drop/examine misses and hints, emote, tell usage and a
+  real tell, say, who, west/east, an unknown command and quit; every line matched the old text.
 

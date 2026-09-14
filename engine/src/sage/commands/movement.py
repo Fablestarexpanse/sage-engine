@@ -3,6 +3,7 @@
 import logging
 
 from sage.commands.registry import command
+from sage.lexicon import t
 from sage.network.session import Session
 
 logger = logging.getLogger(__name__)
@@ -45,36 +46,40 @@ def move_to(direction: str):
 
         # 1. Get current room
         if not session.player_id:
-            await session.send("Not authenticated.")
+            await session.say("session.not_authenticated")
             return
         player_id = session.player_id
         room_id = await app_instance.redis.get_player_location(player_id)
         if not room_id:
-            await session.send("You are lost in the void.")
+            await session.say("void.lost")
             return
 
         room = app_instance.content_loader.get_room(room_id)
         if not room:
-            await session.send("The world is collapsing around you.")
+            await session.say("void.collapsing")
             return
 
         # 2. Check for exit
         if direction not in room.exits:
-            await session.send(f"You cannot go {direction}.")
+            await session.say("move.cannot", direction=direction)
             return
 
         exit_meta = room.exits[direction]
         target_room_id = exit_meta.destination
 
         # 3. Update location, telling both rooms
-        await _announce(app_instance, room_id, player_id, f"{player_id} leaves {direction}.")
+        await _announce(
+            app_instance, room_id, player_id, t("move.leaves", name=player_id, direction=direction)
+        )
         await app_instance.redis.set_player_location(player_id, target_room_id)
         arrival = OPPOSITE.get(direction)
         await _announce(
             app_instance,
             target_room_id,
             player_id,
-            f"{player_id} arrives from the {arrival}." if arrival else f"{player_id} arrives.",
+            t("move.arrives_from", name=player_id, side=arrival)
+            if arrival
+            else t("move.arrives", name=player_id),
         )
 
         # Traversal gain rewards exploring, not pacing: a first visit teaches a
@@ -110,13 +115,13 @@ def move_to(direction: str):
         await emit(app_instance, entered)
 
         # 4. Describe new room
-        await session.send(f"You move {direction}.")
+        await session.say("move.moved", direction=direction)
         session.look_narrate = first_visit
         await app_instance.dispatcher.dispatch(session, "look")
         for msg in entered.messages:
-            await session.send(f"\r\n{msg}")
+            await session.say("move.note", text=msg)
         for line in visit_lines:
-            await session.send(f"\r\n{line}")
+            await session.say("move.note", text=line)
 
     return _direction_handler
 

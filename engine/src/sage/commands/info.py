@@ -3,6 +3,7 @@
 import logging
 
 from sage.commands.registry import command
+from sage.lexicon import t
 from sage.llm.observation import build_room_fact_block
 from sage.llm.validation import LLMValidator
 from sage.network.session import Session
@@ -16,7 +17,7 @@ async def look(session: Session, args: list[str]):
     from sage.app import app_instance
 
     if not session.player_id:
-        await session.send("Not authenticated.")
+        await session.say("session.not_authenticated")
         return
     if args:
         from sage.commands.items import examine
@@ -28,13 +29,15 @@ async def look(session: Session, args: list[str]):
     session.look_narrate = True
     room_id = await app_instance.redis.get_player_location(session.player_id)
     if not room_id:
-        await session.send("You are lost in the void.")
+        await session.say("void.lost")
         return
 
     room = app_instance.content_loader.get_room(room_id)
     if room:
-        header = f"{room.name} [ {room.id} ]" if room.name else f"[ {room.id} ]"
-        await session.send(f"\r\n{header}")
+        if room.name:
+            await session.say("look.header", name=room.name, id=room.id)
+        else:
+            await session.say("look.header_unnamed", id=room.id)
 
         # Deterministic description immediately — the LLM must never make a
         # player wait to see the room. Narration arrives after, labeled, so a
@@ -58,7 +61,7 @@ async def look(session: Session, args: list[str]):
                 if await app_instance.redis.get_player_location(viewer) != room_id:
                     return
                 if clean and clean.strip():
-                    await session.send(f"\r\nThe scene: {clean.strip()}")
+                    await session.say("look.scene", text=clean.strip())
             except Exception as e:
                 logger.debug("Room narration skipped: %s", e)
             finally:
@@ -78,14 +81,13 @@ async def look(session: Session, args: list[str]):
             _asyncio.get_running_loop().create_task(_narrate())
 
         if room.exits:
-            exits_str = ", ".join(room.exits.keys())
-            await session.send(f"Exits: {exits_str}")
+            await session.say("look.exits", exits=", ".join(room.exits.keys()))
 
         # 4b. Other players and agents present (deterministic)
         room_players = await app_instance.redis.get_room_players(room_id)
         others = sorted(p for p in room_players if p != session.player_id)
         if others:
-            await session.send(f"Also here: {', '.join(others)}")
+            await session.say("look.also_here", names=", ".join(others))
 
         # 5. Show live entities (deterministic — no LLM)
         entity_ids = await app_instance.redis.get_room_entities(room_id)
@@ -93,9 +95,9 @@ async def look(session: Session, args: list[str]):
         for eid in entity_ids:
             state = await app_instance.redis.get_entity_state(eid)
             if state and state.get("alive", True):
-                alive.append(state.get("name", "something"))
+                alive.append(state.get("name") or t("look.something"))
         if alive:
-            await session.send(f"Entities: {', '.join(alive)}")
+            await session.say("look.entities", names=", ".join(alive))
 
         # 6. Show floor items (deterministic)
         item_ids = await app_instance.redis.get_room_items(room_id)
@@ -103,11 +105,11 @@ async def look(session: Session, args: list[str]):
         for iid in item_ids:
             istate = await app_instance.redis.get_item_state(iid)
             if istate:
-                floor_items.append(istate.get("name", "something"))
+                floor_items.append(istate.get("name") or t("look.something"))
         if floor_items:
-            await session.send(f"Items on floor: {', '.join(floor_items)}")
+            await session.say("look.floor_items", names=", ".join(floor_items))
     else:
-        await session.send("You are in the void.")
+        await session.say("void.nowhere")
 
 
 @command("map", aliases=["chart"])
@@ -120,26 +122,26 @@ async def map_cmd(session: Session, args: list[str]):
         return
     room_id = await app_instance.redis.get_player_location(player_id)
     if not room_id:
-        await session.send("You are nowhere mappable.")
+        await session.say("map.nowhere")
         return
     stats = await app_instance.redis.get_player_stats(player_id)
     visited = set(stats.get("visited_rooms") or [])
     data = app_instance._zone_map(room_id, visited)
     if not data:
-        await session.send("No chart exists for this place.")
+        await session.say("map.no_chart")
         return
-    lines = [f"--- {data['zone']} ---"]
+    lines = [t("map.zone", zone=data["zone"])]
     unexplored = 0
     for r in sorted(data["rooms"], key=lambda x: x["name"]):
         if r["id"] == data["current"]:
-            lines.append(f"  [@] {r['name']}")
+            lines.append(t("map.here", name=r["name"]))
         elif r["visited"]:
-            lines.append(f"  [*] {r['name']}")
+            lines.append(t("map.explored", name=r["name"]))
         else:
             unexplored += 1
     if unexplored:
-        lines.append(f"  ...and {unexplored} places you haven't found yet.")
-    lines.append("@ you are here · * explored")
+        lines.append(t("map.unexplored", count=unexplored))
+    lines.append(t("map.legend"))
     await session.send("\r\n".join(lines))
 
 
@@ -164,8 +166,8 @@ async def help_cmd(session: Session, args: list[str]):
             await session.say("help.no_such_command", verb=wanted)
             return
         doc = _help_text(cmd.name, cmd.handler)
-        aliases = f" (aliases: {', '.join(cmd.aliases)})" if cmd.aliases else ""
-        await session.send(f"{wanted}{aliases}\r\n  {doc}")
+        aliases = t("help.entry_aliases", aliases=", ".join(cmd.aliases)) if cmd.aliases else ""
+        await session.say("help.entry", verb=wanted, aliases=aliases, doc=doc)
         return
 
     await session.say("help.header")
@@ -175,5 +177,9 @@ async def help_cmd(session: Session, args: list[str]):
         if cmd is None:
             continue
         doc = _help_text(cmd_name, cmd.handler)
-        label = cmd_name if not cmd.aliases else f"{cmd_name} ({', '.join(cmd.aliases)})"
-        await session.send(f"{label.ljust(26)} - {doc.splitlines()[0]}")
+        label = (
+            t("help.row_label", verb=cmd_name, aliases=", ".join(cmd.aliases))
+            if cmd.aliases
+            else cmd_name
+        )
+        await session.say("help.row", label=label.ljust(26), summary=doc.splitlines()[0])

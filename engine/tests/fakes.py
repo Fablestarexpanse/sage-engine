@@ -248,6 +248,11 @@ class StubSession:
 
         self.sent.append(lexicon.t(key, **variables))
 
+    async def send_json(self, payload) -> None:
+        import json
+
+        self.sent.append(json.dumps(payload) + "\r\n")
+
     async def send_prompt(self) -> None:
         pass
 

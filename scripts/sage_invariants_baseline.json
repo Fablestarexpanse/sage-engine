@@ -1,7 +1,7 @@
 {
   "totals": {
     "denylist": 43,
-    "player_literals": 72
+    "player_literals": 4
   },
   "denylist": {
     "engine/alembic/versions/b3c4d5e6f7a8_account_echo_credits.py": 5,
@@ -18,14 +18,6 @@
     "engine/tests/test_play_tokens.py": 1
   },
   "player_literals": {
-    "engine/src/sage/admin/routes/admin_ops.py": 1,
-    "engine/src/sage/commands/admin.py": 1,
-    "engine/src/sage/commands/communication.py": 17,
-    "engine/src/sage/commands/info.py": 13,
-    "engine/src/sage/commands/items.py": 19,
-    "engine/src/sage/commands/movement.py": 7,
-    "engine/src/sage/network/session.py": 2,
-    "engine/src/sage/server.py": 8,
     "engine/tests/test_session.py": 4
   }
 }

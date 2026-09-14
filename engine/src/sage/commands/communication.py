@@ -1,9 +1,9 @@
 """Communication commands — say (room broadcast) and similar player-to-player messages."""
 
-import json
 import time
 
 from sage.commands.registry import command
+from sage.lexicon import t
 from sage.network.session import Session
 
 
@@ -22,7 +22,7 @@ async def _chat_notice(target: Session, channel: str, sender: str, text: str, se
         "self": self_line,
         "at": time.time(),
     }
-    await target.send(json.dumps(notice) + "\r\n")
+    await target.send_json(notice)
 
 
 def _free_text(session: Session, args: list[str]) -> str:
@@ -63,11 +63,11 @@ def resolve_tell_target(words: list[str], online: list[str], sender: str):
 async def say(session: Session, args: list[str]):
     """Speak to everyone in your current room."""
     if not args:
-        await session.send("Say what?")
+        await session.say("say.what")
         return
 
     if not session.player_id:
-        await session.send("Not authenticated.")
+        await session.say("session.not_authenticated")
         return
 
     message = _free_text(session, args)
@@ -75,14 +75,14 @@ async def say(session: Session, args: list[str]):
 
     room_id = await app_instance.redis.get_player_location(session.player_id)
     if not room_id:
-        await session.send("You can't speak in the void.")
+        await session.say("void.no_speaking")
         return
 
     player_name = session.player_id
-    broadcast_msg = f'{player_name} says: "{message}"'
+    broadcast_msg = t("say.others", name=player_name, message=message)
 
     # Send to self
-    await session.send(f'You say: "{message}"')
+    await session.say("say.self", message=message)
     await _chat_notice(session, "local", player_name, message, self_line=True)
 
     # Broadcast to room
@@ -99,19 +99,19 @@ async def say(session: Session, args: list[str]):
 async def emote(session: Session, args: list[str]):
     """Perform an action everyone in the room can see. Usage: emote <does something>"""
     if not args:
-        await session.send("Emote what? Usage: emote <does something>")
+        await session.say("emote.what")
         return
     if not session.player_id:
-        await session.send("Not authenticated.")
+        await session.say("session.not_authenticated")
         return
 
     from sage.app import app_instance
 
     room_id = await app_instance.redis.get_player_location(session.player_id)
     if not room_id:
-        await session.send("There is nobody here to see it.")
+        await session.say("emote.nobody")
         return
-    line = f"{session.player_id} {_free_text(session, args)}"
+    line = t("emote.line", name=session.player_id, action=_free_text(session, args))
     await session.send(line)
     for target_pid in await app_instance.redis.get_room_players(room_id):
         if target_pid != session.player_id:
@@ -124,10 +124,10 @@ async def emote(session: Session, args: list[str]):
 async def tell(session: Session, args: list[str]):
     """Send a private message to an online player. Usage: tell <player> <message>"""
     if len(args) < 2:
-        await session.send("Tell whom what? Usage: tell <player> <message>")
+        await session.say("tell.usage")
         return
     if not session.player_id:
-        await session.send("Not authenticated.")
+        await session.say("session.not_authenticated")
         return
 
     from sage.app import app_instance
@@ -136,23 +136,23 @@ async def tell(session: Session, args: list[str]):
     online = list(app_instance.session_manager.player_to_session)
     target_pid, message, reason = resolve_tell_target(words, online, session.player_id)
     if reason == "self":
-        await session.send("You mutter to yourself. It doesn't help.")
+        await session.say("tell.self")
         return
     if isinstance(reason, list):
-        await session.send(f"Which one? {', '.join(reason)}")
+        await session.say("tell.which", names=", ".join(reason))
         return
     if target_pid is None:
-        await session.send(f"No one called '{words[0]}' is online.")
+        await session.say("tell.nobody", name=words[0])
         return
     if not message:
-        await session.send(f"Tell {target_pid} what?")
+        await session.say("tell.what", name=target_pid)
         return
     target_session = app_instance.session_manager.get_session_by_player(target_pid)
     if target_session is None:
-        await session.send(f"No one called '{args[0]}' is online.")
+        await session.say("tell.nobody", name=args[0])
         return
-    await session.send(f'You tell {target_pid}: "{message}"')
-    await target_session.send(f'{session.player_id} tells you: "{message}"')
+    await session.say("tell.sent", name=target_pid, message=message)
+    await target_session.say("tell.received", name=session.player_id, message=message)
     await _chat_notice(session, "tell", f"→ {target_pid}", message, self_line=True)
     await _chat_notice(target_session, "tell", session.player_id, message, self_line=False)
 
@@ -166,7 +166,5 @@ async def who(session: Session, args: list[str]):
     if not names:
         await session.say("who.empty")
         return
-    from sage import lexicon
-
-    header = lexicon.t("who.header", count=len(names))
-    await session.send("\r\n".join([header, *[f"  {name}" for name in names]]))
+    header = t("who.header", count=len(names))
+    await session.send("\r\n".join([header, *[t("who.row", name=name) for name in names]]))

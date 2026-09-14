@@ -451,7 +451,7 @@ class SageServer:
         try:
             data = json.loads(raw)
         except json.JSONDecodeError:
-            await session.send(json.dumps({"ok": False, "error": "invalid_handshake"}) + "\r\n")
+            await session.send_json({"ok": False, "error": "invalid_handshake"})
             return None
         username = (data.get("username") or "").strip()
         password = data.get("password") or ""
@@ -464,7 +464,7 @@ class SageServer:
             except (TypeError, ValueError):
                 char_id = None
         if not username and not token:
-            await session.send(json.dumps({"ok": False, "error": "username_required"}) + "\r\n")
+            await session.send_json({"ok": False, "error": "username_required"})
             return None
 
         async with self.db.session_factory() as db_session:
@@ -472,9 +472,7 @@ class SageServer:
                 db_session, self, token=token, username=username, password=password
             )
             if account is None:
-                await session.send(
-                    json.dumps({"ok": False, "error": "invalid_credentials"}) + "\r\n"
-                )
+                await session.send_json({"ok": False, "error": "invalid_credentials"})
                 return None
 
             result = await db_session.execute(
@@ -483,21 +481,17 @@ class SageServer:
             characters = list(result.scalars().all())
             character: Character | None = None
             if not characters:
-                await session.send(json.dumps({"ok": False, "error": "no_character"}) + "\r\n")
+                await session.send_json({"ok": False, "error": "no_character"})
                 return None
             if char_id is not None:
                 character = next((c for c in characters if c.id == char_id), None)
                 if character is None:
-                    await session.send(
-                        json.dumps({"ok": False, "error": "character_not_found"}) + "\r\n"
-                    )
+                    await session.send_json({"ok": False, "error": "character_not_found"})
                     return None
             elif len(characters) == 1:
                 character = characters[0]
             else:
-                await session.send(
-                    json.dumps({"ok": False, "error": "character_required"}) + "\r\n"
-                )
+                await session.send_json({"ok": False, "error": "character_required"})
                 return None
 
             # Agents and players share the name-keyed state; a character row
@@ -509,9 +503,7 @@ class SageServer:
             except Exception:
                 agent_names = set()
             if character.name.lower() in agent_names:
-                await session.send(
-                    json.dumps({"ok": False, "error": "character_name_reserved"}) + "\r\n"
-                )
+                await session.send_json({"ok": False, "error": "character_name_reserved"})
                 return None
 
             account.last_login = datetime.utcnow()
@@ -654,7 +646,7 @@ class SageServer:
                 "inventory": list(inventory),
                 "map": self._zone_map(room_id, set(visited)) if room_id else None,
             }
-            await session.send(json.dumps(snapshot) + "\r\n")
+            await session.send_json(snapshot)
         except Exception:
             logger.debug("character_snapshot push failed for %s", player_id, exc_info=True)
 

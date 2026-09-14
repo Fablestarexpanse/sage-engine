@@ -11,7 +11,8 @@ of player-ui DONE. 3.14a JSONB + agent_state rename, 3.14b wallet into stats, 3.
 prompts in worlds/fablestar/ai, 3.16b ai/style.yaml, 3.16c ComfyUI graphs DONE (3.16 complete). 3.17 content in
 worlds/fablestar/content DONE. 3.18a builder + glyph/galaxy/ship surfaces out of engine and admin-ui, 3.18b
 WorldForge editors, player-ui glyph remnants, galaxy.yaml DONE (3.18 complete). 3.19 ratchet sweep DONE (denylist
-43, all by design). Next: 3.20 engine command text behind lexicon keys (72 player_literals). Dev DB at r1s2t3u4v5w6. Commit 9a831ea does not boot (be48da3 completes it).
+43, all by design). 3.20 engine text in the lexicon DONE (player_literals 4, all in test_session.py). PHASE 3 COMPLETE.
+Next: owner review of Phase 3 (PR #10), then Phase 4 (full-size second world). Dev DB at r1s2t3u4v5w6. Commit 9a831ea does not boot (be48da3 completes it).
 Open owner questions: none (Rivermoot license and stage PRs decided 2026-09-14, see log).
 Review page: https://claude.ai/code/artifact/2d488113-1ca9-4f45-b993-ac0253e0670c
 

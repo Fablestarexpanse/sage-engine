@@ -20,12 +20,110 @@ help:
   header: "--- Available Commands ---"
   no_such_command: "No command called '{verb}'. Plain 'help' lists them all."
   no_description: "No description."
+  entry: "{verb}{aliases}\r\n  {doc}"
+  entry_aliases: " (aliases: {aliases})"
+  row: "{label} - {summary}"
+  row_label: "{verb} ({aliases})"
 
 who:
   empty: "Nobody is connected."
   header: "Online ({count}):"
+  row: "  {name}"
 
 death:
   wake: "\r\nYou come to, patched up and aching.{bill}"
   bill: " Recovery cost you {amount} {currency}."
   no_bill: " You had nothing to pay with; you were patched up anyway."
+
+session:
+  not_authenticated: "Not authenticated."
+  goodbye: "Goodbye!"
+  replaced: "\r\nThis character just signed in from another connection. Goodbye."
+  broadcast: "[Server] {message}"
+
+void:
+  lost: "You are lost in the void."
+  nowhere: "You are in the void."
+  collapsing: "The world is collapsing around you."
+  no_speaking: "You can't speak in the void."
+
+look:
+  header: "\r\n{name} [ {id} ]"
+  header_unnamed: "\r\n[ {id} ]"
+  scene: "\r\nThe scene: {text}"
+  exits: "Exits: {exits}"
+  also_here: "Also here: {names}"
+  entities: "Entities: {names}"
+  floor_items: "Items on floor: {names}"
+  something: "something"
+
+map:
+  nowhere: "You are nowhere mappable."
+  no_chart: "No chart exists for this place."
+  zone: "--- {zone} ---"
+  here: "  [@] {name}"
+  explored: "  [*] {name}"
+  unexplored: "  ...and {count} places you haven't found yet."
+  legend: "@ you are here · * explored"
+
+say:
+  what: "Say what?"
+  self: "You say: \"{message}\""
+  others: "{name} says: \"{message}\""
+
+emote:
+  what: "Emote what? Usage: emote <does something>"
+  nobody: "There is nobody here to see it."
+  line: "{name} {action}"
+
+tell:
+  usage: "Tell whom what? Usage: tell <player> <message>"
+  self: "You mutter to yourself. It doesn't help."
+  which: "Which one? {names}"
+  nobody: "No one called '{name}' is online."
+  what: "Tell {name} what?"
+  sent: "You tell {name}: \"{message}\""
+  received: "{name} tells you: \"{message}\""
+
+move:
+  cannot: "You cannot go {direction}."
+  moved: "You move {direction}."
+  leaves: "{name} leaves {direction}."
+  arrives_from: "{name} arrives from the {side}."
+  arrives: "{name} arrives."
+  note: "\r\n{text}"
+
+items:
+  unnamed: "item"
+  unknown: "unknown item"
+
+inventory:
+  empty: "You are carrying nothing."
+  header: "\r\n--- Inventory ---"
+  row: "  {name}"
+
+take:
+  what: "Take what? Usage: take <item>"
+  missing: "You see no '{name}' here."
+  done: "You pick up the {name}."
+
+drop:
+  what: "Drop what? Usage: drop <item>"
+  missing: "You are not carrying '{name}'."
+  done: "You drop the {name}."
+
+examine:
+  what: "Examine what?"
+  text: "\r\n{text}"
+  exit_open: "The way {direction} is open."
+  person: "\r\n{name} {condition}."
+  unhurt: "looks unhurt"
+  scraped: "has a few scrapes"
+  hurt: "is badly hurt"
+  barely: "is barely standing"
+  hp: "[HP: {hp}/{max_hp}]"
+  floor_item: "An item."
+  carried_item: "An item you are carrying."
+  nothing_with_hints: "You see nothing notable called '{name}'. Worth a look: {names}."
+  nothing: "You see nothing notable called '{name}'. Nothing here rewards a closer look."
+

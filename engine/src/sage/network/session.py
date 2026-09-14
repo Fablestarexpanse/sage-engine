@@ -1,12 +1,17 @@
 """Session state machine (CONNECTED → AUTHENTICATING → PLAYING → DISCONNECTING) and SessionManager."""
 
+import json
 import logging
 import uuid
 from enum import Enum, auto
+from typing import Any
 
 from sage.network.websocket_protocol import WebSocketProtocol
 
 logger = logging.getLogger(__name__)
+
+# Line terminator for every frame the client receives.
+LINE_END = "\r\n"
 
 
 class SessionState(Enum):
@@ -40,7 +45,11 @@ class Session:
         """Send raw text to the client, adding a newline."""
         if self.protocol.is_connected:
             # Automatic newline append for MUD feel
-            await self.protocol.send(message + "\r\n")
+            await self.protocol.send(message + LINE_END)
+
+    async def send_json(self, payload: Any):
+        """Send one JSON protocol frame (handshake errors, snapshots, client notices)."""
+        await self.send(json.dumps(payload) + LINE_END)
 
     async def say(self, key: str, **variables):
         """Send the lexicon string for key (brief invariant 3: player text is never a literal)."""
@@ -126,10 +135,9 @@ class SessionManager:
         # character position; only the old socket dies.
         self.player_to_session.pop(player_id, None)
         try:
-            await old.end(
-                "replaced",
-                "\r\nThis character just signed in from another connection. Goodbye.",
-            )
+            from sage import lexicon
+
+            await old.end("replaced", lexicon.t("session.replaced"))
         except Exception:
             pass
         self.sessions.pop(old_id, None)

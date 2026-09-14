@@ -302,7 +302,9 @@ def build_admin_ops_router(server: SageServer) -> APIRouter:
         msg = (body.message or "").strip()
         if not msg:
             raise HTTPException(status_code=400, detail="message is required")
-        await server.session_manager.broadcast(f"[Server] {msg}")
+        from sage import lexicon
+
+        await server.session_manager.broadcast(lexicon.t("session.broadcast", message=msg))
         return {"status": "ok", "delivered_hint": "playing sessions"}
 
     @router.get("/admin/metrics")
