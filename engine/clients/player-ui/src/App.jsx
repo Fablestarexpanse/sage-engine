@@ -255,6 +255,20 @@ function AuthBrandHeader({ subtitle }) {
   );
 }
 
+// Shown under the sign-in and sign-up forms while the server records sign-in addresses.
+function SignInPrivacyNote() {
+  const { T } = usePlayTheme();
+  const { privacy } = useWorld();
+  if (!privacy?.records_login_addresses) return null;
+  const days = Number(privacy.login_history_days) || 0;
+  return (
+    <p role="note" style={{ fontSize: 11, color: T.text.muted, marginTop: 12, lineHeight: 1.5, textAlign: "center" }}>
+      This world records the network address you sign in from, to protect players from abuse.
+      {days > 0 ? ` It is kept for ${days} day${days === 1 ? "" : "s"}.` : ""} Ask the staff to erase yours.
+    </p>
+  );
+}
+
 function AuthNavLinks({ children }) {
   return (
     <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 8, alignItems: "center" }}>
@@ -419,6 +433,7 @@ function AuthSignInForm({ onLoggedIn }) {
         setError(
           res.error === "invalid_credentials" ? "Unknown user or wrong password."
             : res.error === "account_suspended" ? "This account is suspended. Contact the staff of this world."
+            : res.error === "address_banned" ? "Sign-ins from your network are blocked on this world."
             : res.error || "Login failed"
         );
         setBusy(false);
@@ -498,6 +513,7 @@ function AuthSignInForm({ onLoggedIn }) {
             {busy ? "…" : "Sign in"}
           </button>
         </form>
+        <SignInPrivacyNote />
         {/* DEV-AUTH:BEGIN */}
         {devEnabled && (
           <div
@@ -599,7 +615,12 @@ function AuthRegisterForm({ onLoggedIn }) {
     try {
       const res = await playRegister(u, p);
       if (!res.ok) {
-        setError(res.error === "username_taken" ? "That name is already taken." : res.error || "Register failed");
+        setError(
+          res.error === "username_taken" ? "That name is already taken."
+            : res.error === "registration_closed" ? "This world is not taking new accounts right now."
+            : res.error === "address_banned" ? "Sign-ups from your network are blocked on this world."
+            : res.error || "Register failed"
+        );
         setBusy(false);
         return;
       }
@@ -663,6 +684,7 @@ function AuthRegisterForm({ onLoggedIn }) {
             {busy ? "…" : "Create account"}
           </button>
         </form>
+        <SignInPrivacyNote />
         <AuthNavLinks>
           <AuthTextLink href="#/login">Already registered? Sign in</AuthTextLink>
           <AuthTextLink href="#/">Back to welcome</AuthTextLink>

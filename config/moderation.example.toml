@@ -1,0 +1,14 @@
+# Player moderation. Copy to moderation.toml, or change these from the admin console
+# (Players > Moderation), which writes moderation.toml for you.
+
+# When false, new accounts cannot be created (existing players still sign in).
+registration_open = true
+
+# Store the network address each sign-in comes from. Off by default: addresses are personal data
+# in many countries, so check your local rules first. While on, the sign-in screen tells players,
+# and sign-in history older than login_history_days is deleted.
+record_login_addresses = false
+login_history_days = 30
+
+# Seconds a character must wait between in-game reports.
+report_cooldown_seconds = 60

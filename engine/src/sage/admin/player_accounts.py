@@ -41,6 +41,8 @@ def _account_summary_dict(a: Account, char_count: int) -> dict[str, Any]:
         "character_count": char_count,
         "suspended_at": a.suspended_at.isoformat() + "Z" if a.suspended_at else None,
         "suspended_reason": a.suspended_reason,
+        "muted_until": a.muted_until.isoformat() + "Z" if a.muted_until else None,
+        "mute_reason": a.mute_reason,
     }
 
 

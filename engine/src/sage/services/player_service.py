@@ -147,11 +147,17 @@ class PlayerService:
     # Auth endpoints
     # ------------------------------------------------------------------
 
-    async def login(self, username: str, password: str) -> dict[str, Any]:
+    async def login(
+        self, username: str, password: str, address: str | None = None
+    ) -> dict[str, Any]:
         """REST: validate credentials, list characters, and issue a play session token."""
+        from sage.services import moderation
+
         username = (username or "").strip()
         if not username:
             return {"ok": False, "error": "username_required"}
+        if await moderation.active_ban(self.server, address):
+            return {"ok": False, "error": "address_banned"}
         async with self.server.db.session_factory() as db_session:
             account = await authenticate_account(db_session, username, password)
             if account is None:
@@ -161,11 +167,21 @@ class PlayerService:
             account.last_login = datetime.utcnow()
             response = await self.account_characters_response(db_session, account)
             response["play_token"] = issue_play_token(self.server, account.id)
+            account_id = account.id
             await db_session.commit()
+        await moderation.record_login(self.server, account_id, "password", address)
         return response
 
-    async def register(self, username: str, password: str) -> dict[str, Any]:
+    async def register(
+        self, username: str, password: str, address: str | None = None
+    ) -> dict[str, Any]:
         """REST: create account (characters are added via character creation UI)."""
+        from sage.services import moderation
+
+        if not moderation.settings(self.server).registration_open:
+            return {"ok": False, "error": "registration_closed"}
+        if await moderation.active_ban(self.server, address):
+            return {"ok": False, "error": "address_banned"}
         username = (username or "").strip()
         if len(username) < 2:
             return {"ok": False, "error": "username_too_short"}

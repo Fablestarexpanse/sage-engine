@@ -469,3 +469,16 @@ def test_search_needs_two_characters_and_skips_kinds_without_the_tool(client, se
     staff = _auth(server, 2)  # dashboard only: no players, content or lexicon groups
     assert client.get("/admin/search?q=a", headers=staff).json()["groups"] == []
     assert client.get("/admin/search?q=bread", headers=staff).json()["groups"] == []
+
+
+def test_moderation_routes_need_their_tools(client, server):
+    staff = _auth(server, 2)  # dashboard only
+    assert client.get("/admin/reports", headers=staff).status_code == 403
+    assert client.get("/admin/moderation/logins", headers=staff).status_code == 403
+    ban = {"network": "198.51.100.0/24"}
+    assert client.post("/admin/moderation/bans", json=ban, headers=staff).status_code == 403
+    assert client.patch("/admin/moderation/settings", json={}, headers=staff).status_code == 403
+    assert (
+        client.post("/admin/player-accounts/1/mute", json={"minutes": 5}, headers=staff).status_code
+        == 403
+    )

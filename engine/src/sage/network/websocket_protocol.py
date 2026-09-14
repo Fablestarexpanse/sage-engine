@@ -17,6 +17,8 @@ class WebSocketProtocol:
         self._peer = (
             f"{websocket.client.host}:{websocket.client.port}" if websocket.client else "web-client"
         )
+        # The connecting address (moderation: bans and, when the operator records them, history).
+        self.address = websocket.client.host if websocket.client else None
         self._incoming_queue: asyncio.Queue[str] = asyncio.Queue()
 
     async def send(self, message: str) -> None:

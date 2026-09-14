@@ -36,6 +36,7 @@ config/server.toml
 config/comfyui.toml
 config/llm.toml
 config/redis.toml
+config/moderation.toml
 
 # OS / editor
 .DS_Store

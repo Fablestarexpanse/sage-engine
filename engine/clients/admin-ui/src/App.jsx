@@ -18,6 +18,8 @@ import LiveWorldPage from "./pages/LiveWorldPage.jsx";
 import CharactersPage from "./pages/CharactersPage.jsx";
 import AccountsPage from "./pages/AccountsPage.jsx";
 import CreditsPage from "./pages/CreditsPage.jsx";
+import ReportsPage from "./pages/ReportsPage.jsx";
+import ModerationPage from "./pages/ModerationPage.jsx";
 import ContentLibraryPage from "./pages/ContentLibraryPage.jsx";
 import ServerPage from "./pages/ServerPage.jsx";
 import OperationsPage from "./pages/OperationsPage.jsx";
@@ -160,6 +162,8 @@ const NAV_ITEMS = [
   { id: "operations", group: "Live", label: "Broadcast & reload", icon: <Icons.Alert /> },
   { id: "characters", group: "Players", label: "Characters", icon: <Icons.Players />, anyOf: ["players"] },
   { id: "accounts", group: "Players", label: "Accounts", icon: <Icons.Players />, anyOf: ["players"] },
+  { id: "reports", group: "Players", label: "Reports", icon: <Icons.Alert />, anyOf: ["players"] },
+  { id: "moderation", group: "Players", label: "Moderation", icon: <Icons.Alert />, anyOf: ["players", "operations"] },
   // The running world package, its plugins, content check and migration status.
   { id: "world", group: "World", label: "World & plugins", icon: <Icons.World />, anyOf: ["world", "server", "dashboard"] },
   { id: "content", group: "World", label: "Content Library", icon: <Icons.Content />, anyOf: ["content", "world", "entities", "items"] },
@@ -199,6 +203,8 @@ const PAGES = {
   characters: CharactersPage,
   accounts: AccountsPage,
   credits: CreditsPage,
+  reports: ReportsPage,
+  moderation: ModerationPage,
   content: ContentLibraryPage,
   skills: ProficienciesPage,
   agents: AgentsPage,

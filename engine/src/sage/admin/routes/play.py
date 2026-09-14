@@ -125,12 +125,20 @@ def build_play_router(server: SageServer) -> APIRouter:
     @router.get("/play/world")
     async def play_world():
         """Public: which world this server runs, for client titles, headers and look."""
+        from sage.services import moderation
         from sage.world.ui_theme import load_ui_theme
 
+        rules = moderation.settings(server)
         return {
             "id": server.world.id,
             "name": server.world.manifest.world.name,
             "theme": load_ui_theme(server.world.root),
+            # What the sign-in screen must tell players before they sign in.
+            "privacy": {
+                "records_login_addresses": bool(rules.record_login_addresses),
+                "login_history_days": int(rules.login_history_days),
+            },
+            "registration_open": bool(rules.registration_open),
         }
 
     @router.get("/play/commands")
@@ -166,13 +174,15 @@ def build_play_router(server: SageServer) -> APIRouter:
     @limiter.limit("10/minute")
     async def play_auth_login(request: Request, body: PlayAuthBody):
         """Web player: validate credentials and list characters."""
-        return await server.player.login(body.username, body.password)
+        address = request.client.host if request.client else None
+        return await server.player.login(body.username, body.password, address)
 
     @router.post("/play/auth/register")
     @limiter.limit("5/minute")
     async def play_auth_register(request: Request, body: PlayAuthBody):
         """Web player: create account (add characters in the UI)."""
-        return await server.player.register(body.username, body.password)
+        address = request.client.host if request.client else None
+        return await server.player.register(body.username, body.password, address)
 
     @router.post("/play/auth/characters")
     async def play_auth_characters(body: PlayAuthCharactersBody):

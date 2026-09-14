@@ -34,6 +34,9 @@ class Account(Base):
     # Set by staff (migration s2t3u4v5w6x7): a suspended account cannot sign in or use a play token.
     suspended_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     suspended_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # A muted account's characters cannot say, emote or tell until muted_until.
+    muted_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    mute_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     # Relationships
     characters: Mapped[list["Character"]] = relationship(
@@ -177,3 +180,49 @@ class CharacterSnapshot(Base):
     room_id: Mapped[str] = mapped_column(String(255))
     stats: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
     inventory: Mapped[list[Any]] = mapped_column(JSONB, default=list)
+
+
+class AccountLogin(Base):
+    """One sign-in. ``address`` is kept only while the operator records sign-in addresses."""
+
+    __tablename__ = "account_logins"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    account_id: Mapped[int] = mapped_column(
+        ForeignKey("accounts.id", ondelete="CASCADE"), index=True
+    )
+    at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    method: Mapped[str] = mapped_column(String(16))
+    address: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+
+
+class AddressBan(Base):
+    """A network address or range (CIDR) refused at sign-in, registration and play."""
+
+    __tablename__ = "address_bans"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    network: Mapped[str] = mapped_column(String(64), unique=True)
+    reason: Mapped[str] = mapped_column(String(500), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_by: Mapped[str] = mapped_column(String(64))
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class PlayerReport(Base):
+    """A bug, typo, idea or player complaint sent with the in-game report command."""
+
+    __tablename__ = "player_reports"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    account_id: Mapped[int | None] = mapped_column(
+        ForeignKey("accounts.id", ondelete="SET NULL"), nullable=True
+    )
+    character_name: Mapped[str] = mapped_column(String(50))
+    room_id: Mapped[str] = mapped_column(String(255), default="")
+    text: Mapped[str] = mapped_column(String(2000))
+    status: Mapped[str] = mapped_column(String(16), default="open", index=True)
+    staff_note: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    handled_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    handled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
