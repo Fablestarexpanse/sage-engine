@@ -4,6 +4,7 @@ python -m sage                                  run the server
 python -m sage db status                        list unapplied core/plugin migrations
 python -m sage db upgrade                       apply every core and plugin migration
 python -m sage plugin uninstall ID [--purge-state]
+python -m sage validate [--world ID] [--zone ZONE] [--info]
 """
 
 from __future__ import annotations
@@ -61,6 +62,33 @@ def _plugin(args: argparse.Namespace) -> int:
     return 0
 
 
+def _validate(args: argparse.Namespace) -> int:
+    """Lint a world's content (sage.world.lint); exit 1 when there are errors."""
+    from sage.core.config import load_config, resolve_project_root
+    from sage.world.lint import lint_world
+    from sage.world.package import WorldPackageError, select_world
+
+    config = load_config()
+    root = resolve_project_root()
+    try:
+        world = select_world(root / config.server.worlds_dir, args.world or config.server.world)
+    except WorldPackageError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    report = lint_world(world, zone=args.zone)
+    levels = [("error", report.errors), ("warning", report.warnings)]
+    if args.info:
+        levels.append(("info", report.info))
+    for level, lines in levels:
+        for line in lines:
+            print(f"{level}: {line}")
+    scope = f"zone {args.zone}" if args.zone else f"{len(report.rooms)} rooms"
+    print(
+        f"{world.id} ({scope}): {len(report.errors)} error(s), {len(report.warnings)} warning(s)"
+    )
+    return 1 if report.errors else 0
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(prog="sage", description=__doc__.splitlines()[0])
     sub = parser.add_subparsers(dest="group")
@@ -71,12 +99,18 @@ def main(argv: list[str]) -> int:
     uninstall = plugin_sub.add_parser("uninstall", help="remove a plugin and its tables")
     uninstall.add_argument("plugin_id")
     uninstall.add_argument("--purge-state", action="store_true")
+    validate = sub.add_parser("validate", help="check a world's content without a server")
+    validate.add_argument("--world", help="world id (default: the configured world)")
+    validate.add_argument("--zone", help="check one zone")
+    validate.add_argument("--info", action="store_true", help="also print informational notes")
     args = parser.parse_args(argv)
 
     if args.group == "db":
         return _db(args)
     if args.group == "plugin":
         return _plugin(args)
+    if args.group == "validate":
+        return _validate(args)
 
     from sage.server import run_server
 

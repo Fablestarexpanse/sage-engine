@@ -64,8 +64,8 @@ RULE OF THUMB: count how many side-rooms you need, then divide by 2 to get
 the number of corridor segments (one room north + one south per segment).
 
 More examples of the same principle:
-  • A space-station ring corridor: 6 corridor rooms in a loop, each with an
-    inner room branching inward → 6 inner rooms from 6 corridor rooms.
+  • A walled town's ring road: 6 road rooms in a loop, each with a house
+    branching inward → 6 houses from 6 road rooms.
   • A dungeon with cells: 1 guard room, 3 corridor rooms east-west, each
     corridor has a cell to the north → 3 cells total.
   • A city street: 5 street rooms running north-south; east side has shops
@@ -78,22 +78,22 @@ Plan the right pattern for the space BEFORE placing rooms.
 
 1. LINEAR (corridor / tunnel / street)
    A → B → C → D → E
-   Use for: corridors, tunnels, streets, ship passageways.
+   Use for: corridors, tunnels, streets, riverside paths.
    Branches hang off each node. Good for guided progression.
 
 2. HUB-AND-SPOKE (plaza / command centre / crossroads)
    Spokes radiate from a central hub room (up to 8 directions + up/down).
-   Use for: town squares, ship bridges, dungeon intersections.
+   Use for: town squares, crossroads, dungeon intersections.
    Max 8 direct connections from one hub. For more, use a hub-of-hubs.
 
-3. RING / LOOP (station ring / castle wall / city block)
+3. RING / LOOP (castle wall / city block / cloister)
    Rooms connect in a circle — last room connects back to first.
-   Use for: station corridors, castle battlements, orbital rings.
+   Use for: castle battlements, cloisters, market loops.
    Gives players two routes between any two points.
 
 4. GRID (city district / dungeon level / office floor)
    Rooms arranged in rows and columns with N/S/E/W exits.
-   Use for: cities, large dungeons, space station decks.
+   Use for: cities, large dungeons, warehouse floors.
    Each room has up to 4 cardinal exits to its 4 neighbours.
 
 5. TREE (cave system / office building / apartment block)
@@ -114,8 +114,8 @@ Each room = one distinct, named, playable location.
   • A small apartment: hallway, living_room, bedroom, bathroom. (4 rooms)
   • A large apartment: hallway, living_room, kitchen, bedroom_1, bedroom_2,
     bathroom, balcony. (7 rooms)
-  • A space station docking bay: outer_airlock, inner_airlock, docking_floor,
-    cargo_area, control_booth, maintenance_tunnel. (6 rooms)
+  • A river dock: quay, loading_stage, warehouse_floor, warehouse_loft,
+    harbourmaster_office, net_store. (6 rooms)
 
 Think about what a player would want to explore, hide in, or interact with
 separately. Each of those is a room.
@@ -348,20 +348,26 @@ DIR_OFFSET: dict[str, tuple[float, float]] = {
 DEFAULT_W = 176
 DEFAULT_H = 108
 
-VALID_ROOM_TYPES = {
-    "chamber",
-    "corridor",
-    "junction",
-    "alcove",
-    "descent",
-    "danger",
-    "safe",
-    "boss",
-    "hub",
-    "command",
-    "engineering",
-    "airlock",
-}
+
+
+def _world_manifest() -> dict[str, Any] | None:
+    """The world.toml of the package that owns the content root, if the root sits in one."""
+    import tomllib
+
+    root = _world_root()
+    for candidate in (root.parent.parent, root.parent):
+        path = candidate / "world.toml"
+        if path.is_file():
+            try:
+                return tomllib.loads(path.read_text(encoding="utf-8"))
+            except (tomllib.TOMLDecodeError, OSError):
+                return None
+    return None
+
+
+def _room_types() -> list[str]:
+    manifest = _world_manifest() or {}
+    return list((manifest.get("content") or {}).get("room_types") or [])
 
 # ---------------------------------------------------------------------------
 # Path helpers
@@ -746,7 +752,7 @@ def create_zone(zone_id: str, *, display_name: str = "", description: str = "") 
     After creating, use create_room to populate it.
 
     Args:
-        zone_id:      Slug, e.g. "space_station_alpha". Letters, numbers, _ and - only.
+        zone_id:      Slug, e.g. "river_docks". Letters, numbers, _ and - only.
         display_name: Human-readable name written to zone.yaml (defaults to the slug titled).
         description:  One-line zone description written to zone.yaml.
     """
@@ -774,7 +780,7 @@ def create_room(
     slug: str,
     *,
     name: str = "",
-    room_type: str = "chamber",
+    room_type: str = "",
     depth: int = 1,
     description: str = "",
     floor: int = 0,
@@ -805,8 +811,8 @@ def create_room(
         zone_id:     Zone ID the room belongs to.
         slug:        Unique room identifier within the zone, e.g. "bridge_upper".
         name:        Display name on the map. Defaults to slug if empty.
-        room_type:   One of: chamber, corridor, junction, alcove, descent, danger,
-                     safe, boss, hub, command, engineering, airlock.
+        room_type:   One of the world's room types (world.toml [content] room_types; see
+                     get_layout_guide). Empty picks the first declared type.
         depth:       Difficulty/depth level 1–10.
         description: Base description text players see on entering.
         floor:       Physical vertical floor level. REQUIRED for non-ground rooms.
@@ -830,6 +836,11 @@ def create_room(
     _require_slug(zone_id)
     _require_slug(slug)
     _require_zone(zone_id)
+    room_types = _room_types()
+    if not room_type:
+        room_type = room_types[0] if room_types else "room"
+    elif room_types and room_type not in room_types:
+        return f"ERROR: room type {room_type!r} is not one of this world's: {', '.join(room_types)}"
 
     data: dict[str, Any] = {
         "id": f"{zone_id}:{slug}",
@@ -912,7 +923,7 @@ def update_room(
         zone_id:     Zone ID
         slug:        Room slug
         name:        New display name (pass empty string "" to clear the name)
-        room_type:   New room type
+        room_type:   New room type (one of world.toml [content] room_types)
         depth:       New depth level
         description: New base description text
         tags:        New tags list (replaces existing)
@@ -926,6 +937,9 @@ def update_room(
         else:
             data.pop("name", None)
     if room_type is not None:
+        room_types = _room_types()
+        if room_types and room_type not in room_types:
+            return f"ERROR: room type {room_type!r} is not one of this world's: {', '.join(room_types)}"
         data["type"] = room_type
     if depth is not None:
         data["depth"] = depth
@@ -1426,12 +1440,13 @@ def get_layout_guide() -> dict:
             "grid": "Rows/columns of rooms with N/S/E/W exits. Good for cities, dungeon levels.",
             "tree": "Branches split but never rejoin — players must backtrack. Good for caves, dead-ends.",
         },
+        "room_types": _room_types(),
         "sizing_guide": {
             "shop": "2-3 rooms: entrance, shop_floor, back_room",
             "bar_or_cafe": "3-4 rooms: entrance, bar_area, seating, back_office",
             "small_apartment": "4 rooms: hallway, living_room, bedroom, bathroom",
             "large_apartment": "6-7 rooms: hallway, living_room, kitchen, bedroom×2, bathroom, balcony",
-            "docking_bay": "5-6 rooms: outer_airlock, inner_airlock, docking_floor, cargo_area, control_booth",
+            "dock": "5-6 rooms: quay, loading_stage, warehouse_floor, warehouse_loft, harbourmaster_office",
             "office_floor": "corridor×N + offices on each side (2 offices per corridor section)",
         },
         "offsets": {
@@ -1579,202 +1594,30 @@ def get_layout_guide() -> dict:
 @mcp.tool()
 def validate_zone(zone_id: str) -> dict[str, Any]:
     """
-    Validate a zone's rooms the way the WorldForge app's Validate panel does.
-    Run after drafting or editing a zone to catch broken references before play.
+    Validate a zone's rooms with the engine's content validator (sage.world.lint), the same
+    checks as `python -m sage validate --zone <zone>`. Run after drafting or editing a zone.
 
-    Checks: missing room/feature descriptions, unknown exit destinations,
-    self-referencing and asymmetric exits (one_way honoured), orphaned and
-    disconnected rooms, depth jumps, unknown entity templates in spawns,
-    entity loot referencing unknown items, and the feature-density metric
-    (aim >= 0.5 draws/room).
+    Errors: rooms that fail the schema or have the wrong id, exits to missing rooms or to
+    themselves, unknown entity or loot templates, and room types or exit directions the
+    world's world.toml does not declare. Warnings: exits that do not lead back (unless
+    one_way), missing room or feature descriptions, rooms with no exits or cut off from the
+    zone, and feature density under 0.5 draws per room. Info: one-way and cross-zone exits,
+    dead ends, depth jumps, the density figure.
 
     Returns {"errors": [...], "warnings": [...], "info": [...], "counts": {...}}.
     """
     _require_zone(zone_id)
-    errors: list[str] = []
-    warnings: list[str] = []
-    info: list[str] = []
+    from sage.world.lint import lint_content
 
-    def _load_ids(subdir: str) -> set[str]:
-        d = _world_root() / subdir
-        ids: set[str] = set()
-        if d.exists():
-            for f in d.glob("*.yaml"):
-                try:
-                    doc = yaml.safe_load(f.read_text(encoding="utf-8")) or {}
-                except Exception:
-                    errors.append(f"{subdir}/{f.name}: unparseable YAML")
-                    continue
-                ids.add(str(doc.get("id", f.stem)))
-        return ids
-
-    entity_ids = _load_ids("entities")
-    item_ids = _load_ids("items")
-
-    # All room ids across every zone (cross-zone exit targets).
-    all_room_ids: set[str] = set()
-    for zdir in _zones_dir().iterdir() if _zones_dir().exists() else []:
-        rd = zdir / "rooms"
-        if rd.is_dir():
-            for f in rd.glob("*.yaml"):
-                all_room_ids.add(f"{zdir.name}:{f.stem}")
-
-    rooms: dict[str, dict] = {}
-    for f in sorted(_rooms_dir(zone_id).glob("*.yaml")):
-        try:
-            rooms[f.stem] = yaml.safe_load(f.read_text(encoding="utf-8")) or {}
-        except Exception:
-            errors.append(f"{f.stem}: unparseable YAML")
-    if not rooms:
-        return {
-            "errors": ["zone has no rooms"],
-            "warnings": [],
-            "info": [],
-            "counts": {"err": 1, "warn": 0},
-        }
-
-    def _dest_id(dest: str) -> str:
-        dest = str(dest or "")
-        return dest if ":" in dest else f"{zone_id}:{dest}"
-
-    def _exits(doc: dict) -> dict[str, str]:
-        raw = doc.get("exits")
-        out = {}
-        if isinstance(raw, dict):
-            for direction, ex in raw.items():
-                if isinstance(ex, dict):
-                    out[str(direction)] = _dest_id(ex.get("destination", ""))
-                elif isinstance(ex, str):
-                    out[str(direction)] = _dest_id(ex)
-        return out
-
-    multi = len(rooms) > 1
-    neighbors: dict[str, set[str]] = {slug: set() for slug in rooms}
-
-    for slug, doc in rooms.items():
-        rid = f"{zone_id}:{slug}"
-        desc = doc.get("description")
-        base = desc.get("base") if isinstance(desc, dict) else desc
-        if not str(base or "").strip():
-            warnings.append(f"Missing description: {slug}")
-
-        exits = _exits(doc)
-        if not exits and multi:
-            warnings.append(f"Orphaned room (no exits): {slug}")
-
-        for direction, dest in exits.items():
-            if dest == rid:
-                errors.append(f"Self-referencing exit: {slug} ({direction})")
-                continue
-            dzone, _, dslug = dest.partition(":")
-            if dest not in all_room_ids:
-                errors.append(f"Broken exit target: {slug} {direction} -> {dest}")
-                continue
-            if dzone != zone_id:
-                info.append(f"External exit {slug} {direction} -> {dest}")
-                continue
-            neighbors[slug].add(dslug)
-            neighbors.setdefault(dslug, set()).add(slug)
-            # Return-exit check (one_way honoured when present on the exit).
-            raw_exit = doc["exits"][direction] if isinstance(doc.get("exits"), dict) else {}
-            one_way = bool(raw_exit.get("one_way")) if isinstance(raw_exit, dict) else False
-            back = any(d == rid for d in _exits(rooms.get(dslug, {})).values())
-            if not back and one_way:
-                info.append(f"One-way: {slug} -> {dslug} ({direction})")
-            elif not back:
-                warnings.append(
-                    f"Asymmetric exit (no return, not marked one_way): "
-                    f"{slug} -> {dslug} ({direction})"
-                )
-
-        feats = doc.get("features")
-        if isinstance(feats, list):
-            for feat in feats:
-                if isinstance(feat, dict) and feat.get("name"):
-                    if not str(feat.get("description", "") or "").strip():
-                        warnings.append(f'Feature "{feat["name"]}" missing description ({slug})')
-
-        spawns = doc.get("entity_spawns")
-        if isinstance(spawns, list):
-            for s in spawns:
-                tid = s.get("template") if isinstance(s, dict) else None
-                if tid and tid not in entity_ids:
-                    errors.append(f'Unknown entity template "{tid}" in {slug}')
-
-    # Connectivity: everything reachable (undirected) from the first room.
-    if multi:
-        start = next(iter(rooms))
-        seen = {start}
-        stack = [start]
-        while stack:
-            for nxt in neighbors.get(stack.pop(), ()):
-                if nxt in rooms and nxt not in seen:
-                    seen.add(nxt)
-                    stack.append(nxt)
-        for slug in rooms:
-            if slug not in seen:
-                warnings.append(f"Disconnected room: {slug}")
-            if len(neighbors.get(slug, ())) <= 1:
-                info.append(f"Dead-end (<=1 connected neighbor): {slug}")
-
-    # Depth discontinuity across internal exits.
-    depth_of = {slug: int(doc.get("depth", 0) or 0) for slug, doc in rooms.items()}
-    for slug, doc in rooms.items():
-        for direction, dest in _exits(doc).items():
-            dzone, _, dslug = dest.partition(":")
-            if dzone == zone_id and dslug in depth_of:
-                da, db = depth_of[slug], depth_of[dslug]
-                if abs(da - db) >= 2:
-                    info.append(f"Depth jump {da} -> {db}: {slug} to {dslug}")
-
-    # Entity loot -> known items (only entities actually spawned in this zone).
-    spawned = {
-        s.get("template")
-        for doc in rooms.values()
-        for s in (doc.get("entity_spawns") or [])
-        if isinstance(s, dict)
-    }
-    ent_dir = _world_root() / "entities"
-    if ent_dir.exists():
-        for f in ent_dir.glob("*.yaml"):
-            try:
-                doc = yaml.safe_load(f.read_text(encoding="utf-8")) or {}
-            except Exception:
-                continue
-            eid = str(doc.get("id", f.stem))
-            if eid not in spawned:
-                continue
-            for entry in doc.get("loot") or []:
-                iid = entry.get("item") if isinstance(entry, dict) else entry
-                if iid and iid not in item_ids:
-                    errors.append(f'Entity {eid} loot references unknown item "{iid}"')
-
-    # Feature density (Epitaph metric): gameplay draws per room, aim >= 0.5.
-    if multi:
-        draws = 0
-        for doc in rooms.values():
-            draws += len(doc.get("features") or [])
-            draws += len(doc.get("entity_spawns") or [])
-            draws += len(doc.get("hazards") or [])
-            ambient = doc.get("ambient")
-            if isinstance(ambient, dict) and ambient.get("lines"):
-                draws += 1
-        density = draws / len(rooms)
-        line = f"Feature density {density:.2f} ({draws} draws / {len(rooms)} rooms)"
-        if density < 0.5:
-            warnings.append(
-                f"Low feature density: {density:.2f} ({draws} draws / {len(rooms)} rooms; "
-                "aim >= 0.5 — add features, spawns, hazards or ambient)"
-            )
-        else:
-            info.append(line)
-
-    return {
-        "errors": errors,
-        "warnings": warnings,
-        "info": info,
-        "counts": {"err": len(errors), "warn": len(warnings)},
-    }
+    manifest = _world_manifest()
+    content = manifest.get("content", {}) if manifest else {}
+    report = lint_content(
+        _world_root(),
+        room_types=content.get("room_types", []),
+        exit_dirs=content.get("exit_dirs", []),
+        zone=zone_id,
+    )
+    return report.as_dict()
 
 
 if __name__ == "__main__":

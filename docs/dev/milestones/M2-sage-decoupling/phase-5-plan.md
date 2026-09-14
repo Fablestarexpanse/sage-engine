@@ -23,7 +23,7 @@ message, and the full suite runs before each commit.
 | # | Step | Status |
 |---|------|--------|
 | 5.1 | The server sends the command list: the player client autocompletes the running world's commands (engine + enabled plugins), not a hardcoded list. | done |
-| 5.2 | One validator. `sage validate [--world]` runs `sage.world.lint`, and worldforge-mcp's `validate_zone` and room types come from the world package. The MCP instructions lose the sci-fi examples. | todo |
+| 5.2 | One validator. `sage validate [--world]` runs `sage.world.lint`, and worldforge-mcp's `validate_zone` and room types come from the world package. The MCP instructions lose the sci-fi examples. | done |
 | 5.3 | Content schemas. `sage schema export` and `GET /schema/world` give JSON Schema for rooms, features, entities and items (with every enabled plugin's extension fields) plus the world's lists (room types, exit directions, slots, attributes, currencies). | todo |
 | 5.4 | WorldForge reads the world. Room types, exit directions and equipment slots come from the package's `world.toml`. | todo |
 | 5.5 | WorldForge edits plugin content: room, feature and item forms for extension fields, generated from the exported schema. | todo |
@@ -38,4 +38,21 @@ message, and the full suite runs before each commit.
   Run: live Fablestar lists 49 commands (including `prof`, `cap`, `factions`, `achievements`) and
   live Rivermoot 37 (including `level`, `rent`, `browse`; no `prof`/`cap`). In the browser (dev
   login), typing `pr` in the command box suggested `prof` from the server list.
+- **5.2 one validator (done).**
+  - **`sage.world.lint`:** now carries worldforge-mcp's zone checks at three levels:
+    - warnings: missing room and feature descriptions, rooms with no exits or cut off from their zone, low feature density
+    - info: one-way and cross-zone exits, dead ends, depth jumps, density
+    - errors: self-referencing exits
+    - With `zone=`, room findings cover that zone only; `lint_content()` works on a bare `content/world` directory.
+  - **CLI:** `python -m sage validate [--world] [--zone] [--info]` prints the report and exits 1 on errors.
+  - **worldforge-mcp:**
+    - `validate_zone` calls `lint_content`, with room types and exit directions from the `world.toml` next to the content root.
+    - The unused copy of Fablestar's twelve room types is gone. `create_room`/`update_room` refuse types the world does not declare, and `create_room` defaults to the first declared type.
+    - `get_layout_guide` lists the room types. Space-station examples are now town, dock and castle examples.
+  - **WorldForge:** its JS validator stays for now (D.E).
+  - **Map fix found by the new connectivity check:** Rivermoot's riverside was two halves joined only through town. Eel weirs south now meets mudflats north, wading the shallows.
+  - **Run:**
+    - `sage validate --world rivermoot` gives 0 errors, 0 warnings, exit 0.
+    - `--world fablestar` gives the 3 dangling owner exits and a zero-density `aipub`, exit 1.
+    - Called the MCP functions on a Rivermoot copy (`test_worldforge_mcp.py`); the MCP process already running in this session still has the old code, so its tool was not called.
 

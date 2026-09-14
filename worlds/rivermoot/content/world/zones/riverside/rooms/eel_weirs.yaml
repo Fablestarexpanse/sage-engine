@@ -12,6 +12,9 @@ exits:
   west:
     destination: riverside:boathouse
     description: The old boathouse.
+  south:
+    destination: riverside:mudflats
+    description: Wade the shallows at low water to the mudflats on the far bank.
 features:
 - id: eel_traps
   name: eel traps
