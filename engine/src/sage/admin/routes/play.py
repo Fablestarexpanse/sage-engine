@@ -126,6 +126,11 @@ def build_play_router(server: SageServer) -> APIRouter:
         """Cheap check that player REST routes are live (no DB)."""
         return {"ok": True, "play_api": "v1"}
 
+    @router.get("/play/world")
+    async def play_world():
+        """Public: which world this server runs, for client titles and headers."""
+        return {"id": server.world.id, "name": server.world.manifest.world.name}
+
     @router.get("/media/room-art/{zone_id}/{room_slug}/v/{filename}")
     async def media_room_art_variant(zone_id: str, room_slug: str, filename: str):
         """Scene art variant: zones/{zone}/rooms/art/{room}/{filename}.png"""

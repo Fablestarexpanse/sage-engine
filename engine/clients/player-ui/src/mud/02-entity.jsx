@@ -4,7 +4,7 @@ import { usePlayTheme } from "../PlayThemeContext.jsx";
 
 export function EntitySpan({ type, name, id, children, onContextMenu: parentCtx }) {
   const { T } = usePlayTheme();
-  const colors = { npc: T.glyph.amber, item: T.glyph.cyan, exit: T.glyph.emerald, player: T.glyph.violet, glyph: T.text.glyph };
+  const colors = { npc: T.hue.amber, item: T.hue.cyan, exit: T.hue.emerald, player: T.hue.violet, glyph: T.text.accentStrong };
   const col = colors[type] || T.text.accent;
   const [hov, setHov] = useState(false);
 

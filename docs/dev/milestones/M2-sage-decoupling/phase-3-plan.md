@@ -33,7 +33,7 @@ by owner G.4 ("every mechanic is a first-party plugin").
 | 3.10 | Conduit (proficiencies, FRT..PRS, combat ratings, chargen) → `worlds/fablestar/plugins/conduit` | done |
 | 3.11 | Combat, equipment, ambient, effects → first-party plugins (owner G.4): ambient, effects, combat, equipment, consumables (`use`) | done |
 | 3.12 | Snapshot contributors (`api.snapshot.contribute`); `resonance_levels_total` out of the protocol | done |
-| 3.13 | Declarative client panels; remove Fablestar panels/branding from player-ui: 3.13a API + renderer, 3.13b Conduit panels done | in progress |
+| 3.13 | Declarative client panels; remove Fablestar panels/branding from player-ui: 3.13a API + renderer, 3.13b Conduit panels, 3.13c mock panels and branding out; 3.13d deferred until an admin panel is needed | done |
 | 3.14 | Schema: JSONB state, `digi_balance`/`reputation`/`echo_credits` columns, retire `agent_state` (backfill → drop) | todo |
 | 3.15 | Redis key namespace by world slug | todo |
 | 3.16 | AI slots and style; prompts into `worlds/fablestar/ai` | todo |
@@ -169,6 +169,12 @@ by owner G.4 ("every mechanic is a first-party plugin").
   - 3.13c player-ui loses mock panels (glyphs, quests, target, session stats, keybinds, triggers,
     quick actions: owner G.3 "mock client panels") and Fablestar branding (header from world name,
     wallet chip from the world's primary currency).
+    As built: public `GET /play/world` ({id, name}) titles the page, the sign-in header and the
+    play header (`WorldContext`); the player theme's `glyph` palette became `hue`
+    (`border.glyph` -> `border.accent`, `text.glyph` -> `text.accentStrong`). Left for later
+    steps, because they are wire or schema names: `digi_balance`/`echo_credits` and the pixel/digi
+    chips (3.14 schema), the chargen skill picker (Conduit-shaped; needs a generic chargen
+    options renderer), and the `glyph_cast` narrative type and glyph entity kind (3.18 deletions).
   - 3.13d admin surface (`surface="admin"`, source = the plugin's admin route) only if an admin
     panel is needed by then; the existing plugin admin tabs keep working through their routes.
   `schema_form` waits for its first user (two-world ceiling).

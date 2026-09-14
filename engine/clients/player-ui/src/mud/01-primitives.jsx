@@ -28,7 +28,7 @@ export function ContextMenu({ x, y, items, onClose }) {
             color: item.danger ? T.text.danger : T.text.secondary,
             fontFamily: T.font.body, fontSize: 11, transition: "all 0.1s",
           }}
-          onMouseEnter={e => { e.target.style.background = T.glyph.violetDim; e.target.style.color = T.text.primary; }}
+          onMouseEnter={e => { e.target.style.background = T.hue.violetDim; e.target.style.color = T.text.primary; }}
           onMouseLeave={e => { e.target.style.background = "none"; e.target.style.color = item.danger ? T.text.danger : T.text.secondary; }}
         >
           <span style={{ width: 16, textAlign: "center", fontSize: 12, opacity: 0.7 }}>{item.icon}</span>
@@ -73,7 +73,7 @@ export function DraggablePanel({ id, title, icon, children, defaultPos, defaultS
   const [size, setSize] = useState(defaultSize);
   const [dragging, setDragging] = useState(false);
   const [resizing, setResizing] = useState(false);
-  const accent = accentColor || T.glyph.violet;
+  const accent = accentColor || T.hue.violet;
   const onDragStart = useCallback((e) => {
     if (locked) return; e.preventDefault();
     const sx = e.clientX - pos.x, sy = e.clientY - pos.y;
@@ -115,7 +115,7 @@ export function DraggablePanel({ id, title, icon, children, defaultPos, defaultS
         {badge > 0 && (
           <span aria-label={`${badge} unread`} style={{
             minWidth: 16, height: 16, borderRadius: 8, padding: "0 4px",
-            background: T.glyph.crimson, color: "#fff", fontSize: 9,
+            background: T.hue.crimson, color: "#fff", fontSize: 9,
             fontFamily: T.font.mono, fontWeight: 700, display: "flex",
             alignItems: "center", justifyContent: "center", lineHeight: 1,
           }}>{badge > 99 ? "99+" : badge}</span>

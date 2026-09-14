@@ -146,6 +146,12 @@ export async function playComfyuiStatus() {
   return handlePlayResponse(r);
 }
 
+/** The world this server runs: { id, name }. No auth. */
+export async function playFetchWorld() {
+  const r = await fetch(`${base()}/play/world`);
+  return handlePlayResponse(r);
+}
+
 /** The world's character-creation options (for this world: the skill catalog with budget and caps). No auth. */
 export async function playFetchProficiencyCatalog() {
   const r = await fetch(`${base()}/play/chargen/options`);

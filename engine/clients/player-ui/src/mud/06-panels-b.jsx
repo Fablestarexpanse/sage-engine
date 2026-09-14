@@ -56,8 +56,8 @@ function CharacterStrip({ locationLabel, level, accountName, digiBalance, gameCu
             marginBottom: 10,
             padding: "6px 8px",
             borderRadius: T.radius.md,
-            border: `1px solid ${pvpEnabled ? `${T.glyph.crimson}55` : `${T.text.success}40`}`,
-            background: pvpEnabled ? T.glyph.crimsonDim : "rgba(52,211,153,0.08)",
+            border: `1px solid ${pvpEnabled ? `${T.hue.crimson}55` : `${T.text.success}40`}`,
+            background: pvpEnabled ? T.hue.crimsonDim : "rgba(52,211,153,0.08)",
           }}
         >
           <div style={{ ...micro, marginBottom: 2 }}>Player combat</div>
@@ -66,7 +66,7 @@ function CharacterStrip({ locationLabel, level, accountName, digiBalance, gameCu
               fontSize: 11,
               fontFamily: T.font.body,
               fontWeight: 700,
-              color: pvpEnabled ? T.glyph.crimson : T.text.success,
+              color: pvpEnabled ? T.hue.crimson : T.text.success,
             }}
           >
             {pvpEnabled ? "PVP enabled" : "No PVP"}
@@ -95,9 +95,9 @@ function CharacterStrip({ locationLabel, level, accountName, digiBalance, gameCu
             {locationLabel?.trim() ? locationLabel : "No room line yet — move or look"}
           </div>
         </div>
-        <div style={{ flexShrink: 0, width: 52, textAlign: "center", padding: "4px 6px", borderRadius: T.radius.md, background: `${T.glyph.violet}14`, border: `1px solid ${T.glyph.violet}35` }}>
+        <div style={{ flexShrink: 0, width: 52, textAlign: "center", padding: "4px 6px", borderRadius: T.radius.md, background: `${T.hue.violet}14`, border: `1px solid ${T.hue.violet}35` }}>
           <div style={{ ...micro, marginBottom: 2 }}>Level</div>
-          <div style={{ fontSize: 18, fontFamily: T.font.display, fontWeight: 700, color: T.glyph.violet, lineHeight: 1.1 }}>
+          <div style={{ fontSize: 18, fontFamily: T.font.display, fontWeight: 700, color: T.hue.violet, lineHeight: 1.1 }}>
             {level != null && level !== "" ? level : "—"}
           </div>
         </div>
@@ -151,7 +151,7 @@ export function CharacterPanel({
             flexShrink: 0,
             padding: "10px 12px 9px",
             borderBottom: `1px solid ${T.border.subtle}`,
-            background: `linear-gradient(165deg, ${T.glyph.violetDim} 0%, ${T.bg.deep} 100%)`,
+            background: `linear-gradient(165deg, ${T.hue.violetDim} 0%, ${T.bg.deep} 100%)`,
             boxShadow: `inset 0 1px 0 ${T.border.subtle}40`,
           }}
         >
@@ -186,7 +186,7 @@ export function CharacterPanel({
                   height: headerH,
                   position: "relative",
                   overflow: "hidden",
-                  background: `radial-gradient(ellipse at center,${T.glyph.violetDim},${T.bg.deep})`,
+                  background: `radial-gradient(ellipse at center,${T.hue.violetDim},${T.bg.deep})`,
                   borderBottom: `1px solid ${T.border.subtle}`,
                 }
           }
@@ -235,7 +235,7 @@ export function CharacterPanel({
                 cy={portraitImageUrl ? 100 : headerH / 2}
                 r={10 + i * 10}
                 fill="none"
-                stroke={T.glyph.violet}
+                stroke={T.hue.violet}
                 strokeWidth={0.5}
                 strokeDasharray="3 5"
               />
@@ -250,13 +250,13 @@ export function CharacterPanel({
                 transform: "translateX(-50%)",
                 width: 60,
                 height: 80,
-                background: `linear-gradient(180deg,transparent,${T.glyph.violet}20)`,
+                background: `linear-gradient(180deg,transparent,${T.hue.violet}20)`,
                 borderRadius: "30px 30px 0 0",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 fontSize: 28,
-                color: T.glyph.violet + "40",
+                color: T.hue.violet + "40",
               }}
             >
               ◈
@@ -288,11 +288,11 @@ export function CharacterPanel({
         reputation={reputation}
       />
       <div style={{ display: "flex", borderBottom: `1px solid ${T.border.subtle}` }}>
-        {["vitals","effects"].map(t => <button key={t} type="button" onClick={()=>setTab(t)} style={{ flex: 1, padding: "5px 0", background: "none", border: "none", borderBottom: tab===t?`2px solid ${T.glyph.violet}`:"2px solid transparent", color: tab===t?T.text.accent:T.text.muted, fontFamily: T.font.body, fontSize: 9, textTransform: "uppercase", letterSpacing: "0.08em", cursor: "pointer" }}>{t}</button>)}
+        {["vitals","effects"].map(t => <button key={t} type="button" onClick={()=>setTab(t)} style={{ flex: 1, padding: "5px 0", background: "none", border: "none", borderBottom: tab===t?`2px solid ${T.hue.violet}`:"2px solid transparent", color: tab===t?T.text.accent:T.text.muted, fontFamily: T.font.body, fontSize: 9, textTransform: "uppercase", letterSpacing: "0.08em", cursor: "pointer" }}>{t}</button>)}
       </div>
       <div style={{ flex: 1, padding: 8, overflow: "auto" }}>
         {tab === "vitals" && <>
-          <Bar label="Health" val={hp} max={hpMax} color={T.glyph.crimson} icon="♥" />
+          <Bar label="Health" val={hp} max={hpMax} color={T.hue.crimson} icon="♥" />
         </>}
         {tab === "effects" && (
           <div>
@@ -302,9 +302,9 @@ export function CharacterPanel({
               </div>
             ) : (
               effects.map((e, i) => (
-                <div key={i} style={{ marginBottom: 6, padding: "5px 7px", background: T.bg.surface, borderRadius: T.radius.sm, border: `1px solid ${e.debuff ? T.glyph.crimson + "40" : T.glyph.emerald + "40"}` }}>
+                <div key={i} style={{ marginBottom: 6, padding: "5px 7px", background: T.bg.surface, borderRadius: T.radius.sm, border: `1px solid ${e.debuff ? T.hue.crimson + "40" : T.hue.emerald + "40"}` }}>
                   <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span style={{ fontSize: 11, fontFamily: T.font.body, color: e.debuff ? T.glyph.crimson : T.glyph.emerald }}>{e.name}</span>
+                    <span style={{ fontSize: 11, fontFamily: T.font.body, color: e.debuff ? T.hue.crimson : T.hue.emerald }}>{e.name}</span>
                     <span style={{ fontSize: 9, fontFamily: T.font.mono, color: T.text.muted }}>
                       {e.seconds_left == null ? "∞" : `${e.seconds_left}s`}
                     </span>
@@ -317,38 +317,6 @@ export function CharacterPanel({
             )}
           </div>
         )}
-      </div>
-    </div>
-  );
-}
-
-export function GlyphBar() {
-  const { T } = usePlayTheme();
-  const [hov, setHov] = useState(null);
-  const glyphs = [
-    { id:1,name:"Ward of Stillness",slot:"L.Forearm",tier:2,color:T.glyph.cyan,icon:"◇",cd:0,cost:15,key:"1" },
-    { id:2,name:"Searing Inscription",slot:"R.Palm",tier:3,color:T.glyph.crimson,icon:"⬡",cd:2,cost:25,key:"2" },
-    { id:3,name:"Echo Thread",slot:"Spine",tier:1,color:T.glyph.violet,icon:"◈",cd:0,cost:10,key:"3" },
-    { id:null,name:"Empty",slot:"—",tier:0,color:T.text.muted,icon:"○",cd:0,cost:0,key:"4" },
-  ];
-  return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
-      <div style={{ display: "grid", gridTemplateColumns: `repeat(${glyphs.length},1fr)`, gap: 3, padding: 6, flex: 1 }}>
-        {glyphs.map((g,i) => {
-          const h = hov===i, onCd = g.cd>0;
-          return (
-            <Tooltip key={i} text={g.name} detail={g.id ? `T${g.tier} · ${g.slot} · ${g.cost} RES` : "Empty slot"}>
-              <div onMouseEnter={()=>setHov(i)} onMouseLeave={()=>setHov(null)}
-                role="button" aria-label={`Glyph ${g.key}: ${g.name}`}
-                style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, padding: "6px 2px", background: h&&g.id?g.color+"15":T.bg.surface, border: `1px solid ${g.id?(h?g.color+"50":g.color+"25"):T.border.subtle}`, borderRadius: T.radius.md, cursor: g.id?"pointer":"default", opacity: onCd?0.5:1, transition: "all 0.15s" }}>
-                <span style={{ fontSize: 18, color: g.color, lineHeight: 1 }}>{g.icon}</span>
-                <span style={{ fontSize: 7, fontFamily: T.font.body, color: T.text.muted, textAlign: "center", lineHeight: 1.1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>{g.name}</span>
-                <span style={{ position: "absolute", top: 2, right: 3, fontSize: 7, fontFamily: T.font.mono, color: T.text.muted+"60" }}>{g.key}</span>
-                {onCd && <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: T.bg.overlay, borderRadius: T.radius.md, fontFamily: T.font.mono, fontSize: 14, color: T.text.muted, fontWeight: 700 }}>{g.cd}</div>}
-              </div>
-            </Tooltip>
-          );
-        })}
       </div>
     </div>
   );
@@ -370,7 +338,7 @@ export function InventoryPanel({ onContextMenu, items: liveItems = null }) {
     }
     return [...grouped.values()];
   }, [liveItems]);
-  const rc = { common: T.text.secondary, uncommon: T.glyph.emerald, rare: T.glyph.cyan, epic: T.glyph.violet, legendary: T.glyph.amber };
+  const rc = { common: T.text.secondary, uncommon: T.hue.emerald, rare: T.hue.cyan, epic: T.hue.violet, legendary: T.hue.amber };
   const filtered = filter === "all" ? items : items.filter(i => i.type === filter);
   if (!items.length) {
     return (
@@ -384,7 +352,7 @@ export function InventoryPanel({ onContextMenu, items: liveItems = null }) {
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <div style={{ display: "flex", padding: "3px 4px", gap: 3, borderBottom: `1px solid ${T.border.subtle}` }}>
-        {["all","equipment","consumable","material"].map(f => <button key={f} type="button" onClick={()=>setFilter(f)} style={{ padding: "2px 6px", borderRadius: T.radius.sm, border: "none", background: filter===f?T.glyph.violetDim:"transparent", color: filter===f?T.text.accent:T.text.muted, fontFamily: T.font.body, fontSize: 8, textTransform: "uppercase", cursor: "pointer" }}>{f}</button>)}
+        {["all","equipment","consumable","material"].map(f => <button key={f} type="button" onClick={()=>setFilter(f)} style={{ padding: "2px 6px", borderRadius: T.radius.sm, border: "none", background: filter===f?T.hue.violetDim:"transparent", color: filter===f?T.text.accent:T.text.muted, fontFamily: T.font.body, fontSize: 8, textTransform: "uppercase", cursor: "pointer" }}>{f}</button>)}
       </div>
       <div style={{ flex: 1, overflow: "auto", padding: 3 }}>
         {filtered.map((item, i) => (
@@ -413,7 +381,7 @@ export function SocialPanel({ messages = null }) {
   const logRef = useRef(null);
   const channels = [
     { id: "local", label: "Local", color: T.text.secondary },
-    { id: "tell", label: "Tells", color: T.glyph.violet },
+    { id: "tell", label: "Tells", color: T.hue.violet },
   ];
   const all = Array.isArray(messages) ? messages : [];
   const msgs = all.filter((m) => m.channel === ch);
@@ -456,7 +424,7 @@ export function SocialPanel({ messages = null }) {
           <div key={i} style={{ marginBottom: 5 }}>
             <div style={{ display: "flex", gap: 4, alignItems: "baseline" }}>
               <span style={{ fontSize: 9, fontFamily: T.font.mono, color: T.text.muted, opacity: 0.4 }}>{fmt(m.at)}</span>
-              <span style={{ fontSize: 10, fontFamily: T.font.body, fontWeight: 600, color: m.self?T.text.accent:T.glyph.cyan }}>{m.self && ch==="local" ? "You" : m.from}</span>
+              <span style={{ fontSize: 10, fontFamily: T.font.body, fontWeight: 600, color: m.self?T.text.accent:T.hue.cyan }}>{m.self && ch==="local" ? "You" : m.from}</span>
             </div>
             <div style={{ fontSize: 11, fontFamily: T.font.mono, color: T.text.secondary, paddingLeft: 36, lineHeight: 1.4 }}>{m.text}</div>
           </div>
@@ -475,7 +443,7 @@ export function SocialPanel({ messages = null }) {
 export function ScenePanel({
   imageUrl,
   roomLabel,
-  downloadBaseName = "fablestar-scene",
+  downloadBaseName = "scene",
   generating = false,
   usingSceneAsNarrativeBackdrop = false,
   onUseSceneAsNarrativeBackdrop,
@@ -497,7 +465,7 @@ export function ScenePanel({
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${downloadBaseName || "fablestar-scene"}.png`;
+      a.download = `${downloadBaseName || "scene"}.png`;
       a.rel = "noopener";
       document.body.appendChild(a);
       a.click();
@@ -516,7 +484,7 @@ export function ScenePanel({
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", position: "relative" }}>
-      <div style={{ flex: 1, position: "relative", overflow: "hidden", background: `radial-gradient(ellipse at 40% 30%,${T.glyph.violetDim},${T.bg.deep})` }}>
+      <div style={{ flex: 1, position: "relative", overflow: "hidden", background: `radial-gradient(ellipse at 40% 30%,${T.hue.violetDim},${T.bg.deep})` }}>
         {hasImage ? (
           <div style={{ position: "absolute", inset: 0, opacity: opacity / 100 }}>
             <img
@@ -534,9 +502,9 @@ export function ScenePanel({
             />
           </div>
         ) : (
-          <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse at 30% 20%,${T.glyph.violet}12,transparent 50%),linear-gradient(180deg,${T.bg.void},${T.bg.deep})`, opacity: opacity / 100 }}>
+          <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse at 30% 20%,${T.hue.violet}12,transparent 50%),linear-gradient(180deg,${T.bg.void},${T.bg.deep})`, opacity: opacity / 100 }}>
             <svg style={{ position: "absolute", inset: 0, opacity: 0.15 }} viewBox="0 0 400 300">
-              <rect x="170" y="180" width="60" height="80" rx="3" fill={T.glyph.violet + "08"} stroke={T.glyph.violet + "30"} strokeWidth="0.5" />
+              <rect x="170" y="180" width="60" height="80" rx="3" fill={T.hue.violet + "08"} stroke={T.hue.violet + "30"} strokeWidth="0.5" />
             </svg>
             <div
               style={{
@@ -557,7 +525,7 @@ export function ScenePanel({
           </div>
         )}
         <div style={{ position: "absolute", bottom: 6, right: 6, display: "flex", alignItems: "center", gap: 4, background: T.bg.overlay, padding: "2px 6px", borderRadius: T.radius.sm }}>
-          <input type="range" min={0} max={100} value={opacity} onChange={(e) => setOpacity(+e.target.value)} aria-label="Image opacity" style={{ width: 50, accentColor: T.glyph.violet, height: 2 }} />
+          <input type="range" min={0} max={100} value={opacity} onChange={(e) => setOpacity(+e.target.value)} aria-label="Image opacity" style={{ width: 50, accentColor: T.hue.violet, height: 2 }} />
         </div>
         {generating ? (
           <div
@@ -582,7 +550,7 @@ export function ScenePanel({
                 height: 36,
                 borderRadius: "50%",
                 border: `3px solid ${T.border.dim}`,
-                borderTopColor: T.glyph.violet,
+                borderTopColor: T.hue.violet,
                 animation: "spin 0.9s linear infinite",
               }}
             />
@@ -603,8 +571,8 @@ export function ScenePanel({
             style={{
               padding: "3px 8px",
               borderRadius: T.radius.sm,
-              border: `1px solid ${usingSceneAsNarrativeBackdrop ? T.border.glyph : T.border.subtle}`,
-              background: usingSceneAsNarrativeBackdrop ? T.glyph.violetDim : T.bg.surface,
+              border: `1px solid ${usingSceneAsNarrativeBackdrop ? T.border.accent : T.border.subtle}`,
+              background: usingSceneAsNarrativeBackdrop ? T.hue.violetDim : T.bg.surface,
               color: usingSceneAsNarrativeBackdrop ? T.text.accent : T.text.muted,
               fontFamily: T.font.body,
               fontSize: 9,
@@ -663,7 +631,7 @@ export function ScenePanel({
                   padding: "3px 8px",
                   borderRadius: T.radius.sm,
                   border: `1px solid ${T.border.medium}`,
-                  background: T.glyph.violetDim,
+                  background: T.hue.violetDim,
                   color: T.text.accent,
                   fontFamily: T.font.body,
                   fontSize: 9,

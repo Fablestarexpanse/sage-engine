@@ -79,7 +79,7 @@ export function ChargenProficienciesStep({
                   style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center" }}
                 />
               ) : (
-                <span style={{ fontSize: 18, color: T.glyph.violet }}>◈</span>
+                <span style={{ fontSize: 18, color: T.hue.violet }}>◈</span>
               )}
             </div>
             <div style={{ minWidth: 0 }}>
@@ -126,8 +126,8 @@ export function ChargenProficienciesStep({
         <div
           style={{
             borderRadius: T.radius.lg,
-            border: `1px solid ${T.border.glyph}`,
-            background: T.glyph.violetDim,
+            border: `1px solid ${T.border.accent}`,
+            background: T.hue.violetDim,
             padding: "12px 14px",
           }}
         >
@@ -152,7 +152,7 @@ export function ChargenProficienciesStep({
                 width: `${pct}%`,
                 height: "100%",
                 borderRadius: 99,
-                background: `linear-gradient(90deg, ${T.glyph.violet}, ${T.glyph.cyan})`,
+                background: `linear-gradient(90deg, ${T.hue.violet}, ${T.hue.cyan})`,
                 transition: "width 0.2s ease",
               }}
             />

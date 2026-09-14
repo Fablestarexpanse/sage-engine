@@ -95,6 +95,12 @@ def test_play_health_is_public(client):
     assert r.json()["ok"] is True
 
 
+def test_play_world_names_the_running_world(client, server):
+    r = client.get("/play/world")
+    assert r.status_code == 200
+    assert r.json() == {"id": server.world.id, "name": server.world.manifest.world.name}
+
+
 def test_valid_staff_token_resolves_context(client, server):
     r = client.get("/admin/me", headers=_auth(server, 1))
     assert r.status_code == 200

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { usePlayTheme } from "./PlayThemeContext.jsx";
+import { useWorld } from "./WorldContext.jsx";
 import {
   playLogin,
   playDevLogin,
@@ -118,7 +119,7 @@ function ChooseCharacterGlassStats({ character, selected, onSelectRow }) {
         padding: "12px 14px",
         cursor: "pointer",
         borderLeft: `1px solid ${T.border.subtle}`,
-        background: selected ? `${T.glyph.violet}12` : T.bg.surface,
+        background: selected ? `${T.hue.violet}12` : T.bg.surface,
       }}
     >
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
@@ -171,7 +172,7 @@ function ChooseCharacterGlassStats({ character, selected, onSelectRow }) {
           >
             Level
           </div>
-          <div style={{ fontSize: 17, fontWeight: 700, fontFamily: T.font.display, color: T.glyph.violet }}>—</div>
+          <div style={{ fontSize: 17, fontWeight: 700, fontFamily: T.font.display, color: T.hue.violet }}>—</div>
         </div>
       </div>
     </div>
@@ -240,10 +241,11 @@ function useAuthChrome() {
 
 function AuthBrandHeader({ subtitle }) {
   const { T } = usePlayTheme();
+  const world = useWorld();
   return (
     <div style={{ textAlign: "center", marginBottom: 22 }}>
-      <div style={{ fontSize: 28, color: T.glyph.violet, marginBottom: 6 }}>◈</div>
-      <h1 style={{ fontFamily: T.font.display, fontSize: 22, color: T.text.primary, letterSpacing: "0.12em", fontWeight: 700 }}>FABLESTAR</h1>
+      <div style={{ fontSize: 28, color: T.hue.violet, marginBottom: 6 }}>◈</div>
+      <h1 style={{ fontFamily: T.font.display, fontSize: 22, color: T.text.primary, letterSpacing: "0.12em", fontWeight: 700, textTransform: "uppercase" }}>{world.name}</h1>
       {subtitle != null && subtitle !== "" && (
         <p style={{ fontSize: 11, color: T.text.muted, marginTop: 6 }}>{subtitle}</p>
       )}
@@ -277,7 +279,7 @@ function AuthLanding() {
     <div style={fullScreenShell}>
       <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600&family=Exo+2:wght@600;700&family=Oxanium:wght@500;600;700&display=swap" rel="stylesheet" />
       <div style={card}>
-        <AuthBrandHeader subtitle="Expanse — enter your conduit" />
+        <AuthBrandHeader subtitle="Enter the world" />
         <p style={{ fontSize: 12, color: T.text.secondary, lineHeight: 1.55, margin: "0 0 20px", textAlign: "center" }}>
           Sign in or register. After authentication you will choose or create a character before entering the world.
         </p>
@@ -315,7 +317,7 @@ function AuthLanding() {
             border: "none",
             cursor: "pointer",
             marginBottom: 10,
-            background: `linear-gradient(135deg,${T.glyph.violet},${T.glyph.cyan})`,
+            background: `linear-gradient(135deg,${T.hue.violet},${T.hue.cyan})`,
             color: "#0a0a0f",
             fontWeight: 700,
             fontFamily: T.font.body,
@@ -476,7 +478,7 @@ function AuthSignInForm({ onLoggedIn }) {
               borderRadius: T.radius.md,
               border: "none",
               cursor: busy ? "wait" : "pointer",
-              background: `linear-gradient(135deg,${T.glyph.violet},${T.glyph.cyan})`,
+              background: `linear-gradient(135deg,${T.hue.violet},${T.hue.cyan})`,
               color: "#0a0a0f",
               fontWeight: 700,
               fontFamily: T.font.body,
@@ -494,11 +496,11 @@ function AuthSignInForm({ onLoggedIn }) {
               marginTop: 16,
               padding: "10px",
               borderRadius: T.radius.md,
-              border: `1px dashed ${T.glyph.amber}`,
+              border: `1px dashed ${T.hue.amber}`,
               background: T.bg.surface,
             }}
           >
-            <label style={{ display: "block", fontSize: 10, color: T.glyph.amber, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>
+            <label style={{ display: "block", fontSize: 10, color: T.hue.amber, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>
               Dev login (no password, localhost only)
             </label>
             <div style={{ display: "flex", gap: 8 }}>
@@ -521,9 +523,9 @@ function AuthSignInForm({ onLoggedIn }) {
                 style={{
                   padding: "0 14px",
                   borderRadius: T.radius.md,
-                  border: `1px solid ${T.glyph.amber}`,
+                  border: `1px solid ${T.hue.amber}`,
                   background: "transparent",
-                  color: T.glyph.amber,
+                  color: T.hue.amber,
                   fontWeight: 700,
                   fontFamily: T.font.body,
                   fontSize: 12,
@@ -619,7 +621,7 @@ function AuthRegisterForm({ onLoggedIn }) {
               borderRadius: T.radius.md,
               border: "none",
               cursor: busy ? "wait" : "pointer",
-              background: `linear-gradient(135deg,${T.glyph.violet},${T.glyph.cyan})`,
+              background: `linear-gradient(135deg,${T.hue.violet},${T.hue.cyan})`,
               color: "#0a0a0f",
               fontWeight: 700,
               fontFamily: T.font.body,
@@ -826,7 +828,7 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
           alignItems: "center",
           justifyContent: "center",
           fontSize: 20,
-          color: T.glyph.violet,
+          color: T.hue.violet,
         }}
       >
         ◈
@@ -1193,7 +1195,7 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
               maxHeight: "calc(100vh - 56px)",
               borderRadius: T.radius.lg,
               overflow: "hidden",
-              border: `1px solid ${T.border.glyph}`,
+              border: `1px solid ${T.border.accent}`,
               boxShadow: `0 0 0 1px rgba(0,0,0,0.4), ${T.shadow.glow}`,
             }}
           >
@@ -1412,8 +1414,8 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
                     style={{
                       padding: "8px 14px",
                       borderRadius: T.radius.md,
-                      border: `1px solid ${T.border.glyph}`,
-                      background: comfyReady ? T.glyph.violetDim : T.bg.surface,
+                      border: `1px solid ${T.border.accent}`,
+                      background: comfyReady ? T.hue.violetDim : T.bg.surface,
                       color: comfyReady ? T.text.primary : T.text.muted,
                       fontSize: 11,
                       fontWeight: 600,
@@ -1453,11 +1455,11 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
                   aspectRatio: PORTRAIT_ASPECT_RATIO_CSS,
                   borderRadius: T.radius.lg,
                   border: portraitGenerating
-                    ? `1px solid ${T.border.glyphHot}`
+                    ? `1px solid ${T.border.accentHot}`
                     : pendingPortraitUrl
-                      ? `1px solid ${T.border.glyph}`
-                      : `1px dashed ${T.border.glyph}`,
-                  background: portraitGenerating ? T.bg.deep : !pendingPortraitUrl ? T.glyph.violetDim : undefined,
+                      ? `1px solid ${T.border.accent}`
+                      : `1px dashed ${T.border.accent}`,
+                  background: portraitGenerating ? T.bg.deep : !pendingPortraitUrl ? T.hue.violetDim : undefined,
                   boxShadow: portraitGenerating ? T.shadow.glow : "none",
                   display: "flex",
                   alignItems: "center",
@@ -1487,8 +1489,8 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
                         height: 44,
                         borderRadius: "50%",
                         border: `2px solid ${T.border.dim}`,
-                        borderTopColor: T.glyph.violet,
-                        borderRightColor: T.glyph.cyan,
+                        borderTopColor: T.hue.violet,
+                        borderRightColor: T.hue.cyan,
                       }}
                     />
                     <div
@@ -1570,7 +1572,7 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
                 borderRadius: T.radius.md,
                 border: "none",
                 cursor: formLocked ? "wait" : "pointer",
-                background: `linear-gradient(135deg,${T.glyph.violet},${T.glyph.cyan})`,
+                background: `linear-gradient(135deg,${T.hue.violet},${T.hue.cyan})`,
                 color: "#0a0a0f",
                 fontWeight: 700,
                 fontSize: 12,
@@ -1637,7 +1639,7 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
                 borderRadius: T.radius.md,
                 border: "none",
                 cursor: createBusy ? "wait" : "pointer",
-                background: `linear-gradient(135deg,${T.glyph.violet},${T.glyph.cyan})`,
+                background: `linear-gradient(135deg,${T.hue.violet},${T.hue.cyan})`,
                 color: "#0a0a0f",
                 fontWeight: 700,
                 fontSize: 12,
@@ -1670,8 +1672,8 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
                   marginBottom: 14,
                   padding: "12px 14px",
                   borderRadius: T.radius.lg,
-                  border: `1px solid ${T.border.glyph}`,
-                  background: T.glyph.amberDim,
+                  border: `1px solid ${T.border.accent}`,
+                  background: T.hue.amberDim,
                   color: T.text.secondary,
                   fontSize: 12,
                   display: "flex",
@@ -1709,8 +1711,8 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
                   style={{
                     padding: 16,
                     borderRadius: T.radius.lg,
-                    border: `1px dashed ${T.border.glyph}`,
-                    background: T.glyph.violetDim,
+                    border: `1px dashed ${T.border.accent}`,
+                    background: T.hue.violetDim,
                     color: T.text.secondary,
                     fontSize: 12,
                   }}
@@ -1726,8 +1728,8 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
                     alignItems: "stretch",
                     gap: 0,
                     borderRadius: T.radius.lg,
-                    border: `1px solid ${selectedId === c.id ? T.border.glyph : T.border.dim}`,
-                    background: selectedId === c.id ? T.glyph.violetDim : T.bg.panel,
+                    border: `1px solid ${selectedId === c.id ? T.border.accent : T.border.dim}`,
+                    background: selectedId === c.id ? T.hue.violetDim : T.bg.panel,
                     overflow: "hidden",
                   }}
                 >
@@ -1798,9 +1800,9 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
                             padding: "2px 6px",
                             borderRadius: T.radius.sm,
                             fontWeight: 600,
-                            color: c.pvp_enabled ? T.glyph.crimson : T.text.success,
-                            background: c.pvp_enabled ? T.glyph.crimsonDim : "rgba(52,211,153,0.1)",
-                            border: `1px solid ${c.pvp_enabled ? `${T.glyph.crimson}40` : `${T.text.success}35`}`,
+                            color: c.pvp_enabled ? T.hue.crimson : T.text.success,
+                            background: c.pvp_enabled ? T.hue.crimsonDim : "rgba(52,211,153,0.1)",
+                            border: `1px solid ${c.pvp_enabled ? `${T.hue.crimson}40` : `${T.text.success}35`}`,
                           }}
                         >
                           {c.pvp_enabled ? "PVP on" : "No PVP"}
@@ -1886,7 +1888,7 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
                 border: "none",
                 cursor: canEnter ? "pointer" : "not-allowed",
                 opacity: canEnter ? 1 : 0.45,
-                background: `linear-gradient(135deg,${T.glyph.violet},${T.glyph.cyan})`,
+                background: `linear-gradient(135deg,${T.hue.violet},${T.hue.cyan})`,
                 color: "#0a0a0f",
                 fontWeight: 700,
                 fontSize: 12,
@@ -1929,7 +1931,7 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
                   width: "100%",
                   aspectRatio: PORTRAIT_ASPECT_RATIO_CSS,
                   borderRadius: T.radius.lg,
-                  border: `1px solid ${T.border.glyph}`,
+                  border: `1px solid ${T.border.accent}`,
                   overflow: "hidden",
                 }}
               >
@@ -1985,6 +1987,7 @@ function levelsTotalOf(payload) {
 }
 
 export default function App() {
+  const world = useWorld();
   const [step, setStep] = useState("login");
   const [auth, setAuth] = useState(null);
   const passwordRef = useRef("");
@@ -2473,7 +2476,8 @@ export default function App() {
           }}
           sceneImageUrl={resolvedSceneImageUrl}
           sceneRoomLabel={import.meta.env.VITE_SCENE_ROOM_LABEL || undefined}
-          sceneDownloadBaseName={`fablestar-scene-${String(playSession.characterName || "character").replace(/[^a-zA-Z0-9_-]+/g, "_")}`}
+          worldName={world.name}
+          sceneDownloadBaseName={`scene-${String(playSession.characterName || "character").replace(/[^a-zA-Z0-9_-]+/g, "_")}`}
           gameCurrencyDisplayName={auth?.gameCurrencyDisplayName ?? "Digi"}
           echoEconomy={echoEconomy}
           sceneGen={{

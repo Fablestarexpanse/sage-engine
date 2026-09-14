@@ -49,9 +49,9 @@ export function MiniMap({ map = null }) {
 
   const current = map?.current;
   const roomCol = (r) => {
-    if (r.id === current) return T.glyph.violet;
+    if (r.id === current) return T.hue.violet;
     if (!r.visited) return T.text.muted + "40";
-    return T.glyph.cyan;
+    return T.hue.cyan;
   };
 
   return (
@@ -70,9 +70,9 @@ export function MiniMap({ map = null }) {
           return (
             <g key={r.id} onMouseEnter={() => setHov(r.id)} onMouseLeave={() => setHov(null)}
               role="img" aria-label={r.visited ? r.name : "Unexplored"}>
-              {isCur && <circle cx={r.px} cy={r.py} r={16} fill="none" stroke={T.glyph.violet} strokeWidth={1} opacity={0.3} style={{ animation: "pulse 2s ease-in-out infinite" }}/>}
+              {isCur && <circle cx={r.px} cy={r.py} r={16} fill="none" stroke={T.hue.violet} strokeWidth={1} opacity={0.3} style={{ animation: "pulse 2s ease-in-out infinite" }}/>}
               <circle cx={r.px} cy={r.py} r={isCur ? 10 : h ? 9 : 7} fill={r.visited ? c + "20" : T.bg.deep} stroke={c} strokeWidth={isCur ? 2 : 1.5} opacity={r.visited ? 1 : 0.35}/>
-              {isCur && <circle cx={r.px} cy={r.py} r={3.5} fill={T.glyph.violet}/>}
+              {isCur && <circle cx={r.px} cy={r.py} r={3.5} fill={T.hue.violet}/>}
               {r.visited && (
                 <text x={r.px} y={r.py + (isCur ? 20 : 17)} textAnchor="middle" fill={h ? T.text.primary : T.text.muted} fontSize={7} fontFamily={T.font.body}>
                   {r.name}
@@ -83,7 +83,7 @@ export function MiniMap({ map = null }) {
         })}
       </svg>
       <div style={{ position: "absolute", bottom: 6, right: 6, display: "flex", gap: 3 }}>
-        {[0.8, 1, 1.3].map((z) => <button key={z} type="button" onClick={() => setZoom(z)} aria-label={`Zoom ${z}x`} style={{ width: 20, height: 20, borderRadius: T.radius.sm, background: zoom === z ? T.glyph.violetDim : T.bg.surface, border: `1px solid ${zoom === z ? T.border.glyph : T.border.subtle}`, color: zoom === z ? T.text.accent : T.text.muted, cursor: "pointer", fontSize: 9, fontFamily: T.font.mono, display: "flex", alignItems: "center", justifyContent: "center" }}>{z === 0.8 ? "−" : z === 1 ? "○" : "+"}</button>)}
+        {[0.8, 1, 1.3].map((z) => <button key={z} type="button" onClick={() => setZoom(z)} aria-label={`Zoom ${z}x`} style={{ width: 20, height: 20, borderRadius: T.radius.sm, background: zoom === z ? T.hue.violetDim : T.bg.surface, border: `1px solid ${zoom === z ? T.border.accent : T.border.subtle}`, color: zoom === z ? T.text.accent : T.text.muted, cursor: "pointer", fontSize: 9, fontFamily: T.font.mono, display: "flex", alignItems: "center", justifyContent: "center" }}>{z === 0.8 ? "−" : z === 1 ? "○" : "+"}</button>)}
       </div>
     </div>
   );

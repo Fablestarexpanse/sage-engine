@@ -6,8 +6,9 @@ lodging, 3.6 search and crafting (+ progression slots), 3.7 maestro, 3.8 hazards
 sessions, engine seams, plugins/agents with plg_agents_state) DONE; agent_state retirement moved to 3.14 (order-
 safe rename first). 3.12 snapshot sections, 3.10 Conduit world plugin, 3.11 ambient, effects, combat,
 equipment and consumables plugins DONE. 3.13a panel API + generic player-ui renderer DONE (factions,
-equipment, Rivermoot levels); 3.13b Conduit sheet + skill tree panels DONE. Next: 3.13c mock panels and
-Fablestar branding out of player-ui. Dev DB at n7o8p9q0r1s2. Ratchet 866/72. Commit 9a831ea does not boot (be48da3 completes it).
+equipment, Rivermoot levels); 3.13b Conduit sheet + skill tree panels DONE; 3.13c mock panels and branding out
+of player-ui DONE. Next: 3.14 schema (JSONB, digi/reputation/echo columns, agent_state). Dev DB at
+n7o8p9q0r1s2. Ratchet 634/72. Commit 9a831ea does not boot (be48da3 completes it).
 Open owner questions: Rivermoot license; PRs for sage/stage-2b and sage/stage-2c.
 Review page: https://claude.ai/code/artifact/2d488113-1ca9-4f45-b993-ac0253e0670c
 

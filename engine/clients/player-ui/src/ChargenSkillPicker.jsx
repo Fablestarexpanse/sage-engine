@@ -105,8 +105,8 @@ export function ChargenSkillPicker({ budget, maxPerLeaf, leaves, value, onChange
   const chip = (active) => ({
     padding: "6px 11px",
     borderRadius: 999,
-    border: `1px solid ${active ? T.border.glyph : T.border.dim}`,
-    background: active ? T.glyph.violetDim : T.bg.surface,
+    border: `1px solid ${active ? T.border.accent : T.border.dim}`,
+    background: active ? T.hue.violetDim : T.bg.surface,
     color: active ? T.text.primary : T.text.muted,
     fontSize: 11,
     fontWeight: 600,
@@ -173,7 +173,7 @@ export function ChargenSkillPicker({ budget, maxPerLeaf, leaves, value, onChange
                 width: `${budget ? Math.min(100, (used / budget) * 100) : 0}%`,
                 height: "100%",
                 borderRadius: 99,
-                background: `linear-gradient(90deg, ${T.glyph.violet}, ${T.glyph.cyan})`,
+                background: `linear-gradient(90deg, ${T.hue.violet}, ${T.hue.cyan})`,
                 transition: "width 0.2s ease",
               }}
             />

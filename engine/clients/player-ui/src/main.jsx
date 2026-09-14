@@ -4,11 +4,14 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
 import { PlayThemeProvider } from './PlayThemeContext.jsx'
+import { WorldProvider } from './WorldContext.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <PlayThemeProvider>
-      <App />
+      <WorldProvider>
+        <App />
+      </WorldProvider>
     </PlayThemeProvider>
   </StrictMode>,
 )
