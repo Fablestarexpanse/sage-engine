@@ -1,6 +1,6 @@
 # Phase 5 plan: tooling
 
-**Milestone:** M2 — SAGE engine decoupling · **Branch:** `sage/phase-5` (stacked on `sage/phase-4`) · **Status:** in progress
+**Milestone:** M2 — SAGE engine decoupling · **Branch:** `sage/phase-5` (stacked on `sage/phase-4`) · **Status:** done
 
 Living plan. The tool surface was decided as a set at the Phase 1 review (`PHASE1_CONTRACTS.md`
 D.E, owner G.1/G.6). Phase 3 already retired the admin World Builder (3.18a) and the
@@ -29,7 +29,7 @@ message, and the full suite runs before each commit.
 | 5.5 | WorldForge edits plugin content: room, feature and item forms for extension fields, generated from the exported schema. | done |
 | 5.6 | Credit bundles are deployment config (`comfyui.toml`), served to the admin console. | done |
 | 5.7 | World theme: `ui/theme.yaml` (accent colours, title mark) served with `GET /play/world`, applied by player-ui. | done |
-| 5.8 | Nexus write-through for WorldForge: decide (build or defer) and record. | todo |
+| 5.8 | Nexus write-through for WorldForge: decide (build or defer) and record. | done — deferred |
 
 ## Notes
 - **5.1 server-sent command list (done).** `GET /play/commands` returns the registry's primary
@@ -110,4 +110,16 @@ message, and the full suite runs before each commit.
     - Rivermoot sign-in page (light mode): the ≈ mark is `rgb(138, 90, 28)` (`#8a5a1c`) and the Sign in button runs brass to cyan.
     - Dev login into Rivermoot's play view shows ≈ RIVERMOOT with brass accents.
     - Fablestar's `/play/world` returns ◈ and violet.
+- **5.8 Nexus write-through (decided: deferred).**
+  - **The plan:** D.E described an optional backend that lets WorldForge edit a remote server through the `/content/*` room routes with `expected_mtime`.
+  - **Why it waits:**
+    - Nobody edits a remote world today: both reference worlds are edited as packages on disk, and the owner edits locally.
+    - The routes it would have used went with the World Builder in 3.18a. They were shaped for that editor: one room at a time, no positions, no plugin blocks.
+    - Building it now means designing staff sign-in for a desktop app, room, positions and extension writes, and conflict handling against the MCP writer, all for a user who does not exist yet (two-world ceiling).
+  - **What it would need, when a remote builder does:**
+    - an endpoint that takes whole package files (room YAML, `.positions.json`) with a content hash to refuse stale writes
+    - the `forge` or `world` staff tool
+    - `may_write_zone` checks
+    - validation through `sage.world.lint` before the file is replaced
+  - **Logged in DECISIONS.**
 
