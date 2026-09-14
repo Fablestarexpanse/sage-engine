@@ -67,10 +67,15 @@ async def resolve_play_account(
             account_id = decode_play_token(server, tok)
         except ValueError:
             return None
-        return await db_session.get(Account, account_id)
-    if not username:
+        account = await db_session.get(Account, account_id)
+    elif username:
+        account = await authenticate_account(db_session, username, password)
+    else:
         return None
-    return await authenticate_account(db_session, username, password)
+    # A suspended account's tokens and password stop working (staff suspension, admin console).
+    if account is not None and getattr(account, "suspended_at", None) is not None:
+        return None
+    return account
 
 
 def save_portrait_png(png: bytes) -> str:

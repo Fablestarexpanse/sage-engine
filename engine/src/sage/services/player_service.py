@@ -156,6 +156,8 @@ class PlayerService:
             account = await authenticate_account(db_session, username, password)
             if account is None:
                 return {"ok": False, "error": "invalid_credentials"}
+            if account.suspended_at is not None:
+                return {"ok": False, "error": "account_suspended"}
             account.last_login = datetime.utcnow()
             response = await self.account_characters_response(db_session, account)
             response["play_token"] = issue_play_token(self.server, account.id)

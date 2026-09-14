@@ -41,6 +41,19 @@ session:
   replaced: "\r\nThis character just signed in from another connection. Goodbye."
   broadcast: "[Server] {message}"
 
+# What a player is told when staff change their character from the admin console.
+staff:
+  moved: "
+A member of staff has moved you."
+  wallet: "
+Staff set your {currency} to {amount}."
+  item_given: "
+Staff gave you {item}."
+  item_removed: "
+Staff took {item} from you."
+  kicked: "
+You have been disconnected by staff."
+
 void:
   lost: "You are lost in the void."
   nowhere: "You are in the void."

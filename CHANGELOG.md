@@ -22,6 +22,19 @@ Versions built before the first publication have no conversion date.
 
 ## [Unreleased]
 
+- **Fixed: admin character edits were undone within a minute.** Saving a character in the
+  account editor wrote Postgres only. Redis keeps a character's live state after logout, and the
+  persistence flush copies it back to Postgres every ~60 s, so the old room and stats returned.
+  Character edits now write the live state too.
+- **Character tools** (Players & sessions): find a character by name or account, move them to a
+  room (unknown rooms refused), set a currency balance, give or remove items, and kick a connected
+  player. A connected player is told what staff changed.
+- **Account suspension:** a suspended account cannot sign in or get a play token, and its
+  characters are disconnected. A wrong password still reads as invalid credentials, so suspension
+  is not revealed to someone guessing.
+- **Audit log** (System, `team` or `operations` tool): every successful staff write through the
+  console is recorded with who, what route, target and body. Passwords, tokens and secrets are
+  stored as "(changed)". Needs migration `s2t3u4v5w6x7` (`python -m sage db upgrade`).
 - **Fixed: entity and item template YAML routes never worked.** `GET` and `PUT
   /content/{entities,items}/{id}/yaml` returned 422 on every call. The tool check was a postponed
   annotation FastAPI could not resolve, so it became a required query parameter. AI Forge's Deploy

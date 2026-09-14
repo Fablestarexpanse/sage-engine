@@ -217,6 +217,7 @@ export default function PlayerAccountsTab({ focusTarget = null }) {
     }
   };
 
+  // Saved-character editor (raw fields). For live changes to a playing character, use Characters above.
   const saveCharacter = async (charId, patch) => {
     if (selectedId == null) return;
     setBusy(true);
@@ -279,6 +280,9 @@ export default function PlayerAccountsTab({ focusTarget = null }) {
             >
               <div style={{ fontWeight: 600, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                 {r.username}
+                {r.suspended_at ? (
+                  <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, background: COLORS.dangerBg, color: COLORS.danger, border: `1px solid ${COLORS.danger}` }}>suspended</span>
+                ) : null}
                 {r.is_gm ? (
                   <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, background: "rgba(244,114,182,0.2)", color: "#f9a8d4", border: "1px solid rgba(244,114,182,0.45)" }}>👑 GM</span>
                 ) : null}
@@ -322,6 +326,8 @@ export default function PlayerAccountsTab({ focusTarget = null }) {
               <div style={{ fontSize: 12, color: COLORS.textMuted, fontFamily: "'JetBrains Mono', monospace" }}>account #{detail.id}</div>
             </div>
 
+            <SuspensionSection detail={detail} accountId={selectedId} disabled={busy} onChanged={reloadAccount} />
+
             <ConsoleAccessSection detail={detail} accountId={selectedId} disabled={busy} onChanged={reloadAccount} />
 
             <AccountEditForm
@@ -344,6 +350,50 @@ export default function PlayerAccountsTab({ focusTarget = null }) {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function SuspensionSection({ detail, accountId, disabled, onChanged }) {
+  const { colors: COLORS } = useAdminTheme();
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const run = async (fn) => {
+    setBusy(true);
+    try {
+      await fn();
+      setReason("");
+      await onChanged?.();
+    } catch (e) {
+      const d = e.response?.data?.detail;
+      window.alert(typeof d === "string" ? d : e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const suspended = Boolean(detail.suspended_at);
+  return (
+    <div style={{ padding: "10px 12px", borderRadius: 8, border: `1px solid ${suspended ? COLORS.danger : COLORS.border}`, background: suspended ? COLORS.dangerBg : COLORS.bgInput, display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ fontSize: 11, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: "0.06em" }}>Suspension</div>
+      {suspended ? (
+        <>
+          <div style={{ fontSize: 13, color: COLORS.text }}>
+            Suspended since {new Date(detail.suspended_at).toLocaleString()}{detail.suspended_reason ? `: ${detail.suspended_reason}` : ""}. This account cannot sign in or play.
+          </div>
+          <button type="button" disabled={disabled || busy} onClick={() => run(() => axios.delete(`${API_BASE}/admin/player-accounts/${accountId}/suspend`))}
+            style={{ alignSelf: "start", padding: "6px 12px", borderRadius: 6, border: `1px solid ${COLORS.border}`, background: COLORS.bgCard, color: COLORS.text, cursor: "pointer", fontSize: 12 }}>Lift suspension</button>
+        </>
+      ) : (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <input id={`suspend-reason-${accountId}`} aria-label="Reason for suspension" placeholder="Reason (shown to staff)" value={reason} onChange={(e) => setReason(e.target.value)}
+            style={{ flex: 1, minWidth: 180, padding: "7px 10px", background: COLORS.bgCard, border: `1px solid ${COLORS.border}`, borderRadius: 6, color: COLORS.text, fontSize: 13 }} />
+          <button type="button" disabled={disabled || busy} onClick={() => {
+            if (window.confirm(`Suspend ${detail.username}? Their characters are disconnected and they cannot sign in until the suspension is lifted.`)) {
+              run(() => axios.post(`${API_BASE}/admin/player-accounts/${accountId}/suspend`, { reason }));
+            }
+          }} style={{ padding: "6px 12px", borderRadius: 6, border: `1px solid ${COLORS.danger}`, background: "transparent", color: COLORS.danger, cursor: "pointer", fontSize: 12, fontWeight: 600 }}>Suspend account</button>
+        </div>
+      )}
     </div>
   );
 }
