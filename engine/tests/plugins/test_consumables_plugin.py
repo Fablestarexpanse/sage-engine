@@ -55,3 +55,15 @@ def test_use_heals_to_max_counts_and_consumes(plugin_host, tmp_path):
     service = host.services["consumables"][1]
     assert service.heal_of(host.content.get_item_template("tonic")) == 8
     assert service.heal_of(host.content.get_item_template("stone")) == 0
+
+
+def test_use_at_full_health_keeps_the_item(plugin_host, tmp_path):
+    host = _host(plugin_host, tmp_path)
+    session = StubSession("hero")
+    host.redis.stats["hero"] = {"hp": 20, "max_hp": 20}
+    host.redis.inventories["hero"] = [{"id": "t1", "template": "tonic", "name": "bitter tonic"}]
+
+    _run(host, session, "tonic")
+    assert session.sent[-1] == "You are already at full health; you keep the bitter tonic."
+    assert [it["id"] for it in host.redis.inventories["hero"]] == ["t1"]
+    assert "counters" not in host.redis.stats["hero"]
