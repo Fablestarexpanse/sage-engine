@@ -75,7 +75,7 @@ worlds/<id>/              World packages
   plugins/<id>/           world-only plugins (Fablestar: conduit, morality; Rivermoot: levels)
   content.schema.json     exported content schema for offline editors
 config/                   TOML config files (gitignored; copy from *.example.toml)
-scripts/                  Invariant ratchet, license report, proficiency catalog build
+scripts/                  Invariant ratchet, denylist, license report
 ```
 
 ---
@@ -334,7 +334,8 @@ Environment overrides: `SAGE_` prefix, double-underscore nesting, e.g. `SAGE_SER
 ## Development setup
 
 ```bash
-# 1. Start backing services
+# 1. Start backing services (docker compose reads POSTGRES_PASSWORD from the gitignored .env;
+#    config/database.toml must use the same password)
 docker compose up -d redis postgres
 
 # 2. Run migrations (core + the world's plugin branches)

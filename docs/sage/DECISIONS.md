@@ -3,7 +3,8 @@
 NEXT: M2 complete. Phases -1 to 5 merged into main 2026-09-14 (PRs #7-#12); repository moved to
 Fablestarexpanse/sage-engine. Per-phase notes: docs/dev/milestones/M2-sage-decoupling/phase-{3,4,5}-plan.md.
 Open for the owner: NOTICE still lists pre-split paths and does not name plugins/; Fablestar content has three
-dangling exits (sage validate --world fablestar); docker-compose.yml keeps a literal fallback Postgres password.
+dangling exits (sage validate --world fablestar); rotate the Postgres password that docker-compose.yml used to
+ship as a default (removed 2026-09-14, still in git history).
 Known history: commit 9a831ea does not boot (be48da3 completes it). Review page: https://claude.ai/code/artifact/2d488113-1ca9-4f45-b993-ac0253e0670c
 
 Append-only. One entry per ruling or decision, newest last. Owner rulings are binding; architect
