@@ -53,6 +53,7 @@ from sage.admin.routes.lexicon import build_lexicon_router
 from sage.admin.routes.llm_comfyui import build_llm_comfyui_router
 from sage.admin.routes.llm_profiles import build_llm_profiles_router
 from sage.admin.routes.moderation import build_moderation_router
+from sage.admin.routes.operations import build_operations_router
 from sage.admin.routes.play import build_play_router
 from sage.admin.routes.search import build_search_router
 from sage.admin.routes.world import build_world_router
@@ -160,6 +161,7 @@ class NexusApp:
         self.app.include_router(build_characters_router(self.server))
         self.app.include_router(build_search_router(self.server))
         self.app.include_router(build_moderation_router(self.server))
+        self.app.include_router(build_operations_router(self.server))
         self.app.include_router(build_play_router(self.server))
         self.app.include_router(build_content_router(self.server))
         self.app.include_router(build_world_router(self.server))
@@ -263,6 +265,12 @@ class NexusApp:
             if ws in self._active_sockets:
                 self._active_sockets.remove(ws)
 
+    def request_stop(self) -> None:
+        """Stop serving after in-flight requests finish (uvicorn's own graceful exit)."""
+        server = getattr(self, "_uvicorn", None)
+        if server is not None:
+            server.should_exit = True
+
     async def start(self):
         """Run the uvicorn server in the same event loop."""
         config = uvicorn.Config(
@@ -270,8 +278,11 @@ class NexusApp:
             host="0.0.0.0",
             port=self.server.config.server.websocket_port,
             log_level="info",
+            # A scheduled restart must not wait forever on open console and play sockets.
+            timeout_graceful_shutdown=10,
         )
         server = uvicorn.Server(config)
+        self._uvicorn = server
         handler = AdminLogBroadcastHandler(self, asyncio.get_running_loop())
         logging.getLogger().addHandler(handler)
         try:

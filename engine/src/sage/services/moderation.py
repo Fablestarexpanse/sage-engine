@@ -233,6 +233,15 @@ async def file_report(server: Any, session: Any, text: str) -> tuple[str, int | 
         await db.commit()
         report_id = row.id
     _last_report[name] = now
+    feed = getattr(server, "staff_feed", None)
+    if feed is not None:
+        feed.add(
+            "report",
+            f"Report #{report_id} from {name}: {text[:120]}",
+            player=name,
+            room_id=room_id,
+            href="#/reports",
+        )
     return "report.thanks", report_id
 
 

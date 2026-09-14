@@ -88,6 +88,15 @@ class SessionEnded(Event):
 
 
 @dataclass
+class CharacterCreated(Event):
+    """A player made a new character (not agents)."""
+
+    player_id: str
+    character_id: int
+    account: str
+
+
+@dataclass
 class _Subscription:
     handler: Callable[[Any], Any]
     owner: str

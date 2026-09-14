@@ -19,6 +19,8 @@ import CharactersPage from "./pages/CharactersPage.jsx";
 import AccountsPage from "./pages/AccountsPage.jsx";
 import CreditsPage from "./pages/CreditsPage.jsx";
 import ReportsPage from "./pages/ReportsPage.jsx";
+import StaffFeedPage from "./pages/StaffFeedPage.jsx";
+import MoneyPage from "./pages/MoneyPage.jsx";
 import ModerationPage from "./pages/ModerationPage.jsx";
 import ContentLibraryPage from "./pages/ContentLibraryPage.jsx";
 import ServerPage from "./pages/ServerPage.jsx";
@@ -159,7 +161,8 @@ const NAV_ITEMS = [
   { id: "dashboard", group: "Overview", label: "Dashboard", icon: <Icons.Dashboard /> },
   { id: "online", group: "Live", label: "Who's online", icon: <Icons.Players />, anyOf: ["players"] },
   { id: "live", group: "Live", label: "Live world", icon: <Icons.World />, anyOf: ["world", "operations"] },
-  { id: "operations", group: "Live", label: "Broadcast & reload", icon: <Icons.Alert /> },
+  { id: "feed", group: "Live", label: "Staff feed", icon: <Icons.History />, anyOf: ["operations", "players"] },
+  { id: "operations", group: "Live", label: "Broadcast & restart", icon: <Icons.Alert /> },
   { id: "characters", group: "Players", label: "Characters", icon: <Icons.Players />, anyOf: ["players"] },
   { id: "accounts", group: "Players", label: "Accounts", icon: <Icons.Players />, anyOf: ["players"] },
   { id: "reports", group: "Players", label: "Reports", icon: <Icons.Alert />, anyOf: ["players"] },
@@ -170,6 +173,7 @@ const NAV_ITEMS = [
   { id: "skills", group: "World", label: "Skills catalog", icon: <Icons.Skills />, pluginTool: true },
   { id: "lexicon", group: "World", label: "Lexicon & MOTD", icon: <Icons.Content /> },
   { id: "forge", group: "World", label: "AI Forge", icon: <Icons.Forge />, highlight: true },
+  { id: "money", group: "Economy", label: "Money", icon: <Icons.Items />, anyOf: ["operations", "players"] },
   { id: "shops", group: "Economy", label: "Shops", icon: <Icons.Items />, pluginTool: true },
   { id: "credits", group: "Economy", label: "AI art credits", icon: <Icons.Items />, anyOf: ["server"] },
   { id: "agents", group: "NPCs", label: "Agents", icon: <Icons.Players />, pluginTool: true },
@@ -204,6 +208,8 @@ const PAGES = {
   accounts: AccountsPage,
   credits: CreditsPage,
   reports: ReportsPage,
+  feed: StaffFeedPage,
+  money: MoneyPage,
   moderation: ModerationPage,
   content: ContentLibraryPage,
   skills: ProficienciesPage,

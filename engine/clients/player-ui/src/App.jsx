@@ -434,6 +434,7 @@ function AuthSignInForm({ onLoggedIn }) {
           res.error === "invalid_credentials" ? "Unknown user or wrong password."
             : res.error === "account_suspended" ? "This account is suspended. Contact the staff of this world."
             : res.error === "address_banned" ? "Sign-ins from your network are blocked on this world."
+            : res.error === "server_restarting" ? "The server is restarting. Try again in a minute."
             : res.error || "Login failed"
         );
         setBusy(false);

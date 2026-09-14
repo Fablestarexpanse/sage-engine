@@ -22,6 +22,19 @@ Versions built before the first publication have no conversion date.
 
 ## [Unreleased]
 
+- **Staff feed** (Live > Staff feed, `GET /admin/feed`): sign-ins and sign-outs, deaths, kills,
+  new characters, player reports and restart notices as they happen, filterable by kind, with
+  agents hidden unless asked for. It is kept in memory since the last start. A new engine event,
+  `CharacterCreated`, is published when a player makes a character.
+- **Money** (Economy > Money, `GET /admin/economy/money`): each currency's total across saved
+  characters, how many characters hold any, the average, and the ten biggest holders. The
+  database does the summing.
+- **Scheduled restart** (Live > Broadcast & restart, `POST/DELETE/GET /admin/restart`):
+  - players are warned at 30, 15, 10, 5, 2 and 1 minutes and 30 and 10 seconds
+  - new sign-ins are refused in the last minute (`server_restarting`)
+  - at zero every character is saved, players are disconnected with a message, and the engine
+    stops cleanly
+  - whatever runs the engine (a restart policy or service manager) starts it again
 - **Moderation** (Players > Moderation, Reports, and the account editor):
   - **Reports:** players send reports with `report` (also `bug`, `typo`, `idea`). Each report
     carries the room the player is in and has a cooldown. Staff mark reports fixed, won't fix
