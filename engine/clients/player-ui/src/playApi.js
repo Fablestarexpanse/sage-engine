@@ -85,6 +85,7 @@ export async function playLogin(username, password) {
   return captureToken(await handlePlayResponse(r));
 }
 
+// DEV-AUTH:BEGIN — passwordless dev login; stripped for release (scripts/release_check.py).
 /** Dev-only: is passwordless test login available to this browser? */
 export async function playDevStatus() {
   try {
@@ -97,7 +98,7 @@ export async function playDevStatus() {
   }
 }
 
-/** Dev-only: log in as (creating if needed) a test character on the dev account. */
+/** Dev-only: the dev account, as a named test character (created if needed) or at the chooser (""). */
 export async function playDevLogin(character) {
   const r = await fetch(`${base()}/play/dev/login`, {
     method: "POST",
@@ -106,6 +107,7 @@ export async function playDevLogin(character) {
   });
   return captureToken(await handlePlayResponse(r));
 }
+// DEV-AUTH:END
 
 export async function playRegister(username, password) {
   const r = await fetch(`${base()}/play/auth/register`, {

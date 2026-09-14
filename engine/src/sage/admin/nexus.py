@@ -151,6 +151,13 @@ class NexusApp:
         self.app.include_router(build_llm_comfyui_router(self.server))
         self.app.include_router(build_llm_profiles_router(self.server))
         self.app.include_router(build_lexicon_router(self.server))
+        # DEV-AUTH:BEGIN — passwordless dev logins; stripped for release (scripts/release_check.py).
+        from sage.admin.routes.dev_auth import BANNER, build_dev_auth_router, dev_auth_enabled
+
+        if dev_auth_enabled(self.server):
+            logger.warning(BANNER)
+            self.app.include_router(build_dev_auth_router(self.server))
+        # DEV-AUTH:END
 
         # Presence + log WebSockets live here — they use NexusApp connection state.
 

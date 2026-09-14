@@ -8,6 +8,9 @@ release entry must record that date. The date is part of the licence terms, not 
 
 For every tagged release:
 
+0. On the release branch, remove the development-only passwordless logins:
+   `python scripts/release_check.py --strip`, then run the tests and client builds and commit.
+   `python scripts/release_check.py` must exit 0 on the commit you tag (`docs/dev/DEV_AUTH.md`).
 1. Add a section headed `## [<version>] — published YYYY-MM-DD`, using the date the version is
    first made available to anyone outside the licensor (push of a public tag, package upload,
    or delivery to a customer, whichever comes first). A private internal tag is not publication.
@@ -18,6 +21,14 @@ For every tagged release:
 Versions built before the first publication have no conversion date.
 
 ## [Unreleased]
+
+- **Development-only passwordless logins, removable for release.** With `dev_mode` and
+  `dev_login`, loopback clients can open the player character chooser or sign in to the admin
+  console as a head admin without a password, besides the existing named test character. A
+  request relayed for a network client is refused, including browsers elsewhere on the LAN that
+  reach the Vite dev server through `--host` (the dev proxies now forward client addresses). Every piece is marked, and `scripts/release_check.py`
+  lists it (exit 1) or strips it (`--strip`); the live world smoke tests now register real
+  accounts, so they pass without it.
 
 - **SAGE decoupling complete** (merged 2026-09-14, PRs #7–#12; repository now
   `Fablestarexpanse/sage-engine`). The engine (`engine/src/sage`) runs world packages

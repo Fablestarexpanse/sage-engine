@@ -101,9 +101,14 @@ SAGE_SERVER__WORLD=rivermoot SAGE_DATABASE__DATABASE=sage_rivermoot SAGE_SERVER_
 
 (Create the `sage_rivermoot` database in PostgreSQL first.)
 
-**Playtesting without passwords.** With `dev_mode = true` and `dev_login = true` in
-`server.toml`, the player client's sign-in page shows a dev login box for loopback clients. Never
-enable either on a networked host.
+<!-- DEV-AUTH:BEGIN -->
+**Testing without passwords (development only).** With `dev_mode = true` and `dev_login = true`
+in `server.toml`, loopback clients skip passwords: the player client's sign-in page can play a named
+test character or open the character chooser, and the admin console's sign-in page can log in as a
+head admin. Never enable either on a networked host. This is not a release feature:
+`python scripts/release_check.py --strip` removes it (see
+[`docs/dev/DEV_AUTH.md`](docs/dev/DEV_AUTH.md)).
+<!-- DEV-AUTH:END -->
 
 **WorldForge** (desktop editor): `cd engine/tools/worldforge && npm install && npm run tauri dev`.
 It needs the [Tauri prerequisites](https://tauri.app/start/prerequisites/) (Rust toolchain). Open the

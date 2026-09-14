@@ -321,7 +321,10 @@ Important `server.toml` keys:
 - `admin_auth_required = true` — default; never disable on a networked host
 - `admin_jwt_secret` — must be set when auth is required; generate with `python -c "import secrets; print(secrets.token_hex(32))"`
 - `cors_origins` — list of allowed origins (default: localhost dev ports)
-- `dev_mode`, `dev_login` — local playtesting only (see below)
+- `dev_mode` — local development only (seeds test accounts)
+<!-- DEV-AUTH:BEGIN -->
+- `dev_login` — passwordless logins for local testing (see below); stripped for release
+<!-- DEV-AUTH:END -->
 
 World-specific tuning lives in the world's `world.toml` `[params]`, not in `server.toml`
 (for example `"conduit.combat_hybrid"`, `"effects.rest_room_types"`,
@@ -361,7 +364,13 @@ A second world runs beside the first with its own database and port:
 (run `db upgrade` with the same variables first); point a player client at it with
 `VITE_NEXUS_PORT=8002`.
 
-**Playtesting without passwords:** with `dev_mode = true` and `dev_login = true` in `config/server.toml`, loopback clients can `POST /play/dev/login {"character": "Qa Tester"}` to get a play token for that character (created on the `dev-login` account if missing; other accounts' characters and agent names are refused). Connect the WebSocket with `{"token": ..., "character_id": ...}`. The player UI shows a "Dev login" box on the sign-in screen when it's enabled. Never enable on a networked host.
+<!-- DEV-AUTH:BEGIN -->
+**Testing without passwords (development only):** with `dev_mode = true` and `dev_login = true` in `config/server.toml`, loopback clients get passwordless logins (`sage.admin.routes.dev_auth`, details in `docs/dev/DEV_AUTH.md`):
+- Player: `POST /play/dev/login {"character": "Qa Tester"}` returns a play token for that character (created on the `dev-login` account if missing; other accounts' characters and agent names are refused); connect the WebSocket with `{"token": ..., "character_id": ...}`. `{"character": ""}` returns a token with no character, so the client opens the chooser (to test character creation). The player UI's sign-in page shows both.
+- Staff: `POST /admin/dev/login` returns a head-admin token for the `dev-staff` account (no usable password). The admin console's sign-in page shows a dev login button.
+- A proxied request passes only when every forwarded client address is loopback (the Vite dev proxies send `X-Forwarded-For`, so LAN browsers reaching Vite through `--host` are refused). The routes do not exist without both flags. Never enable on a networked host.
+- All of it is marked `DEV-AUTH`. Keep new dev-only auth code inside the markers; `python scripts/release_check.py --strip` removes it before a release, and the check fails while any is left.
+<!-- DEV-AUTH:END -->
 
 Default ports: Nexus 8001, player UI 5173, admin UI 5174, Postgres 5432, Redis 6379.
 

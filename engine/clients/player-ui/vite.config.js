@@ -10,10 +10,12 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     server: {
+      // xfwd: pass the browser's address on (X-Forwarded-For), so Nexus can tell a browser on this
+      // machine from one on the network reaching the dev server through --host.
       proxy: {
-        "/play": { target, changeOrigin: true },
-        "/media": { target, changeOrigin: true },
-        "/ws/play": { target: `ws://127.0.0.1:${nexusPort}`, ws: true },
+        "/play": { target, changeOrigin: true, xfwd: true },
+        "/media": { target, changeOrigin: true, xfwd: true },
+        "/ws/play": { target: `ws://127.0.0.1:${nexusPort}`, ws: true, xfwd: true },
       },
     },
   };

@@ -3,8 +3,10 @@ import { usePlayTheme } from "./PlayThemeContext.jsx";
 import { useWorld } from "./WorldContext.jsx";
 import {
   playLogin,
+  // DEV-AUTH:BEGIN
   playDevLogin,
   playDevStatus,
+  // DEV-AUTH:END
   playRegister,
   playWebSocketUrl,
   playMediaUrl,
@@ -374,6 +376,7 @@ function AuthSignInForm({ onLoggedIn }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  // DEV-AUTH:BEGIN — passwordless dev login (loopback, dev flags); stripped for release.
   const [devEnabled, setDevEnabled] = useState(false);
   const [devName, setDevName] = useState("Dev Tester");
 
@@ -385,11 +388,12 @@ function AuthSignInForm({ onLoggedIn }) {
     };
   }, []);
 
-  const devLogin = async () => {
+  // A name plays that character (created if missing); no name opens the character chooser.
+  const devLogin = async (character) => {
     setError("");
     setBusy(true);
     try {
-      const res = await playDevLogin(devName.trim());
+      const res = await playDevLogin(character);
       if (!res.ok) {
         setError(res.error || "Dev login failed");
         setBusy(false);
@@ -401,6 +405,7 @@ function AuthSignInForm({ onLoggedIn }) {
     }
     setBusy(false);
   };
+  // DEV-AUTH:END
 
   const submit = async (e) => {
     e.preventDefault();
@@ -489,6 +494,7 @@ function AuthSignInForm({ onLoggedIn }) {
             {busy ? "…" : "Sign in"}
           </button>
         </form>
+        {/* DEV-AUTH:BEGIN */}
         {devEnabled && (
           <div
             data-testid="dev-login"
@@ -511,7 +517,7 @@ function AuthSignInForm({ onLoggedIn }) {
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
-                    devLogin();
+                    if (devName.trim().length >= 2) devLogin(devName.trim());
                   }
                 }}
                 style={{ ...authInputStyle, marginBottom: 0, flex: 1 }}
@@ -519,7 +525,7 @@ function AuthSignInForm({ onLoggedIn }) {
               <button
                 type="button"
                 disabled={busy || devName.trim().length < 2}
-                onClick={devLogin}
+                onClick={() => devLogin(devName.trim())}
                 style={{
                   padding: "0 14px",
                   borderRadius: T.radius.md,
@@ -535,8 +541,29 @@ function AuthSignInForm({ onLoggedIn }) {
                 Play
               </button>
             </div>
+            <button
+              type="button"
+              data-testid="dev-login-chooser"
+              disabled={busy}
+              onClick={() => devLogin("")}
+              style={{
+                marginTop: 8,
+                width: "100%",
+                padding: "7px",
+                borderRadius: T.radius.md,
+                border: `1px dashed ${T.hue.amber}`,
+                background: "transparent",
+                color: T.hue.amber,
+                fontFamily: T.font.body,
+                fontSize: 11,
+                cursor: busy ? "wait" : "pointer",
+              }}
+            >
+              Choose or create a character instead
+            </button>
           </div>
         )}
+        {/* DEV-AUTH:END */}
         <AuthNavLinks>
           <AuthTextLink href="#/register">New here? Create account</AuthTextLink>
           <AuthTextLink href="#/">Back to welcome</AuthTextLink>
@@ -2073,10 +2100,13 @@ export default function App() {
     setAuth((a) => (a ? { ...a, characters: chars } : a));
   }, []);
 
-  // Dev login names its character up front; skip the chooser for it.
+  // DEV-AUTH:BEGIN — dev login may name its character up front; skip the chooser for it.
   const devAutoCharacterRef = useRef(null);
-  const onLoggedIn = useCallback((a, pw, autoCharacterId) => {
-    devAutoCharacterRef.current = autoCharacterId ?? null;
+  // DEV-AUTH:END
+  const onLoggedIn = useCallback((a, pw, ...devArgs) => {
+    // DEV-AUTH:BEGIN
+    devAutoCharacterRef.current = devArgs[0] ?? null;
+    // DEV-AUTH:END
     passwordRef.current = pw;
     setAuth(a);
     setAiEconomy({
@@ -2201,6 +2231,7 @@ export default function App() {
     [auth]
   );
 
+  // DEV-AUTH:BEGIN
   useEffect(() => {
     if (step !== "choose" || !auth || devAutoCharacterRef.current == null) return;
     const ch = (auth.characters || []).find((c) => c.id === devAutoCharacterRef.current);
@@ -2218,6 +2249,7 @@ export default function App() {
       levelsTotal: levelsTotalOf(ch),
     });
   }, [step, auth, onChosen]);
+  // DEV-AUTH:END
 
   useEffect(() => {
     if (step !== "play" || !playSession) return undefined;

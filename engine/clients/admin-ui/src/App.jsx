@@ -31,6 +31,33 @@ const LoginScreen = ({ onLoggedIn }) => {
   const [pass, setPass] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+  // DEV-AUTH:BEGIN — passwordless dev staff login (loopback, dev flags); stripped for release.
+  const [devEnabled, setDevEnabled] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    axios
+      .get(`${API_BASE}/admin/dev/status`)
+      .then(({ data }) => alive && setDevEnabled(Boolean(data?.enabled)))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const devLogin = async () => {
+    setErr("");
+    setBusy(true);
+    try {
+      const { data } = await axios.post(`${API_BASE}/admin/dev/login`);
+      if (!data?.access_token) throw new Error(data?.error || "Dev login failed");
+      localStorage.setItem(LS_ADMIN_TOKEN, data.access_token);
+      onLoggedIn(data.staff);
+    } catch (ex) {
+      setErr(ex.response?.data?.detail || ex.message || "Dev login failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+  // DEV-AUTH:END
   const submit = async (e) => {
     e.preventDefault();
     setErr("");
@@ -85,6 +112,14 @@ const LoginScreen = ({ onLoggedIn }) => {
         <button type="submit" disabled={busy} style={{
           width: "100%", padding: "12px", background: COLORS.accent, color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: busy ? "wait" : "pointer",
         }}>{busy ? "Signing in…" : "Sign in"}</button>
+        {/* DEV-AUTH:BEGIN */}
+        {devEnabled && (
+          <button type="button" data-testid="admin-dev-login" disabled={busy} onClick={devLogin} style={{
+            width: "100%", marginTop: 12, padding: "10px", background: COLORS.warningBg, color: COLORS.warning,
+            border: `1px dashed ${COLORS.warning}`, borderRadius: 8, fontWeight: 600, cursor: busy ? "wait" : "pointer",
+          }}>Dev login as head admin (no password, localhost only)</button>
+        )}
+        {/* DEV-AUTH:END */}
       </form>
     </div>
   );
