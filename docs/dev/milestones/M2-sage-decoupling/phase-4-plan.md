@@ -27,7 +27,7 @@ into `docs/sage/DECISIONS.md`.
 
 | # | Step | Status |
 |---|------|--------|
-| 4.1 | The stat schema is real. New characters get the world's attributes and vitals, login and death use the world's vital maximum, the engine's default ratings no longer read D&D keys, and `default_character_stats` is empty. | todo |
+| 4.1 | The stat schema is real. New characters get the world's attributes and vitals, login and death use the world's vital maximum, the engine's default ratings no longer read D&D keys, and `default_character_stats` is empty. | done |
 | 4.2 | Attribute point-buy at character creation. The engine's default chargen slots offer `kind: "attribute_points"` when `stats.yaml` sets `attribute_points`, and player-ui renders it. | todo |
 | 4.3 | Levels that matter. The `levels` plugin provides `combat.ratings` from Might/Nerve plus level, and a level raises maximum health. | todo |
 | 4.4 | The map. 20–40 rooms over three zones (town, docks and riverbank, the old mill and marsh), entities and items, north/south/east/west exits only. | todo |
@@ -36,3 +36,15 @@ into `docs/sage/DECISIONS.md`.
 | 4.7 | Proof. The live smoke test plays a longer Rivermoot script (buy, equip, fight, level, rest, die and wake at the shrine). A real server runs on its own Rivermoot database (one database per world). | todo |
 
 ## Notes
+- **4.1 stat schema (done).** At creation the engine seeds `stats.yaml` attribute defaults
+  through `progression.seed_attributes`, then full vitals (`WorldPackage.seed_vitals`), then the
+  chargen choices. Login backfills missing vitals from the world. The death resolver's fallback
+  maximum is the world's (`vital_max`). The default `combat.ratings` is a flat (3, 2): which
+  attributes make a fighter is the world's call. Conduit's `seed_attributes` matches keys
+  case-insensitively, so Fablestar's lower-case `stats.yaml` reaches its upper-case block.
+  Existing characters keep whatever top-level keys they have.
+  Run: a new Rivermoot character on its own database (`sage_rivermoot`, launch config
+  `nexus-rivermoot`, port 8002) stores `mgt/wts/nrv = 2`, `hp = max_hp = 12`, 10 silver. Before
+  this step it would have got `strength`/`dexterity`/`intelligence`/`perception` and 100 hp. A new
+  Fablestar character stores Conduit attributes at 13 and 100 hp (probe deleted).
+

@@ -287,7 +287,7 @@ class PlayerService:
     ) -> Character:
         """Insert a fresh character row with initialised stats (caller validated the name)."""
         from sage.world.chargen import SEED
-        from sage.world.progression import PREPARE
+        from sage.world.progression import PREPARE, SEED_ATTRIBUTES
 
         character = Character(
             account_id=account_id,
@@ -301,6 +301,10 @@ class PlayerService:
         await db_session.commit()
         await db_session.refresh(character)
         merged_stats = self.server.resolvers.get(PREPARE)(dict(character.stats or {}))
+        # The world's stat schema first (attribute defaults, full vitals), then creation choices.
+        world = self.server.world
+        self.server.resolvers.get(SEED_ATTRIBUTES)(merged_stats, world.attribute_defaults())
+        world.seed_vitals(merged_stats)
         self.server.resolvers.get(SEED)(merged_stats, dict(chargen_clean or {}))
         if self.server.wallet.enabled:
             self.server.wallet.set(merged_stats, self.server.wallet.starting())

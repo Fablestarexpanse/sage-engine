@@ -113,3 +113,23 @@ def test_level_command_reads_the_state_block(rivermoot):
         return session.sent
 
     assert asyncio.run(run()) == ["Level 3  (4/30 experience)"]
+
+
+def test_stat_schema_seeds_attributes_and_vitals():
+    """stats.yaml is applied: the world's attributes at their defaults and full vitals."""
+    from sage.world.death import default_respawn
+    from sage.world.package import vital_max
+    from sage.world.progression import default_seed_attributes
+
+    world = load_world_package(ROOT / "worlds" / "rivermoot")
+    assert world.attribute_defaults() == {"mgt": 2, "wts": 2, "nrv": 2}
+    stats: dict = {}
+    default_seed_attributes(stats, world.attribute_defaults())
+    world.seed_vitals(stats)
+    assert stats == {"mgt": 2, "wts": 2, "nrv": 2, "max_hp": 12, "hp": 12}
+
+    wounded = {"hp": 3, "max_hp": 20}
+    world.seed_vitals(wounded)
+    assert wounded == {"hp": 3, "max_hp": 20}
+    assert vital_max(world, "hp", 99) == 12 and vital_max(object(), "hp", 99) == 99
+    assert default_respawn(world, {}, wallet=0).hp == 6

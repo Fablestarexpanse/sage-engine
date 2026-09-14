@@ -520,8 +520,9 @@ class SageServer:
         from sage.world.progression import PREPARE
 
         norm_stats = self.resolvers.get(PREPARE)(dict(character.stats))
-        # Canonical vitals: nothing else seeds them, and every consumer was
-        # falling back to a different default (combat 20, client bar 100).
+        # Canonical vitals from the world's stats.yaml, for characters made before they were
+        # seeded at creation (or in a world that added a vital later).
+        self.world.seed_vitals(norm_stats)
         norm_stats.setdefault("max_hp", 100)
         norm_stats.setdefault("hp", int(norm_stats["max_hp"]))
         character.stats = norm_stats

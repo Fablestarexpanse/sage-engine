@@ -12,12 +12,8 @@ from sage.state.state_types import CharacterStats, InventoryItem
 
 
 def default_character_stats() -> CharacterStats:
-    return {
-        "strength": 10,
-        "dexterity": 10,
-        "intelligence": 10,
-        "perception": 10,
-    }
+    """Empty: attributes and vitals come from the running world's stats.yaml at creation."""
+    return {}
 
 
 class Account(Base):

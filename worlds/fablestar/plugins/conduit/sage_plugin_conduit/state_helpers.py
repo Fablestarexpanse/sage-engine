@@ -120,11 +120,14 @@ def decay_floor_for_peak(peak: int) -> int:
 
 
 def seed_attributes(stats: dict[str, Any], attributes: dict[str, int]) -> None:
-    """progression.seed_attributes: a new character's attribute spread (unknown keys ignored)."""
+    """progression.seed_attributes: a new character's attribute spread (unknown keys ignored).
+
+    Keys match case-insensitively: stats.yaml says `frt`, the block stores `FRT`.
+    """
     attrs = proficiency_block(stats)[ATTRIBUTES_KEY]
     for key, value in attributes.items():
-        if key in attrs:
-            attrs[key] = int(value)
+        if str(key).upper() in attrs:
+            attrs[str(key).upper()] = int(value)
 
 
 def total_levels(stats: dict[str, Any]) -> int:

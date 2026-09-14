@@ -29,7 +29,9 @@ def default_respawn(world: Any, stats: dict[str, Any], wallet: int) -> Respawn:
     """Respawn room from the world manifest, a fraction of max hp, and an optional bill."""
     fraction = float(world.param(PARAM_RESPAWN_HP_FRACTION, 0.5))
     bill_max = int(world.param(PARAM_RESPAWN_BILL_MAX, 0))
-    max_hp = int(stats.get("max_hp", 20))
+    from sage.world.package import vital_max
+
+    max_hp = int(stats.get("max_hp", vital_max(world, "hp", 20)))
     return Respawn(
         room_id=world.respawn_room,
         hp=max(1, int(max_hp * fraction)),
