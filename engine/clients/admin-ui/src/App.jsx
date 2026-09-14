@@ -25,6 +25,7 @@ import StaffTeamPage from "./pages/StaffTeamPage.jsx";
 import LexiconPage from "./pages/LexiconPage.jsx";
 import WorldPluginsPage from "./pages/WorldPluginsPage.jsx";
 import AuditLogPage from "./pages/AuditLogPage.jsx";
+import SearchPalette from "./searchPalette.jsx";
 
 // ═══════════════════════════════════════════════════════════════
 // ADMIN AUTH, PRESENCE & TEAM (staff / head admin)
@@ -479,7 +480,10 @@ export default function App() {
       </nav>
 
       <main style={{ flex: 1, overflow: "auto", padding: 28 }}>
-        <PresenceStrip online={presenceOnline} />
+        <div style={{ display: "flex", gap: 12, alignItems: "flex-start", flexWrap: "wrap" }}>
+          <div style={{ flex: 1, minWidth: 240 }}><PresenceStrip online={presenceOnline} /></div>
+          <SearchPalette pages={navFiltered} />
+        </div>
         <PageComponent pluginBase={pluginPages.find((p) => p.tool === resolvedPage)?.base} />
       </main>
     </div>

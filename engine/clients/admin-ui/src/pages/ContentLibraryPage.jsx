@@ -7,6 +7,7 @@ import {
 import { useHashParts } from "../listHooks.js";
 import { RoomDetail, TemplateEditor } from "../contentDetail.jsx";
 import TemplateTable from "../templateTable.jsx";
+import ReferencesPanel from "../referencesPanel.jsx";
 
 
 // ═══════════════════════════════════════════════════════════
@@ -106,6 +107,7 @@ const RoomsLibTab = ({ zoneParam, slugParam, go }) => {
           onOpenRoom={(zone, slug) => { setSelectedZone(zone); setOpenRoom({ zone, slug }); }}
         />
       )}
+      {openRoom && <ReferencesPanel key={`refs-${openRoom.zone}:${openRoom.slug}`} kind="rooms" id={`${openRoom.zone}:${openRoom.slug}`} />}
       <div style={{ background: COLORS.bgCard, border: `1px solid ${COLORS.border}`, borderRadius: 10, overflow: "hidden" }}>
         <DataTable columns={[
           { label: "Room", render: (row) => (<div><div style={{ fontWeight: 600, fontSize: 13 }}>{row.name}</div><div style={{ fontSize: 11, color: COLORS.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{row.id}</div></div>) },
@@ -134,6 +136,7 @@ const TemplatesLibTab = ({ kind, tab, noun, forgeLabel, selectedId, go }) => {
         <ActionButton variant="forge" icon={<Icons.Sparkles />} onClick={openForgeStudio}>{forgeLabel}</ActionButton>
       </div>
       {selectedId && <TemplateEditor key={selectedId} kind={kind} templateId={selectedId} onClose={() => go(tab)} />}
+      {selectedId && <ReferencesPanel key={`refs-${selectedId}`} kind={kind} id={selectedId} />}
       <TemplateTable kind={kind} noun={noun} selectedId={selectedId} onSelect={(id) => go(tab, id)} />
     </div>
   );

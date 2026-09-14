@@ -22,6 +22,17 @@ Versions built before the first publication have no conversion date.
 
 ## [Unreleased]
 
+- **Search everything (Ctrl+K or /)** from any console page. It covers pages, characters,
+  accounts, rooms, items, creatures and lexicon lines, and shows only the kinds the staff member
+  has the tool for (`GET /admin/search`). Arrow keys move through results and Enter opens one.
+- **"Used by" on every room, item and creature** (`GET /content/references/{rooms,items,entities}/{id}`):
+  - **Named in content:** every content field that names the record. This includes exits, spawn
+    entries, loot, and fields added by plugins, such as shop stock, recipes and scraps. It finds
+    them by matching the id, with no list of plugin fields to maintain.
+  - **Saved characters:** who carries an item, and who is saved in a room.
+  - **Live state:** copies lying on floors, live creatures by room, and who is in a room now.
+
+  Every entry links to its record. `#/lexicon/<key>` opens a lexicon line.
 - **The admin console handles large worlds.**
   - **Items and Creatures tables:** each is one searchable, sortable, paged table
     (`GET /content/templates/{items,entities}`). The columns come from the template model and

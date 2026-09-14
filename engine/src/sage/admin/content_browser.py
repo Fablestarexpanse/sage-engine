@@ -215,6 +215,16 @@ def _scan_simple_content_dir(base: Path) -> list[dict[str, Any]]:
     return rows
 
 
+def room_files() -> list[tuple[str, str, dict[str, Any], str | None]]:
+    """(zone, slug, data, error) for every room file in every zone, parsed through the cache."""
+    out = []
+    for zone_id in list_zone_ids():
+        rooms_dir = ZONES_ROOT / zone_id / "rooms"
+        if rooms_dir.is_dir():
+            out += [(zone_id, f.stem, *load_yaml(f)) for f in sorted(rooms_dir.glob("*.yaml"))]
+    return out
+
+
 def template_files(kind: str) -> list[tuple[Path, dict[str, Any], str | None]]:
     """(path, data, error) for every entity or item template file, parsed through the cache."""
     if kind not in ("entities", "items"):
