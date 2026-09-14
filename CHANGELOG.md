@@ -22,6 +22,20 @@ Versions built before the first publication have no conversion date.
 
 ## [Unreleased]
 
+- **Fixed: staff moving an offline character put it in the room.** The character tools (and the
+  account editor's character save) added a character who was not connected to the room's player
+  set, so everyone in that room saw it standing there. Offline characters now get only their
+  location. Live world shows names already left behind like this and clears them.
+- **Live world shows what is really there.** The page now shows:
+  - who is in each room, split into players, agents, and names left behind
+  - every live creature, including creatures in rooms nobody is standing in (the list used to
+    look only in rooms with a connected session)
+  - every item lying on a floor, with removal
+  - creatures and items in rooms that are not in the world, marked so they stand out
+
+  New routes: `GET /world/items`, `DELETE /world/rooms/{zone}/{room}/items/{item}`,
+  `POST /world/occupants/clear-offline`. `GET /world/entities` returns `{rows, total}`.
+- **Who's online lists agents**, marked as agents (`GET /players?include_agents=true`).
 - **Admin console menus are grouped by staff job:** Overview, Live, Players, World, Economy,
   NPCs, System. Players & sessions is split into Who's online, Characters and Accounts
   (`#/accounts/<id>` opens one account). Live world holds the Redis snapshot and creature

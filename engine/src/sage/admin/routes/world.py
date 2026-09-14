@@ -1,15 +1,15 @@
-"""Live world routes — /world/* snapshot, room state, manual spawn/despawn, entity listing."""
+"""Live world routes: Redis snapshot, room state, creatures, floor items, spawn and clean-up."""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
+from sage.admin import world_live
 from sage.admin.admin_security import AdminContext
 from sage.admin.route_helpers import require_any_tool, require_tool
-from sage.admin.world_live import build_world_live_snapshot
 
 if TYPE_CHECKING:
     from sage.server import SageServer
@@ -23,12 +23,17 @@ def build_world_router(server: SageServer) -> APIRouter:
     router = APIRouter()
 
     @router.get("/world/live")
-    async def world_live(
+    async def world_live_view(
         _ctx: Annotated[AdminContext, Depends(require_any_tool("operations", "world"))],
     ):
-        if not server.redis.is_connected:
-            return await build_world_live_snapshot(None)
-        return await build_world_live_snapshot(server.redis)
+        return await world_live.world_live_snapshot(server)
+
+    @router.post("/world/occupants/clear-offline")
+    async def clear_offline_occupants(
+        _ctx: Annotated[AdminContext, Depends(require_any_tool("operations", "world"))],
+    ):
+        """Remove names that are not connected from room player sets (they show to the room)."""
+        return {"removed": await world_live.clear_offline_occupants(server)}
 
     @router.get("/world/rooms/{zone_id}/{room_slug}/state")
     async def room_live_state(
@@ -102,19 +107,31 @@ def build_world_router(server: SageServer) -> APIRouter:
     @router.get("/world/entities")
     async def list_live_entities(
         _ctx: Annotated[AdminContext, Depends(require_tool("world"))],
+        limit: int = Query(default=world_live.DEFAULT_LIMIT, ge=1, le=5000),
     ):
-        """List all live entities currently in the world (scans occupied rooms)."""
-        results = []
-        seen_rooms: set[str] = set()
-        for player_id in list(server.session_manager.player_to_session):
-            room_id = await server.redis.get_player_location(player_id)
-            if room_id and room_id not in seen_rooms:
-                seen_rooms.add(room_id)
-                entity_ids = await server.redis.get_room_entities(room_id)
-                for eid in entity_ids:
-                    state = await server.redis.get_entity_state(eid)
-                    if state:
-                        results.append(state)
-        return results
+        """Every live creature in Redis (rows up to limit, total counts all)."""
+        return await world_live.live_creatures(server, limit)
+
+    @router.get("/world/items")
+    async def list_floor_items(
+        _ctx: Annotated[AdminContext, Depends(require_tool("world"))],
+        limit: int = Query(default=world_live.DEFAULT_LIMIT, ge=1, le=5000),
+    ):
+        """Items lying on room floors (rows up to limit, total counts all)."""
+        return await world_live.floor_items(server, limit)
+
+    @router.delete("/world/rooms/{zone_id}/{room_slug}/items/{item_id}")
+    async def remove_floor_item(
+        zone_id: str,
+        room_slug: str,
+        item_id: str,
+        ctx: Annotated[AdminContext, Depends(require_tool("world"))],
+    ):
+        """Take an item off a room's floor and delete its live state."""
+        if not ctx.may_write_zone(zone_id):
+            raise HTTPException(status_code=403, detail="zone_denied")
+        if not await world_live.remove_floor_item(server, f"{zone_id}:{room_slug}", item_id):
+            raise HTTPException(status_code=404, detail="item_not_on_floor")
+        return {"status": "removed", "item_id": item_id}
 
     return router

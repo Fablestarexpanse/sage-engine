@@ -14,7 +14,7 @@ from unittest import mock
 import pytest
 from sqlalchemy import select
 
-from sage.admin import audit, character_tools, player_accounts
+from sage.admin import audit, character_tools, player_accounts, world_live
 from sage.core.resolvers import Resolvers
 from sage.services._shared import resolve_play_account
 from sage.services.play_tokens import issue_play_token
@@ -44,7 +44,9 @@ def _server(live_config, db, redis):
         wallet=Wallet(WORLD),
         resolvers=resolvers,
         content_loader=ContentLoader(WORLD.content_dir),
-        session_manager=SimpleNamespace(get_session_by_player=lambda name: None, sessions={}),
+        session_manager=SimpleNamespace(
+            get_session_by_player=lambda name: None, sessions={}, player_to_session={}
+        ),
         config=SimpleNamespace(
             server=SimpleNamespace(
                 admin_auth_required=True,
@@ -81,8 +83,8 @@ async def _character(db, redis, *, logged_in: bool) -> tuple[int, int]:
         session.add(char)
         await session.flush()
         ids = (char.id, account.id)
-    if logged_in:  # what a login leaves in Redis, and keeps after logout
-        await redis.set_player_location(NAME, "town:bridge")
+    if logged_in:  # what a login leaves in Redis and keeps after logout (logout leaves the room)
+        await redis.set_player_location_offline(NAME, "town:bridge")
         await redis.set_player_stats(NAME, {"hp": 12, "silver": 5})
         await redis.set_player_inventory(NAME, [])
     return ids
@@ -105,6 +107,10 @@ def test_tools_write_live_state_so_the_flush_keeps_the_change(live_config, migra
                 moved = await character_tools.move(server, char_id, "town:market")
                 assert moved["room_id"] == "town:market"
                 assert await redis.get_player_location(NAME) == "town:market"
+                # Not connected, so not standing in the room for everyone there to see.
+                assert NAME not in await redis.get_room_players("town:market")
+                snapshot = await world_live.world_live_snapshot(server)
+                assert not any(NAME in r["offline"] for r in snapshot["rooms"])
 
                 money = await character_tools.set_balance(server, char_id, "silver", 99)
                 assert (money["before"], money["after"]) == (5, 99)
@@ -211,6 +217,49 @@ def test_audit_rows_are_recorded_filtered_and_scrubbed(live_config, migrated_dat
             assert wallet_rows[0]["target"] == NAME and wallet_rows[0]["detail"]["after"] == 99
             older = await audit.recent(server, staff="auditor", before_id=rows[0]["id"])
             assert all(r["id"] < rows[0]["id"] for r in older)
+        finally:
+            await db.close()
+
+    asyncio.run(go())
+
+
+def test_live_world_scans_find_left_behind_names_creatures_and_floor_items(
+    live_config, migrated_database
+):
+    async def go():
+        db = PostgresState(live_config.database)
+        try:
+            async with open_redis(live_config) as redis:
+                server = _server(live_config, db, redis)
+                await redis.add_player_to_room("Probe Ghost", "town:probe")
+                await redis.set_entity_state("probe_rat", {"id": "probe_rat", "room_id": "gone:x"})
+                await redis.add_item_to_room("probe_bread", "town:market")
+                await redis.set_item_state(
+                    "probe_bread", {"id": "probe_bread", "template": "bread"}
+                )
+                try:
+                    snapshot = await world_live.world_live_snapshot(server)
+                    probe = next(r for r in snapshot["rooms"] if r["room_id"] == "town:probe")
+                    assert probe["offline"] == ["Probe Ghost"] and probe["players"] == []
+
+                    creatures = (await world_live.live_creatures(server))["rows"]
+                    rat = next(c for c in creatures if c["id"] == "probe_rat")
+                    assert rat["room_known"] is False
+
+                    items = (await world_live.floor_items(server))["rows"]
+                    bread = next(i for i in items if i["id"] == "probe_bread")
+                    assert (bread["room_id"], bread["room_known"]) == ("town:market", True)
+
+                    removed = await world_live.clear_offline_occupants(server)
+                    assert {"room_id": "town:probe", "name": "Probe Ghost"} in removed
+                    assert await redis.get_room_players("town:probe") == set()
+                    assert await world_live.remove_floor_item(server, "town:market", "probe_bread")
+                    assert await redis.get_item_state("probe_bread") is None
+                finally:
+                    await redis.remove_player_from_room("Probe Ghost", "town:probe")
+                    await redis.client.delete(redis.key("entity:probe_rat:state"))
+                    await redis.remove_item_from_room("probe_bread", "town:market")
+                    await redis.delete_item_state("probe_bread")
         finally:
             await db.close()
 

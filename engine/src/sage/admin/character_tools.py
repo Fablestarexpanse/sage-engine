@@ -128,12 +128,20 @@ async def _write(
         await session.commit()
     if await _hot_room(server, name):
         if room_id is not None:
-            await server.redis.set_player_location(name, room_id)
+            await _relocate(server, name, room_id)
         if stats is not None:
             await server.redis.set_player_stats(name, stats)
         if inventory is not None:
             await server.redis.set_player_inventory(name, inventory)
     return name
+
+
+async def _relocate(server: Any, name: str, room_id: str) -> None:
+    """Connected characters join the room's player set; offline ones only get the location key."""
+    if _session(server, name) is not None:
+        await server.redis.set_player_location(name, room_id)
+    else:
+        await server.redis.set_player_location_offline(name, room_id)
 
 
 async def _current(
@@ -264,6 +272,6 @@ async def sync_live_state(
     if not await _hot_room(server, name):
         return
     if room_id is not None:
-        await server.redis.set_player_location(name, room_id)
+        await _relocate(server, name, room_id)
     if stats is not None:
         await server.redis.set_player_stats(name, stats)

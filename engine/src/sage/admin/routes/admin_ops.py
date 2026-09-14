@@ -6,7 +6,7 @@ import asyncio
 import logging
 from typing import TYPE_CHECKING, Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 
@@ -275,13 +275,15 @@ def build_admin_ops_router(server: SageServer) -> APIRouter:
     @router.get("/players")
     async def get_players(
         _ctx: Annotated[AdminContext, Depends(require_any_tool("players", "operations"))],
+        include_agents: bool = Query(default=False),
     ):
         players: list[dict[str, Any]] = []
         redis = server.redis
         for sid, session in server.session_manager.sessions.items():
-            # Agents live in the Agents tab, not the player views — keeping
-            # them out here is what makes "real player or agent?" answerable.
-            if getattr(session, "virtual", False):
+            # Agents are left out unless asked for, and always marked, so "real player or agent?"
+            # stays answerable.
+            agent = bool(getattr(session, "virtual", False))
+            if agent and not include_agents:
                 continue
             room_id = None
             if session.player_id and redis.is_connected:
@@ -296,8 +298,9 @@ def build_admin_ops_router(server: SageServer) -> APIRouter:
                     "session_id": sid,
                     "player_id": session.player_id,
                     "state": session.state.name,
-                    "peer": session.protocol.peer_info,
+                    "peer": getattr(session.protocol, "peer_info", None),
                     "room_id": room_id,
+                    "agent": agent,
                 }
             )
         names = [p["player_id"] for p in players if p.get("player_id")]

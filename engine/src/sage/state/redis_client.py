@@ -128,6 +128,44 @@ class RedisState:
         await self.client.set(key, room_id)
         await self.add_player_to_room(player_id, room_id)
 
+    async def set_player_location_offline(self, player_id: str, room_id: str):
+        """Move a character who is not connected: the location key only, never a room's player set.
+
+        A room's player set lists who is standing there now, so an offline character in it shows up
+        to everyone in the room. Login adds the character to the set (``set_player_location``).
+        """
+        old_room = await self.get_player_location(player_id)
+        if old_room:
+            await self.remove_player_from_room(player_id, old_room)
+        await self.client.set(self._get_key("player_location", id=player_id), room_id)
+
+    async def scan_sets(self, prefix_key: str) -> dict[str, set[str]]:
+        """Every non-empty set of one room kind (``room_players``, ``room_items`` ...) by room id.
+
+        A SCAN over the keyspace: fine for an admin view, not for game code.
+        """
+        pattern = self._get_key(prefix_key, id="*")
+        head, tail = pattern.split("*", 1)
+        out: dict[str, set[str]] = {}
+        async for stored in self.client.scan_iter(match=pattern, count=256):
+            members = await self.client.smembers(stored)
+            if members:
+                out[stored[len(head) : len(stored) - len(tail)]] = set(members)
+        return out
+
+    async def scan_states(self, prefix_key: str, limit: int) -> tuple[list[dict[str, Any]], int]:
+        """Up to ``limit`` JSON states of one kind (``entity_state``, ``item_state``) and the total."""
+        pattern = self._get_key(prefix_key, id="*")
+        states: list[dict[str, Any]] = []
+        total = 0
+        async for stored in self.client.scan_iter(match=pattern, count=256):
+            total += 1
+            if len(states) < limit:
+                raw = await self.client.get(stored)
+                if raw:
+                    states.append(json.loads(raw))
+        return states, total
+
     async def get_room_players(self, room_id: str) -> set[str]:
         key = self._get_key("room_players", id=room_id)
         return await self.client.smembers(key)
