@@ -1,0 +1,79 @@
+{
+  "version": 2,
+  "positions": {
+    "boathouse": {
+      "x": 400.0,
+      "y": 300.0,
+      "width": 176,
+      "height": 108
+    },
+    "eel_weirs": {
+      "x": 620.0,
+      "y": 300.0,
+      "width": 176,
+      "height": 108
+    },
+    "ferry_hut": {
+      "x": 1500.0,
+      "y": 430.0,
+      "width": 176,
+      "height": 108
+    },
+    "ferry_stage": {
+      "x": 1280.0,
+      "y": 430.0,
+      "width": 176,
+      "height": 108
+    },
+    "mudflats": {
+      "x": 620.0,
+      "y": 430.0,
+      "width": 176,
+      "height": 108
+    },
+    "reed_path": {
+      "x": 840.0,
+      "y": 430.0,
+      "width": 176,
+      "height": 108
+    },
+    "smugglers_cellar": {
+      "x": 400.0,
+      "y": 430.0,
+      "width": 176,
+      "height": 108
+    },
+    "south_fields": {
+      "x": 1060.0,
+      "y": 560.0,
+      "width": 176,
+      "height": 108
+    },
+    "south_road": {
+      "x": 1060.0,
+      "y": 430.0,
+      "width": 176,
+      "height": 108
+    },
+    "washing_steps": {
+      "x": 840.0,
+      "y": 300.0,
+      "width": 176,
+      "height": 108
+    }
+  },
+  "notes": [],
+  "muted_edges": [],
+  "floors": {
+    "boathouse": 0,
+    "eel_weirs": 0,
+    "ferry_hut": 0,
+    "ferry_stage": 0,
+    "mudflats": 0,
+    "reed_path": 0,
+    "smugglers_cellar": 0,
+    "south_fields": 0,
+    "south_road": 0,
+    "washing_steps": 0
+  }
+}

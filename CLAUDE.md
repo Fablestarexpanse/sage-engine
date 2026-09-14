@@ -1,71 +1,81 @@
-# CLAUDE.md — Fablestar MUD Platform
-
-> **SAGE decoupling in progress (2026-09-13).** This codebase is being split into a
-> world-agnostic engine (SAGE), world packages (Fablestar is the first) and plugins. The brief
-> `docs/sage/BRIEF.md`, the rulings log `docs/sage/DECISIONS.md` and the approved (2026-09-13)
-> `docs/sage/PHASE1_CONTRACTS.md` take precedence over this file. This file still describes the
-> pre-split shape, where Fablestar mechanics (Conduit, Digi, Tidegate rooms) sit inside the
-> engine — do not add new world-specific code to the engine on the strength of it. Current
-> audit: `docs/sage/PHASE0_AUDIT.md`.
+# CLAUDE.md — SAGE (Synthetic Agent Game Engine)
 
 Developer guide for working with this codebase. Read this before touching game logic.
+
+The engine/world/plugin split was designed in `docs/sage/PHASE1_CONTRACTS.md` (approved
+2026-09-13) and finished in M2 (merged 2026-09-14). Every ruling since is in
+`docs/sage/DECISIONS.md`; when this file and those disagree, they win.
 
 ---
 
 ## Project overview
 
-Fablestar is a text MUD engine with an optional LLM narration layer. The core game is fully deterministic (Python); LLMs only colour the output text. Players connect over WebSocket and type commands. Admins manage the world through a React admin console that talks to the same server.
+SAGE is a text-world engine (MUD) with an optional LLM narration layer. The core game is fully
+deterministic Python; LLMs only colour the output text. Players connect over WebSocket and type
+commands. Staff run the world through the Nexus admin console, which talks to the same server.
+
+Three kinds of code, kept apart on purpose:
+
+- **Engine** (`engine/src/sage`): sessions, parser, tick loop, state, content loading, lexicon,
+  wallet, AI plumbing, plugin host. It knows no setting: no world names, no mechanics that only
+  one world wants.
+- **World packages** (`worlds/<id>`): content, stats, currencies, lexicon, AI prompts and style,
+  ComfyUI graphs, UI theme, and world-only plugins. Fablestar Expanse (proprietary) and Rivermoot
+  (the second reference world) are the two in the repo.
+- **Plugins** (`plugins/<id>` first-party, `worlds/<id>/plugins/<id>` world-only): every game
+  mechanic (combat, shops, factions, crafting, agents, Conduit proficiencies, levels ...),
+  registering only through `sage.api`.
 
 **Golden rule:** LLMs describe what happened. Deterministic code decides what happens.
 
-**Philosophy:** Sub-second hot reload on content (YAML) and commands (Python). Change a room description or add a command without restarting the server.
+**Do not add world-specific code to the engine.** Put the term in a world package, the text
+behind a lexicon key, the mechanic in a plugin. The invariant ratchet (see Testing) enforces it.
 
 ---
 
 ## Repository layout
 
 ```
-engine/src/sage/        SAGE engine Python package (Nexus server)
-  app.py                Global singleton (app_instance)
-  server.py             SageServer class — owns all subsystems
-  __main__.py           Entry point: asyncio.run(run_server())
-  admin/                FastAPI REST + WebSocket admin API (NexusApp + routes/)
-  commands/             MUD command handlers (@command decorator)
-  core/                 Config, TickManager, security (JWT secret), TOML persist
-  comfyui_client.py     ComfyUI image-generation client
-  hot_reload.py         HotReloader (inotify/watchdog)
-  llm/                  LLM client, prompt rendering, output validation
-  network/              WebSocketProtocol, Session state machine
-  parser/               Tokenizer + CommandDispatcher
-  proficiencies/        Conduit proficiency catalog, registry, engine
-  services/             EconomyService, PlayerService, SceneService, play tokens
-  state/                Redis (hot state), Postgres (persistent), ORM models
-  world/                ContentLoader, world Pydantic models, EntitySpawnManager
-
-engine/clients/admin-ui/               React admin console (Vite, port 5174)
-engine/clients/player-ui/              React player client (Vite, port 5173)
-engine/tools/worldforge/             Tauri desktop WorldForge editor
-engine/tools/worldforge-mcp/         MCP server exposing map-building tools (mcp__worldforge__*)
-worlds/fablestar/content/world/   Fablestar game content (YAML, tracked in git; changes hot-reload)
-  entities/             Entity templates (NPC/mob definitions)
-  items/                Item templates
-  zones/                Game zones (test_isle "Tidegate Isle", aipub)
-    {zone_id}/
-      zone.yaml         Zone metadata
-      .positions.json   Editor layout (v2: positions, floors, notes)
-      rooms/            Room YAML files; file stem = room slug
-  (stamps/ is created by WorldForge when a stamp is saved)
-worlds/fablestar/content/achievements/   Achievement YAML
-worlds/fablestar/content/agents/         Agent personas (computer-controlled players)
-worlds/fablestar/content/factions/       Faction YAML
-worlds/fablestar/content/proficiencies/  Conduit proficiency catalog (catalog.json, 278 leaves)
-worlds/<world>/ai/prompts/  Jinja2 templates, one per AI slot (<slot>.j2)
-config/                 TOML config files (gitignored; copy from *.example.toml)
-engine/tests/           pytest suite (run from repo root: python -m pytest)
-engine/alembic/         Database migrations (engine/alembic.ini)
-engine/scripts/         Admin bootstrap scripts
-engine/pyproject.toml   Engine package (sage-engine), ruff config
-scripts/                Repo tooling: invariant ratchet, license report, proficiency catalog build
+engine/src/sage/          SAGE engine package (Nexus server)
+  app.py                  Global singleton (app_instance)
+  server.py               SageServer — owns every subsystem
+  cli.py                  python -m sage [db | plugin | validate | schema]
+  api/                    sage.api — the only import surface plugins may use
+  plugins/                Plugin loader, manifest seal, host, migrations, uninstall, offline host
+  admin/                  FastAPI REST + WebSocket admin API (NexusApp + routes/)
+  commands/               Engine commands (look, map, help, say, tell, movement, items, quit)
+  core/                   Config, TickManager, EventBus, resolvers, security, TOML persist
+  effects/                Timed effects engine (buffs, damage over time)
+  lexicon/                Engine default strings (en.yaml), lexicon layers, Nexus overrides
+  llm/                    LLM client, AI slots (prompts.py), world style, output validation
+  network/                WebSocket protocol, Session state machine, panels, snapshot sections
+  parser/                 Tokenizer + CommandDispatcher
+  services/               Economy (AI credits), player accounts, scene art, play tokens
+  state/                  Redis (hot state), Postgres (persistent), ORM models
+  world/                  World packages, content loader, spawner, wallet, chargen, lint,
+                          content schema, layout, UI theme, resolver slots
+engine/clients/player-ui/ React player client (Vite, port 5173)
+engine/clients/admin-ui/  React Nexus admin console (Vite, port 5174)
+engine/tools/worldforge/  Tauri desktop WorldForge editor
+engine/tools/worldforge-mcp/  MCP server exposing map-building tools (mcp__worldforge__*)
+engine/tests/             pytest suite (run from repo root: python -m pytest)
+engine/alembic/           Core database migrations (engine/alembic.ini)
+engine/scripts/           Admin bootstrap and account scripts
+plugins/<id>/             First-party plugins: plugin.toml, sage_plugin_<id>/, lexicon/, migrations/
+worlds/<id>/              World packages
+  world.toml              id, name, start/respawn rooms, room types, exit dirs, equipment slots,
+                          enabled plugins, params
+  stats.yaml              attributes, vitals, chargen attribute points
+  currencies.yaml         in-world currencies
+  content/world/          zones/{zone}/rooms/*.yaml (+ zone.yaml, .positions.json), entities/, items/
+  content/<type>/         plugin content types (achievements/, factions/, agents/, proficiencies/ ...)
+  lexicon/en.yaml         string overrides
+  ai/                     prompts/<slot>.j2, style.yaml, comfyui/*.json
+  ui/theme.yaml           player client mark and accent colours
+  plugins/<id>/           world-only plugins (Fablestar: conduit, morality; Rivermoot: levels)
+  content.schema.json     exported content schema for offline editors
+config/                   TOML config files (gitignored; copy from *.example.toml)
+scripts/                  Invariant ratchet, license report, proficiency catalog build
 ```
 
 ---
@@ -73,24 +83,25 @@ scripts/                Repo tooling: invariant ratchet, license report, profici
 ## Startup lifecycle
 
 ```
-__main__.py
-  └─ run_server()
-       └─ SageServer.start()
-            ├─ load_config()            config/ TOML files merged
-            ├─ PostgresState.init()     SQLAlchemy async engine + sessionmaker
-            ├─ RedisState.init()        redis[hiredis] connection pool
-            ├─ ContentLoader init       content_dir="content" (lazy, cached)
-            ├─ LLMClient + PromptManager
-            ├─ SessionManager
-            ├─ EntitySpawnManager
-            ├─ CommandDispatcher        imports all commands/  modules → registry
-            ├─ PersistenceManager       subscribes to tick events
-            ├─ HotReloader              watches content/ and commands/
-            ├─ NexusApp (FastAPI)       admin REST + /play WebSocket
-            └─ TickManager.start()      4 Hz game loop
+__main__.py → cli.main() → run_server()
+  └─ SageServer.__init__/start()
+       ├─ load_config()              config/ TOML files merged, SAGE_ env overrides
+       ├─ select_world()             worlds/<server.world> → WorldPackage (world.toml, stats, currencies)
+       ├─ engine resolver slots      death, progression, chargen, combat ratings (world-aware defaults)
+       ├─ PostgresState / RedisState Redis keys namespaced by world id
+       ├─ ContentLoader              the world's content/ (lazy, cached)
+       ├─ LLMClient + PromptManager  the world's ai/prompts and ai/style.yaml
+       ├─ CommandRegistry            engine command modules
+       ├─ PluginHost.load()          discover → validate manifests → topo-sort → refuse pending
+       │                             migrations → setup(api) → seal (undeclared touches fail boot)
+       ├─ lexicon                    engine defaults < plugin layers < world < Nexus overrides
+       ├─ HotReloader                content YAML and engine command modules
+       ├─ NexusApp (FastAPI)         admin REST, /play routes, plugin routes, WebSockets
+       └─ TickManager.start()        4 Hz game loop
 ```
 
-`app.py` holds the global singleton `app_instance: Optional[SageServer]`. Command handlers import it lazily:
+`app.py` holds the global singleton `app_instance: Optional[SageServer]`. Engine command handlers
+import it lazily:
 
 ```python
 from sage.app import app_instance  # import inside handler, not at module top
@@ -98,13 +109,19 @@ from sage.app import app_instance  # import inside handler, not at module top
 
 ---
 
-## Game loop (TickManager)
+## Game loop, events and resolvers
 
-- **Rate:** 4 Hz (0.25s tick) — configurable via `tick_rate` in `server.toml`
-- **Drift compensation:** measures elapsed time and skips ticks if behind
-- Handlers attach with `TickManager.register(fn)` (`server.py` startup): spawner, ambient, effects, maestro, agent_manager, persistence. A failing handler is logged and the loop keeps running.
-- `PersistenceManager` flushes Redis → Postgres every 240 ticks (~60 s)
-- `core/events.py` defines an `EventBus` that nothing uses yet
+- **Tick:** 4 Hz (0.25 s), configurable via `tick_rate` in `server.toml`, with drift compensation.
+  Plugins add jobs with `api.tick.every(seconds, fn, name=...)`; a failing job is logged and the
+  loop keeps running. `PersistenceManager` flushes Redis → Postgres about every 60 s and at
+  shutdown; plugins hook in with `api.persistence.on_flush`.
+- **Events** (`core/events.py`): fan-out notifications with no return value (`EntityKilled`,
+  `RoomEntered`, `CountersChanged` ...). Subscribers may append player lines to `event.messages`
+  and, for events that carry it, change `event.stats`: the publisher saves that blob.
+- **Resolver slots** (`core/resolvers.py`, `world/slots.py`): single-provider hooks that return
+  values, each with an engine default: `combat.ratings`, `death.check`/`death.respawn`,
+  `progression.*`, `chargen.validate`/`seed`/`options`. A world's plugin provides the real one
+  (Fablestar: conduit; Rivermoot: levels).
 
 ---
 
@@ -117,38 +134,64 @@ from sage.app import app_instance  # import inside handler, not at module top
 | Room occupants | Redis | `<world>:room:{room_id}:players`, `...:entities`, `...:items` |
 | Entity live state | Redis | `<world>:entity:{entity_id}:state` |
 | Item live state | Redis | `<world>:item:{item_id}:state` |
-| Account / Character records | Postgres | `accounts`, `characters` tables |
+| Account / Character records | Postgres | `accounts`, `characters` tables (one database per world) |
+| Plugin tables | Postgres | `plg_<plugin>_*` |
 | Admin staff | Postgres | `admin_staff` table |
 | Scene images | Postgres | `account_scene_images` table |
 
-`RedisState` (`state/redis_client.py`) has typed async methods for every key pattern — use them; don't hand-craft keys. Every key is stored under the world's namespace (`<world>` = world id); anything that must build a raw key passes it through `redis.key()`.
+`RedisState` (`state/redis_client.py`) has typed async methods for every key pattern — use them;
+don't hand-craft keys. Anything that must build a raw key passes it through `redis.key()`.
 
-`PersistenceManager.flush_all()` copies live Redis player state back into the Postgres `characters` row every ~60 s and on server shutdown.
+The character stats blob (JSONB) holds engine vitals (`hp`, `max_hp`), the world's attributes
+(from `stats.yaml`), wallet balances under currency keys, engine counters and effects, and one
+block per plugin (`api.state.block`). Plugins change stats only through `api.state.edit`, which
+refuses top-level keys that neither they nor any loaded plugin declared.
 
 ---
 
-## Adding a MUD command
+## Adding a command
 
-1. Create or edit a file in `engine/src/sage/commands/`.
-2. Decorate with `@command`:
+**In a plugin (the normal case):** register it in `setup(api)` and declare it in the manifest.
 
 ```python
-from sage.commands.registry import command
-from sage.network.session import Session
+# plugins/greeting/sage_plugin_greeting/main.py
+from sage.api import PluginAPI
 
-@command("greet", aliases=["hi", "hello"])
-async def greet(session: Session, args: list[str]):
-    """Greet another player. Usage: greet <name>"""
-    from sage.app import app_instance   # lazy import — required pattern
-    target = " ".join(args) or "the room"
-    await session.send(f"You wave to {target}.")
+
+def setup(api: PluginAPI) -> None:
+    async def greet(session, args):
+        """Greet someone. Usage: greet <name>"""
+        target = " ".join(args) or api.t("greeting.nobody")
+        await session.send(api.t("greeting.wave", target=target))
+
+    api.commands.register("greet", greet, aliases=["hi"])
 ```
 
-3. Import the module in `server.py` (under the other command imports) so it registers at startup — or rely on HotReloader if adding during a running session.
+```toml
+# plugins/greeting/plugin.toml
+[plugin]
+id = "greeting"
+name = "Greeting"
+version = "1.0.0"
+engine = ">=0.2,<0.3"
+entry = "sage_plugin_greeting.main:setup"
+first_party = true
 
-**Registry:** `commands/registry.py` holds a global `registry: CommandRegistry`. The `@command` decorator registers at import time. Commands receive `(session, args)` — `args` is a lowercased list of tokens after the verb.
+[touches]
+commands = ["greet"]
+lexicon_prefix = "greeting."
+```
 
-**Session state:** `session.player_id` (str), `session.character_id` (str), `session.state` (`SessionState` enum). Check `session.state == SessionState.PLAYING` before accessing player state.
+Put the strings in `plugins/greeting/lexicon/en.yaml` and enable the plugin in a world's
+`world.toml` `[plugins]` table. Plugin code imports only `sage.api`.
+
+**In the engine** (only for setting-free basics): add a handler in `engine/src/sage/commands/`
+with `@command`, send text with `await session.say("lexicon.key", **vars)` and add the key to
+`engine/src/sage/lexicon/en.yaml`. A literal `session.send("...")` fails the ratchet, and
+`test_every_engine_key_has_an_engine_default` fails a key with no default.
+
+Commands receive `(session, args)`; `args` is the lowercased token list after the verb
+(`session.raw_args` keeps the original case). `session.player_id` is the character name.
 
 ---
 
@@ -162,12 +205,12 @@ Create `worlds/<world>/content/world/zones/{zone_id}/rooms/{room_slug}.yaml`:
 id: "my_zone:room_slug"     # must match zone_id:file_stem
 zone: my_zone
 name: The Corridor
-type: chamber                # chamber | corridor | hub | exterior
+type: street                 # one of world.toml [content] room_types
 depth: 2
 description:
   base: "A dimly lit corridor."
 exits:
-  north:
+  north:                     # one of world.toml [content] exit_dirs
     destination: "my_zone:next_room"
     description: "A door to the north."
 features:
@@ -176,82 +219,91 @@ features:
     keywords: [terminal, console]
     description: "Covered in dust."
 entity_spawns:
-  - template: stalker
+  - template: river_rat
     chance: 0.4
     max_count: 1
-tags: [lit]
+tags: [outdoor]
+shop:                        # a plugin field (shop plugin); see content.schema.json
+  name: the stall
+  sells: [{template: bread_loaf, price: 1}]
 ```
 
-The server loads rooms on first access (`ContentLoader.get_room(room_id)`). HotReloader invalidates the cache on file change.
+The server loads rooms on first access (`ContentLoader.get_room`); HotReloader invalidates the
+cache on file change. Fields plugins add to rooms, features, items and entities are listed with
+their schema in the package's `content.schema.json`.
 
-### Entity template
+### Entity and item templates
 
-Create `worlds/<world>/content/world/entities/{id}.yaml`. See `world/models.py` → `EntityTemplate` for the full schema.
+`worlds/<world>/content/world/entities/{id}.yaml` (`world/models.py` → `EntityTemplate`) and
+`.../items/{id}.yaml` (`ItemTemplate`, plus plugin fields such as `slot`, `attack`, `heal`).
 
-### Item template
+### Check and export
 
-Create `worlds/<world>/content/world/items/{id}.yaml`. See `world/models.py` → `ItemTemplate`.
+```bash
+python -m sage validate --world <id> [--zone <zone>] [--info]
+python -m sage schema export --world <id> --out worlds/<id>/content.schema.json
+```
+
+`test_exported_schema_is_current` fails when a plugin's content fields change and the exported
+schema was not regenerated.
 
 ---
 
-## LLM narration flow
+## AI: narration, style and art
 
 Narration is **optional and fire-and-forget** — the game never blocks on LLM output.
 
 ```
-Command handler
-  └─ app_instance.prompt_manager.render("narrate.room", **context)   # an AI slot
-       └─ Jinja2 renders worlds/<world>/ai/prompts/narrate.room.j2 (SlotDisabled if absent)
-  └─ app_instance.llm_client.generate(prompt, max_tokens=N)
-       └─ POST to LM Studio / Ollama / OpenAI-compatible endpoint
-  └─ app_instance.llm_client.validator.sanitize(response)
-       └─ strips unsafe content, trims to max length
-  └─ session.send(narration)
+engine or plugin code
+  └─ prompt_manager.render("narrate.room", **context)      # an AI slot
+       └─ worlds/<world>/ai/prompts/narrate.room.j2          (SlotDisabled if absent)
+  └─ llm_client.generate_or_raise(prompt, max_tokens=N)      # LM Studio / Ollama / OpenAI-compatible
+  └─ LLMValidator(style.rules()).sanitize(text)              # world content rules
+  └─ session.send(...)                                       # after the deterministic outcome
 ```
 
-AI slots are declared by the engine (`sage.llm.prompts.ENGINE_SLOTS`) and by plugins (`api.ai.slot(name)` -> `<plugin>.<name>`). The running world fills a slot with `ai/prompts/<slot>.j2`; a slot without a template is disabled and callers take their plain path. Each `.j2` file receives named variables. If the LLM call fails, command handlers fall back to a plain-text message — see `plugins/combat/sage_plugin_combat/main.py` (`api.ai.narrate`) for the pattern.
+AI slots are declared by the engine (`sage.llm.prompts.ENGINE_SLOTS`: narrate.room, forge.room,
+forge.content, image.area, image.portrait, image.scene) and by plugins (`api.ai.slot(name)` →
+`<plugin>.<name>`). A world fills a slot with `ai/prompts/<slot>.j2`; an unfilled slot is
+disabled and callers take their plain path. `ai/style.yaml` gives templates `{{ style.tone }}`,
+the system prompt and the content rules. ComfyUI graphs live in `ai/comfyui/`
+(`comfyui.toml` paths override them). See `plugins/combat` (`api.ai.narrate`) for the pattern.
 
-**LLM client config:** `config/llm.toml` (optional). Defaults to disabled. Set `base_url`, `model`, `enabled = true`.
+**Config:** `config/llm.toml` (disabled by default), `config/comfyui.toml` (art, AI credit costs,
+`[[credit_bundles]]`), `config/agents_llm.toml` (agent characters).
 
 ---
 
-## Proficiency system (Conduit)
+## Player client and panels
 
-Proficiencies are organised as dot-path trees, e.g. `combat.melee.blades`. Five stats gate advancement: **FRT** (fortitude), **RFX** (reflex), **ACU** (acuity), **RSV** (resolve), **PRS** (presence).
+The player client draws nothing world-specific on its own:
 
-| File | Role |
-|---|---|
-| `proficiencies/models.py` | Pydantic models: `ProficiencyLeafDefinition`, `ProficiencyNode`, `ProficiencyCatalogDocument` |
-| `proficiencies/registry.py` | `ProficiencyRegistry` — in-memory tree built from catalog |
-| `proficiencies/catalog_loader.py` | Loads the world's `content/proficiencies/` into the registry |
-| `proficiencies/engine.py` | `ProficiencyEngine` — `try_field_gain()`, XP math, level-up |
-| `proficiencies/state_helpers.py` | `ensure_proficiency_block()`, `combat_attack_defense_from_stats()` |
-| `proficiencies/tick.py` | Per-tick passive drain / decay |
-| `proficiencies/bonus.py` | Stat bonus calculation from proficiency levels |
-| `proficiencies/data/` | Built-in proficiency domain definitions (combat, traversal, etc.) |
-
-Hybrid mode (`proficiency_combat_hybrid = true` in `server.toml`) blends legacy stat-based and proficiency-based damage. Disable once proficiencies are fully populated.
-
-**Current status:** The flag defaults to `true` because several combat sub-domains are missing leaf definitions. Once all 12 domains have full leaf coverage and in-game skill usage has been validated, flip the flag to `false` and remove the legacy stat path from `proficiencies/state_helpers.py:combat_attack_defense_from_stats`. Track completion as a milestone before 1.0.
+- **World:** `GET /play/world` gives the name and `ui/theme.yaml` (mark, accent colours).
+- **Commands:** `GET /play/commands` gives the command names for autocomplete.
+- **Character creation:** `GET /play/chargen/options` gives the choices step. Two kinds are rendered: `skill_points` and `attribute_points`.
+- **Panels:** plugins declare them with `api.ui.panel(name, kind, section)`. Kinds are key_value, list, stat_sheet, wallet, table and tree. The data comes from snapshot sections they contribute with `api.snapshot.contribute`. There is no plugin-shipped client JS.
 
 ---
 
 ## Admin console (Nexus)
 
-The FastAPI app (`admin/nexus.py`, `NexusApp`) mounts all admin routes. Authentication uses JWT HS256 via `NexusAdminAuthMiddleware` — all admin routes require a valid Bearer token unless `admin_auth_required = false` (dev-only).
+The FastAPI app (`admin/nexus.py`, `NexusApp`) mounts all admin routes. Authentication uses JWT
+HS256 via `NexusAdminAuthMiddleware` — all admin routes require a valid Bearer token unless
+`admin_auth_required = false` (dev-only). Staff tools gate routes (`require_tool`).
 
-WebSocket admin connections use a **first-message auth envelope**: after accepting, the server waits up to 10 s for `{"type": "auth", "token": "<jwt>"}` before proceeding. Tokens must never appear in URLs.
+WebSocket admin connections use a **first-message auth envelope**: after accepting, the server
+waits up to 10 s for `{"type": "auth", "token": "<jwt>"}`. Tokens must never appear in URLs.
 
 Rate limits (via `slowapi`): login endpoints 10 req/min, register 5 req/min.
 
-Key admin modules:
-- `admin/nexus.py` — FastAPI app shell (middleware, WebSockets); routes live in `admin/routes/` domain routers (admin_ops, content, world, forge, play, llm_comfyui)
-- `admin/admin_security.py` — JWT middleware, `jwt_secret_for_server()`
-- `admin/staff_service.py` — admin staff CRUD
-- `admin/player_accounts.py` — player account management
-- `admin/world_live.py` — live world state queries
-- `admin/content_browser.py` — YAML content browsing
-- `admin/host_metrics.py` — server health metrics
+Key modules and routes:
+- `admin/routes/` — domain routers: admin_ops, content, world, forge, play, llm_comfyui
+- `admin/admin_security.py` — JWT middleware, tool ids, `jwt_secret_for_server()`
+- `admin/staff_service.py`, `admin/player_accounts.py` — staff and player account management
+- `admin/content_browser.py` — zone/room/template listing and template YAML editing
+- Plugins mount admin routers at `/plugins/<id>/admin` behind a tool; `GET /admin/plugin-pages`
+  tells the console which plugin pages (skills, agents, shops) the running world has
+- `GET /schema/world` — the content schema; `GET /admin/economy` — AI credit settings and bundles
 
 ---
 
@@ -265,10 +317,15 @@ cp config/database.example.toml config/database.toml
 ```
 
 Important `server.toml` keys:
+- `world` — the world package to run (a directory under `worlds_dir`, default `worlds`)
 - `admin_auth_required = true` — default; never disable on a networked host
 - `admin_jwt_secret` — must be set when auth is required; generate with `python -c "import secrets; print(secrets.token_hex(32))"`
 - `cors_origins` — list of allowed origins (default: localhost dev ports)
-- `proficiency_combat_hybrid` — blends old stat combat with proficiency system
+- `dev_mode`, `dev_login` — local playtesting only (see below)
+
+World-specific tuning lives in the world's `world.toml` `[params]`, not in `server.toml`
+(for example `"conduit.combat_hybrid"`, `"effects.rest_room_types"`,
+`"engine.death.respawn_bill_max"`).
 
 Environment overrides: `SAGE_` prefix, double-underscore nesting, e.g. `SAGE_SERVER__WEBSOCKET_PORT=8001`. The pre-rename `FABLESTAR_` prefix still works for one release and logs a deprecation warning.
 
@@ -280,7 +337,7 @@ Environment overrides: `SAGE_` prefix, double-underscore nesting, e.g. `SAGE_SER
 # 1. Start backing services
 docker compose up -d redis postgres
 
-# 2. Run migrations
+# 2. Run migrations (core + the world's plugin branches)
 python -m sage db upgrade
 
 # 3. (Optional) Bootstrap head admin
@@ -298,6 +355,11 @@ cd engine/clients/player-ui
 VITE_NEXUS_PORT=8001 npm run dev -- --port 5173 --host
 ```
 
+A second world runs beside the first with its own database and port:
+`SAGE_SERVER__WORLD=rivermoot SAGE_DATABASE__DATABASE=sage_rivermoot SAGE_SERVER__WEBSOCKET_PORT=8002`
+(run `db upgrade` with the same variables first); point a player client at it with
+`VITE_NEXUS_PORT=8002`.
+
 **Playtesting without passwords:** with `dev_mode = true` and `dev_login = true` in `config/server.toml`, loopback clients can `POST /play/dev/login {"character": "Qa Tester"}` to get a play token for that character (created on the `dev-login` account if missing; other accounts' characters and agent names are refused). Connect the WebSocket with `{"token": ..., "character_id": ...}`. The player UI shows a "Dev login" box on the sign-in screen when it's enabled. Never enable on a networked host.
 
 Default ports: Nexus 8001, player UI 5173, admin UI 5174, Postgres 5432, Redis 6379.
@@ -306,17 +368,15 @@ Default ports: Nexus 8001, player UI 5173, admin UI 5174, Postgres 5432, Redis 6
 
 ## WorldForge content editor
 
-WorldForge is a Tauri desktop app (`engine/tools/worldforge/`) for visually editing zones and rooms. It edits a world's `content/world/` (picking the repository root finds `worlds/<id>/content/world`). Stamps (reusable room groups) are saved to `content/world/stamps/`.
-
-**Resolved (kept for history):** WorldForge historically wrote exports to a nested `content/world/content/world/` path due to a root path misconfiguration. If you see a `content/world/content/` subtree appear after a WorldForge export, the room YAMLs must be moved to `content/world/zones/{zone_id}/rooms/` and the duplicate tree removed. This was corrected manually; check the WorldForge content root setting if it recurs.
+WorldForge is a Tauri desktop app (`engine/tools/worldforge/`) for visually editing a world package's zones, rooms, entities and items. Picking the repository root finds `worlds/<id>/content/world`. Room types, exit directions and equipment slots come from the package's `content.schema.json`, and plugin fields get generated forms (room Plugins tab, feature blocks, item plugin fields). Stamps (reusable room groups) are saved to `content/world/stamps/`.
 
 ### How WorldForge saves (and the conflict risk)
 
-WorldForge does **not** save through the Nexus HTTP API. Its `saveRoomFile()` (`engine/tools/worldforge/src/editors/ZoneEditor.jsx`) calls the Tauri `write_file` command (`engine/tools/worldforge/src-tauri/src/commands.rs`) and writes room YAML **directly to disk**; the server's `HotReloader` then notices the file change and invalidates the content cache. The admin-ui World Builder that used to write rooms through Nexus was retired in SAGE 3.18 (owner G.6); the admin Content Library only lists zones and rooms and can create a zone or an empty room.
+WorldForge does **not** save through the Nexus HTTP API. Its `saveRoomFile()` (`engine/tools/worldforge/src/editors/ZoneEditor.jsx`) calls the Tauri `write_file` command (`engine/tools/worldforge/src-tauri/src/commands.rs`) and writes room YAML **directly to disk**; the server's `HotReloader` then notices the file change and invalidates the content cache. The admin World Builder that used to write rooms through Nexus was retired in SAGE 3.18 (owner G.6); a Nexus write-through backend for WorldForge is deferred (DECISIONS, 5.8).
 
-The other structural writer is `engine/tools/worldforge-mcp/server.py` (the MCP server behind the `mcp__worldforge__*` tools), which reads and writes room YAML and `.positions.json` directly to disk (`_read_room`/`_write_room`/`_write_positions`). Neither writer guards against the other (last write wins), so don't edit the same zone in the WorldForge app and through the MCP tools at the same time.
+The other structural writer is `engine/tools/worldforge-mcp/server.py` (the MCP server behind the `mcp__worldforge__*` tools), which reads and writes room YAML and `.positions.json` directly to disk. Its `validate_zone` is the engine linter (`sage.world.lint`) and its room types come from `world.toml`. Neither writer guards against the other (last write wins), so don't edit the same zone in the WorldForge app and through the MCP tools at the same time.
 
-Related Nexus endpoints (available for HTTP write-through, e.g. the forge chat deploy flow):
+Related Nexus endpoints:
 
 - **`POST /forge/inject`** — write a room YAML. Body: `{id: "zone_id:room_slug", yaml_content: "..."}`. Requires the `forge` tool permission and `may_write_zone(zone_id)`. Both `zone_id` and `room_slug` are validated against `^[a-zA-Z0-9_-]+$` (no path traversal). Returns `{status: "success", path: "..."}`.
 - **`POST /forge/generate`** — LLM-generate a room YAML draft from a natural-language prompt.
@@ -342,16 +402,16 @@ python -m sage db upgrade
 python -m pytest
 ```
 
-Tests cover config loading, command dispatch, proficiency math, admin auth, and session state.
-
-**Two tiers (owner ruling 2026-09-13, `docs/dev/STANDARDS.md` §3.5):** the default suite is hermetic — `python -m pytest` passes with no services, using in-memory fakes in `engine/tests/fakes.py`. A live tier (`@pytest.mark.live`, run with `SAGE_LIVE_TESTS=1` against Docker Postgres/Redis, required in CI) covers migrations, persistence, plugin install/uninstall and world smoke tests. Never test migrations or persistence against fakes alone — mocked tests have masked real migration failures in the past.
+**Two tiers (owner ruling 2026-09-13, `docs/dev/STANDARDS.md` §3.5):** the default suite is hermetic — `python -m pytest` passes with no services, using in-memory fakes in `engine/tests/fakes.py`. A live tier (`@pytest.mark.live`, run with `SAGE_LIVE_TESTS=1` against Docker Postgres/Redis, required in CI) covers migrations, persistence, plugin install/uninstall, and both reference worlds booting and playing (`test_world_smoke.py`, including Rivermoot's shop/fight/level loop). Never test migrations or persistence against fakes alone — mocked tests have masked real migration failures in the past.
 
 ```bash
 docker compose up -d redis postgres
 SAGE_LIVE_TESTS=1 python -m pytest -m live
 ```
 
-Live tests create and drop their own `sage_live_*` database and use Redis db 15, so they never touch the dev database. `engine/tests/live/test_migrations.py::test_models_match_migrations` fails when the ORM models and migrations disagree — fix the model or add a migration, never weaken the test.
+Live tests create and drop their own `sage_live_*` databases and use Redis db 15, so they never touch the dev database. `engine/tests/live/test_migrations.py::test_models_match_migrations` fails when the ORM models and migrations disagree — fix the model or add a migration, never weaken the test.
+
+First-party plugin tests live in `engine/tests/plugins/`, world plugin tests beside the plugin (`worlds/<id>/plugins/<id>/tests`); both load plugins through the real `PluginHost`. WorldForge: `cd engine/tools/worldforge && npx vitest run`.
 
 **SAGE invariant ratchet** (CI step, `scripts/sage_invariants.py`): counts world-specific terms (`scripts/sage_denylist.toml`) and hardcoded player-facing strings (`session.send("...")`) per engine file, and fails if any file's count rises above `scripts/sage_invariants_baseline.json`. Run `python scripts/sage_invariants.py check` before committing. When you remove hits, run `python scripts/sage_invariants.py update` to lock in the lower counts. Never raise the baseline to make CI pass — put the term in a world package or the text behind a lexicon key instead. The same check enforces the import boundary with zero tolerance: engine code never imports `sage_plugins`/`sage_worlds` (dynamic imports only in the plugin loader and command registry), and plugin code imports only `sage.api`.
 
@@ -359,9 +419,11 @@ Live tests create and drop their own `sage_live_*` database and use Redis db 15,
 
 ## Key patterns to follow
 
-- **Lazy `app_instance` imports inside handlers** — avoids circular imports at module load time. Always import from `sage.app` inside the function body.
+- **World data, not engine code** — room types, attributes, currencies, words, prompts and looks belong to the world package; mechanics belong to plugins.
+- **Declare before you touch** — every command, event, resolver, state block, content field, panel, route, table, Redis prefix and AI slot a plugin uses is listed in its `plugin.toml` `[touches]`.
+- **Lazy `app_instance` imports inside engine handlers** — avoids circular imports at module load time.
 - **Never block the game loop** — all game code is `async`. Network I/O, DB queries, and LLM calls must be `await`-ed.
-- **LLM failures are non-fatal** — wrap every LLM call in `try/except` and provide a plain-text fallback.
+- **LLM failures are non-fatal** — send the deterministic outcome first, narrate after, and treat any exception (including `SlotDisabled`) as "no prose".
 - **Redis for speed, Postgres for durability** — update Redis immediately; PersistenceManager handles the Postgres write asynchronously.
 - **Room ID format** — always `zone_id:room_slug`. The slug is the YAML file stem.
 

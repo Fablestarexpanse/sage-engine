@@ -683,26 +683,45 @@ class SageServer:
                 if pos_path.is_file():
                     doc = _json.loads(pos_path.read_text(encoding="utf-8"))
                     positions = doc.get("positions", {}) or {}
-                rooms = []
+                from sage.world.layout import layout_from_exits
+
+                loaded = []
                 edges: set[tuple[str, str]] = set()
                 for f in sorted(rooms_dir.glob("*.yaml")):
                     rid = f"{zone}:{f.stem}"
                     room = self.content_loader.get_room(rid)
                     if room is None:
                         continue
-                    pos = positions.get(f.stem, {})
-                    rooms.append(
-                        {
-                            "id": rid,
-                            "name": room.name or f.stem,
-                            "x": float(pos.get("x", 0.0)),
-                            "y": float(pos.get("y", 0.0)),
-                        }
-                    )
+                    loaded.append((f.stem, rid, room))
                     for ex in room.exits.values():
                         dest = ex.destination
                         if dest.startswith(f"{zone}:"):
                             edges.add(tuple(sorted((rid, dest))))
+                # Rooms without editor positions are laid out from their exits, so a zone
+                # nobody arranged in an editor still draws as a map instead of one stacked dot.
+                stored = {
+                    slug: (float(pos.get("x", 0.0)), float(pos.get("y", 0.0)))
+                    for slug, pos in positions.items()
+                    if isinstance(pos, dict) and "x" in pos and "y" in pos
+                }
+                graph = {
+                    slug: {
+                        d: ex.destination.partition(":")[2]
+                        for d, ex in room.exits.items()
+                        if ex.destination.startswith(f"{zone}:")
+                    }
+                    for slug, _rid, room in loaded
+                }
+                coords = layout_from_exits(graph, stored)
+                rooms = [
+                    {
+                        "id": rid,
+                        "name": room.name or slug,
+                        "x": coords[slug][0],
+                        "y": coords[slug][1],
+                    }
+                    for slug, rid, room in loaded
+                ]
                 cached = {"zone": zone, "rooms": rooms, "edges": sorted(edges)}
                 self.content_loader._cache[cache_key] = cached
             return {

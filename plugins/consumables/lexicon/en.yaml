@@ -3,3 +3,4 @@ consumables:
   not_carrying: "You aren't carrying any '{wanted}'."
   cant_use: "You can't think of a way to use the {item}."
   consumed: "You consume the {item} (+{gained} hp, {hp}/{max_hp})."
+  already_whole: "You are already at full health; you keep the {item}."

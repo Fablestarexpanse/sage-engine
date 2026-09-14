@@ -1,0 +1,86 @@
+{
+  "version": 2,
+  "positions": {
+    "bridge": {
+      "x": 400.0,
+      "y": 300.0,
+      "width": 176,
+      "height": 108
+    },
+    "drowned_lantern": {
+      "x": 620.0,
+      "y": 40.0,
+      "width": 176,
+      "height": 108
+    },
+    "high_street": {
+      "x": 400.0,
+      "y": 40.0,
+      "width": 176,
+      "height": 108
+    },
+    "lantern_room_east": {
+      "x": 840.0,
+      "y": -90.0,
+      "width": 176,
+      "height": 108
+    },
+    "lantern_room_north": {
+      "x": 620.0,
+      "y": -220.0,
+      "width": 176,
+      "height": 108
+    },
+    "lantern_stairs": {
+      "x": 620.0,
+      "y": -90.0,
+      "width": 176,
+      "height": 108
+    },
+    "market": {
+      "x": 400.0,
+      "y": 170.0,
+      "width": 176,
+      "height": 108
+    },
+    "north_gate": {
+      "x": 400.0,
+      "y": -90.0,
+      "width": 176,
+      "height": 108
+    },
+    "shrine": {
+      "x": 620.0,
+      "y": 170.0,
+      "width": 176,
+      "height": 108
+    },
+    "smithy": {
+      "x": 180.0,
+      "y": 40.0,
+      "width": 176,
+      "height": 108
+    },
+    "tanners_row": {
+      "x": 180.0,
+      "y": 170.0,
+      "width": 176,
+      "height": 108
+    }
+  },
+  "notes": [],
+  "muted_edges": [],
+  "floors": {
+    "bridge": 0,
+    "drowned_lantern": 0,
+    "high_street": 0,
+    "lantern_room_east": 0,
+    "lantern_room_north": 0,
+    "lantern_stairs": 0,
+    "market": 0,
+    "north_gate": 0,
+    "shrine": 0,
+    "smithy": 0,
+    "tanners_row": 0
+  }
+}

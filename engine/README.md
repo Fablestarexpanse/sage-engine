@@ -4,16 +4,16 @@ This directory is the home of the SAGE engine and holds its license, [`LICENSE`]
 (`FSL-1.1-ALv2`). Plain-English summary: [`../LICENSE-FAQ.md`](../LICENSE-FAQ.md). Scope of the
 license: [`../NOTICE`](../NOTICE).
 
-Layout (stage 2b of `docs/sage/PHASE1_CONTRACTS.md` Part A):
+Layout:
 
 - `src/sage/` — the engine package (`python -m sage`)
-- `tests/` — engine tests; run from the repository root with `python -m pytest`
+- `tests/` — hermetic and live tests; run from the repository root with `python -m pytest`
 - `alembic/`, `alembic.ini` — core migrations (`python -m sage db upgrade`)
-- `scripts/` — admin bootstrap scripts
+- `scripts/` — admin bootstrap and account scripts
 - `pyproject.toml`, `requirements.lock` — packaging (`pip install -e "./engine[dev]"`)
 - `clients/admin-ui`, `clients/player-ui` — Nexus console and player client (Vite)
 - `tools/worldforge` (Tauri world editor), `tools/worldforge-mcp` (MCP map tools)
 
-During the transition the engine still reads world content from `<repo>/content`,
-deployment config from `<repo>/config` and prompts from `<repo>/prompts`, so run it from the
-repository root. 
+The engine runs one world package from `<repo>/worlds/<id>` (set `world` in `config/server.toml`),
+loads first-party plugins from `<repo>/plugins`, and reads deployment config from `<repo>/config`,
+so start it from the repository root.

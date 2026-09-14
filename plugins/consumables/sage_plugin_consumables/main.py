@@ -45,6 +45,11 @@ def setup(api: PluginAPI) -> None:
         if heal <= 0:
             await session.send(api.t("consumables.cant_use", item=item.get("name", "item")))
             return
+        current = await api.state.snapshot(player_id)
+        if int(current.get("hp", 0)) >= int(current.get("max_hp", current.get("hp", 20))):
+            # Nothing to restore: keep the item instead of spending it for +0.
+            await session.send(api.t("consumables.already_whole", item=item.get("name", "item")))
+            return
         async with api.state.edit(player_id) as stats:
             max_hp = int(stats.get("max_hp", stats.get("hp", 20)))
             before = int(stats.get("hp", 0))

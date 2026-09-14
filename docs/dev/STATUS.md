@@ -1,9 +1,9 @@
 # Project Status — updated 2026-09-12
 
-> **SAGE decoupling in progress (2026-09-13).** The brief `docs/sage/BRIEF.md`, the rulings log
-> `docs/sage/DECISIONS.md` and the approved (2026-09-13) `docs/sage/PHASE1_CONTRACTS.md` take precedence
-> over this file, which still describes the pre-split Fablestar-only shape. Audit:
-> `docs/sage/PHASE0_AUDIT.md`.
+> **Historical, pre-SAGE (kept for the record).** The SAGE decoupling finished and merged on
+> 2026-09-14: the engine is `engine/src/sage`, worlds live in `worlds/`, mechanics in `plugins/`.
+> This file describes the earlier Fablestar-only shape; current guides are `README.md`,
+> `CLAUDE.md` and `docs/sage/` (contracts and decisions).
 
 One page: what's done, what's next. Update this when a milestone lands.
 
