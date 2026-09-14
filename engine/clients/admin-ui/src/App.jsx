@@ -148,9 +148,11 @@ const NAV_ITEMS = [
   // One browsing surface for zones/rooms/entities/items; visible when
   // ANY of the legacy content tool grants apply (backend still gates per-route).
   { id: "content", label: "Content Library", icon: <Icons.Content />, anyOf: ["content", "world", "locations", "entities", "items"] },
-  { id: "skills", label: "Skills catalog", icon: <Icons.Skills /> },
-  { id: "agents", label: "Agents", icon: <Icons.Players /> },
-  { id: "shops", label: "Shops", icon: <Icons.Items /> },
+  // Plugin pages: shown only when a plugin of the running world mounts that admin tool
+  // (GET /admin/plugin-pages), and pointed at the plugin's admin base URL.
+  { id: "skills", label: "Skills catalog", icon: <Icons.Skills />, pluginTool: true },
+  { id: "agents", label: "Agents", icon: <Icons.Players />, pluginTool: true },
+  { id: "shops", label: "Shops", icon: <Icons.Items />, pluginTool: true },
   { id: "lexicon", label: "Lexicon & MOTD", icon: <Icons.Content /> },
   { id: "server", label: "Server", icon: <Icons.Server /> },
   { id: "settings", label: "Settings", icon: <Icons.Settings /> },
@@ -190,6 +192,7 @@ export default function App() {
   const [sidebarHovered, setSidebarHovered] = useState(null);
   const [serverInfo, setServerInfo] = useState(null);
   const [staffProfile, setStaffProfile] = useState(null);
+  const [pluginPages, setPluginPages] = useState([]);
   const [booting, setBooting] = useState(true);
   const [presenceOnline, setPresenceOnline] = useState([]);
 
@@ -227,9 +230,16 @@ export default function App() {
     try {
       const { data } = await axios.get(`${API_BASE}/admin/me`);
       setStaffProfile(data);
+      try {
+        const pages = await axios.get(`${API_BASE}/admin/plugin-pages`);
+        setPluginPages(Array.isArray(pages.data) ? pages.data : []);
+      } catch {
+        setPluginPages([]);
+      }
       return data;
     } catch {
       setStaffProfile(null);
+      setPluginPages([]);
       return null;
     }
   }, []);
@@ -309,9 +319,10 @@ export default function App() {
   const navFiltered = useMemo(() => NAV_ITEMS.filter((item) => {
     if (item.headOnly) return staffProfile?.role === "head_admin";
     if (item.anyOf) return item.anyOf.some((t) => allowedSet.has(t));
-    if (item.id === "skills") return allowedSet.has("skills") || allowedSet.has("content");
+    // The server already filtered plugin pages by the staff member's tools.
+    if (item.pluginTool) return pluginPages.some((p) => p.tool === item.id);
     return allowedSet.has(item.id);
-  }), [staffProfile, allowedSet]);
+  }), [staffProfile, allowedSet, pluginPages]);
 
   const resolvedPage = navFiltered.some((n) => n.id === activePage)
     ? activePage
@@ -417,7 +428,7 @@ export default function App() {
 
       <main style={{ flex: 1, overflow: "auto", padding: 28 }}>
         <PresenceStrip online={presenceOnline} />
-        <PageComponent />
+        <PageComponent pluginBase={pluginPages.find((p) => p.tool === resolvedPage)?.base} />
       </main>
     </div>
   );

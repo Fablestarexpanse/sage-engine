@@ -262,7 +262,11 @@ class _Http:
         self._api = api
 
     def admin_router(self, router: Any, tool: str) -> None:
-        """Mount router at /plugins/<id>/admin; every route needs a staff token and `tool`."""
+        """Mount router at /plugins/<id>/admin; every route needs a staff token and `tool`.
+
+        The admin client lists the mount (GET /admin/plugin-pages) and opens the page it has for
+        `tool` against this base URL, so the page shows only in worlds that enable the plugin.
+        """
         from fastapi import Depends
 
         from sage.admin.route_helpers import require_tool
@@ -282,10 +286,14 @@ class _Http:
         added = [r for r in app.router.routes if r not in before]
         app.openapi_schema = None
         self._api._record.record("routes", f"/plugins/{self._api.id}/*")
+        mount = (self._api.id, tool)
+        self._api._host.admin_tools.append(mount)
 
         def unmount() -> None:
             app.router.routes[:] = [r for r in app.router.routes if r not in added]
             app.openapi_schema = None
+            if mount in self._api._host.admin_tools:
+                self._api._host.admin_tools.remove(mount)
 
         self._api._cleanup.append(unmount)
 

@@ -1,6 +1,6 @@
 {
   "totals": {
-    "denylist": 75,
+    "denylist": 69,
     "player_literals": 72
   },
   "denylist": {
@@ -10,7 +10,6 @@
     "engine/alembic/versions/q0r1s2t3u4v5_account_ai_credits.py": 1,
     "engine/alembic/versions/r1s2t3u4v5w6_drop_legacy_world_columns.py": 1,
     "engine/clients/admin-ui/src/App.jsx": 1,
-    "engine/clients/admin-ui/src/ProficienciesPage.jsx": 6,
     "engine/clients/admin-ui/src/storageMigration.js": 8,
     "engine/clients/player-ui/src/storageMigration.js": 8,
     "engine/pyproject.toml": 1,

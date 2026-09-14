@@ -13,6 +13,7 @@ from fastapi import APIRouter, Body, HTTPException
 from sage.api import PluginAPI
 
 from .models import ProficiencyCatalogDocument
+from .panels import ATTRIBUTES
 from .validation import validate_leaf_definitions
 
 
@@ -35,13 +36,13 @@ def mount(api: PluginAPI, catalog: Any) -> None:
 
     @admin.get("/catalog")
     async def catalog_get():
-        """Raw catalog.json (version, expected_leaf_count, leaves) for editing."""
+        """Raw catalog.json (version, expected_leaf_count, leaves) for editing, plus weight_keys."""
         if not catalog_json.is_file():
             raise HTTPException(status_code=404, detail="proficiency_catalog_missing")
         raw = json.loads(catalog_json.read_text(encoding="utf-8"))
         if not isinstance(raw, dict):
             raise HTTPException(status_code=500, detail="invalid_catalog_root")
-        return raw
+        return {**raw, "weight_keys": list(ATTRIBUTES)}
 
     @admin.put("/catalog")
     async def catalog_put(body: dict[str, Any] = Body(...)):

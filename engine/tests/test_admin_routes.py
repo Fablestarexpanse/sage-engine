@@ -78,6 +78,19 @@ def _auth(server, staff_id: int) -> dict[str, str]:
 # ---- auth middleware -------------------------------------------------------
 
 
+def test_plugin_pages_list_mounted_admin_tools_the_staff_may_use(client, server):
+    server.plugins = SimpleNamespace(admin_tools=[("skilltree", "skills"), ("roster", "agents")])
+    r = client.get("/admin/plugin-pages", headers=_auth(server, 1))
+    assert r.status_code == 200
+    assert r.json() == [
+        {"plugin": "skilltree", "tool": "skills", "base": "/plugins/skilltree/admin"},
+        {"plugin": "roster", "tool": "agents", "base": "/plugins/roster/admin"},
+    ]
+    assert client.get("/admin/plugin-pages", headers=_auth(server, 2)).json() == []
+    server.plugins = SimpleNamespace(admin_tools=[])
+    assert client.get("/admin/plugin-pages", headers=_auth(server, 1)).json() == []
+
+
 def test_protected_route_requires_token(client):
     assert client.get("/admin/me").status_code == 401
 

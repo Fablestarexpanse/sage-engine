@@ -45,6 +45,8 @@ class PluginHost:
     state_owners: dict[str, str] = field(default_factory=dict)
     # (owner, () -> names) — character names players may not take.
     name_claims: list[tuple[str, Any]] = field(default_factory=list)
+    # (owner, tool) per mounted admin router: the admin client opens the page for that tool.
+    admin_tools: list[tuple[str, str]] = field(default_factory=list)
     loaded: list[PluginRecord] = field(default_factory=list)
 
     def discover(self) -> list[PluginRecord]:

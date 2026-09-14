@@ -103,6 +103,21 @@ def build_admin_ops_router(server: SageServer) -> APIRouter:
     async def admin_me(request: Request):
         return get_admin_ctx(request).public_dict()
 
+    @router.get("/admin/plugin-pages")
+    async def admin_plugin_pages(request: Request):
+        """Plugin admin surfaces of the running world this staff member may open.
+
+        One row per mounted plugin admin router: {plugin, tool, base}. The admin client has a page
+        per tool and points it at `base`; a tool with no row (plugin not enabled) has no page.
+        """
+        ctx = get_admin_ctx(request)
+        host = getattr(server, "plugins", None)
+        return [
+            {"plugin": plugin, "tool": tool, "base": f"/plugins/{plugin}/admin"}
+            for plugin, tool in getattr(host, "admin_tools", [])
+            if ctx.may_use_tool(tool)
+        ]
+
     @router.get("/admin/staff")
     async def admin_staff_list(
         _ctx: Annotated[AdminContext, Depends(require_head_admin)],

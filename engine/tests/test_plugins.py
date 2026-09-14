@@ -450,6 +450,7 @@ def test_plugin_admin_routes_mount_under_their_prefix_behind_a_tool(tmp_path, ho
     host.load()
     client = TestClient(host.http)
     assert client.get("/plugins/ledgers/admin/ledger").json() == {"rows": 3}
+    assert host.admin_tools == [("ledgers", "shops")]
 
     denied = _app_with_staff(["agents"])
     denied.router.routes[:] = host.http.router.routes
@@ -457,6 +458,7 @@ def test_plugin_admin_routes_mount_under_their_prefix_behind_a_tool(tmp_path, ho
 
     host.teardown()
     assert client.get("/plugins/ledgers/admin/ledger").status_code == 404
+    assert host.admin_tools == []
 
 
 def test_plugin_routes_must_be_declared_under_their_own_prefix(tmp_path, host_for):

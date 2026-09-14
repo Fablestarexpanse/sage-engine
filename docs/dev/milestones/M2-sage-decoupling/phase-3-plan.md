@@ -314,4 +314,14 @@ by owner G.4 ("every mechanic is a first-party plugin").
     the kind and title; create through the API refused an over-cap level and accepted a legal one
     (probe character deleted). The create screens were not driven in the browser: reaching them
     needs a password sign-in, and dev login goes straight into play.
+  - 3.19d (done) Plugin admin pages follow the running world. `api.http.admin_router(router, tool)`
+    records (plugin, tool) on the host; `GET /admin/plugin-pages` lists the mounts the staff member
+    may use as {plugin, tool, base}. admin-ui shows its Skills catalog, Agents and Shops pages only
+    when a row names that tool, so Rivermoot's admin has none of them (before, all three showed
+    and failed with 404). The Skills catalog page takes its URL from `base` and its attribute
+    columns from the catalog's `weight_keys` (Conduit serves them), so admin-ui names no Conduit
+    route or attribute. This is the "skills" tool's page contract: GET/PUT `<base>/catalog`.
+    Run: live `/admin/plugin-pages` lists conduit/skills, shop/shops, agents/agents; the catalog
+    returns five weight keys and 278 leaves; a GET-then-PUT round trip saved 278 leaves with no
+    content change to catalog.json.
 
