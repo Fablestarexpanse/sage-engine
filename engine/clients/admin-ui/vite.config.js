@@ -13,6 +13,9 @@ export default defineConfig({
         target: NEXUS_TARGET,
         changeOrigin: true,
         ws: true,
+        // Pass the browser's address on (X-Forwarded-For), so Nexus can tell a browser on this
+        // machine from one on the network reaching the dev server through --host.
+        xfwd: true,
         rewrite: (path) => path.replace(/^\/__nexus/, ''),
       },
     },

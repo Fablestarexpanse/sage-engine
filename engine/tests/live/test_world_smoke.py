@@ -1,7 +1,7 @@
 """Brief invariant 5: every reference world boots on the same engine and can be played.
 
 For each world package, start a real ``python -m sage`` process against the live tier's
-throwaway database and Redis db 15, dev-login a character, and play a short script over the
+throwaway database and Redis db 15, register an account and create a character, and play a short script over the
 WebSocket: arrive in the world's start room, say something, walk an exit and back, quit.
 The second reference world also plays its loop: shop in silver, gear up, fight, level, eat, rest.
 """
@@ -49,13 +49,25 @@ def _post(url: str, body: dict) -> dict:
         return json.load(response)
 
 
+def _new_character(port: int, name: str) -> tuple[str, int]:
+    """Register an account and create a character the way the player client does."""
+    base = f"http://127.0.0.1:{port}"
+    account = _post(
+        f"{base}/play/auth/register",
+        {"username": f"smoke-{secrets.token_hex(4)}", "password": secrets.token_urlsafe(16)},
+    )
+    assert account.get("ok"), account
+    token = account["play_token"]
+    created = _post(f"{base}/play/characters/create", {"token": token, "name": name})
+    assert created.get("ok"), created
+    return token, created["character"]["id"]
+
+
 async def _play(port: int, lines: list[str]) -> list[str]:
-    login = _post(f"http://127.0.0.1:{port}/play/dev/login", {"character": "Smoke Tester"})
+    token, character_id = _new_character(port, "Smoke Tester")
     text: list[str] = []
     async with websockets.connect(f"ws://127.0.0.1:{port}/ws/play") as ws:
-        await ws.send(
-            json.dumps({"token": login["play_token"], "character_id": login["character_id"]})
-        )
+        await ws.send(json.dumps({"token": token, "character_id": character_id}))
 
         async def until_prompt(wait_s: float = 30.0) -> None:
             """Read frames until the command prompt comes back (or the server closes)."""
@@ -135,8 +147,8 @@ def _running_world(world_id: str, live_config, database: str, tmp_path):
         "SAGE_SERVER__WORLD": world_id,
         "SAGE_DATABASE__DATABASE": database,
         "SAGE_SERVER__WEBSOCKET_PORT": str(port),
-        "SAGE_SERVER__DEV_MODE": "true",
-        "SAGE_SERVER__DEV_LOGIN": "true",
+        # Character creation would otherwise ask a developer's local ComfyUI for a portrait.
+        "SAGE_COMFYUI__ENABLED": "false",
         "SAGE_ADMIN_JWT_SECRET": secrets.token_hex(32),
         "PYTHONUNBUFFERED": "1",
         "PYTHONIOENCODING": "utf-8",

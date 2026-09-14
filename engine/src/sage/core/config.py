@@ -31,9 +31,10 @@ class ServerConfig(BaseModel):
     max_connections: int = 100
     tick_rate: float = 0.25  # 4 ticks per second
     dev_mode: bool = False
-    # Passwordless test logins via POST /play/dev/login, loopback clients only.
-    # Needs dev_mode too; never enable on a networked host.
+    # DEV-AUTH:BEGIN — passwordless player and staff logins for loopback clients (sage.admin.routes.dev_auth).
+    # Needs dev_mode too; never enable on a networked host. Stripped for release.
     dev_login: bool = False
+    # DEV-AUTH:END
     # When True, Nexus admin/content/forge/llm routes require a staff JWT (see /admin/auth/login).
     admin_auth_required: bool = True
     # HS256 secret; prefer env SAGE_ADMIN_JWT_SECRET in production.

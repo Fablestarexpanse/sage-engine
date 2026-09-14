@@ -38,15 +38,3 @@ def test_reserved_words_and_commands():
 def test_ordinary_names_pass():
     for name in ("Qa Tester", "Testa Runn", "Upton Downs", "Menarly"):
         assert reserved_name_reason(name, AGENTS) is None, name
-
-
-def test_dev_login_needs_both_flags():
-    from types import SimpleNamespace
-
-    def svc(dev_mode, dev_login):
-        cfg = SimpleNamespace(server=SimpleNamespace(dev_mode=dev_mode, dev_login=dev_login))
-        return PlayerService(SimpleNamespace(config=cfg))
-
-    assert svc(True, True).dev_login_enabled()
-    assert not svc(True, False).dev_login_enabled()
-    assert not svc(False, True).dev_login_enabled()

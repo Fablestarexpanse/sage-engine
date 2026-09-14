@@ -195,6 +195,10 @@ def is_public_admin_path(path: str) -> bool:
         return True
     if path == "/admin/bootstrap":
         return True
+    # DEV-AUTH:BEGIN — the dev login routes guard themselves (dev flags, loopback only).
+    if path in ("/admin/dev/status", "/admin/dev/login"):
+        return True
+    # DEV-AUTH:END
     return False
 
 

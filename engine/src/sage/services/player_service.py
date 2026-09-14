@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import os
 import re
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
@@ -80,8 +79,6 @@ def reserved_name_reason(name: str, claimed_names: set[str]) -> str | None:
 
 
 MAX_CHARACTERS_PER_ACCOUNT = 8
-# Owner of passwordless dev-login characters (see PlayerService.dev_login).
-DEV_LOGIN_ACCOUNT = "dev-login"
 
 
 def _default_character_portrait_prompt(character_name: str) -> str:
@@ -312,59 +309,6 @@ class PlayerService:
         await db_session.commit()
         await db_session.refresh(character)
         return character
-
-    def dev_login_enabled(self) -> bool:
-        cfg = self.server.config.server
-        return bool(getattr(cfg, "dev_mode", False) and getattr(cfg, "dev_login", False))
-
-    async def dev_login(self, character_name: str) -> dict[str, Any]:
-        """Passwordless test login: find or create `character_name` on the dev account.
-
-        Returns the normal login payload (play token included) plus `character_id`.
-        Characters owned by any other account are refused, so this can't be used
-        to step into a real player. Callers must gate on dev_login_enabled() and a
-        loopback client.
-        """
-        name = " ".join((character_name or "").split())
-        err, _, _ = self._validate_create_character_inputs(name, "", "")
-        if err:
-            return err
-        async with self.server.db.session_factory() as db_session:
-            acc = await db_session.execute(
-                select(Account).where(Account.username == DEV_LOGIN_ACCOUNT)
-            )
-            account = acc.scalar_one_or_none()
-            if account is None:
-                unusable = bcrypt.hashpw(os.urandom(24), bcrypt.gensalt()).decode()
-                account = Account(
-                    username=DEV_LOGIN_ACCOUNT,
-                    password_hash=unusable,
-                    last_login=datetime.utcnow(),
-                    ai_credits=int(self.server.config.comfyui.starting_ai_credits),
-                )
-                db_session.add(account)
-                await db_session.commit()
-                await db_session.refresh(account)
-
-            found = await db_session.execute(
-                select(Character).where(func.lower(Character.name) == name.lower())
-            )
-            character = found.scalar_one_or_none()
-            if character is not None and character.account_id != account.id:
-                return {"ok": False, "error": "character_not_dev"}
-            if character is None:
-                reason = reserved_name_reason(name, self._claimed_names())
-                if reason:
-                    return {"ok": False, "error": reason}
-                character = await self._insert_character(
-                    db_session, account.id, name, None, None, None
-                )
-            account.last_login = datetime.utcnow()
-            response = await self.account_characters_response(db_session, account)
-            response["play_token"] = issue_play_token(self.server, account.id)
-            response["character_id"] = character.id
-            await db_session.commit()
-        return response
 
     async def create_character(
         self,

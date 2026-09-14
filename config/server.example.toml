@@ -11,9 +11,12 @@ world = "fablestar"
 # Set to true only for local development. Seeds staff/test and player/test accounts.
 dev_mode = false
 
-# Passwordless test logins (POST /play/dev/login) for loopback clients. Needs dev_mode.
-# Handy for playtests and automation; never enable on a networked host.
+# DEV-AUTH:BEGIN
+# Passwordless logins for loopback clients, needs dev_mode: the player client's dev login box
+# (a named character or the character chooser) and the admin console's head-admin dev login.
+# Never enable on a networked host. Stripped for release (docs/dev/DEV_AUTH.md).
 dev_login = false
+# DEV-AUTH:END
 
 # Always true in production. Requires a JWT secret (see below).
 admin_auth_required = true
