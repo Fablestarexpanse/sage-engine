@@ -94,7 +94,7 @@ class SageServer:
 
         self.panels = PanelRegistry()
         self.session_manager = SessionManager()
-        self.redis = RedisState(self.config.redis)
+        self.redis = RedisState(self.config.redis, namespace=self.world.id)
         self.db = PostgresState(self.config.database)
         self.persistence = PersistenceManager(self)
         # In-world money in the world's currencies (sage.world.wallet).
@@ -355,6 +355,17 @@ class SageServer:
         #     core and plugin migration (contracts C.3 step 4: never auto-migrate on boot).
         plugin_records = self.plugins.discover()
         await self._require_migrated(plugin_records)
+
+        # 0c. Hot state written before world namespacing moves under this world once.
+        from sage.plugins.manifest import ENGINE_REDIS_PREFIXES
+
+        prefixes = set(ENGINE_REDIS_PREFIXES)
+        for record in plugin_records:
+            prefixes |= set(record.manifest.touches.redis_prefixes)
+        if adopted := await self.redis.adopt_unnamespaced(prefixes):
+            logger.info(
+                "Redis: moved %d pre-namespace keys under %r", adopted, self.redis.namespace
+            )
 
         # 0a. Bootstrap dev accounts (requires Postgres; best-effort, never fatal)
         await ensure_dev_defaults(self.db, self.config)

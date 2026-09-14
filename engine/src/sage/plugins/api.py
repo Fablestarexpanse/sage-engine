@@ -346,7 +346,8 @@ class _Redis:
 
         async def call(key: str, *args: Any, **kwargs: Any) -> Any:
             self._check(key)
-            return await getattr(self._api._host.redis.client, command)(key, *args, **kwargs)
+            redis = self._api._host.redis
+            return await getattr(redis.client, command)(redis.key(key), *args, **kwargs)
 
         return call
 

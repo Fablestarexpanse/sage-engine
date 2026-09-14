@@ -86,6 +86,9 @@ class FakeRedisClient:
 class FakeRedis:
     """Dict-backed drop-in for the RedisState methods game code uses."""
 
+    namespace = ""
+    is_connected = True
+
     def __init__(self) -> None:
         self.client = FakeRedisClient()
         self.locations: dict[str, str] = {}
@@ -96,6 +99,12 @@ class FakeRedis:
         self.room_entities: dict[str, set[str]] = {}
         self.item_states: dict[str, dict[str, Any]] = {}
         self.room_items: dict[str, set[str]] = {}
+
+    def key(self, raw: str) -> str:
+        return raw
+
+    def unkey(self, stored: str) -> str:
+        return stored
 
     # Player location
     async def get_player_location(self, player_id: str) -> str | None:

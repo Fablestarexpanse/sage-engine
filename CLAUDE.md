@@ -113,16 +113,16 @@ from sage.app import app_instance  # import inside handler, not at module top
 
 | Concern | Store | Location |
 |---|---|---|
-| Player location | Redis | `player:loc:{player_id}` |
-| Player stats / inventory | Redis | `player:stats:{player_id}`, `player:inv:{player_id}` |
-| Room occupants | Redis | `room:players:{room_id}`, `room:entities:{room_id}`, `room:items:{room_id}` |
-| Entity live state | Redis | `entity:state:{entity_id}` |
-| Item live state | Redis | `item:state:{item_id}` |
+| Player location | Redis | `<world>:player:{player_id}:location` |
+| Player stats / inventory | Redis | `<world>:player:{player_id}:stats`, `<world>:player:{player_id}:inventory` |
+| Room occupants | Redis | `<world>:room:{room_id}:players`, `...:entities`, `...:items` |
+| Entity live state | Redis | `<world>:entity:{entity_id}:state` |
+| Item live state | Redis | `<world>:item:{item_id}:state` |
 | Account / Character records | Postgres | `accounts`, `characters` tables |
 | Admin staff | Postgres | `admin_staff` table |
 | Scene images | Postgres | `account_scene_images` table |
 
-`RedisState` (`state/redis_client.py`) has typed async methods for every key pattern — use them; don't hand-craft keys.
+`RedisState` (`state/redis_client.py`) has typed async methods for every key pattern — use them; don't hand-craft keys. Every key is stored under the world's namespace (`<world>` = world id); anything that must build a raw key passes it through `redis.key()`.
 
 `PersistenceManager.flush_all()` copies live Redis player state back into the Postgres `characters` row every ~60 s and on server shutdown.
 

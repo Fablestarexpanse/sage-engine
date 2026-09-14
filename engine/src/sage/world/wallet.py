@@ -86,11 +86,13 @@ class Wallet:
         An atomic counter, so a payer never races the payee's own stats writes (a shopkeeper
         whose tick is saving its stats while a customer pays it).
         """
-        await self._redis.client.incrby(f"{PENDING_PREFIX}:{character}", int(amount))
+        await self._redis.client.incrby(
+            self._redis.key(f"{PENDING_PREFIX}:{character}"), int(amount)
+        )
 
     async def bank_pending(self, character: str, stats: dict[str, Any]) -> int:
         """Move everything owed to character into stats (never below zero); returns the delta."""
-        raw = await self._redis.client.getdel(f"{PENDING_PREFIX}:{character}")
+        raw = await self._redis.client.getdel(self._redis.key(f"{PENDING_PREFIX}:{character}"))
         delta = int(raw or 0)
         if delta and self.enabled:
             self.set(stats, self.balance(stats) + delta)

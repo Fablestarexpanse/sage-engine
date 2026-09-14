@@ -72,8 +72,9 @@ class EntitySpawnManager:
         now = int(_time.time())
         removed = 0
         try:
-            async for key in self.server.redis.client.scan_iter(match="room:*:items", count=200):
-                key_str = key.decode() if isinstance(key, bytes) else key
+            redis = self.server.redis
+            async for key in redis.client.scan_iter(match=redis.key("room:*:items"), count=200):
+                key_str = redis.unkey(key.decode() if isinstance(key, bytes) else key)
                 room_id = key_str[len("room:") : -len(":items")]
                 for iid in await self.server.redis.get_room_items(room_id):
                     iid = iid.decode() if isinstance(iid, bytes) else iid

@@ -35,7 +35,7 @@ by owner G.4 ("every mechanic is a first-party plugin").
 | 3.12 | Snapshot contributors (`api.snapshot.contribute`); `resonance_levels_total` out of the protocol | done |
 | 3.13 | Declarative client panels; remove Fablestar panels/branding from player-ui: 3.13a API + renderer, 3.13b Conduit panels, 3.13c mock panels and branding out; 3.13d deferred until an admin panel is needed | done |
 | 3.14 | Schema: JSONB state, `digi_balance`/`reputation`/`echo_credits` columns, retire `agent_state` (backfill → drop) | done |
-| 3.15 | Redis key namespace by world slug | todo |
+| 3.15 | Redis key namespace by world slug | done |
 | 3.16 | AI slots and style; prompts into `worlds/fablestar/ai` | todo |
 | 3.17 | Move Fablestar content into `worlds/fablestar/content`; remove `[transition]` | todo |
 | 3.18 | Delete glyph/ship/system/galaxy surfaces and the admin World Builder (owner G.3, G.6) | todo |
@@ -213,4 +213,15 @@ by owner G.4 ("every mechanic is a first-party plugin").
     one-way only for the retired agent rows, which live in `plg_agents_state`. Live tests that
     need the old schema downgrade to `q0r1s2t3u4v5` first. Dev DB backups: scratchpad `devdb_before_314a/b/c1/c2.sql`; take a fresh
     one before 3.14d.
+- **3.15 Redis namespace (done).** `RedisState(config, namespace=world.id)`: every engine key is
+  stored as `<world id>:<logical key>` (`fablestar:player:Hero:stats`). Code that builds keys
+  outside the typed accessors goes through `redis.key()` / `redis.unkey()`: telemetry heatmaps,
+  wallet pending takings, the litter sweep scan, the admin world-live scan and every plugin
+  `api.redis` call (plugins still declare and use logical keys; the namespace is added under
+  them). On boot, keys under the engine's reserved prefixes and the enabled plugins'
+  `redis_prefixes` that were written before namespacing are renamed into the namespace
+  (`RENAMENX`, never over an existing key), so Redis-only state such as lodging leases and shop
+  stock survives the upgrade; the step is a no-op afterwards. Caveat: on a Redis shared by
+  several worlds, the first world to boot adopts all pre-namespace keys, which only exist from
+  single-world deployments. Test fakes keep an empty namespace.
 
