@@ -1,0 +1,17 @@
+# Shops: rooms with a `shop:` block sell fixed stock and optionally buy goods onto a secondhand
+# shelf. Money moves through the engine wallet; a shop with an `owner` pays that character.
+[plugin]
+id = "shop"
+name = "Shops"
+version = "1.0.0"
+engine = ">=0.2,<0.3"
+entry = "sage_plugin_shop.main:setup"
+first_party = true
+
+[touches]
+commands = ["browse", "buy", "sell", "wallet"]
+services = ["shop"]
+content_extensions = ["room.shop"]
+routes = ["/plugins/shop/*"]
+redis_prefixes = ["shopstock", "shopledger"]
+lexicon_prefix = "shop."

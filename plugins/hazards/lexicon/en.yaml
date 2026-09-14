@@ -1,0 +1,3 @@
+hazards:
+  resisted: "You brace against the {type} and shrug it off."
+  takes_hold: "{description} ({type} takes hold)"

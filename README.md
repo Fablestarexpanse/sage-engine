@@ -114,11 +114,10 @@ Do not expose Nexus directly to the public internet — put it behind a reverse 
 
 ```
 engine/        SAGE engine: src/sage (server), tests, alembic, pyproject
-content/world/     Game content (YAML) — zones, rooms, entities, items; hot-reloaded
 engine/clients/admin-ui/          React admin console
 engine/clients/player-ui/         React player client
 engine/tools/worldforge/        Tauri desktop map editor
-prompts/           Jinja2 templates for LLM narration and forge generation
+worlds/           world packages (Fablestar, Rivermoot): content, lexicon, ai/prompts, plugins
 ```
 
 Developer documentation lives in [`CLAUDE.md`](CLAUDE.md) (architecture guide) and [`docs/`](docs/).

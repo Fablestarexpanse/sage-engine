@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { usePlayTheme } from "./PlayThemeContext.jsx";
+import { useWorld } from "./WorldContext.jsx";
 import {
   playLogin,
   playDevLogin,
@@ -23,25 +24,24 @@ import PlayClient from "./mud/PlayClient.jsx";
 import { GmBadge } from "./GmBadge.jsx";
 import { DEFAULT_NARRATIVE } from "./mud/03-narrative.jsx";
 import { PORTRAIT_ASPECT_RATIO_CSS } from "./portraitProfile.js";
-import { ReputationThermometer } from "./ReputationThermometer.jsx";
 import { FloatingThemeToggle, ThemeToggleButton } from "./ThemeToggleButton.jsx";
 
-/** Account-wide art balance (pixels / echo_credits): one place, not per character. */
-function AccountArtCreditsBar({ echoEconomy, gameCurrencyLabel, onTopUp }) {
+/** Account-wide AI art balance (ai_credits): one place, not per character. */
+function AccountArtCreditsBar({ aiEconomy, gameCurrencyLabel, onTopUp }) {
   const { T } = usePlayTheme();
-  if (echoEconomy?.credits == null) return null;
-  const lab = echoEconomy.label || "pixels";
-  const gameLab = gameCurrencyLabel || "Digi";
-  const n = echoEconomy.credits;
-  const low = n < (echoEconomy.warnBelow ?? 12);
+  if (aiEconomy?.credits == null) return null;
+  const lab = aiEconomy.label || "credits";
+  const gameLab = gameCurrencyLabel || "in-world money";
+  const n = aiEconomy.credits;
+  const low = n < (aiEconomy.warnBelow ?? 12);
   return (
     <div
       style={{
         marginBottom: 16,
         padding: "14px 16px",
         borderRadius: T.radius.lg,
-        border: `1px solid ${T.currency.pixel.border}`,
-        background: `linear-gradient(135deg, ${T.currency.pixel.bg}, ${T.bg.panel})`,
+        border: `1px solid ${T.currency.art.border}`,
+        background: `linear-gradient(135deg, ${T.currency.art.bg}, ${T.bg.panel})`,
         display: "flex",
         flexWrap: "wrap",
         alignItems: "center",
@@ -50,23 +50,23 @@ function AccountArtCreditsBar({ echoEconomy, gameCurrencyLabel, onTopUp }) {
       }}
     >
       <div style={{ flex: "1 1 200px", minWidth: 0 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: T.currency.pixel.fg, fontFamily: T.font.body }}>
-          Pixels <span style={{ color: T.text.muted, fontWeight: 400 }}>(your account)</span>
+        <div style={{ fontSize: 12, fontWeight: 600, color: T.currency.art.fg, fontFamily: T.font.body }}>
+          <span style={{ textTransform: "capitalize" }}>{lab}</span> <span style={{ color: T.text.muted, fontWeight: 400 }}>(your account)</span>
         </div>
         <p style={{ margin: "6px 0 0", fontSize: 12, color: T.text.muted, lineHeight: 1.5, fontFamily: T.font.body }}>
           Same balance for every character. Spent when you use AI portrait or scene generation (separate from in-world{" "}
-          <span style={{ color: T.currency.digi.fg, fontWeight: 600 }}>{gameLab}</span>).
+          <span style={{ color: T.currency.world.fg, fontWeight: 600 }}>{gameLab}</span>).
         </p>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
         <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: 10, fontWeight: 600, color: T.currency.pixel.label, fontFamily: T.font.body }}>{lab}</div>
+          <div style={{ fontSize: 10, fontWeight: 600, color: T.currency.art.label, fontFamily: T.font.body }}>{lab}</div>
           <div
             style={{
               fontSize: 26,
               fontFamily: T.font.mono,
               fontWeight: 700,
-              color: low ? T.currency.pixel.warn : T.currency.pixel.fg,
+              color: low ? T.currency.art.warn : T.currency.art.fg,
               lineHeight: 1.1,
             }}
           >
@@ -79,9 +79,9 @@ function AccountArtCreditsBar({ echoEconomy, gameCurrencyLabel, onTopUp }) {
           style={{
             padding: "8px 14px",
             borderRadius: T.radius.md,
-            border: `1px solid ${T.currency.pixel.border}`,
+            border: `1px solid ${T.currency.art.border}`,
             background: T.bg.deep,
-            color: T.currency.pixel.fg,
+            color: T.currency.art.fg,
             fontSize: 11,
             fontWeight: 600,
             cursor: "pointer",
@@ -96,7 +96,7 @@ function AccountArtCreditsBar({ echoEconomy, gameCurrencyLabel, onTopUp }) {
   );
 }
 
-/** Per-character row: saved position + level (readable). Pixel balance lives in AccountArtCreditsBar. */
+/** Per-character row: saved position + level (readable). The AI art balance lives in AccountArtCreditsBar. */
 function ChooseCharacterGlassStats({ character, selected, onSelectRow }) {
   const { T } = usePlayTheme();
   const full = String(character.room_id || "").trim() || "—";
@@ -118,7 +118,7 @@ function ChooseCharacterGlassStats({ character, selected, onSelectRow }) {
         padding: "12px 14px",
         cursor: "pointer",
         borderLeft: `1px solid ${T.border.subtle}`,
-        background: selected ? `${T.glyph.violet}12` : T.bg.surface,
+        background: selected ? `${T.hue.violet}12` : T.bg.surface,
       }}
     >
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
@@ -171,7 +171,7 @@ function ChooseCharacterGlassStats({ character, selected, onSelectRow }) {
           >
             Level
           </div>
-          <div style={{ fontSize: 17, fontWeight: 700, fontFamily: T.font.display, color: T.glyph.violet }}>—</div>
+          <div style={{ fontSize: 17, fontWeight: 700, fontFamily: T.font.display, color: T.hue.violet }}>—</div>
         </div>
       </div>
     </div>
@@ -240,10 +240,11 @@ function useAuthChrome() {
 
 function AuthBrandHeader({ subtitle }) {
   const { T } = usePlayTheme();
+  const world = useWorld();
   return (
     <div style={{ textAlign: "center", marginBottom: 22 }}>
-      <div style={{ fontSize: 28, color: T.glyph.violet, marginBottom: 6 }}>◈</div>
-      <h1 style={{ fontFamily: T.font.display, fontSize: 22, color: T.text.primary, letterSpacing: "0.12em", fontWeight: 700 }}>FABLESTAR</h1>
+      <div style={{ fontSize: 28, color: T.hue.violet, marginBottom: 6 }}>◈</div>
+      <h1 style={{ fontFamily: T.font.display, fontSize: 22, color: T.text.primary, letterSpacing: "0.12em", fontWeight: 700, textTransform: "uppercase" }}>{world.name}</h1>
       {subtitle != null && subtitle !== "" && (
         <p style={{ fontSize: 11, color: T.text.muted, marginTop: 6 }}>{subtitle}</p>
       )}
@@ -277,7 +278,7 @@ function AuthLanding() {
     <div style={fullScreenShell}>
       <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600&family=Exo+2:wght@600;700&family=Oxanium:wght@500;600;700&display=swap" rel="stylesheet" />
       <div style={card}>
-        <AuthBrandHeader subtitle="Expanse — enter your conduit" />
+        <AuthBrandHeader subtitle="Enter the world" />
         <p style={{ fontSize: 12, color: T.text.secondary, lineHeight: 1.55, margin: "0 0 20px", textAlign: "center" }}>
           Sign in or register. After authentication you will choose or create a character before entering the world.
         </p>
@@ -315,7 +316,7 @@ function AuthLanding() {
             border: "none",
             cursor: "pointer",
             marginBottom: 10,
-            background: `linear-gradient(135deg,${T.glyph.violet},${T.glyph.cyan})`,
+            background: `linear-gradient(135deg,${T.hue.violet},${T.hue.cyan})`,
             color: "#0a0a0f",
             fontWeight: 700,
             fontFamily: T.font.body,
@@ -358,10 +359,10 @@ function mapPlayAuthPayload(res) {
     username: res.username,
     accountId: res.account_id,
     characters: res.characters || [],
-    echoCredits: res.echo_credits,
+    aiCredits: res.ai_credits,
     currencyDisplayName: res.currency_display_name,
     gameCurrencyDisplayName: res.game_currency_display_name,
-    pixelsPerUsd: typeof res.pixels_per_usd === "number" ? res.pixels_per_usd : 100,
+    creditsPerUsd: typeof res.credits_per_usd === "number" ? res.credits_per_usd : 100,
     isGm: Boolean(res.is_gm),
   };
 }
@@ -476,7 +477,7 @@ function AuthSignInForm({ onLoggedIn }) {
               borderRadius: T.radius.md,
               border: "none",
               cursor: busy ? "wait" : "pointer",
-              background: `linear-gradient(135deg,${T.glyph.violet},${T.glyph.cyan})`,
+              background: `linear-gradient(135deg,${T.hue.violet},${T.hue.cyan})`,
               color: "#0a0a0f",
               fontWeight: 700,
               fontFamily: T.font.body,
@@ -494,11 +495,11 @@ function AuthSignInForm({ onLoggedIn }) {
               marginTop: 16,
               padding: "10px",
               borderRadius: T.radius.md,
-              border: `1px dashed ${T.glyph.amber}`,
+              border: `1px dashed ${T.hue.amber}`,
               background: T.bg.surface,
             }}
           >
-            <label style={{ display: "block", fontSize: 10, color: T.glyph.amber, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>
+            <label style={{ display: "block", fontSize: 10, color: T.hue.amber, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>
               Dev login (no password, localhost only)
             </label>
             <div style={{ display: "flex", gap: 8 }}>
@@ -521,9 +522,9 @@ function AuthSignInForm({ onLoggedIn }) {
                 style={{
                   padding: "0 14px",
                   borderRadius: T.radius.md,
-                  border: `1px solid ${T.glyph.amber}`,
+                  border: `1px solid ${T.hue.amber}`,
                   background: "transparent",
-                  color: T.glyph.amber,
+                  color: T.hue.amber,
                   fontWeight: 700,
                   fontFamily: T.font.body,
                   fontSize: 12,
@@ -536,7 +537,7 @@ function AuthSignInForm({ onLoggedIn }) {
           </div>
         )}
         <AuthNavLinks>
-          <AuthTextLink href="#/register">New conduit? Create account</AuthTextLink>
+          <AuthTextLink href="#/register">New here? Create account</AuthTextLink>
           <AuthTextLink href="#/">Back to welcome</AuthTextLink>
         </AuthNavLinks>
       </div>
@@ -619,7 +620,7 @@ function AuthRegisterForm({ onLoggedIn }) {
               borderRadius: T.radius.md,
               border: "none",
               cursor: busy ? "wait" : "pointer",
-              background: `linear-gradient(135deg,${T.glyph.violet},${T.glyph.cyan})`,
+              background: `linear-gradient(135deg,${T.hue.violet},${T.hue.cyan})`,
               color: "#0a0a0f",
               fontWeight: 700,
               fontFamily: T.font.body,
@@ -657,10 +658,10 @@ function PlayAuthFlow({ onLoggedIn }) {
   );
 }
 
-function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacters, echoEconomy, mergeEchoFromPlayRes }) {
+function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacters, aiEconomy, mergeEchoFromPlayRes }) {
   const { T } = usePlayTheme();
   const { username, characters, gameCurrencyDisplayName, isGm } = auth;
-  const gameCurrencyLabel = gameCurrencyDisplayName || "Digi";
+  const gameCurrencyLabel = gameCurrencyDisplayName || "";
   const [selectedId, setSelectedId] = useState(characters[0]?.id ?? null);
   const [view, setView] = useState(() => (characters.length ? "pick" : "create"));
   const [newName, setNewName] = useState("");
@@ -680,6 +681,8 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
   const [pendingDelete, setPendingDelete] = useState(null);
   const [deleteNameConfirm, setDeleteNameConfirm] = useState("");
   const [profCatalog, setProfCatalog] = useState(null);
+  /** False once the world's chargen options load without a kind this client renders: no choices step. */
+  const [chargenHasSkills, setChargenHasSkills] = useState(true);
   const [profCatalogErr, setProfCatalogErr] = useState("");
   const [profCatalogLoading, setProfCatalogLoading] = useState(false);
   const [starterProf, setStarterProf] = useState({});
@@ -687,15 +690,15 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
   const [createPhase, setCreatePhase] = useState("identity");
   const prevViewRef = useRef(view);
 
-  const onPixelsHelp = useCallback(() => {
-    const lab = echoEconomy?.label || "pixels";
+  const onCreditsHelp = useCallback(() => {
+    const lab = aiEconomy?.label || "credits";
     const game = gameCurrencyLabel;
     window.alert(
       `${lab} (art currency) is spent when you generate character portraits or scene art with the AI (ComfyUI). ` +
         `It is not the same as in-world ${game}.\n\n` +
         "Your server host can grant more, or future progression may award it. There is no in-client purchase yet."
     );
-  }, [echoEconomy?.label, gameCurrencyLabel]);
+  }, [aiEconomy?.label, gameCurrencyLabel]);
 
   useEffect(() => {
     let cancelled = false;
@@ -747,13 +750,15 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
     playFetchProficiencyCatalog()
       .then((data) => {
         if (cancelled) return;
-        if (data && typeof data.budget === "number" && Array.isArray(data.leaves)) setProfCatalog(data);
-        else setProfCatalogErr("Proficiency catalog response was unexpected.");
+        const skills = data?.kind === "skill_points" && typeof data.budget === "number" && Array.isArray(data.leaves);
+        setProfCatalog(skills ? data : null);
+        setChargenHasSkills(skills);
       })
       .catch((e) => {
         if (cancelled) return;
-        setProfCatalogErr(e.message || "Could not load proficiency catalog");
+        setProfCatalogErr(e.message || "Could not load character creation options");
         setProfCatalog(null);
+        setChargenHasSkills(true);
       })
       .finally(() => {
         if (!cancelled) setProfCatalogLoading(false);
@@ -826,7 +831,7 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
           alignItems: "center",
           justifyContent: "center",
           fontSize: 20,
-          color: T.glyph.violet,
+          color: T.hue.violet,
         }}
       >
         ◈
@@ -897,7 +902,7 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
       if (!res.ok) {
         mergeEchoFromPlayRes?.(res);
         const map = {
-          insufficient_credits: `Not enough ${res.currency_display_name || "pixels"} (need ${res.required ?? "?"}, have ${res.balance ?? "?"}).`,
+          insufficient_credits: `Not enough ${res.currency_display_name || "credits"} (need ${res.required ?? "?"}, have ${res.balance ?? "?"}).`,
           comfyui_failed: res.detail || "ComfyUI portrait run failed.",
           invalid_credentials: "Session expired — sign in again.",
         };
@@ -952,7 +957,7 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
   };
 
   const runCreateCharacter = async (e) => {
-    e.preventDefault();
+    e?.preventDefault();
     setFormErr("");
     setCreateBusy(true);
     try {
@@ -969,7 +974,7 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
         const err = res.error || "";
         let starterMsg = "";
         if (typeof err === "string") {
-          if (err === "starter_budget_exceeded") starterMsg = "Starter proficiency points exceed the allowed total (15).";
+          if (err === "starter_budget_exceeded") starterMsg = `Starting points exceed the allowed total (${profCatalog?.budget ?? "?"}).`;
           else if (err === "invalid_proficiency_id") starterMsg = "Invalid proficiency id in your picks.";
           else if (err === "invalid_starter_proficiencies") starterMsg = "Invalid proficiency levels — use whole numbers.";
           else if (err.startsWith("unknown_proficiency:"))
@@ -977,7 +982,7 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
           else if (err.startsWith("invalid_level:"))
             starterMsg = `Invalid level for ${err.slice("invalid_level:".length)}.`;
           else if (err.startsWith("level_out_of_range:"))
-            starterMsg = `Each skill can be at most 5 at creation (${err.slice("level_out_of_range:".length)}).`;
+            starterMsg = `Each skill can be at most ${profCatalog?.max_per_leaf ?? "?"} at creation (${err.slice("level_out_of_range:".length)}).`;
         }
         const map = {
           invalid_character_name: "Use 2–50 characters: letters, numbers, single spaces, _ - (start and end with a letter or number)",
@@ -985,7 +990,7 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
           character_name_taken: "That character name is already taken.",
           character_limit: "Maximum characters per account reached.",
           invalid_credentials: "Session expired — sign in again.",
-          insufficient_credits: `Not enough ${res.currency_display_name || "pixels"} (need ${res.required ?? "?"}, have ${res.balance ?? "?"}).`,
+          insufficient_credits: `Not enough ${res.currency_display_name || "credits"} (need ${res.required ?? "?"}, have ${res.balance ?? "?"}).`,
         };
         setFormErr(starterMsg || map[res.error] || res.error || "Could not create character");
         return;
@@ -1193,7 +1198,7 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
               maxHeight: "calc(100vh - 56px)",
               borderRadius: T.radius.lg,
               overflow: "hidden",
-              border: `1px solid ${T.border.glyph}`,
+              border: `1px solid ${T.border.accent}`,
               boxShadow: `0 0 0 1px rgba(0,0,0,0.4), ${T.shadow.glow}`,
             }}
           >
@@ -1249,13 +1254,13 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
               {view === "create"
                 ? createPhase === "identity"
                   ? "New character"
-                  : "Starting proficiencies"
+                  : profCatalog?.title || "Starting skills"
                 : "Choose a character"}
             </h2>
-            {view === "create" ? (
+            {view === "create" && chargenHasSkills ? (
               <p style={{ fontSize: 11, color: T.text.muted, marginTop: 4, lineHeight: 1.45 }}>
                 Step {createPhase === "identity" ? "1" : "2"} of 2 ·{" "}
-                {createPhase === "identity" ? "Identity & portrait" : "Optional conduit ranks"}
+                {createPhase === "identity" ? "Identity & portrait" : "Optional starting ranks"}
               </p>
             ) : null}
             <p style={{ fontSize: 12, color: T.text.muted, marginTop: view === "create" ? 2 : 4, lineHeight: 1.45, display: "flex", alignItems: "center", flexWrap: "wrap", gap: 4 }}>
@@ -1300,8 +1305,8 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
           </div>
         </div>
 
-        {echoEconomy?.credits != null ? (
-          <AccountArtCreditsBar echoEconomy={echoEconomy} gameCurrencyLabel={gameCurrencyLabel} onTopUp={onPixelsHelp} />
+        {aiEconomy?.credits != null ? (
+          <AccountArtCreditsBar aiEconomy={aiEconomy} gameCurrencyLabel={gameCurrencyLabel} onTopUp={onCreditsHelp} />
         ) : null}
 
         {view === "create" && createPhase === "identity" && (
@@ -1340,8 +1345,10 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
             </div>
             <p style={{ fontSize: 12, color: T.text.secondary, lineHeight: 1.45 }}>
               Name your character and set up a portrait prompt (optional). Use{" "}
-              <strong style={{ color: T.text.muted }}>Suggest prompt</strong> for an LLM-polished Comfy line. On the next step you will
-              optionally place starter proficiency ranks — then you submit once to create them in the world.
+              <strong style={{ color: T.text.muted }}>Suggest prompt</strong> for an LLM-polished Comfy line.
+              {chargenHasSkills
+                ? " On the next step you will optionally place starting ranks — then you submit once to create them in the world."
+                : ""}
             </p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 20, alignItems: "flex-start" }}>
               <div style={{ flex: "1 1 280px", display: "flex", flexDirection: "column", gap: 14 }}>
@@ -1412,8 +1419,8 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
                     style={{
                       padding: "8px 14px",
                       borderRadius: T.radius.md,
-                      border: `1px solid ${T.border.glyph}`,
-                      background: comfyReady ? T.glyph.violetDim : T.bg.surface,
+                      border: `1px solid ${T.border.accent}`,
+                      background: comfyReady ? T.hue.violetDim : T.bg.surface,
                       color: comfyReady ? T.text.primary : T.text.muted,
                       fontSize: 11,
                       fontWeight: 600,
@@ -1453,11 +1460,11 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
                   aspectRatio: PORTRAIT_ASPECT_RATIO_CSS,
                   borderRadius: T.radius.lg,
                   border: portraitGenerating
-                    ? `1px solid ${T.border.glyphHot}`
+                    ? `1px solid ${T.border.accentHot}`
                     : pendingPortraitUrl
-                      ? `1px solid ${T.border.glyph}`
-                      : `1px dashed ${T.border.glyph}`,
-                  background: portraitGenerating ? T.bg.deep : !pendingPortraitUrl ? T.glyph.violetDim : undefined,
+                      ? `1px solid ${T.border.accent}`
+                      : `1px dashed ${T.border.accent}`,
+                  background: portraitGenerating ? T.bg.deep : !pendingPortraitUrl ? T.hue.violetDim : undefined,
                   boxShadow: portraitGenerating ? T.shadow.glow : "none",
                   display: "flex",
                   alignItems: "center",
@@ -1487,8 +1494,8 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
                         height: 44,
                         borderRadius: "50%",
                         border: `2px solid ${T.border.dim}`,
-                        borderTopColor: T.glyph.violet,
-                        borderRightColor: T.glyph.cyan,
+                        borderTopColor: T.hue.violet,
+                        borderRightColor: T.hue.cyan,
                       }}
                     />
                     <div
@@ -1562,25 +1569,27 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
             ) : null}
             <button
               type="button"
-              disabled={formLocked || !newName.trim()}
-              onClick={goToProficienciesStep}
+              disabled={formLocked || !newName.trim() || createBusy}
+              onClick={chargenHasSkills ? goToProficienciesStep : () => runCreateCharacter()}
               style={{
                 width: "100%",
                 padding: "12px",
                 borderRadius: T.radius.md,
                 border: "none",
                 cursor: formLocked ? "wait" : "pointer",
-                background: `linear-gradient(135deg,${T.glyph.violet},${T.glyph.cyan})`,
+                background: `linear-gradient(135deg,${T.hue.violet},${T.hue.cyan})`,
                 color: "#0a0a0f",
                 fontWeight: 700,
                 fontSize: 12,
               }}
             >
-              Continue — starting proficiencies →
+              {chargenHasSkills ? `Continue — ${(profCatalog?.title || "starting skills").toLowerCase()} →` : createBusy ? "Creating…" : "Create character"}
             </button>
-            <p style={{ fontSize: 10, color: T.text.muted, margin: 0, textAlign: "center", lineHeight: 1.45 }}>
-              The skill catalog loads in the background while you work here, so the next screen is ready when you continue.
-            </p>
+            {chargenHasSkills ? (
+              <p style={{ fontSize: 10, color: T.text.muted, margin: 0, textAlign: "center", lineHeight: 1.45 }}>
+                The skill catalog loads in the background while you work here, so the next screen is ready when you continue.
+              </p>
+            ) : null}
             {characters.length > 0 && (
               <button
                 type="button"
@@ -1637,7 +1646,7 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
                 borderRadius: T.radius.md,
                 border: "none",
                 cursor: createBusy ? "wait" : "pointer",
-                background: `linear-gradient(135deg,${T.glyph.violet},${T.glyph.cyan})`,
+                background: `linear-gradient(135deg,${T.hue.violet},${T.hue.cyan})`,
                 color: "#0a0a0f",
                 fontWeight: 700,
                 fontSize: 12,
@@ -1670,8 +1679,8 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
                   marginBottom: 14,
                   padding: "12px 14px",
                   borderRadius: T.radius.lg,
-                  border: `1px solid ${T.border.glyph}`,
-                  background: T.glyph.amberDim,
+                  border: `1px solid ${T.border.accent}`,
+                  background: T.hue.amberDim,
                   color: T.text.secondary,
                   fontSize: 12,
                   display: "flex",
@@ -1709,8 +1718,8 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
                   style={{
                     padding: 16,
                     borderRadius: T.radius.lg,
-                    border: `1px dashed ${T.border.glyph}`,
-                    background: T.glyph.violetDim,
+                    border: `1px dashed ${T.border.accent}`,
+                    background: T.hue.violetDim,
                     color: T.text.secondary,
                     fontSize: 12,
                   }}
@@ -1726,8 +1735,8 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
                     alignItems: "stretch",
                     gap: 0,
                     borderRadius: T.radius.lg,
-                    border: `1px solid ${selectedId === c.id ? T.border.glyph : T.border.dim}`,
-                    background: selectedId === c.id ? T.glyph.violetDim : T.bg.panel,
+                    border: `1px solid ${selectedId === c.id ? T.border.accent : T.border.dim}`,
+                    background: selectedId === c.id ? T.hue.violetDim : T.bg.panel,
                     overflow: "hidden",
                   }}
                 >
@@ -1773,14 +1782,14 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
                         style={{
                           fontSize: 11,
                           fontFamily: T.font.mono,
-                          color: T.currency.digi.fg,
+                          color: T.currency.world.fg,
                           marginTop: 5,
                           letterSpacing: "0.02em",
                         }}
                         title={`In-world wallet for this character (${gameCurrencyLabel})`}
                       >
                         {gameCurrencyLabel}{" "}
-                        <span style={{ fontWeight: 600 }}>{typeof c.digi_balance === "number" ? c.digi_balance : 0}</span>
+                        <span style={{ fontWeight: 600 }}>{walletOf(c) ?? 0}</span>
                       </div>
                       <div
                         style={{
@@ -1798,16 +1807,15 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
                             padding: "2px 6px",
                             borderRadius: T.radius.sm,
                             fontWeight: 600,
-                            color: c.pvp_enabled ? T.glyph.crimson : T.text.success,
-                            background: c.pvp_enabled ? T.glyph.crimsonDim : "rgba(52,211,153,0.1)",
-                            border: `1px solid ${c.pvp_enabled ? `${T.glyph.crimson}40` : `${T.text.success}35`}`,
+                            color: c.pvp_enabled ? T.hue.crimson : T.text.success,
+                            background: c.pvp_enabled ? T.hue.crimsonDim : "rgba(52,211,153,0.1)",
+                            border: `1px solid ${c.pvp_enabled ? `${T.hue.crimson}40` : `${T.text.success}35`}`,
                           }}
                         >
                           {c.pvp_enabled ? "PVP on" : "No PVP"}
                         </span>
                       </div>
                       <div style={{ marginTop: 8, maxWidth: 280 }}>
-                        <ReputationThermometer reputation={typeof c.reputation === "number" ? c.reputation : 0} compact />
                       </div>
                     </div>
                   </button>
@@ -1870,12 +1878,11 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
                   characterName: ch?.name ?? username,
                   password,
                   portraitUrl: ch?.portrait_url ?? null,
-                  digiBalance: typeof ch?.digi_balance === "number" ? ch.digi_balance : 0,
+                  walletBalance: walletOf(ch) ?? 0,
                   pvpEnabled: Boolean(ch?.pvp_enabled),
-                  reputation: typeof ch?.reputation === "number" ? ch.reputation : 0,
                   lastSceneImageUrl: ch?.last_scene_image_url ?? null,
                   characterStats: ch?.stats ?? null,
-                  resonanceLevelsTotal: typeof ch?.resonance_levels_total === "number" ? ch.resonance_levels_total : null,
+                  levelsTotal: levelsTotalOf(ch),
                 });
               }}
               style={{
@@ -1886,7 +1893,7 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
                 border: "none",
                 cursor: canEnter ? "pointer" : "not-allowed",
                 opacity: canEnter ? 1 : 0.45,
-                background: `linear-gradient(135deg,${T.glyph.violet},${T.glyph.cyan})`,
+                background: `linear-gradient(135deg,${T.hue.violet},${T.hue.cyan})`,
                 color: "#0a0a0f",
                 fontWeight: 700,
                 fontSize: 12,
@@ -1929,7 +1936,7 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
                   width: "100%",
                   aspectRatio: PORTRAIT_ASPECT_RATIO_CSS,
                   borderRadius: T.radius.lg,
-                  border: `1px solid ${T.border.glyph}`,
+                  border: `1px solid ${T.border.accent}`,
                   overflow: "hidden",
                 }}
               >
@@ -1978,7 +1985,20 @@ function CharacterChooser({ auth, password, onCancel, onChosen, onUpdateCharacte
 
 const MAX_NARRATIVE_LINES = 1500;
 
+/** The world's single progress number, from the snapshot's "progression" section. */
+/** The primary currency balance from the engine's wallet section (character list or snapshot). */
+function walletOf(payload) {
+  const n = payload?.sections?.wallet?.amount;
+  return typeof n === "number" ? n : null;
+}
+
+function levelsTotalOf(payload) {
+  const n = payload?.sections?.progression?.levels_total;
+  return typeof n === "number" ? n : null;
+}
+
 export default function App() {
+  const world = useWorld();
   const [step, setStep] = useState("login");
   const [auth, setAuth] = useState(null);
   const passwordRef = useRef("");
@@ -2003,20 +2023,20 @@ export default function App() {
     areaReady: false,
     areaCost: 3,
     economyEnabled: true,
-    currencyDisplayName: "pixels",
-    pixelsPerUsd: 100,
+    currencyDisplayName: "credits",
+    creditsPerUsd: 100,
   });
-  const [echoEconomy, setEchoEconomy] = useState({ credits: null, label: "pixels", warnBelow: 12, pixelsPerUsd: 100 });
+  const [aiEconomy, setAiEconomy] = useState({ credits: null, label: "credits", warnBelow: 12, creditsPerUsd: 100 });
   const [sceneGenerating, setSceneGenerating] = useState(false);
   const sceneGenerateInFlightRef = useRef(false);
 
   const mergeEchoFromPlayRes = useCallback((res) => {
     if (!res || typeof res !== "object") return;
-    setEchoEconomy((prev) => ({
+    setAiEconomy((prev) => ({
       ...prev,
-      credits: typeof res.echo_credits === "number" ? res.echo_credits : prev.credits,
+      credits: typeof res.ai_credits === "number" ? res.ai_credits : prev.credits,
       label: typeof res.currency_display_name === "string" ? res.currency_display_name : prev.label,
-      pixelsPerUsd: typeof res.pixels_per_usd === "number" ? res.pixels_per_usd : prev.pixelsPerUsd,
+      creditsPerUsd: typeof res.credits_per_usd === "number" ? res.credits_per_usd : prev.creditsPerUsd,
     }));
     if (typeof res.is_gm === "boolean") {
       setAuth((a) => (a ? { ...a, isGm: res.is_gm } : a));
@@ -2033,11 +2053,11 @@ export default function App() {
     devAutoCharacterRef.current = autoCharacterId ?? null;
     passwordRef.current = pw;
     setAuth(a);
-    setEchoEconomy({
-      credits: typeof a.echoCredits === "number" ? a.echoCredits : 0,
-      label: a.currencyDisplayName || "pixels",
+    setAiEconomy({
+      credits: typeof a.aiCredits === "number" ? a.aiCredits : 0,
+      label: a.currencyDisplayName || "credits",
       warnBelow: 12,
-      pixelsPerUsd: typeof a.pixelsPerUsd === "number" ? a.pixelsPerUsd : 100,
+      creditsPerUsd: typeof a.creditsPerUsd === "number" ? a.creditsPerUsd : 100,
     });
     setStep("choose");
   }, []);
@@ -2060,16 +2080,16 @@ export default function App() {
     setNarrativeLines([...DEFAULT_NARRATIVE]);
     setPlayerScenePath(null);
     setPlayerSceneBust(0);
-    setPlayComfyScene({ areaReady: false, areaCost: 3, economyEnabled: true, currencyDisplayName: "pixels", pixelsPerUsd: 100 });
-    setEchoEconomy({ credits: null, label: "pixels", warnBelow: 12, pixelsPerUsd: 100 });
+    setPlayComfyScene({ areaReady: false, areaCost: 3, economyEnabled: true, currencyDisplayName: "credits", creditsPerUsd: 100 });
+    setAiEconomy({ credits: null, label: "credits", warnBelow: 12, creditsPerUsd: 100 });
     setSceneGenerating(false);
     sceneGenerateInFlightRef.current = false;
   }, [disconnectWs]);
 
-  const explainPlayPixels = useCallback(() => {
-    const lab = echoEconomy?.label || "pixels";
-    const game = auth?.gameCurrencyDisplayName ?? "Digi";
-    const ppu = echoEconomy?.pixelsPerUsd ?? playComfyScene?.pixelsPerUsd ?? 100;
+  const explainPlayCredits = useCallback(() => {
+    const lab = aiEconomy?.label || "credits";
+    const game = auth?.gameCurrencyDisplayName || "in-world money";
+    const ppu = aiEconomy?.creditsPerUsd ?? playComfyScene?.creditsPerUsd ?? 100;
     const sceneCost = typeof playComfyScene?.areaCost === "number" ? playComfyScene.areaCost : 3;
     window.alert(
       `${lab} (art currency) is spent on AI portraits and scene art (ComfyUI). ` +
@@ -2078,18 +2098,18 @@ export default function App() {
         `Not the same as in-world ${game}.`
     );
   }, [
-    echoEconomy?.label,
-    echoEconomy?.pixelsPerUsd,
+    aiEconomy?.label,
+    aiEconomy?.creditsPerUsd,
     auth?.gameCurrencyDisplayName,
     playComfyScene?.areaCost,
-    playComfyScene?.pixelsPerUsd,
+    playComfyScene?.creditsPerUsd,
   ]);
 
   useEffect(() => {
     if (step !== "play") {
       setPlayerScenePath(null);
       setPlayerSceneBust(0);
-      setPlayComfyScene({ areaReady: false, areaCost: 3, economyEnabled: true, currencyDisplayName: "pixels", pixelsPerUsd: 100 });
+      setPlayComfyScene({ areaReady: false, areaCost: 3, economyEnabled: true, currencyDisplayName: "credits", creditsPerUsd: 100 });
       setSceneGenerating(false);
       sceneGenerateInFlightRef.current = false;
     }
@@ -2097,7 +2117,7 @@ export default function App() {
 
   useEffect(() => {
     if (step !== "play" || !playSession) {
-      setPlayComfyScene({ areaReady: false, areaCost: 3, economyEnabled: true, currencyDisplayName: "pixels", pixelsPerUsd: 100 });
+      setPlayComfyScene({ areaReady: false, areaCost: 3, economyEnabled: true, currencyDisplayName: "credits", creditsPerUsd: 100 });
       return;
     }
     let cancelled = false;
@@ -2105,7 +2125,7 @@ export default function App() {
       .then((s) => {
         if (!cancelled) {
           const areaCost = typeof s.area_generation_cost === "number" ? s.area_generation_cost : 3;
-          const ppu = typeof s.pixels_per_usd === "number" ? s.pixels_per_usd : 100;
+          const ppu = typeof s.credits_per_usd === "number" ? s.credits_per_usd : 100;
           setPlayComfyScene({
             areaReady: Boolean(s.area_ready),
             areaCost,
@@ -2113,19 +2133,19 @@ export default function App() {
             currencyDisplayName:
               typeof s.currency_display_name === "string" && s.currency_display_name.trim()
                 ? s.currency_display_name.trim()
-                : "pixels",
-            pixelsPerUsd: ppu,
+                : "credits",
+            creditsPerUsd: ppu,
           });
-          setEchoEconomy((prev) => ({
+          setAiEconomy((prev) => ({
             ...prev,
             warnBelow: Math.max(9, areaCost * 3),
-            pixelsPerUsd: ppu,
+            creditsPerUsd: ppu,
           }));
         }
       })
       .catch(() => {
         if (!cancelled) {
-          setPlayComfyScene({ areaReady: false, areaCost: 3, economyEnabled: true, currencyDisplayName: "pixels", pixelsPerUsd: 100 });
+          setPlayComfyScene({ areaReady: false, areaCost: 3, economyEnabled: true, currencyDisplayName: "credits", creditsPerUsd: 100 });
         }
       });
     return () => {
@@ -2134,7 +2154,7 @@ export default function App() {
   }, [step, playSession?.username, playSession?.characterId]);
 
   const onChosen = useCallback(
-    ({ characterId, characterName, password, portraitUrl, digiBalance, pvpEnabled, reputation, lastSceneImageUrl, characterStats, resonanceLevelsTotal }) => {
+    ({ characterId, characterName, password, portraitUrl, walletBalance, pvpEnabled, lastSceneImageUrl, characterStats, levelsTotal }) => {
       passwordRef.current = password;
       setPlaySession({
         username: auth.username,
@@ -2142,12 +2162,11 @@ export default function App() {
         characterId,
         characterName,
         portraitUrl: portraitUrl || null,
-        digiBalance: typeof digiBalance === "number" ? digiBalance : 0,
+        walletBalance: typeof walletBalance === "number" ? walletBalance : 0,
         pvpEnabled: typeof pvpEnabled === "boolean" ? pvpEnabled : false,
-        reputation: typeof reputation === "number" ? reputation : 0,
         isGm: Boolean(auth.isGm),
         characterStats: characterStats && typeof characterStats === "object" ? characterStats : null,
-        resonanceLevelsTotal: typeof resonanceLevelsTotal === "number" ? resonanceLevelsTotal : null,
+        levelsTotal: typeof levelsTotal === "number" ? levelsTotal : null,
       });
       setPlayerScenePath(lastSceneImageUrl && String(lastSceneImageUrl).trim() ? String(lastSceneImageUrl).trim() : null);
       setPlayerSceneBust((n) => n + 1);
@@ -2166,12 +2185,11 @@ export default function App() {
       characterName: ch.name,
       password: "",
       portraitUrl: ch.portrait_url ?? null,
-      digiBalance: typeof ch.digi_balance === "number" ? ch.digi_balance : 0,
+      walletBalance: walletOf(ch) ?? 0,
       pvpEnabled: Boolean(ch.pvp_enabled),
-      reputation: typeof ch.reputation === "number" ? ch.reputation : 0,
       lastSceneImageUrl: ch.last_scene_image_url ?? null,
       characterStats: ch.stats ?? null,
-      resonanceLevelsTotal: typeof ch.resonance_levels_total === "number" ? ch.resonance_levels_total : null,
+      levelsTotal: levelsTotalOf(ch),
     });
   }, [step, auth, onChosen]);
 
@@ -2210,13 +2228,13 @@ export default function App() {
           endReason = typeof j.reason === "string" ? j.reason : null;
           return;
         }
-        if (j && j.client_notice === "echo_credits_granted") {
-          const lab = typeof j.currency_display_name === "string" && j.currency_display_name.trim() ? j.currency_display_name.trim() : "pixels";
-          const added = typeof j.echo_credits_added === "number" ? j.echo_credits_added : 0;
-          const bal = typeof j.echo_credits === "number" ? j.echo_credits : null;
+        if (j && j.client_notice === "ai_credits_granted") {
+          const lab = typeof j.currency_display_name === "string" && j.currency_display_name.trim() ? j.currency_display_name.trim() : "credits";
+          const added = typeof j.ai_credits_added === "number" ? j.ai_credits_added : 0;
+          const bal = typeof j.ai_credits === "number" ? j.ai_credits : null;
           mergeEchoFromPlayRes(j);
           if (bal != null) {
-            setAuth((a) => (a ? { ...a, echoCredits: bal } : a));
+            setAuth((a) => (a ? { ...a, aiCredits: bal } : a));
           }
           const msg =
             added > 0 && bal != null
@@ -2224,7 +2242,7 @@ export default function App() {
               : bal != null
                 ? `Your ${lab} balance was updated to ${bal}.`
                 : `Your ${lab} balance was updated.`;
-          setNarrativeLines((prev) => [...prev, { type: "pixel_grant", text: msg }]);
+          setNarrativeLines((prev) => [...prev, { type: "credits_grant", text: msg }]);
           return;
         }
         if (j && j.client_notice === "chat_message") {
@@ -2253,21 +2271,23 @@ export default function App() {
               ? {
                   ...prev,
                   characterStats: j.stats && typeof j.stats === "object" ? j.stats : prev.characterStats,
-                  resonanceLevelsTotal:
-                    typeof j.resonance_levels_total === "number" ? j.resonance_levels_total : prev.resonanceLevelsTotal,
+                  levelsTotal: levelsTotalOf(j) ?? prev.levelsTotal,
+                  walletBalance: walletOf(j) ?? prev.walletBalance,
                   liveLocation: j.location && typeof j.location === "object" ? j.location : prev.liveLocation,
                   liveEffects: Array.isArray(j.effects) ? j.effects : prev.liveEffects,
                   liveInventory: Array.isArray(j.inventory) ? j.inventory : prev.liveInventory,
                   liveMap: j.map && typeof j.map === "object" ? j.map : prev.liveMap,
+                  liveSections: j.sections && typeof j.sections === "object" ? j.sections : prev.liveSections,
+                  declaredPanels: Array.isArray(j.panels) ? j.panels : prev.declaredPanels,
                 }
               : prev
           );
           return;
         }
         if (j && j.client_notice === "staff_account_update") {
-          if (typeof j.echo_credits === "number") {
+          if (typeof j.ai_credits === "number") {
             mergeEchoFromPlayRes(j);
-            setAuth((a) => (a ? { ...a, echoCredits: j.echo_credits } : a));
+            setAuth((a) => (a ? { ...a, aiCredits: j.ai_credits } : a));
           }
           if (typeof j.play_account_is_gm === "boolean") {
             setAuth((a) => (a ? { ...a, isGm: j.play_account_is_gm } : a));
@@ -2380,7 +2400,7 @@ export default function App() {
               invalid_credentials: "Session expired — sign in again.",
               prompt_too_short: "Prompt too short.",
               prompt_too_long: "Prompt too long (max 4000 characters).",
-              insufficient_credits: `Not enough ${res.currency_display_name || "pixels"} (need ${res.required ?? "?"}, have ${res.balance ?? "?"}).`,
+              insufficient_credits: `Not enough ${res.currency_display_name || "credits"} (need ${res.required ?? "?"}, have ${res.balance ?? "?"}).`,
             };
             const msg = map[res.error] || res.detail || res.error || "Scene generation failed";
             setNarrativeLines((prev) => [...prev, { type: "alert", level: "danger", text: msg }]);
@@ -2416,7 +2436,7 @@ export default function App() {
           onCancel={onSignOut}
           onChosen={onChosen}
           onUpdateCharacters={updateAuthCharacters}
-          echoEconomy={echoEconomy}
+          aiEconomy={aiEconomy}
           mergeEchoFromPlayRes={mergeEchoFromPlayRes}
         />
       </div>
@@ -2441,16 +2461,17 @@ export default function App() {
             characterName: playSession.characterName,
             characterId: playSession.characterId,
             portraitImageUrl: playSession.portraitUrl ? playMediaUrl(playSession.portraitUrl) : null,
-            digiBalance: playSession.digiBalance ?? 0,
+            walletBalance: playSession.walletBalance ?? 0,
             pvpEnabled: playSession.pvpEnabled,
-            reputation: playSession.reputation ?? 0,
             isGm: playSession.isGm,
             characterStats: playSession.characterStats ?? null,
-            resonanceLevelsTotal: playSession.resonanceLevelsTotal ?? null,
+            levelsTotal: playSession.levelsTotal ?? null,
             liveLocation: playSession.liveLocation ?? null,
             liveEffects: playSession.liveEffects ?? null,
             liveInventory: playSession.liveInventory ?? null,
             liveMap: playSession.liveMap ?? null,
+            liveSections: playSession.liveSections ?? null,
+            declaredPanels: playSession.declaredPanels ?? null,
             chatMessages: playSession.chatMessages ?? null,
           }}
           onSignOut={onSignOut}
@@ -2464,9 +2485,10 @@ export default function App() {
           }}
           sceneImageUrl={resolvedSceneImageUrl}
           sceneRoomLabel={import.meta.env.VITE_SCENE_ROOM_LABEL || undefined}
-          sceneDownloadBaseName={`fablestar-scene-${String(playSession.characterName || "character").replace(/[^a-zA-Z0-9_-]+/g, "_")}`}
-          gameCurrencyDisplayName={auth?.gameCurrencyDisplayName ?? "Digi"}
-          echoEconomy={echoEconomy}
+          worldName={world.name}
+          sceneDownloadBaseName={`scene-${String(playSession.characterName || "character").replace(/[^a-zA-Z0-9_-]+/g, "_")}`}
+          gameCurrencyDisplayName={auth?.gameCurrencyDisplayName ?? ""}
+          aiEconomy={aiEconomy}
           sceneGen={{
             username: playSession.username,
             characterId: playSession.characterId,
@@ -2474,9 +2496,9 @@ export default function App() {
             areaReady: playComfyScene.areaReady,
             areaGenerationCost: playComfyScene.areaCost,
             economyEnabled: playComfyScene.economyEnabled,
-            echoCredits: echoEconomy.credits,
-            currencyLabel: echoEconomy.label || playComfyScene.currencyDisplayName,
-            onPixelsHelp: explainPlayPixels,
+            aiCredits: aiEconomy.credits,
+            currencyLabel: aiEconomy.label || playComfyScene.currencyDisplayName,
+            onCreditsHelp: explainPlayCredits,
             onSceneGenerated: handleSceneImageSaved,
             beginBackgroundSceneGenerate,
             mergeEchoFromPlayRes,

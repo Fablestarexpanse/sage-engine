@@ -11,4 +11,6 @@ first_party = true
 commands = ["level"]
 events_subscribe = ["EntityKilled"]
 state_blocks = ["levels"]
+snapshot = ["levels"]
+panels = ["levels.sheet"]
 lexicon_prefix = "levels."

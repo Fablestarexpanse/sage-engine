@@ -1,0 +1,26 @@
+# Agents: computer-controlled characters defined in the world's content/agents/*.yaml. A Body of
+# rules acts every tick (fight, flee, eat, rest, wander, needs-driven life goals); an optional
+# Brain on the engine's secondary LLM profile replies when spoken to and plans goals.
+[plugin]
+id = "agents"
+name = "Agents"
+version = "1.0.0"
+engine = ">=0.2,<0.3"
+entry = "sage_plugin_agents.main:setup"
+first_party = true
+
+# Agents use these when the world enables them.
+[depends]
+factions = { version = "^1", optional = true }
+shop = { version = "^1", optional = true }
+lodging = { version = "^1", optional = true }
+search = { version = "^1", optional = true }
+equipment = { version = "^1", optional = true }
+consumables = { version = "^1", optional = true }
+
+[touches]
+tick_jobs = ["agents"]
+services = ["agents"]
+routes = ["/plugins/agents/*"]
+tables = ["plg_agents_state"]
+lexicon_prefix = "agents."

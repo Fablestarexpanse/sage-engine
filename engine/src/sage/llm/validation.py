@@ -1,41 +1,31 @@
-"""LLM output validator — sanitises generated text before sending to players."""
+"""LLM output validator — sanitises generated narration before it reaches players."""
 
 import logging
 import re
+
+from sage.llm.style import DEFAULT_CONTENT_RULES
 
 logger = logging.getLogger(__name__)
 
 
 class LLMValidator:
-    """
-    Ensures LLM output doesn't violate the 'Golden Rule'
-    by inventing mechanics or contradicting game state.
+    """Rejects narration that breaks the golden rule (stating stats, levels, loot).
+
+    The patterns come from the world's ``ai/style.yaml`` content rules (engine defaults otherwise).
+    Rejected narration becomes an empty string: the deterministic text already reached the
+    player, so no prose is better than prose that invents mechanics.
     """
 
-    # regex patterns for things the LLM should NEVER say
-    FORBIDDEN_PATTERNS = [
-        r"(health|hp|mana|energy):?\s*\d+",  # Mentioning specific stats
-        r"level\s*\d+",  # Mentioning levels
-        r"experience points",  # Mentioning XP
-        r"you (gain|lose|find|receive) (a|an|the|\d+)",  # Inventing loot
-    ]
+    def __init__(self, rules: list[str] | None = None):
+        self.rules = list(DEFAULT_CONTENT_RULES if rules is None else rules)
 
     def sanitize(self, text: str) -> str:
-        """
-        Clean and validate LLM output.
-        Returns a cleaned string or a redacted failure message.
-        """
-        # 1. Strip any preamble (e.g., "Certainly! Here is the description:")
-        # We try to find the actual narration block if the LLM was chatty
+        """Cleaned narration, or "" when it matches a content rule."""
         text = self._strip_conversational_filler(text)
-
-        # 2. Check for forbidden patterns
-        for pattern in self.FORBIDDEN_PATTERNS:
+        for pattern in self.rules:
             if re.search(pattern, text, re.IGNORECASE):
-                logger.warning(f"LLM validation failed: matched forbidden pattern '{pattern}'")
-                return "[The narration becomes garbled by static...]"
-
-        # 3. Final cleanup (whitespace, quotes)
+                logger.warning("LLM validation failed: matched content rule %r", pattern)
+                return ""
         return text.strip().replace('"', "'")
 
     def _strip_conversational_filler(self, text: str) -> str:
@@ -51,6 +41,3 @@ class LLMValidator:
                 filtered_lines.append(line)
 
         return "\n".join(filtered_lines)
-
-
-validator = LLMValidator()

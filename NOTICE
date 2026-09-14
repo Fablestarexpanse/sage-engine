@@ -10,8 +10,8 @@ This repository contains two distinct components under different terms:
   No license is granted to this content.
 
 - worlds/rivermoot/ (Rivermoot) is the second reference world used to test the
-  engine. Its license has not been decided yet; until it is, all rights are
-  reserved.
+  engine. It ships with the engine under the same Functional Source License,
+  Version 1.1, ALv2 Future License (FSL-1.1-ALv2) - see worlds/rivermoot/LICENSE.
 
 Copyright 2026 Brian M. Taylor.
 
@@ -28,10 +28,6 @@ SAGE engine - FSL-1.1-ALv2 (engine/LICENSE):
   scripts/                       repository tooling
 
 Fablestar Expanse - proprietary, all rights reserved, no license granted:
-  content/              all world content (zones, rooms, entities, items,
-                        agents, factions, achievements, proficiency catalog)
-  prompts/              AI prompt templates
-  config/*.json         ComfyUI workflow graphs, including LoRA references
   docs/design/          world design documents
 
 Fablestar Expanse material that is still embedded inside engine paths during

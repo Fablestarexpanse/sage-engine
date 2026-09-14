@@ -114,7 +114,6 @@ const DashboardPage = () => {
     status: "online",
     location: p.room_id || "—",
     peer: typeof p.peer === "string" ? p.peer : JSON.stringify(p.peer ?? "—"),
-    glyphs: 0,
     lastSeen: "now",
     adaptiveLevel: 0,
   }));
@@ -149,7 +148,7 @@ const DashboardPage = () => {
         <StatCard label="Zones / Rooms" value={overview ? `${overview.zone_count} / ${overview.room_count}` : "—"} color={COLORS.info} icon={<Icons.World />} />
         <StatCard label="Entity templates" value={overview ? String(overview.entity_templates ?? 0) : "—"} color={COLORS.warning} icon={<Icons.Entities />} title="Distinct spawn definitions across room YAML" />
         <StatCard label="Spawn placements" value={overview ? String(overview.entity_spawn_references ?? 0) : "—"} color={COLORS.warning} icon={<Icons.Activity />} title="Total entity spawn reference counts summed from rooms" />
-        <StatCard label="Items / Glyphs" value={overview ? `${overview.item_count} / ${overview.glyph_count}` : "—"} color={COLORS.cyan} icon={<Icons.Items />} />
+        <StatCard label="Items" value={overview ? String(overview.item_count) : "—"} color={COLORS.cyan} icon={<Icons.Items />} />
       </div>
 
       {overview?.zones?.length > 0 && (

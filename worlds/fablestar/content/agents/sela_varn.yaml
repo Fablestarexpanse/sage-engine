@@ -1,0 +1,18 @@
+id: sela_varn
+name: Sela Varn
+spawn_room: test_isle:scrap_beach
+enabled: true
+temperament: {warmth: 0.8, caution: 0.3, ambition: 0.6, humor: 0.7}
+wants: enough Digi for mainland passage before her sister earns it first
+fears: being forgotten
+speech: clipped, dry, swears in Drift cant when startled
+baseline_mood: {valence: 0.2, arousal: 0.4}
+hard_facts:
+  - "profession: salvager"
+  - "faction: salvage_union"
+  - "cannot read glyphs"
+routine: [scrap_beach, north_shore, wild_meadow, market_square, pawn_shop, market_square, wild_meadow, north_shore]
+gear: {}
+stats: {hp: 60, max_hp: 60}
+attributes: {FRT: 9, RFX: 13, ACU: 13, RSV: 10, PRS: 8}
+money: 20

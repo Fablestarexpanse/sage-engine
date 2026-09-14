@@ -47,7 +47,11 @@ class CharacterSnapshotNotice(TypedDict, total=False):
     client_notice: Literal["character_snapshot"]
     character_name: str
     stats: dict[str, Any]
-    resonance_levels_total: int
+    # Plugin- and engine-contributed panel data by section (sage.network.snapshot), e.g.
+    # {"progression": {"levels_total": 42}}.
+    sections: dict[str, Any]
+    # Declared client panels (sage.network.panels): [{"id", "kind", "title", "icon", "section"}].
+    panels: list[dict[str, Any]]
     # {"id": "zone:slug", "name": "Display Name" | None}
     location: dict[str, Any]
     # [{"name", "description", "debuff", "seconds_left" (None = indefinite)}]
@@ -68,11 +72,9 @@ class CharacterPayload(TypedDict):
     portrait_url: str | None
     portrait_prompt: str | None
     last_scene_image_url: str | None
-    digi_balance: int
     pvp_enabled: bool
-    reputation: int
     stats: dict[str, Any]
-    resonance_levels_total: int
+    sections: dict[str, Any]
 
 
 class PlayAccountResponse(TypedDict, total=False):
@@ -92,7 +94,7 @@ class PlayAccountResponse(TypedDict, total=False):
     username: str
     account_id: int
     characters: list[CharacterPayload]
-    echo_credits: int
+    ai_credits: int
     is_gm: bool
     # Present on login/register responses: play session token for later /play/* calls
     # and the WebSocket handshake (send as "token"; supersedes password re-transmission).
@@ -100,4 +102,4 @@ class PlayAccountResponse(TypedDict, total=False):
     # Economy fields (EconomyService.public_fields)
     currency_display_name: str
     game_currency_display_name: str
-    pixels_per_usd: int
+    credits_per_usd: int

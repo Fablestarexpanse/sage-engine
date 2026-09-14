@@ -7,15 +7,90 @@ from types import SimpleNamespace
 from typing import Any
 
 from sage.world.models import EntityTemplate, ItemTemplate, RoomModel
+from sage.world.package import Currency
+from sage.world.wallet import Wallet
 
-# Repository root (world content lives at <root>/content during the SAGE transition).
+# Repository root.
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def fake_wallet(key: str = "coin", starting: int = 100) -> Wallet:
+    """A wallet over a one-currency test world (label resolves through the active lexicon)."""
+    world = SimpleNamespace(
+        id="test", currencies=[Currency(key=key, label=f"currency.{key}.name", starting=starting)]
+    )
+    return Wallet(world)
+
+
+class FakeRedisClient:
+    """The raw-client commands plugins and engine services use (strings, hashes, lists)."""
+
+    def __init__(self) -> None:
+        self.strings: dict[str, str] = {}
+        self.hashes: dict[str, dict[str, str]] = {}
+        self.lists: dict[str, list[str]] = {}
+
+    async def get(self, key):
+        return self.strings.get(key)
+
+    async def set(self, key, value, **_):
+        self.strings[key] = str(value)
+
+    async def delete(self, *keys):
+        for key in keys:
+            self.strings.pop(key, None)
+            self.hashes.pop(key, None)
+            self.lists.pop(key, None)
+
+    async def getdel(self, key):
+        return self.strings.pop(key, None)
+
+    async def incrby(self, key, amount=1):
+        value = int(self.strings.get(key, 0)) + int(amount)
+        self.strings[key] = str(value)
+        return value
+
+    async def expire(self, key, seconds):
+        return True
+
+    async def hget(self, key, field):
+        return self.hashes.get(key, {}).get(field)
+
+    async def hset(self, key, field, value):
+        self.hashes.setdefault(key, {})[field] = value
+
+    async def hdel(self, key, *fields):
+        for field in fields:
+            self.hashes.get(key, {}).pop(field, None)
+
+    async def hgetall(self, key):
+        return dict(self.hashes.get(key, {}))
+
+    async def hincrby(self, key, field, amount=1):
+        bucket = self.hashes.setdefault(key, {})
+        bucket[field] = str(int(bucket.get(field, 0)) + int(amount))
+        return int(bucket[field])
+
+    async def lpush(self, key, *values):
+        self.lists.setdefault(key, [])[:0] = list(reversed(values))
+        return len(self.lists[key])
+
+    async def ltrim(self, key, start, end):
+        self.lists[key] = self.lists.get(key, [])[start : end + 1]
+
+    async def lrange(self, key, start, end):
+        items = self.lists.get(key, [])
+        return items[start:] if end == -1 else items[start : end + 1]
 
 
 class FakeRedis:
     """Dict-backed drop-in for the RedisState methods game code uses."""
 
+    namespace = ""
+    is_connected = True
+
     def __init__(self) -> None:
+        self.client = FakeRedisClient()
         self.locations: dict[str, str] = {}
         self.stats: dict[str, dict[str, Any]] = {}
         self.inventories: dict[str, list[Any]] = {}
@@ -24,6 +99,12 @@ class FakeRedis:
         self.room_entities: dict[str, set[str]] = {}
         self.item_states: dict[str, dict[str, Any]] = {}
         self.room_items: dict[str, set[str]] = {}
+
+    def key(self, raw: str) -> str:
+        return raw
+
+    def unkey(self, stored: str) -> str:
+        return stored
 
     # Player location
     async def get_player_location(self, player_id: str) -> str | None:
@@ -101,13 +182,12 @@ class FakeRedis:
 
 
 class FakeContentLoader:
-    """Serves canned Pydantic models; proficiency registry loads from real content/."""
+    """Serves canned Pydantic models."""
 
     def __init__(self) -> None:
         self.rooms: dict[str, RoomModel] = {}
         self.entity_templates: dict[str, EntityTemplate] = {}
         self.item_templates: dict[str, ItemTemplate] = {}
-        self._registry = None
 
     def get_room(self, room_id: str) -> RoomModel | None:
         return self.rooms.get(room_id)
@@ -117,15 +197,6 @@ class FakeContentLoader:
 
     def get_item_template(self, item_id: str) -> ItemTemplate | None:
         return self.item_templates.get(item_id)
-
-    def get_proficiency_registry(self):
-        if self._registry is None:
-            from sage.proficiencies.catalog_loader import load_proficiency_catalog_from_disk
-            from sage.proficiencies.registry import ProficiencyRegistry
-
-            doc = load_proficiency_catalog_from_disk(ROOT / "content")
-            self._registry = ProficiencyRegistry(doc.leaves)
-        return self._registry
 
 
 class StubProtocol:
@@ -177,6 +248,11 @@ class StubSession:
 
         self.sent.append(lexicon.t(key, **variables))
 
+    async def send_json(self, payload) -> None:
+        import json
+
+        self.sent.append(json.dumps(payload) + "\r\n")
+
     async def send_prompt(self) -> None:
         pass
 
@@ -191,17 +267,16 @@ class StubSession:
 
 
 def repo_world():
-    """The world package whose content is the repository's content/ tree.
+    """The repository's full reference world: the package with the most rooms.
 
-    During the SAGE transition engine tests read that content directly.
+    Engine tests that need real content (zones, factions, agents) read it from here.
     """
     from sage.world.package import available_worlds, load_world_package
 
-    for world_id in available_worlds(ROOT / "worlds"):
-        world = load_world_package(ROOT / "worlds" / world_id)
-        if world.content_dir == (ROOT / "content").resolve():
-            return world
-    raise RuntimeError("no world package points at the repository content/ tree")
+    worlds = [load_world_package(ROOT / "worlds" / w) for w in available_worlds(ROOT / "worlds")]
+    if not worlds:
+        raise RuntimeError("no world packages in the repository")
+    return max(worlds, key=lambda w: len(list(w.zones_dir.glob("*/rooms/*.yaml"))))
 
 
 def make_fake_server() -> SimpleNamespace:
@@ -213,10 +288,19 @@ def make_fake_server() -> SimpleNamespace:
     server.redis = FakeRedis()
     server.content_loader = FakeContentLoader()
     server.world = repo_world()
-    server.config = SimpleNamespace(server=SimpleNamespace(proficiency_combat_hybrid=True))
+    server.config = SimpleNamespace(server=SimpleNamespace())
     server.dispatcher = CommandDispatcher()
+    from sage.llm.prompts import PromptManager
+
+    # A world with no AI templates: every slot disabled, so commands take their plain paths.
+    server.prompt_manager = PromptManager(ROOT / "worlds" / "_no_ai")
     server.session_manager = SimpleNamespace(
         player_to_session={}, get_session_by_player=lambda pid: None
     )
     server.spawner = EntitySpawnManager(server)  # type: ignore[arg-type]
+    from sage.core.resolvers import Resolvers
+    from sage.world.slots import define_engine_slots
+
+    server.resolvers = Resolvers()
+    define_engine_slots(server.resolvers)
     return server

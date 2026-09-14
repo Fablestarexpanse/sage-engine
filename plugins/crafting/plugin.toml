@@ -1,0 +1,14 @@
+# Crafting: item templates with a `recipe:` can be crafted from parts carried; items break back
+# down into `scraps:` (or half their recipe). Deterministic: exact inputs in, exact outputs out.
+[plugin]
+id = "crafting"
+name = "Crafting"
+version = "1.0.0"
+engine = ">=0.2,<0.3"
+entry = "sage_plugin_crafting.main:setup"
+first_party = true
+
+[touches]
+commands = ["recipes", "craft", "deconstruct"]
+content_extensions = ["item.recipe", "item.yields", "item.scraps"]
+lexicon_prefix = "crafting."

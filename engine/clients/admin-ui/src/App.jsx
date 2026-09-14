@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import axios from "axios";
-import WorldBuilderPage from "./builder/WorldBuilderPage.jsx";
 import PlayerAccountsTab from "./PlayerAccountsTab.jsx";
 import AgentsTab from "./AgentsTab.jsx";
 import ShopsTab from "./ShopsTab.jsx";
@@ -146,13 +145,14 @@ const NAV_ITEMS = [
   { id: "forge", label: "AI Forge", icon: <Icons.Forge />, highlight: true },
   { id: "operations", label: "Operations", icon: <Icons.Alert /> },
   { id: "players", label: "Players & accounts", icon: <Icons.Players /> },
-  // One browsing surface for zones/rooms/entities/items/glyphs; visible when
+  // One browsing surface for zones/rooms/entities/items; visible when
   // ANY of the legacy content tool grants apply (backend still gates per-route).
-  { id: "content", label: "Content Library", icon: <Icons.Content />, anyOf: ["content", "world", "locations", "entities", "items", "glyphs"] },
-  { id: "skills", label: "Skills catalog", icon: <Icons.Skills /> },
-  { id: "builder", label: "World Builder", icon: <Icons.Map /> },
-  { id: "agents", label: "Agents", icon: <Icons.Players /> },
-  { id: "shops", label: "Shops", icon: <Icons.Items /> },
+  { id: "content", label: "Content Library", icon: <Icons.Content />, anyOf: ["content", "world", "locations", "entities", "items"] },
+  // Plugin pages: shown only when a plugin of the running world mounts that admin tool
+  // (GET /admin/plugin-pages), and pointed at the plugin's admin base URL.
+  { id: "skills", label: "Skills catalog", icon: <Icons.Skills />, pluginTool: true },
+  { id: "agents", label: "Agents", icon: <Icons.Players />, pluginTool: true },
+  { id: "shops", label: "Shops", icon: <Icons.Items />, pluginTool: true },
   { id: "lexicon", label: "Lexicon & MOTD", icon: <Icons.Content /> },
   { id: "server", label: "Server", icon: <Icons.Server /> },
   { id: "settings", label: "Settings", icon: <Icons.Settings /> },
@@ -178,7 +178,6 @@ const PAGES = {
   players: PlayersPage,
   content: ContentLibraryPage,
   skills: ProficienciesPage,
-  builder: WorldBuilderPage,
   agents: AgentsPage,
   shops: ShopsPage,
   lexicon: LexiconPage,
@@ -193,6 +192,7 @@ export default function App() {
   const [sidebarHovered, setSidebarHovered] = useState(null);
   const [serverInfo, setServerInfo] = useState(null);
   const [staffProfile, setStaffProfile] = useState(null);
+  const [pluginPages, setPluginPages] = useState([]);
   const [booting, setBooting] = useState(true);
   const [presenceOnline, setPresenceOnline] = useState([]);
 
@@ -230,9 +230,16 @@ export default function App() {
     try {
       const { data } = await axios.get(`${API_BASE}/admin/me`);
       setStaffProfile(data);
+      try {
+        const pages = await axios.get(`${API_BASE}/admin/plugin-pages`);
+        setPluginPages(Array.isArray(pages.data) ? pages.data : []);
+      } catch {
+        setPluginPages([]);
+      }
       return data;
     } catch {
       setStaffProfile(null);
+      setPluginPages([]);
       return null;
     }
   }, []);
@@ -295,50 +302,14 @@ export default function App() {
         return;
       }
       // Legacy page ids from before the Content Library consolidation.
-      if (["world", "locations", "entities", "items", "glyphs"].includes(d.page)) {
+      // Legacy page ids, including the retired World Builder (structural editing is WorldForge's).
+      if (["world", "locations", "entities", "items", "builder"].includes(d.page)) {
         setActivePage("content");
-        return;
       }
-      if (d.page !== "builder") return;
-      if (d.zoneId) {
-        sessionStorage.setItem(
-          "fs_builder_initial",
-          JSON.stringify({ scale: "zone", id: d.zoneId, label: d.zoneLabel || d.zoneId })
-        );
-      } else if (d.shipId) {
-        sessionStorage.setItem(
-          "fs_builder_initial",
-          JSON.stringify({ scale: "ship", id: d.shipId, label: d.shipLabel || d.shipId })
-        );
-      }
-      setActivePage("builder");
     };
     window.addEventListener("fs-admin-nav", onNav);
     return () => window.removeEventListener("fs-admin-nav", onNav);
   }, []);
-
-  useEffect(() => {
-    if (booting || !serverInfo) return;
-    try {
-      const u = new URL(window.location.href);
-      const zone = u.searchParams.get("zone");
-      const ship = u.searchParams.get("ship");
-      if (u.searchParams.get("page") === "builder" || u.searchParams.get("builder") === "1") {
-        if (zone) {
-          sessionStorage.setItem("fs_builder_initial", JSON.stringify({ scale: "zone", id: zone, label: zone }));
-        } else if (ship) {
-          sessionStorage.setItem("fs_builder_initial", JSON.stringify({ scale: "ship", id: ship, label: ship }));
-        }
-        setActivePage("builder");
-        u.searchParams.delete("page");
-        u.searchParams.delete("zone");
-        u.searchParams.delete("ship");
-        u.searchParams.delete("builder");
-        const qs = u.searchParams.toString();
-        window.history.replaceState({}, "", `${u.pathname}${qs ? `?${qs}` : ""}${u.hash}`);
-      }
-    } catch { /* ignore */ }
-  }, [booting, serverInfo]);
 
   const allowedSet = useMemo(() => {
     if (staffProfile?.tools_effective == null) return new Set(ALL_ADMIN_TOOLS);
@@ -348,9 +319,10 @@ export default function App() {
   const navFiltered = useMemo(() => NAV_ITEMS.filter((item) => {
     if (item.headOnly) return staffProfile?.role === "head_admin";
     if (item.anyOf) return item.anyOf.some((t) => allowedSet.has(t));
-    if (item.id === "skills") return allowedSet.has("skills") || allowedSet.has("content");
+    // The server already filtered plugin pages by the staff member's tools.
+    if (item.pluginTool) return pluginPages.some((p) => p.tool === item.id);
     return allowedSet.has(item.id);
-  }), [staffProfile, allowedSet]);
+  }), [staffProfile, allowedSet, pluginPages]);
 
   const resolvedPage = navFiltered.some((n) => n.id === activePage)
     ? activePage
@@ -456,7 +428,7 @@ export default function App() {
 
       <main style={{ flex: 1, overflow: "auto", padding: 28 }}>
         <PresenceStrip online={presenceOnline} />
-        <PageComponent />
+        <PageComponent pluginBase={pluginPages.find((p) => p.tool === resolvedPage)?.base} />
       </main>
     </div>
   );

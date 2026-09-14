@@ -14,12 +14,15 @@ import {
 // AI FORGE — LLM Content Generation Studio
 // ═══════════════════════════════════════════════════════════════
 
+// Marker for zone pickers: filled with the running world's zones (GET /content/zones).
+const WORLD_ZONES = "world_zones";
+
 const FORGE_CATEGORIES = [
   {
     id: "room", label: "Room / Location", icon: <Icons.Locations />, colorKey: "info",
     desc: "Generate room descriptions, exits, ambient messages, and environmental details",
     fields: [
-      { key: "zone", label: "Target Zone", type: "select", options: ["Outer Labyrinth", "Archive Depths", "The Crucible", "Shattered Gallery", "Resonance Caverns", "Tutorial Spire", "Pumpkin Fields"] },
+      { key: "zone", label: "Target Zone", type: "select", options: WORLD_ZONES },
       { key: "room_type", label: "Room Type", type: "select", options: ["chamber", "corridor", "hub", "dead_end", "hazard", "boss_arena", "sanctuary", "puzzle"] },
       { key: "depth", label: "Depth Level", type: "select", options: ["0 (Surface)", "1 (Shallow)", "2 (Mid)", "3 (Deep)", "4 (Abyssal)", "5 (Core)"] },
       { key: "mood", label: "Atmosphere", type: "select", options: ["foreboding", "serene", "chaotic", "ancient", "corrupted", "luminous", "decaying", "mechanical"] },
@@ -37,7 +40,7 @@ const FORGE_CATEGORIES = [
     desc: "Create NPCs with dialogue, behavior patterns, combat abilities, and memory templates",
     fields: [
       { key: "entity_type", label: "Entity Type", type: "select", options: ["Hunter", "Watcher", "Guide", "Archivist", "Boss", "Vendor", "Ambient", "Quest NPC"] },
-      { key: "zone", label: "Home Zone", type: "select", options: ["Outer Labyrinth", "Archive Depths", "The Crucible", "Shattered Gallery", "Resonance Caverns"] },
+      { key: "zone", label: "Home Zone", type: "select", options: WORLD_ZONES },
       { key: "level_range", label: "Level Range", type: "select", options: ["1-10 (Novice)", "11-25 (Intermediate)", "26-45 (Advanced)", "46-60 (Expert)", "61+ (Legendary)"] },
       { key: "behavior", label: "Behavior Pattern", type: "select", options: ["patrol", "static", "ambient", "scripted", "adaptive", "territorial", "fleeing", "stalking"] },
       { key: "details", label: "Character Concept", type: "textarea", placeholder: "Personality, backstory hooks, unique traits, combat style..." },
@@ -55,30 +58,13 @@ const FORGE_CATEGORIES = [
     fields: [
       { key: "item_type", label: "Item Type", type: "select", options: ["Equipment", "Consumable", "Material", "Key", "Lore", "Currency", "Artifact"] },
       { key: "rarity", label: "Rarity", type: "select", options: ["common", "uncommon", "rare", "epic", "legendary"] },
-      { key: "theme", label: "Thematic Origin", type: "select", options: ["Labyrinth-forged", "Ancient Conduit tech", "Void-touched", "Resonance crystal", "Organic/living", "Mechanical/construct"] },
       { key: "details", label: "Item Concept", type: "textarea", placeholder: "Function, visual appearance, lore significance..." },
     ],
     promptTemplates: [
       "Generate a set of 5 themed loot drops for a specific zone",
       "Design a legendary artifact with lore, stats, and discovery quest hook",
       "Create a consumable crafting chain with 3 tiers of ingredients",
-      "Write flavor text for 10 common materials found in the labyrinth",
-    ],
-  },
-  {
-    id: "glyph", label: "Glyph / Ability", icon: <Icons.Glyphs />, colorKey: "accent",
-    desc: "Design glyph tattoos with mechanics, visual descriptions, and balance parameters",
-    fields: [
-      { key: "category", label: "Category", type: "select", options: ["Combat", "Defense", "Utility", "Perception", "Movement", "Social"] },
-      { key: "tier", label: "Tier", type: "select", options: ["1 (Initiate)", "2 (Adept)", "3 (Master)", "4 (Transcendent)", "5 (Mythic)"] },
-      { key: "body_slot", label: "Body Slot", type: "select", options: ["forearm", "upper arm", "chest", "back", "calf", "thigh", "palm", "temple", "spine", "shoulder"] },
-      { key: "details", label: "Ability Concept", type: "textarea", placeholder: "Mechanical effect, visual manifestation, lore origin..." },
-    ],
-    promptTemplates: [
-      "Design a glyph chain: 3 related glyphs that combo together",
-      "Create a defensive glyph with scaling based on adaptive level",
-      "Generate a utility glyph tree with 5 progression tiers",
-      "Design a mythic-tier glyph with dramatic inscription sequence narrative",
+      "Write flavor text for 10 common materials found in this zone",
     ],
   },
   {
@@ -87,21 +73,21 @@ const FORGE_CATEGORIES = [
     fields: [
       { key: "quest_type", label: "Quest Type", type: "select", options: ["Main story", "Side quest", "Discovery", "Repeatable", "Event", "Hidden", "Tutorial"] },
       { key: "difficulty", label: "Difficulty", type: "select", options: ["Trivial", "Easy", "Medium", "Hard", "Legendary"] },
-      { key: "zone", label: "Zone", type: "select", options: ["Outer Labyrinth", "Archive Depths", "The Crucible", "Shattered Gallery", "Resonance Caverns", "Multi-zone"] },
+      { key: "zone", label: "Zone", type: "select", options: WORLD_ZONES },
       { key: "details", label: "Quest Concept", type: "textarea", placeholder: "Story hook, objectives, key NPCs, reward ideas..." },
     ],
     promptTemplates: [
       "Create a 3-part quest chain with branching outcomes",
       "Design a hidden discovery quest with environmental clue progression",
       "Generate a repeatable hunt quest with adaptive difficulty scaling",
-      "Build a tutorial quest that teaches glyph combat mechanics naturally",
+      "Build a tutorial quest that teaches combat mechanics naturally",
     ],
   },
   {
     id: "dialogue", label: "Dialogue Tree", icon: <Icons.Activity />, colorKey: "cyan",
     desc: "Write NPC conversation flows with conditions, personality, and memory integration",
     fields: [
-      { key: "npc_type", label: "NPC Type", type: "select", options: ["Guide", "Archivist", "Vendor", "Quest giver", "Lore keeper", "Antagonist", "Fellow Conduit"] },
+      { key: "npc_type", label: "NPC Type", type: "select", options: ["Guide", "Archivist", "Vendor", "Quest giver", "Lore keeper", "Antagonist", "Rival"] },
       { key: "tone", label: "Personality Tone", type: "select", options: ["cryptic", "friendly", "hostile", "melancholic", "manic", "scholarly", "fearful", "ancient"] },
       { key: "context", label: "Conversation Context", type: "select", options: ["First meeting", "Returning player", "Quest delivery", "Lore dump", "Trading", "Warning", "Betrayal"] },
       { key: "details", label: "Dialogue Concept", type: "textarea", placeholder: "Topic, emotional arc, information to convey, branching triggers..." },
@@ -135,10 +121,15 @@ const FORGE_CATEGORIES = [
 // (a static dark-palette lookup here previously pinned these to dark-mode colors).
 function useForgeCategories() {
   const { colors } = useAdminTheme();
-  return useMemo(
-    () => FORGE_CATEGORIES.map((c) => ({ ...c, color: colors[c.colorKey] || colors.accent })),
-    [colors]
-  );
+  const { rows: zones } = usePolledList(`${API_BASE}/content/zones`, 60000);
+  return useMemo(() => {
+    const zoneNames = zones.map((z) => z.name || z.id).filter(Boolean);
+    return FORGE_CATEGORIES.map((c) => ({
+      ...c,
+      color: colors[c.colorKey] || colors.accent,
+      fields: c.fields.map((f) => (f.options === WORLD_ZONES ? { ...f, options: zoneNames } : f)),
+    }));
+  }, [colors, zones]);
 }
 
 const ForgePromptTemplateButton = ({ tmpl, cat, onPick }) => {

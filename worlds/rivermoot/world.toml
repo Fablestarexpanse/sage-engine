@@ -20,6 +20,7 @@ exit_dirs = ["north", "south", "east", "west"]
 equipment_slots = ["hand", "body"]
 
 [plugins]
+combat = "^1"
 levels = "^1"
 
 [params]

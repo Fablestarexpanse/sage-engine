@@ -20,7 +20,6 @@ EXPECTED_TABLES = {
     "accounts",
     "characters",
     "admin_staff",
-    "agent_state",
     "account_scene_images",
     "alembic_version",
 }
@@ -61,3 +60,101 @@ def test_models_match_migrations(live_config, migrated_database):
         return compare_metadata(MigrationContext.configure(conn), Base.metadata)
 
     assert _run_sync(live_config, diff) == []
+
+
+def test_wallet_balances_move_into_stats_and_back(
+    live_config, alembic_cfg, migrated_database, monkeypatch
+):
+    """p9q0r1s2t3u4 copies the legacy wallet column into stats; downgrade copies it back."""
+    from sqlalchemy import text
+
+    from alembic.script import ScriptDirectory
+    from sage.core.config import resolve_project_root
+    from sage.world.package import available_worlds, load_world_package
+
+    legacy = (
+        ScriptDirectory.from_config(alembic_cfg).get_revision("p9q0r1s2t3u4").module.LEGACY_COLUMN
+    )
+    worlds_dir = resolve_project_root() / live_config.server.worlds_dir
+    packages = [load_world_package(worlds_dir / w) for w in available_worlds(worlds_dir)]
+    world = next((w for w in packages if w.currencies), None)
+    if world is None:
+        pytest.skip("no world package declares a currency")
+    # The migration reads the database's world from config, as `sage db upgrade` does.
+    monkeypatch.setenv("SAGE_SERVER__WORLD", world.id)
+    key = world.currencies[0].key
+
+    def execute(sql, **params):
+        def run(conn):
+            result = conn.execute(text(sql), params)
+            rows = result.all() if result.returns_rows else None
+            conn.commit()
+            return rows
+
+        return _run_sync(live_config, run)
+
+    command.downgrade(alembic_cfg, "o8p9q0r1s2t3")
+    try:
+        execute(
+            "INSERT INTO accounts (username, password_hash, is_gm, created_at) "
+            "VALUES ('wallet_mig', 'x', false, now())"
+        )
+        execute(
+            f"INSERT INTO characters (account_id, name, room_id, {legacy}, pvp_enabled, "
+            "reputation, stats, inventory, created_at, updated_at) "
+            "SELECT id, 'wallet_hero', 'probe:start', 17, false, 0, '{\"hp\": 5}', '[]', now(), now() "
+            "FROM accounts WHERE username = 'wallet_mig'"
+        )
+        command.upgrade(alembic_cfg, "head")
+        [(stats,)] = execute("SELECT stats FROM characters WHERE name = 'wallet_hero'")
+        assert stats == {"hp": 5, key: 17}
+
+        execute(
+            f"UPDATE characters SET stats = jsonb_set(stats, '{{{key}}}', '30') WHERE name = 'wallet_hero'"
+        )
+        command.downgrade(alembic_cfg, "o8p9q0r1s2t3")
+        [(balance,)] = execute(f"SELECT {legacy} FROM characters WHERE name = 'wallet_hero'")
+        assert balance == 30
+    finally:
+        command.upgrade(alembic_cfg, "head")
+        execute("DELETE FROM characters WHERE name = 'wallet_hero'")
+        execute("DELETE FROM accounts WHERE username = 'wallet_mig'")
+
+
+def test_legacy_column_drop_refuses_while_a_standing_is_left_behind(
+    live_config, alembic_cfg, migrated_database
+):
+    """r1s2t3u4v5w6 must not destroy a value no world plugin has moved yet."""
+    from sqlalchemy import text
+
+    from alembic.script import ScriptDirectory
+
+    standing = (
+        ScriptDirectory.from_config(alembic_cfg).get_revision("r1s2t3u4v5w6").module.LEGACY_STANDING
+    )
+
+    def execute(sql):
+        def run(conn):
+            conn.execute(text(sql))
+            conn.commit()
+
+        return _run_sync(live_config, run)
+
+    command.downgrade(alembic_cfg, "q0r1s2t3u4v5")
+    try:
+        execute(
+            "INSERT INTO accounts (username, password_hash, is_gm, created_at) "
+            "VALUES ('drop_guard', 'x', false, now())"
+        )
+        execute(
+            f"INSERT INTO characters (account_id, name, room_id, {standing}, pvp_enabled, stats, "
+            "inventory, created_at, updated_at) SELECT id, 'drop_guard_hero', 'probe:start', 12, "
+            "false, '{}', '[]', now(), now() FROM accounts WHERE username = 'drop_guard'"
+        )
+        with pytest.raises(RuntimeError, match="still hold"):
+            command.upgrade(alembic_cfg, "head")
+        assert "characters" in _tables(live_config)
+    finally:
+        execute("DELETE FROM characters WHERE name = 'drop_guard_hero'")
+        execute("DELETE FROM accounts WHERE username = 'drop_guard'")
+        command.upgrade(alembic_cfg, "head")

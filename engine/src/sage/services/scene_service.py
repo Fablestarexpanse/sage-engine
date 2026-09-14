@@ -13,8 +13,9 @@ import httpx
 from sqlalchemy import select
 
 from sage.comfyui_client import generate_portrait_png
-from sage.core.config import resolve_config_asset_path
+from sage.core.config import resolve_workflow_path
 from sage.llm.client import LLMGenerationError
+from sage.llm.prompts import SlotDisabled
 from sage.services._shared import (
     resolve_play_account,
     resolve_play_account_or_error,
@@ -87,11 +88,10 @@ class SceneService:
 
     async def comfyui_status(self) -> dict[str, Any]:
         c = self.server.config.comfyui
-        portrait_resolved = resolve_config_asset_path(c.workflow_path)
+        portrait_resolved = resolve_workflow_path(c, "portrait")
         wf = portrait_resolved.is_file()
         ready = bool(c.enabled and wf)
-        area_wp = (c.area_workflow_path or "").strip() or c.workflow_path
-        area_path = resolve_config_asset_path(area_wp)
+        area_path = resolve_workflow_path(c, "area")
         area_wf = area_path.is_file()
         area_ready = bool(c.enabled and area_wf)
         ckpt_set = bool((c.checkpoint_name or "").strip())
@@ -116,7 +116,7 @@ class SceneService:
             "portrait_workflow_uses_checkpoint_loader": portrait_uses_ckpt_loader,
             "area_workflow_present": area_wf,
             "area_ready": area_ready,
-            "area_workflow_path": area_wp,
+            "area_workflow_path": str(area_path),
             "area_workflow_uses_checkpoint_loader": area_uses_ckpt_loader,
             "checkpoint_name_set": ckpt_set,
             "suggest_checkpoint_name_in_toml": suggest_checkpoint_name_in_toml,
@@ -125,8 +125,8 @@ class SceneService:
             "economy_enabled": bool(c.economy_enabled),
             "area_generation_cost": int(c.area_generation_cost),
             "portrait_generation_cost": int(c.portrait_generation_cost),
-            "pixels_per_usd": int(c.pixels_per_usd),
-            "currency_display_name": (c.currency_display_name or "pixels").strip() or "pixels",
+            "credits_per_usd": int(c.credits_per_usd),
+            "currency_display_name": (c.currency_display_name or "credits").strip() or "credits",
             # The admin form fills from this payload; missing keys made it show
             # (and then save back) defaults instead of the live config.
             "area_positive_prompt_node_id": c.area_positive_prompt_node_id,
@@ -134,7 +134,7 @@ class SceneService:
             "checkpoint_name": c.checkpoint_name,
             "timeout_seconds": float(c.timeout_seconds),
             "poll_interval_seconds": float(c.poll_interval_seconds),
-            "starting_echo_credits": int(c.starting_echo_credits),
+            "starting_ai_credits": int(c.starting_ai_credits),
             "character_create_portrait_cost": int(c.character_create_portrait_cost),
         }
 
@@ -154,13 +154,16 @@ class SceneService:
         description_base: str,
     ) -> dict[str, Any]:
         """LM Studio / OpenAI-compatible: short ComfyUI prompt from room fields."""
-        prompt = self.server.prompt_manager.render(
-            "forge_area_image_prompt",
-            room_name=room_name or "?",
-            room_type=room_type or "chamber",
-            room_depth=int(depth or 1),
-            description_base=(description_base or "").strip(),
-        )
+        try:
+            prompt = self.server.prompt_manager.render(
+                "image.area",
+                room_name=room_name or "?",
+                room_type=room_type or "chamber",
+                room_depth=int(depth or 1),
+                description_base=(description_base or "").strip(),
+            )
+        except SlotDisabled as e:
+            return {"ok": False, "error": "ai_slot_disabled", "detail": str(e)}
         try:
             raw = await self.server.llm_client.generate_or_raise(
                 prompt,
@@ -194,11 +197,14 @@ class SceneService:
 
         cn = (character_name or "").strip() or "?"
         notes = (appearance_notes or "").strip()
-        prompt = self.server.prompt_manager.render(
-            "forge_portrait_character_prompt",
-            character_name=cn,
-            appearance_notes=notes or "(none)",
-        )
+        try:
+            prompt = self.server.prompt_manager.render(
+                "image.portrait",
+                character_name=cn,
+                appearance_notes=notes or "(none)",
+            )
+        except SlotDisabled as e:
+            return {"ok": False, "error": "ai_slot_disabled", "detail": str(e)}
         try:
             raw = await self.server.llm_client.generate_or_raise(
                 prompt,
@@ -237,11 +243,14 @@ class SceneService:
         if len(ctx) > 8000:
             ctx = ctx[:8000]
         rh = (room_hint or "").strip() or "Unknown location"
-        prompt = self.server.prompt_manager.render(
-            "play_scene_image_prompt",
-            narrative_context=ctx or "(no narrative text yet)",
-            room_hint=rh,
-        )
+        try:
+            prompt = self.server.prompt_manager.render(
+                "image.scene",
+                narrative_context=ctx or "(no narrative text yet)",
+                room_hint=rh,
+            )
+        except SlotDisabled as e:
+            return {"ok": False, "error": "ai_slot_disabled", "detail": str(e)}
         try:
             raw = await self.server.llm_client.generate_or_raise(
                 prompt,
@@ -286,13 +295,12 @@ class SceneService:
         if len(ip) > 4000:
             return {"ok": False, "error": "prompt_too_long"}
         cfg = self.server.config.comfyui
-        area_wp = (cfg.area_workflow_path or "").strip() or cfg.workflow_path
-        if not cfg.enabled or not resolve_config_asset_path(area_wp).is_file():
+        if not cfg.enabled or not resolve_workflow_path(cfg, "area").is_file():
             return {
                 "ok": False,
                 "error": "comfyui_not_configured",
                 **self.server.economy.public_fields(),
-                "echo_credits": await self.server.economy.read_balance(account_id),
+                "ai_credits": await self.server.economy.read_balance(account_id),
             }
         cost = int(cfg.area_generation_cost)
         ok_debit, err_debit, bal_after, charged = await self.server.economy.debit_for_generation(
@@ -307,7 +315,7 @@ class SceneService:
             return {
                 **res,
                 **self.server.economy.public_fields(),
-                "echo_credits": await self.server.economy.read_balance(account_id),
+                "ai_credits": await self.server.economy.read_balance(account_id),
             }
         scene_url = res.get("area_image_url")
         scene_url_str = str(scene_url).strip()[:2048] if scene_url else ""
@@ -333,7 +341,7 @@ class SceneService:
             "scene_image_url": scene_url,
             "bundled": bool(res.get("bundled")),
             **self.server.economy.public_fields(),
-            "echo_credits": bal_after,
+            "ai_credits": bal_after,
             "cost_charged": charged,
         }
 
@@ -414,13 +422,13 @@ class SceneService:
     ) -> dict[str, Any]:
         """ComfyUI: save PNG; optional zone+slug writes next to room YAML for portable world content."""
         cfg = self.server.config.comfyui
-        area_wp = (cfg.area_workflow_path or "").strip() or cfg.workflow_path
         ip = (image_prompt or "").strip()
         zid = (zone_id or "").strip()
         rslug = (room_slug or "").strip().removesuffix(".yaml")
         seg_ok = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}$")
         bundle = bool(zid and rslug and seg_ok.match(zid) and seg_ok.match(rslug))
-        area_resolved = resolve_config_asset_path(area_wp)
+        area_resolved = resolve_workflow_path(cfg, "area")
+        area_wp = cfg.area_workflow_path or "(world default)"
         logger.info(
             "forge room-area-image: enabled=%s area_workflow=%s resolved=%s exists=%s prompt_len=%s bundle=%s",
             cfg.enabled,
@@ -475,13 +483,13 @@ class SceneService:
 
         cfg = self.server.config.comfyui
         eco = self.server.economy.public_fields()
-        if not cfg.enabled or not resolve_config_asset_path(cfg.workflow_path).is_file():
+        if not cfg.enabled or not resolve_workflow_path(cfg, "portrait").is_file():
             return {
                 "ok": True,
                 "portrait_url": None,
                 "note": "comfyui_not_configured",
                 **eco,
-                "echo_credits": await self.server.economy.read_balance(account_id),
+                "ai_credits": await self.server.economy.read_balance(account_id),
             }
 
         cost = int(cfg.portrait_generation_cost)
@@ -502,13 +510,13 @@ class SceneService:
                 "error": "comfyui_failed",
                 "detail": str(e),
                 **eco,
-                "echo_credits": await self.server.economy.read_balance(account_id),
+                "ai_credits": await self.server.economy.read_balance(account_id),
             }
 
         return {
             "ok": True,
             "portrait_url": save_portrait_png(png),
             **eco,
-            "echo_credits": bal_after,
+            "ai_credits": bal_after,
             "cost_charged": charged,
         }

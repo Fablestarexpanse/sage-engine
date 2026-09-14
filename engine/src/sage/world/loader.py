@@ -2,19 +2,12 @@
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import Any, TypeVar
 
 import yaml
 from pydantic import BaseModel
 
-from sage.proficiencies.registry import ProficiencyRegistry
-from sage.proficiencies.registry_cache import ProficiencyRegistryCache
 from sage.world.models import EntityTemplate, ItemTemplate, RoomModel
-
-if TYPE_CHECKING:
-    from sage.achievements.registry import AchievementRegistry
-    from sage.agents.registry import AgentRegistry
-    from sage.factions.registry import FactionRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +23,6 @@ class ContentLoader:
     def __init__(self, content_dir: str = "content"):
         self.content_dir = Path(content_dir)
         self._cache: dict[str, Any] = {}
-        self._proficiency_cache = ProficiencyRegistryCache(self.content_dir)
 
     def _get_cache_key(self, content_type: str, content_id: str) -> str:
         return f"{content_type}:{content_id}"
@@ -103,6 +95,17 @@ class ContentLoader:
             logger.error(f"Error loading item template {item_id}: {e}")
             return None
 
+    def list_room_ids(self) -> list[str]:
+        """Every room id on disk ("zone:slug"), zone by zone."""
+        zones_dir = self.content_dir / "world" / "zones"
+        out: list[str] = []
+        if zones_dir.is_dir():
+            for zdir in sorted(p for p in zones_dir.iterdir() if p.is_dir()):
+                rooms = zdir / "rooms"
+                if rooms.is_dir():
+                    out.extend(f"{zdir.name}:{f.stem}" for f in sorted(rooms.glob("*.yaml")))
+        return out
+
     def list_item_template_ids(self) -> list[str]:
         """All item template ids on disk (file stems under content/world/items)."""
         items_dir = self.content_dir / "world" / "items"
@@ -134,43 +137,6 @@ class ContentLoader:
                 results.append(tmpl)
         return results
 
-    def get_proficiency_registry(self) -> ProficiencyRegistry:
-        """Delegate to the proficiencies package's own registry cache."""
-        return self._proficiency_cache.get()
-
-    def get_achievement_registry(self) -> "AchievementRegistry":
-        """Load and cache the achievement registry from content/achievements/."""
-        cache_key = "achievements:registry"
-        if cache_key in self._cache:
-            return self._cache[cache_key]
-        from sage.achievements.registry import load_achievements
-
-        registry = load_achievements(self.content_dir)
-        self._cache[cache_key] = registry
-        return registry
-
-    def get_agent_registry(self) -> "AgentRegistry":
-        """Load and cache agent personas from content/agents/."""
-        cache_key = "agents:registry"
-        if cache_key in self._cache:
-            return self._cache[cache_key]
-        from sage.agents.registry import load_agents
-
-        registry = load_agents(self.content_dir)
-        self._cache[cache_key] = registry
-        return registry
-
-    def get_faction_registry(self) -> "FactionRegistry":
-        """Load and cache the faction registry from content/factions/."""
-        cache_key = "factions:registry"
-        if cache_key in self._cache:
-            return self._cache[cache_key]
-        from sage.factions.registry import load_factions
-
-        registry = load_factions(self.content_dir)
-        self._cache[cache_key] = registry
-        return registry
-
     def invalidate(self, file_path: Path):
         """Invalidate cache entries associated with a changed file."""
         # Simple implementation: clear all or try to match path
@@ -178,9 +144,7 @@ class ContentLoader:
         logger.info(f"Invalidating cache for {file_path}")
 
         # For now, we'll just clear the specific type if we can determine it
-        if "proficiencies" in file_path.parts:
-            self._proficiency_cache.invalidate()
-        elif "rooms" in file_path.parts:
+        if "rooms" in file_path.parts:
             room_id = f"{file_path.parent.parent.name}:{file_path.stem}"
             cache_key = self._get_cache_key("room", room_id)
             if cache_key in self._cache:
@@ -193,5 +157,4 @@ class ContentLoader:
     def clear_cache(self):
         """Force clear the entire content cache."""
         self._cache.clear()
-        self._proficiency_cache.invalidate()
         logger.info("Content cache cleared.")

@@ -21,9 +21,7 @@ def _character_admin_dict(c: Character) -> dict[str, Any]:
         "portrait_url": c.portrait_url,
         "portrait_prompt": c.portrait_prompt,
         "last_scene_image_url": c.last_scene_image_url,
-        "digi_balance": int(c.digi_balance),
         "pvp_enabled": bool(c.pvp_enabled),
-        "reputation": int(c.reputation),
         "stats": dict(c.stats or {}),
         "inventory": list(c.inventory or []),
         "created_at": c.created_at.isoformat() + "Z" if c.created_at else None,
@@ -36,7 +34,7 @@ def _account_summary_dict(a: Account, char_count: int) -> dict[str, Any]:
         "id": a.id,
         "username": a.username,
         "email": a.email,
-        "echo_credits": int(a.echo_credits),
+        "ai_credits": int(a.ai_credits),
         "is_gm": bool(a.is_gm),
         "created_at": a.created_at.isoformat() + "Z" if a.created_at else None,
         "last_login": a.last_login.isoformat() + "Z" if a.last_login else None,
@@ -122,14 +120,12 @@ async def patch_account(
         account = await session.get(Account, account_id)
         if account is None:
             return None
-        old_ec = int(account.echo_credits)
+        old_ec = int(account.ai_credits)
         old_gm = bool(account.is_gm)
-        if patch.get("echo_credits_add") is not None:
-            account.echo_credits = max(
-                0, int(account.echo_credits) + int(patch["echo_credits_add"])
-            )
-        elif patch.get("echo_credits") is not None:
-            account.echo_credits = max(0, int(patch["echo_credits"]))
+        if patch.get("ai_credits_add") is not None:
+            account.ai_credits = max(0, int(account.ai_credits) + int(patch["ai_credits_add"]))
+        elif patch.get("ai_credits") is not None:
+            account.ai_credits = max(0, int(patch["ai_credits"]))
         if "is_gm" in patch:
             account.is_gm = bool(patch["is_gm"])
         if "email" in patch:
@@ -140,7 +136,7 @@ async def patch_account(
                 account.email = v.strip() or None
         await session.commit()
         await session.refresh(account)
-        new_ec = int(account.echo_credits)
+        new_ec = int(account.ai_credits)
         new_gm = bool(account.is_gm)
         n = await session.scalar(
             select(func.count()).select_from(Character).where(Character.account_id == account_id)
@@ -149,15 +145,15 @@ async def patch_account(
 
     delta = new_ec - old_ec
     c = server.config.comfyui
-    lab = (c.currency_display_name or "pixels").strip() or "pixels"
+    lab = (c.currency_display_name or "credits").strip() or "credits"
 
     lines: list[str] = []
-    if patch.get("echo_credits_add") is not None or patch.get("echo_credits") is not None:
+    if patch.get("ai_credits_add") is not None or patch.get("ai_credits") is not None:
         if delta > 0:
             lines.append(f"Added {delta} {lab} (balance now {new_ec}).")
         elif delta < 0:
             lines.append(f"Adjusted {lab} by {delta} (balance now {new_ec}).")
-        elif patch.get("echo_credits") is not None:
+        elif patch.get("ai_credits") is not None:
             lines.append(f"{lab.capitalize()} balance set to {new_ec}.")
     if "is_gm" in patch and new_gm != old_gm:
         lines.append(f"In-game GM crown: {'enabled' if new_gm else 'disabled'}.")
@@ -170,10 +166,10 @@ async def patch_account(
             actor_display_name=str(actor.get("display_name") or actor.get("username") or "Staff"),
             actor_role=str(actor.get("role") or "gm"),
             summary_lines=lines,
-            echo_credits=new_ec
-            if (patch.get("echo_credits_add") is not None or patch.get("echo_credits") is not None)
+            ai_credits=new_ec
+            if (patch.get("ai_credits_add") is not None or patch.get("ai_credits") is not None)
             else None,
-            echo_credits_added=delta if delta > 0 else None,
+            ai_credits_added=delta if delta > 0 else None,
             play_account_is_gm=new_gm if "is_gm" in patch else None,
         )
     elif delta > 0 and not actor:
@@ -195,12 +191,8 @@ async def patch_character(
         if char is None or char.account_id != account_id:
             return None
         char_name = char.name
-        if "digi_balance" in patch:
-            char.digi_balance = max(0, int(patch["digi_balance"]))
         if "pvp_enabled" in patch:
             char.pvp_enabled = bool(patch["pvp_enabled"])
-        if "reputation" in patch:
-            char.reputation = int(patch["reputation"])
         if "room_id" in patch:
             rid = patch["room_id"]
             if isinstance(rid, str) and rid.strip():
@@ -212,23 +204,14 @@ async def patch_character(
             pp = patch["portrait_prompt"]
             char.portrait_prompt = pp if isinstance(pp, str) and pp.strip() else None
         if "stats" in patch and isinstance(patch["stats"], dict):
-            from sage.proficiencies.state_helpers import (
-                ensure_proficiency_block,
-                migrate_legacy_stats,
-            )
+            from sage.world.progression import PREPARE
 
-            merged = migrate_legacy_stats(dict(patch["stats"]))
-            ensure_proficiency_block(merged)
-            char.stats = merged
+            char.stats = server.resolvers.get(PREPARE)(dict(patch["stats"]))
         await session.commit()
         await session.refresh(char)
         out = _character_admin_dict(char)
 
     lines: list[str] = []
-    if "digi_balance" in patch:
-        lines.append(f"Character {char_name}: Digi → {out['digi_balance']}.")
-    if "reputation" in patch:
-        lines.append(f"Character {char_name}: Reputation → {out['reputation']}.")
     if "room_id" in patch:
         lines.append(f"Character {char_name}: Location (room) updated.")
     if "pvp_enabled" in patch:

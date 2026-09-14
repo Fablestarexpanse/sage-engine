@@ -10,6 +10,7 @@ from types import SimpleNamespace
 
 from sage.services.scene_service import SceneService, _is_safe_player_scene_storage_url
 from sage.state.models import Account, AccountSceneImage, Character
+from tests.fakes import fake_wallet
 
 # ---- storage-URL guard ------------------------------------------------------
 
@@ -53,7 +54,7 @@ def _account(aid=5):
     a = Account()
     a.id = aid
     a.username = "player"
-    a.echo_credits = 100
+    a.ai_credits = 100
     return a
 
 
@@ -71,12 +72,12 @@ def _scene_server(rows, comfy_enabled=False):
                 workflow_path="does-not-exist.json",
                 area_workflow_path="",
                 area_generation_cost=10,
-                currency_display_name="pixels",
-                pixels_per_usd=100,
+                currency_display_name="credits",
+                credits_per_usd=100,
                 economy_enabled=True,
             ),
-            server=SimpleNamespace(game_currency_display_name="digi"),
         ),
+        wallet=fake_wallet(),
     )
     return srv, session, fake_resolve
 
@@ -111,12 +112,12 @@ def test_generate_scene_image_not_configured_reports_balance(monkeypatch):
             return 77
 
         srv.economy = SimpleNamespace(
-            public_fields=lambda: {"currency_display_name": "pixels"},
+            public_fields=lambda: {"currency_display_name": "credits"},
             read_balance=read_balance,
         )
         r = await SceneService(srv).generate_scene_image("player", "pw", "a good prompt")
         assert r["error"] == "comfyui_not_configured"
-        assert r["echo_credits"] == 77
+        assert r["ai_credits"] == 77
 
     asyncio.run(check())
 

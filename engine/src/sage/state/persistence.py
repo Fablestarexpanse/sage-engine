@@ -22,6 +22,8 @@ class PersistenceManager:
     def __init__(self, server: "SageServer"):
         self.server = server
         self.flush_interval_ticks = 240  # Every 60 seconds at 4Hz
+        # Plugins persisting their own characters on the same cadence (api.persistence).
+        self.flush_hooks: list = []
 
     async def flush_all(self):
         """Perform a full synchronization of active world state/players."""
@@ -29,10 +31,11 @@ class PersistenceManager:
         try:
             for player_id in await self.server.redis.get_all_active_player_ids():
                 await self.sync_character(player_id)
-            # Agent NPCs persist to their own table on the same cadence.
-            agent_manager = getattr(self.server, "agent_manager", None)
-            if agent_manager is not None:
-                await agent_manager.flush_all()
+            for hook in list(self.flush_hooks):
+                try:
+                    await hook()
+                except Exception:
+                    logger.exception("Persistence: flush hook %s failed", hook)
         except Exception:
             logger.exception("Persistence: flush_all failed; game loop continues")
             return
@@ -57,10 +60,6 @@ class PersistenceManager:
                             character.room_id = current_room
                         if current_stats:
                             character.stats = current_stats
-                            # In-game wallet lives in the stats blob (shops);
-                            # mirror it to the account-visible column.
-                            if isinstance(current_stats.get("digi"), int):
-                                character.digi_balance = current_stats["digi"]
                         if current_inventory is not None:
                             character.inventory = current_inventory
                         character.updated_at = datetime.utcnow()

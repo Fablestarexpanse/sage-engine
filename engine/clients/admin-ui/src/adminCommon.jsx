@@ -10,7 +10,7 @@ const LS_ADMIN_TOKEN = "sage_admin_token";
 /** Tool ids enforced by Nexus (see sage.admin.admin_security.NAV_TOOL_IDS). */
 const ALL_ADMIN_TOOLS = [
   "dashboard", "forge", "operations", "players", "world", "entities",
-  "items", "glyphs", "skills", "locations", "builder", "agents", "shops", "lexicon", "server", "content", "settings", "team",
+  "items", "skills", "locations", "agents", "shops", "lexicon", "server", "content", "settings", "team",
 ];
 
 function adminWsBase() {
@@ -73,11 +73,6 @@ const Icons = {
   Items: () => (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>
-    </svg>
-  ),
-  Glyphs: () => (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
     </svg>
   ),
   Skills: () => (

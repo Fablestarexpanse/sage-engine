@@ -15,11 +15,12 @@ async def _count_keys(client, match: str) -> int:
     return n
 
 
-async def build_world_live_snapshot(redis_client) -> dict[str, Any]:
+async def build_world_live_snapshot(redis) -> dict[str, Any]:
     """
-    Scan Redis for keys matching the engine's key conventions. May be expensive on large DBs;
+    Scan Redis for this world's keys (RedisState namespace). May be expensive on large DBs;
     intended for local / low-scale ops.
     """
+    redis_client = redis.client if redis is not None and redis.is_connected else None
     if redis_client is None:
         return {
             "redis_connected": False,
@@ -34,12 +35,12 @@ async def build_world_live_snapshot(redis_client) -> dict[str, Any]:
     rooms_detail: list[dict[str, Any]] = []
     rooms_with_players = 0
     try:
-        async for key in redis_client.scan_iter(match="room:*:players", count=256):
+        async for key in redis_client.scan_iter(match=redis.key("room:*:players"), count=256):
             cnt = await redis_client.scard(key)
             if cnt > 0:
                 rooms_with_players += 1
                 if len(rooms_detail) < 50:
-                    rid = key
+                    rid = redis.unkey(key)
                     if rid.startswith("room:") and rid.endswith(":players"):
                         rid = rid[5 : -len(":players")]
                     rooms_detail.append({"room_id": rid, "player_count": cnt})
@@ -56,9 +57,9 @@ async def build_world_live_snapshot(redis_client) -> dict[str, Any]:
         }
 
     try:
-        combat_keys = await _count_keys(redis_client, "combat:*")
-        entity_state_keys = await _count_keys(redis_client, "entity:*:state")
-        item_state_keys = await _count_keys(redis_client, "item:*:state")
+        combat_keys = await _count_keys(redis_client, redis.key("combat:*"))
+        entity_state_keys = await _count_keys(redis_client, redis.key("entity:*:state"))
+        item_state_keys = await _count_keys(redis_client, redis.key("item:*:state"))
     except Exception as e:
         logger.debug("world_live key counts failed", exc_info=True)
         return {

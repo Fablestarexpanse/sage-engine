@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from sage.admin import comfyui_workflows
 from sage.admin.admin_security import AdminContext
 from sage.admin.route_helpers import require_tool
+from sage.llm.client import LLMGenerationError
 
 if TYPE_CHECKING:
     from sage.server import SageServer
@@ -39,12 +40,12 @@ class ComfyUISettingsBody(BaseModel):
     timeout_seconds: float | None = None
     poll_interval_seconds: float | None = None
     economy_enabled: bool | None = None
-    starting_echo_credits: int | None = None
+    starting_ai_credits: int | None = None
     portrait_generation_cost: int | None = None
     area_generation_cost: int | None = None
     character_create_portrait_cost: int | None = None
     currency_display_name: str | None = None
-    pixels_per_usd: int | None = None
+    credits_per_usd: int | None = None
 
 
 class WorkflowUploadBody(BaseModel):
@@ -131,13 +132,18 @@ def build_llm_comfyui_router(server: SageServer) -> APIRouter:
     ):
         """Minimal chat completion to verify the pipeline (Forge / look use the same client)."""
         eff = await server.llm_client.effective_chat_model()
-        text = await server.llm_client.generate(
-            'Reply with exactly one word: "pong"',
-            system_prompt="You follow instructions literally.",
-            max_tokens=16,
-        )
+        try:
+            text = await server.llm_client.generate_or_raise(
+                'Reply with exactly one word: "pong"',
+                system_prompt="You follow instructions literally.",
+                max_tokens=16,
+            )
+            error = None
+        except LLMGenerationError as exc:
+            text, error = "", str(exc)
         return {
             "reply": text.strip(),
+            "error": error,
             "model": eff,
             "chat_model_config": server.config.llm.chat_model,
         }

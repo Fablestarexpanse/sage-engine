@@ -59,16 +59,14 @@ class StaffPatchBody(BaseModel):
 
 
 class PlayerAccountPatchBody(BaseModel):
-    echo_credits: int | None = None
-    echo_credits_add: int | None = None
+    ai_credits: int | None = None
+    ai_credits_add: int | None = None
     is_gm: bool | None = None
     email: str | None = None
 
 
 class PlayerCharacterPatchBody(BaseModel):
-    digi_balance: int | None = None
     pvp_enabled: bool | None = None
-    reputation: int | None = None
     room_id: str | None = None
     portrait_url: str | None = None
     portrait_prompt: str | None = None
@@ -104,6 +102,21 @@ def build_admin_ops_router(server: SageServer) -> APIRouter:
     @router.get("/admin/me")
     async def admin_me(request: Request):
         return get_admin_ctx(request).public_dict()
+
+    @router.get("/admin/plugin-pages")
+    async def admin_plugin_pages(request: Request):
+        """Plugin admin surfaces of the running world this staff member may open.
+
+        One row per mounted plugin admin router: {plugin, tool, base}. The admin client has a page
+        per tool and points it at `base`; a tool with no row (plugin not enabled) has no page.
+        """
+        ctx = get_admin_ctx(request)
+        host = getattr(server, "plugins", None)
+        return [
+            {"plugin": plugin, "tool": tool, "base": f"/plugins/{plugin}/admin"}
+            for plugin, tool in getattr(host, "admin_tools", [])
+            if ctx.may_use_tool(tool)
+        ]
 
     @router.get("/admin/staff")
     async def admin_staff_list(
@@ -225,7 +238,7 @@ def build_admin_ops_router(server: SageServer) -> APIRouter:
     @router.get("/status", response_model=ServerStatus)
     async def get_status():
         human_sessions = sum(
-            1 for s in server.session_manager.sessions.values() if not getattr(s, "is_agent", False)
+            1 for s in server.session_manager.sessions.values() if not getattr(s, "virtual", False)
         )
         return ServerStatus(
             is_running=server.tick_manager.is_running,
@@ -243,7 +256,7 @@ def build_admin_ops_router(server: SageServer) -> APIRouter:
         for sid, session in server.session_manager.sessions.items():
             # Agents live in the Agents tab, not the player views — keeping
             # them out here is what makes "real player or agent?" answerable.
-            if getattr(session, "is_agent", False):
+            if getattr(session, "virtual", False):
                 continue
             room_id = None
             if session.player_id and redis.is_connected:
@@ -289,7 +302,9 @@ def build_admin_ops_router(server: SageServer) -> APIRouter:
         msg = (body.message or "").strip()
         if not msg:
             raise HTTPException(status_code=400, detail="message is required")
-        await server.session_manager.broadcast(f"[Server] {msg}")
+        from sage import lexicon
+
+        await server.session_manager.broadcast(lexicon.t("session.broadcast", message=msg))
         return {"status": "ok", "delivered_hint": "playing sessions"}
 
     @router.get("/admin/metrics")
@@ -306,7 +321,7 @@ def build_admin_ops_router(server: SageServer) -> APIRouter:
             "active_sessions": sum(
                 1
                 for s2 in server.session_manager.sessions.values()
-                if not getattr(s2, "is_agent", False)
+                if not getattr(s2, "virtual", False)
             ),
             "is_running": tm.is_running,
             "uptime_seconds": tm.tick_count * cfg.tick_rate,
@@ -354,7 +369,7 @@ def build_admin_ops_router(server: SageServer) -> APIRouter:
             "sessions": sum(
                 1
                 for s2 in server.session_manager.sessions.values()
-                if not getattr(s2, "is_agent", False)
+                if not getattr(s2, "virtual", False)
             ),
             "tick_count": server.tick_manager.tick_count,
             "redis_ok": redis_ok,

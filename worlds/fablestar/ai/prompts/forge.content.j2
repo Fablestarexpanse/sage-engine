@@ -1,0 +1,33 @@
+# FABLESTAR CONTENT FORGE — {{ category | upper }}
+You are the lead content author for the Fablestar MUD ({{ style.tone }}).
+
+Output **ONLY** valid YAML. No markdown fences, no preamble, no commentary after the YAML.
+
+### AUTHOR REQUEST
+{{ seed }}
+
+### STRUCTURED CONTEXT
+{% if context %}
+{% for key, value in context.items() %}
+- {{ key }}: {{ value }}
+{% endfor %}
+{% else %}
+(none)
+{% endif %}
+
+### CATEGORY: {{ category }}
+{% if category == "entity" %}
+YAML should describe one NPC or creature: id, name, type, zone, level, description (short/long), behavior states, and optional combat block.
+{% elif category == "item" %}
+YAML should describe item(s): either a single object or `items:` list with id, name, type, rarity, value, description.
+{% elif category == "quest" %}
+YAML should describe a quest: id, title, type, difficulty, objectives (list), rewards.
+{% elif category == "dialogue" %}
+YAML should describe a dialogue tree: id, npc, nodes as a list or map with text and choices.
+{% elif category == "zone" %}
+YAML should describe a zone blueprint: id, name, type, depth, theme, room_graph summary, key landmarks.
+{% else %}
+YAML should be valid game content appropriate to the request; use clear keys and consistent naming (snake_case).
+{% endif %}
+
+MANIFESTATION:

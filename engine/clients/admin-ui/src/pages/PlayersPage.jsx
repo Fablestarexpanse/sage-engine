@@ -51,7 +51,6 @@ const PlayersPage = () => {
     status: "online",
     location: p.room_id || "—",
     zone: typeof p.peer === "string" ? p.peer : JSON.stringify(p.peer ?? "—"),
-    glyphs: 0,
     lastSeen: "now",
     adaptiveLevel: 0,
   }));
@@ -64,7 +63,7 @@ const PlayersPage = () => {
       <div>
         <h2 style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 700, color: COLORS.text, fontFamily: "'Space Grotesk', sans-serif" }}>Player Management</h2>
         <p style={{ margin: 0, fontSize: 13, color: COLORS.textMuted, fontFamily: "'DM Sans', sans-serif", lineHeight: 1.55, maxWidth: 920 }}>
-          <strong style={{ color: COLORS.info }}>Live sessions</strong> refresh every few seconds. <strong style={{ color: COLORS.forge }}>Game accounts</strong> below: pixels, bundles, in-game GM crown, <strong style={{ color: COLORS.text }}>Nexus console access</strong> for this play username, and characters. Team tab is for staff-only tools.
+          <strong style={{ color: COLORS.info }}>Live sessions</strong> refresh every few seconds. <strong style={{ color: COLORS.forge }}>Game accounts</strong> below: AI art credits, bundles, in-game GM crown, <strong style={{ color: COLORS.text }}>Nexus console access</strong> for this play username, and characters. Team tab is for staff-only tools.
         </p>
       </div>
 
@@ -82,7 +81,7 @@ const PlayersPage = () => {
             { label: "Name", render: row => <span style={{ fontWeight: 600 }}>{row.name}</span> },
             { label: "State", key: "class", mono: true },
             { label: "Location", key: "location", mono: true, title: "room_id from Redis" },
-            { label: "Level", key: "level", mono: true }, { label: "Glyphs", key: "glyphs", mono: true }, { label: "Peer", key: "zone", mono: true },
+            { label: "Level", key: "level", mono: true }, { label: "Peer", key: "zone", mono: true },
             { label: "Adaptive", render: row => (<div style={{ display: "flex", alignItems: "center", gap: 6 }}><div style={{ width: 60, height: 4, borderRadius: 2, background: COLORS.bgInput }}><div style={{ width: `${Math.min(100, (Number(row.adaptiveLevel) || 0) / 10 * 100)}%`, height: "100%", borderRadius: 2, background: row.adaptiveLevel > 7 ? COLORS.danger : row.adaptiveLevel > 4 ? COLORS.warning : COLORS.success }} /></div><span style={{ fontSize: 11, color: COLORS.textMuted, fontFamily: "'JetBrains Mono', monospace" }}>{typeof row.adaptiveLevel === "number" ? row.adaptiveLevel.toFixed(1) : "—"}</span></div>) },
             { label: "Last Seen", key: "lastSeen", mono: true },
             { label: "", render: row => (

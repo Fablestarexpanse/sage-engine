@@ -1,7 +1,7 @@
 """SageServer — owns all subsystems and drives the startup/shutdown lifecycle.
 
 Play/forge API logic lives in the composed services (see sage.services):
-economy (echo credits), player (accounts/characters), scenes (ComfyUI images + LLM suggests).
+economy (AI art credits), player (accounts/characters), scenes (ComfyUI images + LLM suggests).
 """
 
 import asyncio
@@ -17,20 +17,24 @@ from sqlalchemy import select
 from sage import app, lexicon
 from sage.admin import content_browser
 from sage.admin.nexus import NexusApp
-from sage.agents.manager import AgentManager
 from sage.bootstrap import ensure_dev_defaults
 from sage.commands.registry import registry
 from sage.core.comfyui_persist import save_comfyui_toml
-from sage.core.config import ComfyUIConfig, Config, LLMConfig, load_config, resolve_project_root
+from sage.core.config import (
+    ComfyUIConfig,
+    Config,
+    LLMConfig,
+    load_config,
+    resolve_project_root,
+    set_world_comfyui_dir,
+)
 from sage.core.events import EventBus, SessionEnded, SessionStarted, emit
 from sage.core.llm_persist import save_llm_toml
 from sage.core.resolvers import Resolvers
 from sage.core.tick import TickManager
-from sage.effects.manager import EffectsManager
 from sage.hot_reload import HotReloader
 from sage.llm.client import LLMClient
 from sage.llm.prompts import PromptManager
-from sage.maestro.director import MaestroDirector
 from sage.network.session import Session, SessionManager
 from sage.parser.dispatcher import CommandDispatcher
 from sage.plugins import PluginHost
@@ -42,10 +46,10 @@ from sage.state.models import Character
 from sage.state.persistence import PersistenceManager
 from sage.state.postgres import PostgresState
 from sage.state.redis_client import RedisState
-from sage.world.ambient import AmbientManager
 from sage.world.loader import ContentLoader
 from sage.world.package import select_world
 from sage.world.spawner import EntitySpawnManager
+from sage.world.wallet import Wallet
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +65,6 @@ class _CharSnapshot:
     room_id: str
     stats: dict[str, Any]
     inventory: list[Any]
-    digi_balance: int = 0
 
 
 def _snapshot_from_orm(character: Any) -> _CharSnapshot:
@@ -70,7 +73,6 @@ def _snapshot_from_orm(character: Any) -> _CharSnapshot:
         room_id=character.room_id,
         stats=dict(character.stats or {}),
         inventory=list(character.inventory or []),
-        digi_balance=int(character.digi_balance or 0),
     )
 
 
@@ -91,17 +93,27 @@ class SageServer:
         self.events = EventBus()
         self.resolvers = Resolvers()
         self._define_engine_resolvers()
+        from sage.network.snapshot import SnapshotContributors, progression_section
+
+        self.snapshot_contributors = SnapshotContributors()
+        self.snapshot_contributors.add("progression", progression_section(self.resolvers), "sage")
+        from sage.network.panels import PanelRegistry
+
+        self.panels = PanelRegistry()
         self.session_manager = SessionManager()
-        self.redis = RedisState(self.config.redis)
+        self.redis = RedisState(self.config.redis, namespace=self.world.id)
         self.db = PostgresState(self.config.database)
         self.persistence = PersistenceManager(self)
+        # In-world money in the world's currencies (sage.world.wallet).
+        self.wallet = Wallet(self.world, self.redis)
+        if self.wallet.enabled:
+            from sage.network.snapshot import wallet_section
+
+            self.snapshot_contributors.add("wallet", wallet_section(self.wallet), "sage")
         self.content_loader = ContentLoader(self.world.content_dir)
         content_browser.set_content_root(self.world.content_dir)
+        set_world_comfyui_dir(self.world.ai_dir / "comfyui")
         self.spawner = EntitySpawnManager(self)
-        self.ambient = AmbientManager(self)
-        self.effects = EffectsManager(self)
-        self.maestro = MaestroDirector(self)
-        self.agent_manager = AgentManager(self)
         self.hot_reloader = HotReloader(self._on_file_changed)
         self.dispatcher = CommandDispatcher(events=self.events)
         self.plugins = PluginHost(
@@ -111,10 +123,13 @@ class SageServer:
             resolvers=self.resolvers,
             tick_manager=self.tick_manager,
             redis=self.redis,
+            content=self.content_loader,
+            server=self,
             plugins_root=self.project_root / "plugins",
             trusted_roots=[self.project_root / "plugins", self.project_root / "worlds"],
         )
         self.nexus = NexusApp(self)
+        self.plugins.http = self.nexus.app
 
         # LLM Subsystems
         self.llm_client = LLMClient(self.config.llm)
@@ -122,7 +137,12 @@ class SageServer:
         # either selects the "embedded" backend (model loads once).
         self._embedded_llm = None
         self.llm_client.embedded_getter = self.embedded_llm
-        self.prompt_manager = PromptManager(self.world.prompts_dir)
+        # Secondary LLM profile (config/agents_llm.toml) for character speech and plans.
+        from sage.llm.profiles import LLMProfile
+
+        self.llm_profile = LLMProfile(self)
+        self.prompt_manager = PromptManager(self.world.prompts_dir, self.world.style_path)
+        self.llm_client.default_system_prompt = self.prompt_manager.style.system_prompt
         from sage.lexicon.overrides import LexiconOverrides
 
         self.lexicon_overrides = LexiconOverrides(self.db.session_factory)
@@ -186,12 +206,12 @@ class SageServer:
         if added <= 0:
             return
         c = self.config.comfyui
-        lab = (c.currency_display_name or "pixels").strip() or "pixels"
+        lab = (c.currency_display_name or "credits").strip() or "credits"
         payload = {
             "ok": True,
-            "client_notice": "echo_credits_granted",
-            "echo_credits_added": int(added),
-            "echo_credits": int(new_balance),
+            "client_notice": "ai_credits_granted",
+            "ai_credits_added": int(added),
+            "ai_credits": int(new_balance),
             "currency_display_name": lab,
             **self.economy.public_fields(),
         }
@@ -204,8 +224,8 @@ class SageServer:
         actor_display_name: str,
         actor_role: str,
         summary_lines: list[str],
-        echo_credits: int | None = None,
-        echo_credits_added: int | None = None,
+        ai_credits: int | None = None,
+        ai_credits_added: int | None = None,
         character_name: str | None = None,
         play_account_is_gm: bool | None = None,
     ) -> None:
@@ -213,7 +233,7 @@ class SageServer:
         if not summary_lines:
             return
         c = self.config.comfyui
-        lab = (c.currency_display_name or "pixels").strip() or "pixels"
+        lab = (c.currency_display_name or "credits").strip() or "credits"
         payload: dict[str, Any] = {
             "ok": True,
             "client_notice": "staff_account_update",
@@ -224,10 +244,10 @@ class SageServer:
             "currency_display_name": lab,
             **self.economy.public_fields(),
         }
-        if echo_credits is not None:
-            payload["echo_credits"] = int(echo_credits)
-        if echo_credits_added is not None and echo_credits_added > 0:
-            payload["echo_credits_added"] = int(echo_credits_added)
+        if ai_credits is not None:
+            payload["ai_credits"] = int(ai_credits)
+        if ai_credits_added is not None and ai_credits_added > 0:
+            payload["ai_credits_added"] = int(ai_credits_added)
         if character_name:
             payload["character_name"] = character_name
         if play_account_is_gm is not None:
@@ -288,12 +308,12 @@ class SageServer:
             "timeout_seconds",
             "poll_interval_seconds",
             "economy_enabled",
-            "starting_echo_credits",
+            "starting_ai_credits",
             "portrait_generation_cost",
             "area_generation_cost",
             "character_create_portrait_cost",
             "currency_display_name",
-            "pixels_per_usd",
+            "credits_per_usd",
         }
     )
 
@@ -301,11 +321,11 @@ class SageServer:
         """Merge ComfyUI config fields, optionally write config/comfyui.toml."""
         data = {k: v for k, v in patch.items() if k in self._COMFYUI_PATCH_KEYS and v is not None}
         for int_key in (
-            "starting_echo_credits",
+            "starting_ai_credits",
             "portrait_generation_cost",
             "area_generation_cost",
             "character_create_portrait_cost",
-            "pixels_per_usd",
+            "credits_per_usd",
         ):
             if int_key in data:
                 data[int_key] = int(data[int_key])
@@ -345,6 +365,17 @@ class SageServer:
         plugin_records = self.plugins.discover()
         await self._require_migrated(plugin_records)
 
+        # 0c. Hot state written before world namespacing moves under this world once.
+        from sage.plugins.manifest import ENGINE_REDIS_PREFIXES
+
+        prefixes = set(ENGINE_REDIS_PREFIXES)
+        for record in plugin_records:
+            prefixes |= set(record.manifest.touches.redis_prefixes)
+        if adopted := await self.redis.adopt_unnamespaced(prefixes):
+            logger.info(
+                "Redis: moved %d pre-namespace keys under %r", adopted, self.redis.namespace
+            )
+
         # 0a. Bootstrap dev accounts (requires Postgres; best-effort, never fatal)
         await ensure_dev_defaults(self.db, self.config)
 
@@ -352,17 +383,7 @@ class SageServer:
         registry.load_module_strict("sage.commands.info")
         registry.load_module_strict("sage.commands.communication")
         registry.load_module_strict("sage.commands.movement")
-        registry.load_module_strict("sage.commands.combat")
         registry.load_module_strict("sage.commands.items")
-        registry.load_module_strict("sage.commands.proficiency")
-        registry.load_module_strict("sage.commands.achievements")
-        registry.load_module_strict("sage.commands.effects")
-        registry.load_module_strict("sage.commands.search")
-        registry.load_module_strict("sage.commands.factions")
-        registry.load_module_strict("sage.commands.missions")
-        registry.load_module_strict("sage.commands.shop")
-        registry.load_module_strict("sage.commands.rent")
-        registry.load_module_strict("sage.commands.crafting")
         registry.load_module_strict("sage.commands.admin")
 
         # 1b. The world's plugins, after engine commands so verb conflicts are caught.
@@ -371,10 +392,6 @@ class SageServer:
 
         # 2. Tick handlers — must be registered before the tick loop starts in step 4
         self.tick_manager.register(self.spawner.on_tick)
-        self.tick_manager.register(self.ambient.on_tick)
-        self.tick_manager.register(self.effects.on_tick)
-        self.tick_manager.register(self.maestro.on_tick)
-        self.tick_manager.register(self.agent_manager.on_tick)
         self.tick_manager.register(self.persistence.on_tick)
 
         # 3. HotReloader — watches content/ and commands/; safe to start any time after step 1
@@ -383,7 +400,7 @@ class SageServer:
                 str(self.world.content_dir),
                 str(PACKAGE_DIR / "commands"),
                 str(self.project_root / "config"),
-                str(self.world.prompts_dir),
+                str(self.world.ai_dir),
                 str(self.world.lexicon_dir),
             ]
         )
@@ -434,7 +451,7 @@ class SageServer:
         try:
             data = json.loads(raw)
         except json.JSONDecodeError:
-            await session.send(json.dumps({"ok": False, "error": "invalid_handshake"}) + "\r\n")
+            await session.send_json({"ok": False, "error": "invalid_handshake"})
             return None
         username = (data.get("username") or "").strip()
         password = data.get("password") or ""
@@ -447,7 +464,7 @@ class SageServer:
             except (TypeError, ValueError):
                 char_id = None
         if not username and not token:
-            await session.send(json.dumps({"ok": False, "error": "username_required"}) + "\r\n")
+            await session.send_json({"ok": False, "error": "username_required"})
             return None
 
         async with self.db.session_factory() as db_session:
@@ -455,9 +472,7 @@ class SageServer:
                 db_session, self, token=token, username=username, password=password
             )
             if account is None:
-                await session.send(
-                    json.dumps({"ok": False, "error": "invalid_credentials"}) + "\r\n"
-                )
+                await session.send_json({"ok": False, "error": "invalid_credentials"})
                 return None
 
             result = await db_session.execute(
@@ -466,21 +481,17 @@ class SageServer:
             characters = list(result.scalars().all())
             character: Character | None = None
             if not characters:
-                await session.send(json.dumps({"ok": False, "error": "no_character"}) + "\r\n")
+                await session.send_json({"ok": False, "error": "no_character"})
                 return None
             if char_id is not None:
                 character = next((c for c in characters if c.id == char_id), None)
                 if character is None:
-                    await session.send(
-                        json.dumps({"ok": False, "error": "character_not_found"}) + "\r\n"
-                    )
+                    await session.send_json({"ok": False, "error": "character_not_found"})
                     return None
             elif len(characters) == 1:
                 character = characters[0]
             else:
-                await session.send(
-                    json.dumps({"ok": False, "error": "character_required"}) + "\r\n"
-                )
+                await session.send_json({"ok": False, "error": "character_required"})
                 return None
 
             # Agents and players share the name-keyed state; a character row
@@ -492,9 +503,7 @@ class SageServer:
             except Exception:
                 agent_names = set()
             if character.name.lower() in agent_names:
-                await session.send(
-                    json.dumps({"ok": False, "error": "character_name_reserved"}) + "\r\n"
-                )
+                await session.send_json({"ok": False, "error": "character_name_reserved"})
                 return None
 
             account.last_login = datetime.utcnow()
@@ -508,13 +517,9 @@ class SageServer:
         await self.session_manager.kick_existing(character.name)
         self.session_manager.link_player(session.id, character.name)
 
-        from sage.proficiencies.state_helpers import (
-            ensure_proficiency_block,
-            migrate_legacy_stats,
-        )
+        from sage.world.progression import PREPARE
 
-        norm_stats = migrate_legacy_stats(dict(character.stats))
-        ensure_proficiency_block(norm_stats)
+        norm_stats = self.resolvers.get(PREPARE)(dict(character.stats))
         # Canonical vitals: nothing else seeds them, and every consumer was
         # falling back to a different default (combat 20, client bar 100).
         norm_stats.setdefault("max_hp", 100)
@@ -530,13 +535,13 @@ class SageServer:
             from sage.effects.engine import clear_on_death
 
             clear_on_death(norm_stats)
-            plan = self.resolvers.get("death.respawn")(
-                self.world, norm_stats, int(character.digi_balance or 0)
-            )
+            balance = self.wallet.balance(norm_stats)
+            plan = self.resolvers.get("death.respawn")(self.world, norm_stats, balance)
             norm_stats["hp"] = plan.hp
             if self.content_loader.get_room(plan.room_id) is not None:
                 character.room_id = plan.room_id
-            character.digi_balance = int(character.digi_balance or 0) - plan.bill
+            if self.wallet.enabled:
+                self.wallet.set(norm_stats, balance - plan.bill)
             respawned = True
             respawn_bill = plan.bill
 
@@ -551,9 +556,10 @@ class SageServer:
             )
             character.room_id = self.world.start_room
 
-        # In-game wallet: the DB column is the durable copy; the stats blob is
-        # what shop commands spend from (PersistenceManager mirrors it back).
-        norm_stats["digi"] = int(character.digi_balance or 0)
+        # In-world wallet: balances live in the stats blob (migration p9q0r1s2t3u4 moved them
+        # there); a character from before the world declared money starts with the default.
+        if self.wallet.enabled and self.wallet.key() not in norm_stats:
+            self.wallet.set(norm_stats, self.wallet.starting())
 
         # Seed Redis with the character's current state
         await self.redis.set_player_location(character.name, character.room_id)
@@ -561,7 +567,7 @@ class SageServer:
         await self.redis.set_player_inventory(character.name, character.inventory)
 
         if respawned:
-            currency = self.config.server.game_currency_display_name
+            currency = self.wallet.name() if self.wallet.enabled else ""
             bill = (
                 lexicon.t("death.bill", amount=respawn_bill, currency=currency)
                 if respawn_bill
@@ -589,26 +595,19 @@ class SageServer:
 
         from sage.effects.engine import ensure_effects
         from sage.network.play_messages import CharacterSnapshotNotice
-        from sage.proficiencies.state_helpers import total_proficiency_levels
 
         player_id = session.player_id
         if not player_id:
             return
         # Agents have no UI; JSON snapshots would only pollute their
         # perception buffers (and push real say lines out of the voice window).
-        if getattr(session, "is_agent", False):
+        if getattr(session, "virtual", False):
             return
         try:
             stats = await self.redis.get_player_stats(player_id)
             inventory = await self.redis.get_player_inventory(player_id)
             room_id = await self.redis.get_player_location(player_id)
             room = self.content_loader.get_room(room_id) if room_id else None
-
-            try:
-                reg = self.content_loader.get_proficiency_registry()
-                total_lv = total_proficiency_levels(stats, registry=reg)
-            except Exception:
-                total_lv = total_proficiency_levels(stats)
 
             now = _time.time()
             effects = [
@@ -637,7 +636,8 @@ class SageServer:
                 "client_notice": "character_snapshot",
                 "character_name": player_id,
                 "stats": stats,
-                "resonance_levels_total": total_lv,
+                "sections": await self.snapshot_contributors.build(player_id, stats),
+                "panels": self.panels.specs(),
                 "location": {
                     "id": room_id or "",
                     "name": room.name if room and room.name else None,
@@ -646,14 +646,14 @@ class SageServer:
                 "inventory": list(inventory),
                 "map": self._zone_map(room_id, set(visited)) if room_id else None,
             }
-            await session.send(json.dumps(snapshot) + "\r\n")
+            await session.send_json(snapshot)
         except Exception:
             logger.debug("character_snapshot push failed for %s", player_id, exc_info=True)
 
     def embedded_llm(self):
         """Lazy shared EmbeddedLLM (config from agents_llm: model_path etc.)."""
         if self._embedded_llm is None:
-            from sage.agents.embedded_llm import EmbeddedLLM
+            from sage.llm.embedded import EmbeddedLLM
 
             self._embedded_llm = EmbeddedLLM(self.config.agents_llm)
         return self._embedded_llm
@@ -779,10 +779,9 @@ class SageServer:
 
     def _define_engine_resolvers(self) -> None:
         """Engine resolver slots and their defaults (contracts catalog #4)."""
-        from sage.world.death import default_death_check, default_respawn
+        from sage.world.slots import define_engine_slots
 
-        self.resolvers.define("death.check", default_death_check)
-        self.resolvers.define("death.respawn", default_respawn)
+        define_engine_slots(self.resolvers)
 
     async def reload_lexicon_overrides(self) -> None:
         """Re-read active Nexus lexicon edits and rebuild the live lexicon (no restart)."""
@@ -812,8 +811,9 @@ class SageServer:
         if world is not None and path.resolve().is_relative_to(world.content_dir):
             self.content_loader.invalidate(path)
 
-        if world is not None and path.resolve().is_relative_to(world.prompts_dir):
+        if world is not None and path.resolve().is_relative_to(world.ai_dir):
             self.prompt_manager.reload()
+            self.llm_client.default_system_prompt = self.prompt_manager.style.system_prompt
 
         if "commands" in path.parts:
             # path is <package dir>/commands/info.py -> module "<package>.commands.info",

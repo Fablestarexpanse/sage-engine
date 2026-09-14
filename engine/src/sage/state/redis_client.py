@@ -19,6 +19,10 @@ class RedisState:
     All public methods propagate ``redis.RedisError`` on connection failure
     — callers should catch it distinctly from a missing-key result (which
     returns None/empty collection, not an exception).
+
+    Every key lives under the running world's namespace (``<world id>:player:...``, contracts
+    D.D), so two worlds can share a Redis. Code that builds its own keys (telemetry, wallet,
+    plugin keys) passes them through ``key()``.
     """
 
     KEY_PREFIXES = {
@@ -32,12 +36,38 @@ class RedisState:
         "combat": "combat:{id}",
         "entity_state": "entity:{id}:state",
         "item_state": "item:{id}:state",
-        "search_finds": "search:{room_id}:{feature_id}:finds",
     }
 
-    def __init__(self, config: RedisConfig):
+    def __init__(self, config: RedisConfig, namespace: str = ""):
         self.config = config
+        self.namespace = namespace
         self._client: redis.Redis | None = None
+
+    def key(self, raw: str) -> str:
+        """The stored name of a logical key (``room:x:players`` -> ``<world>:room:x:players``)."""
+        return f"{self.namespace}:{raw}" if self.namespace else raw
+
+    def unkey(self, stored: str) -> str:
+        """The logical key of a stored name (inverse of ``key``)."""
+        prefix = f"{self.namespace}:" if self.namespace else ""
+        return stored[len(prefix) :] if prefix and stored.startswith(prefix) else stored
+
+    async def adopt_unnamespaced(self, prefixes: set[str] | frozenset[str]) -> int:
+        """Move keys written before namespacing (``room:...``) under this world's namespace.
+
+        Only the engine's and the enabled plugins' declared prefixes are touched, and a key that
+        already exists under the namespace is left alone. A no-op once nothing old is left.
+        """
+        if not self.namespace:
+            return 0
+        moved = 0
+        for prefix in sorted(prefixes):
+            candidates = [prefix] + [k async for k in self.client.scan_iter(match=f"{prefix}:*")]
+            for old in candidates:
+                old = old.decode() if isinstance(old, bytes) else old
+                if await self.client.exists(old) and await self.client.renamenx(old, self.key(old)):
+                    moved += 1
+        return moved
 
     @property
     def client(self) -> redis.Redis:
@@ -76,12 +106,12 @@ class RedisState:
     async def get_all_active_player_ids(self) -> list[str]:
         """Return player IDs with an active location key (used for flush/persistence scans)."""
         keys = await self.client.keys(self._get_key("player_location", id="*"))
-        return [k.split(":")[1] for k in keys]
+        return [self.unkey(k).split(":")[1] for k in keys]
 
     # --- Player Location Methods ---
 
     def _get_key(self, prefix_key: str, **kwargs: Any) -> str:
-        return self.KEY_PREFIXES[prefix_key].format(**kwargs)
+        return self.key(self.KEY_PREFIXES[prefix_key].format(**kwargs))
 
     async def get_player_location(self, player_id: str) -> str | None:
         key = self._get_key("player_location", id=player_id)
@@ -114,7 +144,7 @@ class RedisState:
 
     async def get_player_stats(self, player_id: str) -> dict[str, Any]:
         """Shape documented by state_types.CharacterStats (returned as plain dict —
-        the proficiency layer mutates it with dynamic keys)."""
+        world and plugin blocks add dynamic keys)."""
         key = self._get_key("player_stats", id=player_id)
         raw = await self.client.get(key)
         if raw is None:
@@ -183,21 +213,6 @@ class RedisState:
     async def delete_item_state(self, item_id: str):
         key = self._get_key("item_state", id=item_id)
         await self.client.delete(key)
-
-    # --- Search / Scavenge Methods ---
-
-    async def get_search_finds(self, room_id: str, feature_id: str) -> int:
-        key = self._get_key("search_finds", room_id=room_id, feature_id=feature_id)
-        val = await self.client.get(key)
-        return int(val) if val else 0
-
-    async def incr_search_finds(self, room_id: str, feature_id: str, ttl_s: float) -> int:
-        """Count one successful find; the key expires so the feature restocks itself."""
-        key = self._get_key("search_finds", room_id=room_id, feature_id=feature_id)
-        count = await self.client.incr(key)
-        if count == 1:
-            await self.client.expire(key, int(ttl_s))
-        return int(count)
 
     async def get_room_items(self, room_id: str) -> set[str]:
         key = self._get_key("room_items", id=room_id)

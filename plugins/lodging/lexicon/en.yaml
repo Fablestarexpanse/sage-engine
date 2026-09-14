@@ -1,0 +1,8 @@
+lodging:
+  no_desk: "Nobody lets rooms here."
+  elsewhere: "You already keep a room elsewhere ({home}, {minutes} min left)."
+  not_yet: "Your lease on {room} runs another {minutes} minutes. Come back when it's nearly up."
+  full: "{lodging} is full. A bed frees up in about {minutes} minutes."
+  too_poor: "A room here runs {price} {currency}; you carry {money}."
+  rented: "The keeper hands you the key to {room} — {minutes} minutes for {price} {currency} ({money} left)."
+  renewed: "The keeper extends your lease on {room} — {minutes} minutes for {price} {currency} ({money} left)."

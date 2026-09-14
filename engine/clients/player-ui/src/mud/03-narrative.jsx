@@ -68,7 +68,7 @@ function readPortraitBackdropXOffsetFromLs() {
 }
 
 export const DEFAULT_NARRATIVE = [
-  { type: "system", text: "— Connected to Fablestar Expanse —", ts: "" },
+  { type: "system", text: "— Connected —", ts: "" },
 ];
 
 export function stripMudMarkup(text) {
@@ -98,9 +98,6 @@ export function buildSceneNarrativeContext(lines, maxLen = 4000) {
         t = l.text;
         break;
       case "entity":
-        t = l.text;
-        break;
-      case "glyph_cast":
         t = l.text;
         break;
       case "action":
@@ -360,7 +357,7 @@ function SceneGalleryModal({ onClose, sceneGen }) {
                       border: "none",
                       background:
                         cid != null && cid >= 1 && applyingId == null
-                          ? `linear-gradient(135deg,${T.glyph.violet},${T.glyph.cyan})`
+                          ? `linear-gradient(135deg,${T.hue.violet},${T.hue.cyan})`
                           : T.bg.void,
                       color: cid != null && cid >= 1 && applyingId == null ? "#0a0a0f" : T.text.muted,
                       fontSize: 9,
@@ -405,10 +402,10 @@ function SceneArtModal({ onClose, lines, sceneGen }) {
   /** idle → user must confirm spend; confirm → showing spend confirmation */
   const [costStep, setCostStep] = useState("idle");
 
-  const lab = sceneGen.currencyLabel || "pixels";
+  const lab = sceneGen.currencyLabel || "credits";
   const cost = typeof sceneGen.areaGenerationCost === "number" ? sceneGen.areaGenerationCost : 3;
   const economyOn = sceneGen.economyEnabled !== false;
-  const bal = sceneGen.echoCredits;
+  const bal = sceneGen.aiCredits;
   const willCharge = economyOn && cost > 0;
   const broke = willCharge && typeof bal === "number" && bal < cost;
   const afterBal = typeof bal === "number" && willCharge ? Math.max(0, bal - cost) : null;
@@ -595,17 +592,17 @@ function SceneArtModal({ onClose, lines, sceneGen }) {
               marginBottom: 12,
               padding: "10px 12px",
               borderRadius: T.radius.md,
-              border: `1px solid ${T.currency.pixel.border}`,
-              background: `linear-gradient(135deg, ${T.currency.pixel.bg}, ${T.bg.surface})`,
+              border: `1px solid ${T.currency.art.border}`,
+              background: `linear-gradient(135deg, ${T.currency.art.bg}, ${T.bg.surface})`,
             }}
           >
-            <div style={{ fontSize: 9, fontWeight: 700, color: T.currency.pixel.label, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>
+            <div style={{ fontSize: 9, fontWeight: 700, color: T.currency.art.label, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>
               Art wallet (account)
             </div>
             <div style={{ fontSize: 12, color: T.text.primary, lineHeight: 1.5, fontFamily: T.font.body }}>
               {typeof bal === "number" ? (
                 <>
-                  You have <strong style={{ color: T.currency.pixel.fg, fontFamily: T.font.mono }}>{bal}</strong> {lab}.
+                  You have <strong style={{ color: T.currency.art.fg, fontFamily: T.font.mono }}>{bal}</strong> {lab}.
                 </>
               ) : (
                 <>Balance will be checked on the server when you generate.</>
@@ -614,7 +611,7 @@ function SceneArtModal({ onClose, lines, sceneGen }) {
             {willCharge ? (
               <div style={{ fontSize: 12, color: T.text.secondary, marginTop: 6, lineHeight: 1.45 }}>
                 One scene image costs{" "}
-                <strong style={{ color: T.currency.pixel.fg, fontFamily: T.font.mono }}>{cost}</strong> {lab}.
+                <strong style={{ color: T.currency.art.fg, fontFamily: T.font.mono }}>{cost}</strong> {lab}.
                 {afterBal != null ? (
                   <>
                     {" "}
@@ -634,14 +631,14 @@ function SceneArtModal({ onClose, lines, sceneGen }) {
             ) : null}
             <button
               type="button"
-              onClick={() => sceneGen.onPixelsHelp?.()}
+              onClick={() => sceneGen.onCreditsHelp?.()}
               style={{
                 marginTop: 8,
                 padding: "5px 10px",
                 borderRadius: T.radius.sm,
-                border: `1px solid ${T.currency.pixel.border}`,
+                border: `1px solid ${T.currency.art.border}`,
                 background: T.bg.deep,
-                color: T.currency.pixel.fg,
+                color: T.currency.art.fg,
                 fontSize: 10,
                 fontWeight: 600,
                 cursor: "pointer",
@@ -659,13 +656,13 @@ function SceneArtModal({ onClose, lines, sceneGen }) {
               marginBottom: 12,
               padding: "12px 14px",
               borderRadius: T.radius.md,
-              border: `1px solid ${T.border.glyph}`,
-              background: T.glyph.violetDim,
+              border: `1px solid ${T.border.accent}`,
+              background: T.hue.violetDim,
             }}
           >
             <div style={{ fontSize: 12, fontWeight: 700, color: T.text.primary, marginBottom: 6 }}>Confirm spend</div>
             <p style={{ fontSize: 12, color: T.text.secondary, margin: 0, lineHeight: 1.5 }}>
-              Spend <strong style={{ color: T.currency.pixel.fg }}>{cost}</strong> {lab} to run ComfyUI and replace the Scene panel image? This cannot be undone; if ComfyUI fails, Nexus may refund automatically. The dialog will close and progress shows on the Scene panel.
+              Spend <strong style={{ color: T.currency.art.fg }}>{cost}</strong> {lab} to run ComfyUI and replace the Scene panel image? This cannot be undone; if ComfyUI fails, Nexus may refund automatically. The dialog will close and progress shows on the Scene panel.
             </p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
               <button
@@ -675,7 +672,7 @@ function SceneArtModal({ onClose, lines, sceneGen }) {
                   padding: "7px 14px",
                   borderRadius: T.radius.md,
                   border: "none",
-                  background: `linear-gradient(135deg,${T.glyph.violet},${T.glyph.cyan})`,
+                  background: `linear-gradient(135deg,${T.hue.violet},${T.hue.cyan})`,
                   color: "#0a0a0f",
                   fontSize: 10,
                   fontWeight: 700,
@@ -711,7 +708,7 @@ function SceneArtModal({ onClose, lines, sceneGen }) {
                 height: 14,
                 borderRadius: "50%",
                 border: `2px solid ${T.border.dim}`,
-                borderTopColor: T.glyph.violet,
+                borderTopColor: T.hue.violet,
                 flexShrink: 0,
               }}
             />
@@ -772,8 +769,8 @@ function SceneArtModal({ onClose, lines, sceneGen }) {
             style={{
               padding: "7px 12px",
               borderRadius: T.radius.md,
-              border: `1px solid ${T.border.glyph}`,
-              background: T.glyph.violetDim,
+              border: `1px solid ${T.border.accent}`,
+              background: T.hue.violetDim,
               color: T.text.primary,
               fontSize: 10,
               cursor: disabled ? "wait" : "pointer",
@@ -800,7 +797,7 @@ function SceneArtModal({ onClose, lines, sceneGen }) {
               border: "none",
               background:
                 sceneGen.areaReady && !disabled && !broke && costStep !== "confirm"
-                  ? `linear-gradient(135deg,${T.glyph.violet},${T.glyph.cyan})`
+                  ? `linear-gradient(135deg,${T.hue.violet},${T.hue.cyan})`
                   : T.bg.void,
               color: sceneGen.areaReady && !disabled && !broke && costStep !== "confirm" ? "#0a0a0f" : T.text.muted,
               fontSize: 10,
@@ -1024,37 +1021,32 @@ export function NarrativePanel({
           ))}
         </div>
       );
-      case "entity": return <div key={i} style={{ ...base, color: T.glyph.amber, fontFamily: T.font.body, fontSize: 13 }}>⬡ {parseEntities(line.text)}</div>;
+      case "entity": return <div key={i} style={{ ...base, color: T.hue.amber, fontFamily: T.font.body, fontSize: 13 }}>⬡ {parseEntities(line.text)}</div>;
       case "sep": return <div key={i} style={{ height: 1, margin: "6px 14px", background: `linear-gradient(90deg,${T.border.dim},transparent)` }} />;
       case "action": return (
         <div key={i} style={{ ...base, color: T.text.primary, display: "flex", gap: 4 }}>
-          <Ts ts={line.ts} /><span style={{ color: T.glyph.cyan }}>❯</span><span>{line.text.replace("> ", "")}</span>
+          <Ts ts={line.ts} /><span style={{ color: T.hue.cyan }}>❯</span><span>{line.text.replace("> ", "")}</span>
         </div>
       );
       case "response": return <div key={i} style={{ ...base, color: T.text.narrative, fontFamily: T.font.body, fontSize: 14, lineHeight: 1.75, padding: "4px 14px 6px" }}>{parseEntities(line.text)}</div>;
       case "alert": {
-        const cfg = { warning: { bg: T.glyph.amberDim, color: T.glyph.amber, border: T.glyph.amber, icon: "⚠" }, success: { bg: T.glyph.emeraldDim, color: T.text.success, border: T.glyph.emerald, icon: "✓" }, danger: { bg: T.glyph.crimsonDim, color: T.text.danger, border: T.glyph.crimson, icon: "✕" } }[line.level] || {};
+        const cfg = { warning: { bg: T.hue.amberDim, color: T.hue.amber, border: T.hue.amber, icon: "⚠" }, success: { bg: T.hue.emeraldDim, color: T.text.success, border: T.hue.emerald, icon: "✓" }, danger: { bg: T.hue.crimsonDim, color: T.text.danger, border: T.hue.crimson, icon: "✕" } }[line.level] || {};
         return <div key={i} role="alert" style={{ ...base, color: cfg.color, fontSize: 12, fontWeight: 600, background: cfg.bg, margin: "4px 14px", padding: "6px 12px", borderRadius: T.radius.sm, borderLeft: `3px solid ${cfg.border}` }}>{cfg.icon} {line.text}</div>;
       }
-      case "glyph_cast": return (
-        <div key={i} style={{ ...base, fontFamily: T.font.body, fontSize: 14, lineHeight: 1.75, color: T.text.glyph, padding: "6px 14px", background: `linear-gradient(90deg,${T.glyph.violetDim},transparent 70%)`, borderLeft: `2px solid ${T.glyph.violet}60`, margin: "4px 0" }}>
-          {parseEntities(line.text)}
-        </div>
-      );
       case "image_gen": return (
-        <div key={i} style={{ margin: "8px 14px", borderRadius: T.radius.md, height: 140, overflow: "hidden", position: "relative", background: `linear-gradient(135deg,${T.bg.deep},${T.glyph.violetDim})`, border: `1px solid ${T.border.glyph}` }}>
+        <div key={i} style={{ margin: "8px 14px", borderRadius: T.radius.md, height: 140, overflow: "hidden", position: "relative", background: `linear-gradient(135deg,${T.bg.deep},${T.hue.violetDim})`, border: `1px solid ${T.border.accent}` }}>
           <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 8 }}>
-            <div style={{ width: 28, height: 28, borderRadius: "50%", border: `2px solid ${T.glyph.violet}50`, borderTopColor: T.glyph.violet, animation: "spin 1s linear infinite" }} />
+            <div style={{ width: 28, height: 28, borderRadius: "50%", border: `2px solid ${T.hue.violet}50`, borderTopColor: T.hue.violet, animation: "spin 1s linear infinite" }} />
             <span style={{ fontFamily: T.font.body, fontSize: 11, color: T.text.muted }}>Generating · {line.label}</span>
           </div>
         </div>
       );
       case "discovery": return (
-        <div key={i} role="alert" style={{ ...base, fontSize: 12, fontWeight: 600, color: T.glyph.violet, background: T.glyph.violetDim, margin: "6px 14px", padding: "8px 12px", borderRadius: T.radius.md, border: `1px solid ${T.border.glyph}`, fontFamily: T.font.body }}>
+        <div key={i} role="alert" style={{ ...base, fontSize: 12, fontWeight: 600, color: T.hue.violet, background: T.hue.violetDim, margin: "6px 14px", padding: "8px 12px", borderRadius: T.radius.md, border: `1px solid ${T.border.accent}`, fontFamily: T.font.body }}>
           {line.text}
         </div>
       );
-      case "pixel_grant": return (
+      case "credits_grant": return (
         <div
           key={i}
           role="status"
@@ -1067,10 +1059,10 @@ export function NarrativePanel({
             fontSize: 13,
             lineHeight: 1.55,
             fontWeight: 600,
-            color: T.currency.pixel.fg,
-            background: T.currency.pixel.bg,
-            border: `1px solid ${T.currency.pixel.border}`,
-            boxShadow: `0 0 12px ${T.currency.pixel.dim}`,
+            color: T.currency.art.fg,
+            background: T.currency.art.bg,
+            border: `1px solid ${T.currency.art.border}`,
+            boxShadow: `0 0 12px ${T.currency.art.dim}`,
           }}
         >
           {line.text}
@@ -1089,9 +1081,9 @@ export function NarrativePanel({
             fontSize: 12,
             lineHeight: 1.55,
             fontWeight: 500,
-            color: T.glyph.cyan,
-            background: `${T.glyph.cyan}12`,
-            border: `1px solid ${T.glyph.cyan}55`,
+            color: T.hue.cyan,
+            background: `${T.hue.cyan}12`,
+            border: `1px solid ${T.hue.cyan}55`,
             whiteSpace: "pre-wrap",
           }}
         >
@@ -1241,7 +1233,7 @@ export function NarrativePanel({
           { icon: "💾", label: "Save session", action: () => {} },
         ].map((btn, i) => (
           <button key={i} onClick={btn.action} title={btn.label} aria-label={btn.label}
-            style={{ padding: "3px 6px", borderRadius: T.radius.sm, border: "none", background: btn.active ? T.glyph.violetDim : "transparent", color: btn.active ? T.text.accent : T.text.muted, cursor: "pointer", fontSize: 11, transition: "all 0.1s" }}
+            style={{ padding: "3px 6px", borderRadius: T.radius.sm, border: "none", background: btn.active ? T.hue.violetDim : "transparent", color: btn.active ? T.text.accent : T.text.muted, cursor: "pointer", fontSize: 11, transition: "all 0.1s" }}
             onMouseEnter={e => e.target.style.color = T.text.primary}
             onMouseLeave={e => e.target.style.color = btn.active ? T.text.accent : T.text.muted}
           >{btn.icon}</button>
@@ -1277,7 +1269,7 @@ export function NarrativePanel({
                   flex: 1,
                   minWidth: 40,
                   height: 4,
-                  accentColor: T.glyph.violet,
+                  accentColor: T.hue.violet,
                 }}
               />
             </label>
@@ -1309,7 +1301,7 @@ export function NarrativePanel({
                   flex: 1,
                   minWidth: 40,
                   height: 4,
-                  accentColor: T.glyph.cyan,
+                  accentColor: T.hue.cyan,
                 }}
               />
             </label>
@@ -1341,7 +1333,7 @@ export function NarrativePanel({
                   flex: 1,
                   minWidth: 40,
                   height: 4,
-                  accentColor: T.glyph.amber,
+                  accentColor: T.hue.amber,
                 }}
               />
             </label>
@@ -1385,17 +1377,17 @@ export function CommandInput({ onSubmitCommand }) {
           {suggestions.map((s, i) => (
             <div key={i} role="option" onClick={() => { setValue(s + " "); setSuggestions([]); inputRef.current?.focus(); }}
               style={{ padding: "4px 14px", fontFamily: T.font.mono, fontSize: 12, color: T.text.secondary, cursor: "pointer" }}
-              onMouseEnter={e => { e.target.style.background = T.glyph.violetDim; e.target.style.color = T.text.accent; }}
+              onMouseEnter={e => { e.target.style.background = T.hue.violetDim; e.target.style.color = T.text.accent; }}
               onMouseLeave={e => { e.target.style.background = "transparent"; e.target.style.color = T.text.secondary; }}
             ><span style={{ color: T.text.accent }}>{s.slice(0, value.length)}</span>{s.slice(value.length)}</div>
           ))}
         </div>
       )}
       <div style={{ display: "flex", alignItems: "center", gap: 8, background: T.bg.surface, padding: "6px 12px", borderTop: `1px solid ${T.border.dim}` }}>
-        <span style={{ color: T.glyph.violet, fontFamily: T.font.mono, fontSize: 14, fontWeight: 700 }}>❯</span>
+        <span style={{ color: T.hue.violet, fontFamily: T.font.mono, fontSize: 14, fontWeight: 700 }}>❯</span>
         <input ref={inputRef} value={value} onChange={e => setValue(e.target.value)} onKeyDown={handleKey}
           role="textbox" aria-label="Command input" placeholder="Enter command..."
-          style={{ flex: 1, background: "transparent", border: "none", outline: "none", color: T.text.primary, fontFamily: T.font.mono, fontSize: 13, caretColor: T.glyph.violet }} />
+          style={{ flex: 1, background: "transparent", border: "none", outline: "none", color: T.text.primary, fontFamily: T.font.mono, fontSize: 13, caretColor: T.hue.violet }} />
         <span style={{ fontFamily: T.font.mono, fontSize: 9, color: T.text.muted, opacity: 0.35 }}>↑↓ Tab Esc</span>
       </div>
     </div>

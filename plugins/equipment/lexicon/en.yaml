@@ -1,0 +1,16 @@
+equipment:
+  equip_what: "Equip what? Usage: equip <item>"
+  not_carrying: "You aren't carrying any '{wanted}'."
+  cant_equip: "The {item} can't be equipped."
+  equipped: "You equip the {item} as your {slot}."
+  equipped_swap: "You equip the {item} as your {slot} (stowing the {previous})."
+  unequip_what: "Unequip what? Usage: unequip <{slots}|item name>"
+  unequipped: "You unequip the {item}."
+  nothing_equipped: "You have nothing like that equipped."
+  header: "--- Equipped ---"
+  slot_line: "  {slot}: {item}"
+  empty_slot: "—"
+  ammo_empty: "Your {item} clicks empty — no {ammo} left."
+  ammo_last: "That was your last {ammo}."
+  panel:
+    gear: "Gear"

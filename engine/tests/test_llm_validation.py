@@ -1,4 +1,4 @@
-"""LLMValidator — forbidden-pattern redaction and conversational filler stripping."""
+"""LLMValidator — content rules reject narration (to nothing) and filler is stripped."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import unittest
 
 from sage.llm.validation import LLMValidator
 
-REDACTED = "[The narration becomes garbled by static...]"
+REDACTED = ""  # rejected narration is dropped; the deterministic text already reached the player
 
 
 class TestLLMValidator(unittest.TestCase):
@@ -38,6 +38,13 @@ class TestLLMValidator(unittest.TestCase):
 
     def test_empty_string_returns_empty(self) -> None:
         self.assertEqual(self.v.sanitize(""), "")
+
+    def test_world_rules_replace_the_defaults(self) -> None:
+        v = LLMValidator([r"\bdragon\b"])
+        self.assertEqual(v.sanitize("A dragon sleeps."), REDACTED)
+        self.assertEqual(
+            v.sanitize("You feel like a level 5 adventurer."), "You feel like a level 5 adventurer."
+        )
 
     def test_whitespace_trimmed(self) -> None:
         self.assertEqual(self.v.sanitize("  spooky hall  \n"), "spooky hall")

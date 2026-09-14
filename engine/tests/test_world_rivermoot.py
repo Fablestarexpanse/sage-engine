@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -13,6 +14,9 @@ from sage.commands.registry import CommandRegistry
 from sage.core.events import EntityKilled, EventBus
 from sage.core.resolvers import Resolvers
 from sage.core.tick import TickManager
+from sage.llm.prompts import PromptManager
+from sage.network.panels import PanelRegistry
+from sage.network.snapshot import SnapshotContributors
 from sage.plugins import PluginHost
 from sage.world.package import load_world_package
 from tests.fakes import FakeRedis, StubSession
@@ -33,6 +37,11 @@ def rivermoot():
         plugins_root=ROOT / "plugins",
         trusted_roots=[ROOT / "plugins", ROOT / "worlds"],
     )
+    host.server = SimpleNamespace(
+        snapshot_contributors=SnapshotContributors(),
+        panels=PanelRegistry(),
+        prompt_manager=PromptManager(world.prompts_dir),
+    )
     host.load()
     previous = lexicon.active()
     lexicon.set_active(
@@ -49,7 +58,8 @@ def test_world_differs_from_the_first_reference_world(rivermoot):
     world, host = rivermoot
     assert [a.key for a in world.stats.attributes] == ["mgt", "wts", "nrv"]
     assert [c.key for c in world.currencies] == ["silver"]
-    assert [r.id for r in host.loaded] == ["levels"]
+    # combat without equipment: its optional dependency is simply absent here.
+    assert [r.id for r in host.loaded] == ["combat", "levels"]
     assert (world.content_dir / "world" / "zones" / "town" / "rooms" / "bridge.yaml").is_file()
 
 
@@ -78,6 +88,19 @@ def test_kills_grant_experience_and_levels(rivermoot):
     assert stats["levels"] == {"level": 1, "xp": 5}
     assert asyncio.run(kill()) == ["You gain 5 experience.", "You are now level 2!"]
     assert stats["levels"] == {"level": 2, "xp": 0}
+
+
+def test_levels_panel_is_a_stat_sheet(rivermoot):
+    world, host = rivermoot
+    assert [(p["id"], p["kind"], p["title"]) for p in host.server.panels.specs()] == [
+        ("levels.sheet", "stat_sheet", "Level")
+    ]
+    sections = asyncio.run(
+        host.server.snapshot_contributors.build("hero", {"levels": {"level": 2, "xp": 3}})
+    )
+    assert sections["levels"] == {
+        "stats": [{"label": "Level", "value": 2}, {"label": "Experience", "value": 3, "max": 20}]
+    }
 
 
 def test_level_command_reads_the_state_block(rivermoot):

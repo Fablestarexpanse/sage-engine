@@ -4,14 +4,10 @@ import { ThemeToggleButton } from "../ThemeToggleButton.jsx";
 import { GameCmdContext } from "./00-ctx.jsx";
 import { ContextMenu, DraggablePanel } from "./01-primitives.jsx";
 import { NarrativePanel, CommandInput, lastRoomTitleHint } from "./03-narrative.jsx";
-import {
-  AfflictionTracker, QuestJournal, TargetPanel, SessionStats, KeybindManager, TriggerBuilder, QuickActions,
-} from "./04-panels-a.jsx";
+import { AfflictionTracker } from "./04-panels-a.jsx";
 import { MiniMap } from "./05-minimap.jsx";
-import {
-  CharacterPanel, GlyphBar, InventoryPanel, SocialPanel, ScenePanel,
-} from "./06-panels-b.jsx";
-import { ProficienciesPanel } from "./07-proficiencies-panel.jsx";
+import { CharacterPanel, InventoryPanel, SocialPanel, ScenePanel } from "./06-panels-b.jsx";
+import { DeclaredPanel } from "./08-declared-panels.jsx";
 import { PORTRAIT_ASPECT_RATIO_CSS } from "../portraitProfile.js";
 import { GmBadge } from "../GmBadge.jsx";
 
@@ -44,16 +40,21 @@ function useWorkspaceScale() {
   return { sx, sy, layoutKey, iw: dims.iw, ih: dims.ih };
 }
 
+/** Where a server-declared panel opens the first time it is shown (cascaded by index). */
+function declaredPanelBox(index) {
+  return { x: 300 + (index % 5) * 30, y: 60 + (index % 5) * 30, w: 280, h: 260 };
+}
+
 const PRESETS = {
   standard: { name: "Standard", desc: "Balanced layout",
-    panels: { narrative:{x:260,y:0,w:580,h:470}, scene:{x:840,y:0,w:340,h:260}, character:{x:0,y:0,w:260,h:360}, map:{x:840,y:260,w:340,h:210}, glyphs:{x:260,y:470,w:580,h:90}, inventory:{x:0,y:360,w:260,h:200}, social:{x:840,y:470,w:340,h:90}, afflictions:{x:100,y:100,w:240,h:280}, quests:{x:200,y:100,w:320,h:350}, target:{x:100,y:100,w:260,h:240}, stats:{x:100,y:100,w:240,h:280}, proficiencies:{x:300,y:70,w:420,h:420}, keybinds:{x:200,y:50,w:280,h:360}, triggers:{x:200,y:50,w:320,h:360}, quickactions:{x:0,y:560,w:260,h:70} },
-    visible: ["narrative","scene","character","map","glyphs","inventory","social"] },
-  combat: { name: "Combat", desc: "Effects & target",
-    panels: { narrative:{x:280,y:0,w:560,h:400}, scene:{x:0,y:360,w:280,h:200}, character:{x:0,y:0,w:280,h:360}, map:{x:840,y:360,w:340,h:200}, glyphs:{x:280,y:400,w:560,h:80}, inventory:{x:100,y:100,w:260,h:200}, social:{x:840,y:480,w:340,h:80}, afflictions:{x:840,y:0,w:340,h:200}, quests:{x:200,y:100,w:320,h:350}, target:{x:840,y:200,w:340,h:160}, stats:{x:100,y:100,w:240,h:280}, proficiencies:{x:120,y:70,w:400,h:400}, keybinds:{x:200,y:50,w:280,h:360}, triggers:{x:200,y:50,w:320,h:360}, quickactions:{x:280,y:480,w:560,h:80} },
-    visible: ["narrative","character","glyphs","afflictions","target","map","quickactions"] },
+    panels: { narrative:{x:260,y:0,w:580,h:560}, scene:{x:840,y:0,w:340,h:260}, character:{x:0,y:0,w:260,h:360}, map:{x:840,y:260,w:340,h:210}, inventory:{x:0,y:360,w:260,h:200}, social:{x:840,y:470,w:340,h:90}, afflictions:{x:100,y:100,w:240,h:280} },
+    visible: ["narrative","scene","character","map","inventory","social"] },
+  combat: { name: "Combat", desc: "Effects up front",
+    panels: { narrative:{x:280,y:0,w:560,h:560}, scene:{x:0,y:360,w:280,h:200}, character:{x:0,y:0,w:280,h:360}, map:{x:840,y:360,w:340,h:200}, inventory:{x:840,y:200,w:340,h:160}, social:{x:840,y:480,w:340,h:80}, afflictions:{x:840,y:0,w:340,h:200} },
+    visible: ["narrative","character","afflictions","inventory","map"] },
   classic: { name: "Classic MUD", desc: "Text-forward",
-    panels: { narrative:{x:0,y:0,w:860,h:520}, scene:{x:100,y:100,w:380,h:300}, character:{x:860,y:0,w:320,h:260}, map:{x:860,y:260,w:320,h:200}, glyphs:{x:0,y:520,w:580,h:60}, inventory:{x:860,y:460,w:320,h:100}, social:{x:580,y:520,w:280,h:60}, afflictions:{x:100,y:100,w:240,h:280}, quests:{x:200,y:100,w:320,h:350}, target:{x:100,y:100,w:260,h:240}, stats:{x:100,y:100,w:240,h:280}, proficiencies:{x:120,y:120,w:400,h:380}, keybinds:{x:200,y:50,w:280,h:360}, triggers:{x:200,y:50,w:320,h:360}, quickactions:{x:100,y:100,w:260,h:100} },
-    visible: ["narrative","character","map","glyphs","inventory","social"] },
+    panels: { narrative:{x:0,y:0,w:860,h:500}, scene:{x:100,y:100,w:380,h:300}, character:{x:860,y:0,w:320,h:260}, map:{x:860,y:260,w:320,h:200}, inventory:{x:860,y:460,w:320,h:100}, social:{x:0,y:500,w:860,h:60}, afflictions:{x:100,y:100,w:240,h:280} },
+    visible: ["narrative","character","map","inventory","social"] },
 };
 
 export default function PlayClient({
@@ -71,11 +72,13 @@ export default function PlayClient({
   sceneGenerating = false,
   sceneRoomLabel,
   /** Safe filename stem for Scene panel download (no extension). */
-  sceneDownloadBaseName = "fablestar-scene",
-  /** Optional: { credits, label } for ComfyUI / pixel economy display. */
-  echoEconomy,
-  /** In-world currency label from server (e.g. Digi). */
-  gameCurrencyDisplayName = "Digi",
+  sceneDownloadBaseName = "scene",
+  /** The world's display name (GET /play/world). */
+  worldName = "",
+  /** Optional: { credits, label } for ComfyUI / AI art credit display. */
+  aiEconomy,
+  /** The world's primary currency name from the server; empty when the world has no money. */
+  gameCurrencyDisplayName = "",
   /** Optional: narrative toolbar → ComfyUI scene generation (credentials + callbacks). */
   sceneGen,
 }) {
@@ -93,7 +96,7 @@ export default function PlayClient({
   const preset = PRESETS[layout];
   const narrativeLocationHint = useMemo(() => lastRoomTitleHint(narrativeLines || []), [narrativeLines]);
   // Server-pushed location wins; the narrative-scrape hint is the legacy fallback.
-  const conduitLocation =
+  const characterLocation =
     session?.liveLocation?.name || session?.liveLocation?.id || narrativeLocationHint;
   const toggleCollapse = (id) => setCollapsed(p => ({ ...p, [id]: !p[id] }));
   const bringToFront = (id) => setFocusStack(p => [...p.filter(x => x !== id), id]);
@@ -101,8 +104,10 @@ export default function PlayClient({
   const isVis = (id) => preset.visible.includes(id);
   const togglePanel = (id) => {
     const p = { ...PRESETS[layout] };
-    p.visible = isVis(id) ? p.visible.filter(v => v !== id) : [...p.visible, id];
+    const showing = !isVis(id);
+    p.visible = showing ? [...p.visible, id] : p.visible.filter(v => v !== id);
     PRESETS[layout] = p;
+    if (showing) bringToFront(id);
     setLayout(l => l);
     setCollapsed(c => ({ ...c }));
   };
@@ -113,34 +118,23 @@ export default function PlayClient({
     onSendCommand?.(cmd);
   }, [onSendCommand]);
 
-  const focusProficienciesPanel = useCallback(() => {
-    const pid = "proficiencies";
-    const lp = PRESETS[layout];
-    if (!lp?.panels?.[pid]) return;
-    const nextVis = lp.visible.includes(pid) ? lp.visible : [...lp.visible, pid];
-    PRESETS[layout] = { ...lp, visible: nextVis };
-    setLayout((l) => l);
-    setCollapsed((c) => ({ ...c, [pid]: false }));
-    bringToFront(pid);
-  }, [layout]);
-
   const onArtCreditsInfo = useCallback(() => {
-    const art = echoEconomy?.label || "pixels";
-    const game = gameCurrencyDisplayName || "Digi";
+    const art = aiEconomy?.label || "credits";
+    const game = gameCurrencyDisplayName || "in-world money";
     window.alert(
       `${art} is your account balance for AI portraits and scene art (ComfyUI). It is shared by every character and is not the same as in-world ${game}.\n\n` +
         "Your host can grant more, or future progression may award it. There is no in-client purchase yet."
     );
-  }, [echoEconomy?.label, gameCurrencyDisplayName]);
+  }, [aiEconomy?.label, gameCurrencyDisplayName]);
 
-  const onDigiWalletInfo = useCallback(() => {
-    const game = gameCurrencyDisplayName || "Digi";
-    const art = echoEconomy?.label || "pixels";
+  const onWalletInfo = useCallback(() => {
+    const game = gameCurrencyDisplayName || "in-world money";
+    const art = aiEconomy?.label || "credits";
     window.alert(
       `${game} is your in-world wallet for this character only — loot, quests, trades. It is separate from ${art} (AI portrait / scene balance on your account).\n\n` +
         "Each character has their own balance; pick another character to see a different amount here."
     );
-  }, [gameCurrencyDisplayName, echoEconomy?.label]);
+  }, [gameCurrencyDisplayName, aiEconomy?.label]);
 
   const narrativeBackdropUrl =
     narrativeBackdropSource === "scene" && sceneImageUrl
@@ -168,7 +162,7 @@ export default function PlayClient({
         <CommandInput onSubmitCommand={sendCommand} />
       </div>
     ) },
-    { id: "scene", title: "Scene", icon: "🎨", accent: T.glyph.violet, minW: 240, minH: 180, content: (
+    { id: "scene", title: "Scene", icon: "🎨", accent: T.hue.violet, minW: 240, minH: 180, content: (
       <ScenePanel
         imageUrl={sceneImageUrl}
         roomLabel={sceneRoomLabel}
@@ -184,52 +178,38 @@ export default function PlayClient({
         }
       />
     ) },
-    { id: "character", title: "Conduit", icon: "◈", accent: T.glyph.violet, minW: 200, minH: 240, content: (
+    { id: "character", title: "Character", icon: "◉", accent: T.hue.violet, minW: 200, minH: 240, content: (
       <CharacterPanel
         displayName={session?.characterName}
         portraitImageUrl={session?.portraitImageUrl}
         showHeroPortrait={!session?.portraitImageUrl}
         accountName={session?.username}
-        locationLabel={conduitLocation}
-        level={session?.resonanceLevelsTotal != null ? session.resonanceLevelsTotal : null}
+        locationLabel={characterLocation}
         characterStats={session?.characterStats ?? null}
-        resonanceLevelsTotal={session?.resonanceLevelsTotal ?? null}
-        digiBalance={session?.digiBalance}
+        levelsTotal={session?.levelsTotal ?? null}
+        walletBalance={session?.walletBalance}
         gameCurrencyLabel={gameCurrencyDisplayName}
         pvpEnabled={session?.pvpEnabled}
-        reputation={session?.reputation}
         effects={session?.liveEffects ?? null}
       />
     ) },
-    { id: "map", title: "Map", icon: "🗺", accent: T.glyph.cyan, minW: 220, minH: 160, content: <MiniMap map={session?.liveMap ?? null}/> },
-    { id: "glyphs", title: "Glyph Loadout", icon: "✦", accent: T.glyph.violet, minW: 320, minH: 70, content: <GlyphBar/> },
-    { id: "inventory", title: "Inventory", icon: "◻", accent: T.glyph.amber, minW: 200, minH: 180, content: <InventoryPanel onContextMenu={openCtx} items={session?.liveInventory ?? null}/> },
-    { id: "social", title: "Comms", icon: "💬", accent: T.glyph.cyan, minW: 220, minH: 140, content: <SocialPanel messages={session?.chatMessages ?? null}/> },
-    { id: "afflictions", title: "Effects", icon: "⊘", accent: T.glyph.crimson, minW: 200, minH: 180, content: <AfflictionTracker effects={session?.liveEffects ?? null}/> },
-    { id: "quests", title: "Quest Journal", icon: "📖", accent: T.glyph.emerald, minW: 260, minH: 250, content: <QuestJournal gameCurrencyLabel={gameCurrencyDisplayName} /> },
-    { id: "target", title: "Target", icon: "⎯", accent: T.glyph.amber, minW: 220, minH: 180, content: <TargetPanel/> },
-    { id: "stats", title: "Session Stats", icon: "📊", accent: T.text.info, minW: 200, minH: 200, content: <SessionStats/> },
-    {
-      id: "proficiencies",
-      title: "Skills",
-      icon: "◇",
-      accent: T.glyph.violet,
-      minW: 320,
-      minH: 280,
-      content: (
-        <ProficienciesPanel
-          characterStats={session?.characterStats ?? null}
-          resonanceLevelsTotal={session?.resonanceLevelsTotal ?? null}
-        />
-      ),
-    },
-    { id: "keybinds", title: "Keybinds", icon: "⌨", accent: T.text.muted, minW: 240, minH: 280, content: <KeybindManager/> },
-    { id: "triggers", title: "Triggers", icon: "⚡", accent: T.glyph.amber, minW: 260, minH: 260, content: <TriggerBuilder/> },
-    { id: "quickactions", title: "Quick Actions", icon: "▶", accent: T.glyph.cyan, minW: 200, minH: 60, content: <QuickActions/> },
-  ], [narrativeLines, openCtx, sendCommand, focusProficienciesPanel, notifications, session?.characterName, session?.username, session?.portraitImageUrl, session?.digiBalance, session?.pvpEnabled, session?.reputation, session?.characterStats, session?.resonanceLevelsTotal, session?.liveEffects, session?.liveInventory, session?.liveMap, session?.chatMessages, sceneImageUrl, sceneGenerating, sceneRoomLabel, sceneDownloadBaseName, sceneGen, conduitLocation, gameCurrencyDisplayName, narrativeBackdropUrl, narrativeBackdropSource, openSceneGallerySignal]);
+    { id: "map", title: "Map", icon: "🗺", accent: T.hue.cyan, minW: 220, minH: 160, content: <MiniMap map={session?.liveMap ?? null}/> },
+    { id: "inventory", title: "Inventory", icon: "◻", accent: T.hue.amber, minW: 200, minH: 180, content: <InventoryPanel onContextMenu={openCtx} items={session?.liveInventory ?? null}/> },
+    { id: "social", title: "Comms", icon: "💬", accent: T.hue.cyan, minW: 220, minH: 140, content: <SocialPanel messages={session?.chatMessages ?? null}/> },
+    { id: "afflictions", title: "Effects", icon: "⊘", accent: T.hue.crimson, minW: 200, minH: 180, content: <AfflictionTracker effects={session?.liveEffects ?? null}/> },
+    ...(session?.declaredPanels || []).map((spec) => ({
+      id: spec.id,
+      title: spec.title,
+      icon: spec.icon || "▣",
+      accent: T.text.accent,
+      minW: 200,
+      minH: 140,
+      content: <DeclaredPanel spec={spec} data={session?.liveSections?.[spec.section]} />,
+    })),
+  ], [session?.declaredPanels, session?.liveSections, narrativeLines, openCtx, sendCommand, notifications, session?.characterName, session?.username, session?.portraitImageUrl, session?.walletBalance, session?.pvpEnabled, session?.characterStats, session?.levelsTotal, session?.liveEffects, session?.liveInventory, session?.liveMap, session?.chatMessages, sceneImageUrl, sceneGenerating, sceneRoomLabel, sceneDownloadBaseName, sceneGen, characterLocation, gameCurrencyDisplayName, narrativeBackdropUrl, narrativeBackdropSource, openSceneGallerySignal]);
 
   return (
-    <GameCmdContext.Provider value={{ sendCommand, focusProficienciesPanel }}>
+    <GameCmdContext.Provider value={{ sendCommand }}>
     {!wsConnected && (
       <div
         role="alert"
@@ -243,7 +223,7 @@ export default function PlayClient({
           zIndex: 10001,
           padding: "6px 14px",
           textAlign: "center",
-          background: T.glyph.crimson,
+          background: T.hue.crimson,
           color: "#fff",
           fontFamily: T.font.body,
           fontSize: 12,
@@ -272,7 +252,7 @@ export default function PlayClient({
             </button>
           </>
         ) : (
-          "Connection to the station lost — reconnecting…"
+          "Connection lost — reconnecting…"
         )}
       </div>
     )}
@@ -305,9 +285,8 @@ export default function PlayClient({
         borderBottom: `1px solid ${T.border.dim}`,
         display: "flex", alignItems: "center", padding: "0 10px", gap: 8,
       }}>
-        <span style={{ fontSize: 16, color: T.glyph.violet }}>◈</span>
-        <span style={{ fontFamily: T.font.display, fontSize: 12, fontWeight: 700, color: T.text.primary, letterSpacing: "0.08em" }}>FABLESTAR</span>
-        <span style={{ fontFamily: T.font.mono, fontSize: 8, color: T.text.muted, background: T.bg.surface, padding: "1px 5px", borderRadius: T.radius.sm }}>v0.5</span>
+        <span style={{ fontSize: 16, color: T.hue.violet }}>◈</span>
+        <span style={{ fontFamily: T.font.display, fontSize: 12, fontWeight: 700, color: T.text.primary, letterSpacing: "0.08em", textTransform: "uppercase", whiteSpace: "nowrap" }}>{worldName}</span>
 
         {session && (
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: 8, paddingLeft: 12, borderLeft: `1px solid ${T.border.dim}` }}>
@@ -318,7 +297,7 @@ export default function PlayClient({
                   width: 26,
                   aspectRatio: PORTRAIT_ASPECT_RATIO_CSS,
                   borderRadius: T.radius.md,
-                  border: `1px solid ${T.border.glyph}`,
+                  border: `1px solid ${T.border.accent}`,
                   flexShrink: 0,
                   overflow: "hidden",
                 }}
@@ -344,7 +323,7 @@ export default function PlayClient({
             <span style={{ fontSize: 8, color: T.text.muted }}>·</span>
             <span style={{ fontFamily: T.font.display, fontSize: 11, color: T.text.accent }}>{session.characterName}</span>
             <div style={{ marginLeft: 8, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-              {echoEconomy?.credits != null ? (
+              {aiEconomy?.credits != null ? (
                 <div
                   style={{
                     display: "flex",
@@ -352,35 +331,35 @@ export default function PlayClient({
                     gap: 8,
                     padding: "4px 10px 4px 12px",
                     borderRadius: T.radius.md,
-                    border: `1px solid ${T.currency.pixel.border}`,
-                    background: T.currency.pixel.bg,
+                    border: `1px solid ${T.currency.art.border}`,
+                    background: T.currency.art.bg,
                     maxWidth: 200,
                   }}
-                  title="Shared by all your characters. Spent on AI portrait and scene generation (not Digi)."
+                  title="Shared by all your characters. Spent on AI portrait and scene generation (not in-world money)."
                 >
                   <div style={{ minWidth: 0, lineHeight: 1.2 }}>
                     <div
                       style={{
                         fontSize: 8,
                         fontWeight: 600,
-                        color: T.currency.pixel.label,
+                        color: T.currency.art.label,
                         textTransform: "uppercase",
                         letterSpacing: "0.07em",
                         fontFamily: T.font.body,
                       }}
                     >
-                      Pixels · account
+                      {aiEconomy.label} · account
                     </div>
                     <div
                       style={{
                         fontSize: 13,
                         fontFamily: T.font.mono,
                         fontWeight: 600,
-                        color: echoEconomy.credits < (echoEconomy.warnBelow ?? 12) ? T.currency.pixel.warn : T.currency.pixel.fg,
+                        color: aiEconomy.credits < (aiEconomy.warnBelow ?? 12) ? T.currency.art.warn : T.currency.art.fg,
                         marginTop: 1,
                       }}
                     >
-                      {echoEconomy.label} {echoEconomy.credits}
+                      {aiEconomy.label} {aiEconomy.credits}
                     </div>
                   </div>
                   <button
@@ -393,9 +372,9 @@ export default function PlayClient({
                       height: 22,
                       padding: 0,
                       borderRadius: T.radius.sm,
-                      border: `1px solid ${T.currency.pixel.border}`,
+                      border: `1px solid ${T.currency.art.border}`,
                       background: T.bg.deep,
-                      color: T.currency.pixel.fg,
+                      color: T.currency.art.fg,
                       fontSize: 12,
                       fontWeight: 700,
                       cursor: "pointer",
@@ -414,8 +393,8 @@ export default function PlayClient({
                   gap: 8,
                   padding: "4px 10px 4px 12px",
                   borderRadius: T.radius.md,
-                  border: `1px solid ${T.currency.digi.border}`,
-                  background: T.currency.digi.bg,
+                  border: `1px solid ${T.currency.world.border}`,
+                  background: T.currency.world.bg,
                   maxWidth: 200,
                 }}
                 title={`In-world wallet for ${session.characterName} (this character only).`}
@@ -425,7 +404,7 @@ export default function PlayClient({
                     style={{
                       fontSize: 8,
                       fontWeight: 600,
-                      color: T.currency.digi.label,
+                      color: T.currency.world.label,
                       textTransform: "uppercase",
                       letterSpacing: "0.07em",
                       fontFamily: T.font.body,
@@ -438,27 +417,27 @@ export default function PlayClient({
                       fontSize: 13,
                       fontFamily: T.font.mono,
                       fontWeight: 600,
-                      color: T.currency.digi.fg,
+                      color: T.currency.world.fg,
                       marginTop: 1,
                     }}
                   >
                     {String(gameCurrencyDisplayName).toLowerCase()}{" "}
-                    {typeof session.digiBalance === "number" ? session.digiBalance : 0}
+                    {typeof session.walletBalance === "number" ? session.walletBalance : 0}
                   </div>
                 </div>
                 <button
                   type="button"
-                  onClick={onDigiWalletInfo}
-                  title="What Digi is (in-world vs pixels)"
+                  onClick={onWalletInfo}
+                  title="What this currency is (in-world money vs AI art balance)"
                   style={{
                     flexShrink: 0,
                     width: 22,
                     height: 22,
                     padding: 0,
                     borderRadius: T.radius.sm,
-                    border: `1px solid ${T.currency.digi.border}`,
+                    border: `1px solid ${T.currency.world.border}`,
                     background: T.bg.deep,
-                    color: T.currency.digi.fg,
+                    color: T.currency.world.fg,
                     fontSize: 12,
                     fontWeight: 700,
                     cursor: "pointer",
@@ -489,14 +468,14 @@ export default function PlayClient({
                 aria-label={`${vis?"Hide":"Show"} ${p.title}`} aria-pressed={vis}
                 style={{
                   width: 26, height: 22, borderRadius: T.radius.sm,
-                  border: `1px solid ${vis ? (p.accent||T.glyph.violet)+"30" : T.border.subtle}`,
-                  background: vis ? (p.accent||T.glyph.violet)+"15" : "transparent",
-                  color: vis ? (p.accent||T.glyph.violet) : T.text.muted,
+                  border: `1px solid ${vis ? (p.accent||T.hue.violet)+"30" : T.border.subtle}`,
+                  background: vis ? (p.accent||T.hue.violet)+"15" : "transparent",
+                  color: vis ? (p.accent||T.hue.violet) : T.text.muted,
                   cursor: "pointer", fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center",
                   transition: "all 0.15s", position: "relative",
                 }}>
                 {p.icon}
-                {(p.badge||0) > 0 && vis && <span style={{ position: "absolute", top: -3, right: -3, width: 7, height: 7, borderRadius: 4, background: T.glyph.crimson }}/>}
+                {(p.badge||0) > 0 && vis && <span style={{ position: "absolute", top: -3, right: -3, width: 7, height: 7, borderRadius: 4, background: T.hue.crimson }}/>}
               </button>
             );
           })}
@@ -513,7 +492,7 @@ export default function PlayClient({
             <div role="listbox" style={{ position: "absolute", top: "100%", right: 0, marginTop: 4, background: T.bg.elevated, border: `1px solid ${T.border.medium}`, borderRadius: T.radius.md, padding: 4, minWidth: 170, boxShadow: T.shadow.panel, zIndex: 10000 }}>
               {Object.entries(PRESETS).map(([k, lp]) => (
                 <button key={k} type="button" role="option" aria-selected={layout===k} onClick={() => { setLayout(k); setShowLayoutPicker(false); }}
-                  style={{ display: "block", width: "100%", padding: "5px 8px", background: layout===k?T.glyph.violetDim:"transparent", border: "none", borderRadius: T.radius.sm, textAlign: "left", cursor: "pointer" }}>
+                  style={{ display: "block", width: "100%", padding: "5px 8px", background: layout===k?T.hue.violetDim:"transparent", border: "none", borderRadius: T.radius.sm, textAlign: "left", cursor: "pointer" }}>
                   <div style={{ fontSize: 10, fontFamily: T.font.body, color: layout===k?T.text.accent:T.text.primary }}>{lp.name}</div>
                   <div style={{ fontSize: 8, fontFamily: T.font.body, color: T.text.muted }}>{lp.desc}</div>
                 </button>
@@ -523,7 +502,7 @@ export default function PlayClient({
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
-          <div style={{ width: 5, height: 5, borderRadius: "50%", background: wsConnected ? T.glyph.emerald : T.glyph.crimson, boxShadow: wsConnected ? `0 0 6px ${T.glyph.emerald}60` : `0 0 6px ${T.glyph.crimson}40` }} />
+          <div style={{ width: 5, height: 5, borderRadius: "50%", background: wsConnected ? T.hue.emerald : T.hue.crimson, boxShadow: wsConnected ? `0 0 6px ${T.hue.emerald}60` : `0 0 6px ${T.hue.crimson}40` }} />
           <span style={{ fontFamily: T.font.mono, fontSize: 8, color: T.text.muted }}>{wsConnected ? "Linked" : "Offline"}</span>
         </div>
       </header>
@@ -531,7 +510,8 @@ export default function PlayClient({
       <main style={{ position: "absolute", top: HEADER_PX, left: 0, right: 0, bottom: 0, overflow: "hidden" }}>
         {panels.map(p => {
           if (!isVis(p.id)) return null;
-          const pp = preset.panels[p.id];
+          const declaredIndex = (session?.declaredPanels || []).findIndex((d) => d.id === p.id);
+          const pp = preset.panels[p.id] || (declaredIndex >= 0 ? declaredPanelBox(declaredIndex) : null);
           if (!pp) return null;
           const dw = Math.max(120, Math.round(pp.w * sx));
           const dh = Math.max(80, Math.round(pp.h * sy));

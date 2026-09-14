@@ -60,17 +60,23 @@ def test_loads_a_valid_package(tmp_path):
     assert world.content_dir == tmp_path.resolve() / "demo" / "content"
 
 
-def test_transition_dirs_resolve_relative_to_the_package(tmp_path):
+def test_world_content_lives_in_the_package_and_transition_is_refused(tmp_path):
     shared = tmp_path / "shared_content"
     shared.mkdir()
-    world_dir = make_world(tmp_path / "worlds", make_content=False)
+    world_dir = make_world(tmp_path / "worlds")
+    world = load_world_package(world_dir)
+    assert world.content_dir == world_dir / "content"
+    assert world.prompts_dir == world_dir / "ai" / "prompts"
+    assert world.with_content_dir(shared).content_dir == shared
+
     manifest = world_dir / "world.toml"
     manifest.write_text(
         manifest.read_text(encoding="utf-8")
         + '\n[transition]\ncontent_dir = "../../shared_content"\n',
         encoding="utf-8",
     )
-    assert load_world_package(world_dir).content_dir == shared.resolve()
+    with pytest.raises(WorldPackageError, match="transition"):
+        load_world_package(world_dir)
 
 
 @pytest.mark.parametrize(

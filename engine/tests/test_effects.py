@@ -1,6 +1,4 @@
-"""Effects engine: apply/merge, ticking, expiry, death filter, hazard application."""
-
-import random
+"""Effects engine: apply/merge, ticking, expiry, death filter."""
 
 from sage.effects.engine import (
     EFFECTS_KEY,
@@ -12,9 +10,6 @@ from sage.effects.engine import (
     process_effects,
     remove_effects,
 )
-from sage.effects.hazards import apply_room_hazards
-from sage.proficiencies.state_helpers import CONDUIT_KEY
-from sage.world.models import RoomModel
 
 T0 = 1_000_000.0
 
@@ -113,46 +108,3 @@ def test_describe_effects_lines():
     (line,) = describe_effects(state, now=T0)
     assert "[debuff] bleeding" in line
     assert "30s left" in line
-
-
-def _hazard_room(severity=2):
-    return RoomModel(
-        id="z:r",
-        zone="z",
-        type="chamber",
-        hazards=[
-            {
-                "id": "vent",
-                "type": "radiation",
-                "severity": severity,
-                "description": "Radiation prickles across your skin.",
-            }
-        ],
-    )
-
-
-def test_hazard_applies_dot_scaled_by_severity():
-    state = {"hp": 20}
-    msgs = apply_room_hazards(state, _hazard_room(severity=3), rng=random.Random(1), now=T0)
-    (eff,) = find_effects(state, "hazard.radiation")
-    assert eff["magnitude"] == 3
-    assert eff["expires_at"] == T0 + 30.0  # 6 * (2 + 3)
-    assert any("takes hold" in m for m in msgs)
-
-
-def test_hazard_resist_skips_application():
-    state = {
-        "hp": 20,
-        CONDUIT_KEY: {"proficiencies": {"traversal.survival.hazard_resist": {"level": 100}}},
-    }
-    rng = random.Random(1)  # first random() ≈ 0.134 < 0.75 resist cap → resisted
-    msgs = apply_room_hazards(state, _hazard_room(), rng=rng, now=T0)
-    assert find_effects(state, "hazard.radiation") == []
-    assert any("shrug it off" in m for m in msgs)
-
-
-def test_room_without_hazards_is_noop():
-    state = {"hp": 20}
-    room = RoomModel(id="z:r", zone="z", type="chamber")
-    assert apply_room_hazards(state, room, rng=random.Random(1), now=T0) == []
-    assert state.get(EFFECTS_KEY) in (None, [])

@@ -2,3 +2,8 @@ levels:
   status: "Level {level}  ({xp}/{needed} experience)"
   gain: "You gain {xp} experience."
   level_up: "You are now level {level}!"
+  label:
+    level: "Level"
+    xp: "Experience"
+  panel:
+    sheet: "Level"

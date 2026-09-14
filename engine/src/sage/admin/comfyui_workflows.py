@@ -1,8 +1,9 @@
 """ComfyUI workflow library — list, inspect, upload, delete and assign API-format workflow files.
 
-Files live in ``config/comfyui_workflows/`` (uploads) and, for the originally
-shipped graphs, ``config/comfyui_*.json``. Only plain ``*.json`` names are
-accepted, so a name can never point outside those two directories.
+Files live in ``config/comfyui_workflows/`` (uploads), the running world's ``ai/comfyui/``
+(graphs the world ships) and, for older installs, ``config/comfyui_*.json``. Only plain
+``*.json`` names are accepted, so a name can never point outside those directories. World and
+legacy graphs are listed but cannot be deleted from Nexus.
 """
 
 from __future__ import annotations
@@ -15,7 +16,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from sage.core.config import resolve_project_root
+from sage.core import config as core_config
+from sage.core.config import resolve_project_root, resolve_workflow_path
 
 NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,95}\.json$")
 MAX_WORKFLOW_BYTES = 2 * 1024 * 1024
@@ -28,6 +30,15 @@ def library_dir() -> Path:
 
 def legacy_dir() -> Path:
     return resolve_project_root() / "config"
+
+
+def world_dir() -> Path | None:
+    return core_config._world_comfyui_dir
+
+
+def _world_files() -> list[Path]:
+    base = world_dir()
+    return sorted(p for p in base.glob("*.json") if p.is_file()) if base and base.is_dir() else []
 
 
 def _legacy_files() -> list[Path]:
@@ -55,7 +66,7 @@ def find_workflow(name: str) -> Path | None:
     """Resolve a library or legacy workflow by bare file name; None if unknown or unsafe."""
     if not NAME_RE.match(name or ""):
         return None
-    for base in (library_dir(), legacy_dir()):
+    for base in [b for b in (library_dir(), world_dir(), legacy_dir()) if b is not None]:
         candidate = (base / name).resolve()
         if candidate.parent != base.resolve() or not candidate.is_file():
             continue
@@ -143,17 +154,17 @@ def analyze_workflow(data: dict[str, Any]) -> dict[str, Any]:
 
 
 def _usage(path: Path, comfy_cfg) -> list[str]:
-    used = []
     resolved = path.resolve()
-    for role, attr in (("portrait", "workflow_path"), ("area", "area_workflow_path")):
-        configured = (getattr(comfy_cfg, attr, "") or "").strip()
-        if not configured:
-            continue
-        p = Path(configured)
-        p = p if p.is_absolute() else resolve_project_root() / p
-        if p.resolve() == resolved:
-            used.append(role)
-    return used
+    return [role for role in ROLES if resolve_workflow_path(comfy_cfg, role).resolve() == resolved]
+
+
+def _source(path: Path) -> str:
+    parent = path.parent.resolve()
+    if parent == library_dir().resolve():
+        return "library"
+    if world_dir() is not None and parent == world_dir().resolve():
+        return "world"
+    return "legacy"
 
 
 def _summary(path: Path, comfy_cfg) -> dict[str, Any]:
@@ -161,7 +172,7 @@ def _summary(path: Path, comfy_cfg) -> dict[str, Any]:
     item: dict[str, Any] = {
         "name": path.name,
         "path": relative_path(path),
-        "source": "library" if path.parent.resolve() == library_dir().resolve() else "legacy",
+        "source": _source(path),
         "size_bytes": st.st_size,
         "modified_at": datetime.fromtimestamp(st.st_mtime, tz=UTC).isoformat(),
         "in_use_as": _usage(path, comfy_cfg),
@@ -185,7 +196,7 @@ def _summary(path: Path, comfy_cfg) -> dict[str, Any]:
 def list_workflows(comfy_cfg) -> list[dict[str, Any]]:
     lib = library_dir()
     files = sorted(lib.glob("*.json")) if lib.is_dir() else []
-    return [_summary(p, comfy_cfg) for p in [*files, *_legacy_files()]]
+    return [_summary(p, comfy_cfg) for p in [*files, *_world_files(), *_legacy_files()]]
 
 
 def workflow_detail(name: str, comfy_cfg) -> dict[str, Any] | None:
@@ -229,8 +240,8 @@ def delete_workflow(name: str, comfy_cfg) -> None:
     path = find_workflow(name)
     if path is None:
         raise FileNotFoundError(name)
-    if path.parent.resolve() != library_dir().resolve():
-        raise ValueError("legacy_workflow_protected")
+    if _source(path) != "library":
+        raise ValueError(f"{_source(path)}_workflow_protected")
     in_use = _usage(path, comfy_cfg)
     if in_use:
         raise ValueError(f"workflow_in_use:{','.join(in_use)}")

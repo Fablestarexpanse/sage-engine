@@ -1,5 +1,6 @@
 """EntitySpawnManager — per-tick NPC respawn logic and entity kill/loot handling."""
 
+import asyncio
 import logging
 import random
 import uuid
@@ -17,6 +18,18 @@ SPAWN_CHECK_INTERVAL = 20
 # Floor items rot: sweep every ~2 min, delete drops older than 30 min.
 LITTER_SWEEP_INTERVAL = 480
 LITTER_TTL_S = 30 * 60
+
+
+# Per-entity locks so two attackers can't interleave the read-modify-write of one entity's state
+# (lost HP updates, double kills). One process, so asyncio locks suffice; despawn drops them.
+_entity_locks: dict[str, asyncio.Lock] = {}
+
+
+def entity_lock(entity_id: str) -> asyncio.Lock:
+    lock = _entity_locks.get(entity_id)
+    if lock is None:
+        lock = _entity_locks[entity_id] = asyncio.Lock()
+    return lock
 
 
 class EntitySpawnManager:
@@ -59,8 +72,9 @@ class EntitySpawnManager:
         now = int(_time.time())
         removed = 0
         try:
-            async for key in self.server.redis.client.scan_iter(match="room:*:items", count=200):
-                key_str = key.decode() if isinstance(key, bytes) else key
+            redis = self.server.redis
+            async for key in redis.client.scan_iter(match=redis.key("room:*:items"), count=200):
+                key_str = redis.unkey(key.decode() if isinstance(key, bytes) else key)
                 room_id = key_str[len("room:") : -len(":items")]
                 for iid in await self.server.redis.get_room_items(room_id):
                     iid = iid.decode() if isinstance(iid, bytes) else iid
@@ -139,11 +153,9 @@ class EntitySpawnManager:
 
     async def despawn_entity(self, entity_id: str, room_id: str):
         """Remove an entity from the world entirely."""
-        from sage.commands.combat import discard_entity_lock  # lazy — avoids import cycle
-
         await self.server.redis.remove_entity_from_room(entity_id, room_id)
         await self.server.redis.delete_entity_state(entity_id)
-        discard_entity_lock(entity_id)
+        _entity_locks.pop(entity_id, None)
         logger.debug(f"Spawner: despawned {entity_id} from {room_id}")
 
     async def kill_entity(self, entity_id: str, room_id: str) -> list[str]:

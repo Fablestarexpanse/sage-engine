@@ -324,3 +324,267 @@ def test_manifest_helpers(tmp_path):
     renamed = plugin.rename(tmp_path / "other")
     with pytest.raises(PluginError, match="must match its directory"):
         read_manifest(renamed)
+
+
+NOTICES = """
+from pydantic import BaseModel
+
+from sage.api import PluginAPI
+
+
+class NoticeBoard(BaseModel):
+    title: str
+    posts: list[str] = []
+
+
+def setup(api: PluginAPI) -> None:
+    api.content.extend("room", "notice_board", NoticeBoard)
+
+    async def read(session, args):
+        room = api.content.room(args[0])
+        board = api.content.extension(room, "room", "notice_board")
+        await session.send(board.title if board else "no board")
+
+    api.commands.register("notices", read)
+"""
+
+
+def _room(world_dir: Path, slug: str, extra: str) -> None:
+    rooms = world_dir / "content" / "world" / "zones" / "town" / "rooms"
+    rooms.mkdir(parents=True, exist_ok=True)
+    body = f"id: town:{slug}\nzone: town\ntype: hub\n{extra}"
+    (rooms / f"{slug}.yaml").write_text(body, encoding="utf-8")
+
+
+def test_plugin_claims_a_room_field_and_reads_it_validated(tmp_path, host_for, caplog):
+    from sage.world.loader import ContentLoader
+    from tests.fakes import StubSession
+
+    write_plugin(
+        tmp_path / "plugins",
+        "notices",
+        NOTICES,
+        touches='commands = ["notices"]\ncontent_extensions = ["room.notice_board"]',
+    )
+    host = host_for({"notices": "^1"})
+    _room(host.world.root, "gate", "notice_board:\n  title: Wanted\n  posts: [rats]\n")
+    _room(host.world.root, "well", "notice_board:\n  posts: [no title]\n")
+    _room(host.world.root, "lane", "")
+    host.content = ContentLoader(host.world.content_dir)
+    host.load()
+
+    session = StubSession("hero")
+    handler = host.registry.get("notices").handler
+    with caplog.at_level(logging.ERROR):
+        for slug in ("gate", "well", "lane"):
+            asyncio.run(handler(session, [f"town:{slug}"]))
+    assert session.sent == ["Wanted", "no board", "no board"]
+    assert "town:well: invalid 'notice_board' block" in caplog.text
+    assert "room.notice_board" in host.extensions.schemas()
+
+
+def test_extensions_must_be_declared_unique_and_not_engine_fields(tmp_path, host_for):
+    write_plugin(tmp_path / "plugins", "notices", NOTICES, touches='commands = ["notices"]')
+    with pytest.raises(PluginError, match="content_extensions"):
+        host_for({"notices": "^1"}).load()
+
+    from pydantic import BaseModel
+
+    from sage.world.extensions import ContentExtensions, ExtensionError
+
+    class Board(BaseModel):
+        title: str
+
+    registry = ContentExtensions()
+    registry.register("room", "notice_board", Board, owner="a")
+    with pytest.raises(ExtensionError, match="already claimed by a"):
+        registry.register("room", "notice_board", Board, owner="b")
+    with pytest.raises(ExtensionError, match="engine field"):
+        registry.register("room", "exits", Board, owner="a")
+    with pytest.raises(ExtensionError, match="unknown content kind"):
+        registry.register("zone", "x", Board, owner="a")
+    registry.withdraw("a")
+    registry.register("room", "notice_board", Board, owner="b")
+
+
+LEDGER = """
+from fastapi import APIRouter
+
+from sage.api import PluginAPI
+
+
+def setup(api: PluginAPI) -> None:
+    router = APIRouter()
+
+    @router.get("/ledger")
+    async def ledger():
+        return {"rows": 3}
+
+    api.http.admin_router(router, tool="shops")
+"""
+
+
+def _app_with_staff(tools):
+    from fastapi import FastAPI
+
+    from sage.admin.admin_security import AdminContext
+
+    app = FastAPI()
+
+    @app.middleware("http")
+    async def staff(request, call_next):
+        request.state.admin_ctx = AdminContext(
+            staff_id=1, username="s", display_name="S", role="staff", permissions={"tools": tools}
+        )
+        return await call_next(request)
+
+    return app
+
+
+def test_plugin_admin_routes_mount_under_their_prefix_behind_a_tool(tmp_path, host_for):
+    from fastapi.testclient import TestClient
+
+    write_plugin(tmp_path / "plugins", "ledgers", LEDGER, touches='routes = ["/plugins/ledgers/*"]')
+    host = host_for({"ledgers": "^1"})
+    host.http = _app_with_staff(["shops"])
+    host.load()
+    client = TestClient(host.http)
+    assert client.get("/plugins/ledgers/admin/ledger").json() == {"rows": 3}
+    assert host.admin_tools == [("ledgers", "shops")]
+
+    denied = _app_with_staff(["agents"])
+    denied.router.routes[:] = host.http.router.routes
+    assert TestClient(denied).get("/plugins/ledgers/admin/ledger").status_code == 403
+
+    host.teardown()
+    assert client.get("/plugins/ledgers/admin/ledger").status_code == 404
+    assert host.admin_tools == []
+
+
+def test_plugin_routes_must_be_declared_under_their_own_prefix(tmp_path, host_for):
+    write_plugin(tmp_path / "plugins", "ledgers", LEDGER, touches="")
+    host = host_for({"ledgers": "^1"})
+    host.http = _app_with_staff(["shops"])
+    with pytest.raises(PluginError, match="routes"):
+        host.load()
+    bad = tmp_path / "bad"
+    write_plugin(bad, "ledgers", LEDGER, touches='routes = ["/admin/*"]')
+    with pytest.raises(PluginError, match="may only declare"):
+        read_manifest(bad / "ledgers")
+
+
+COUNTER = """
+from sage.api import PluginAPI
+
+
+def setup(api: PluginAPI) -> None:
+    async def poke(session, args):
+        await api.redis.incrby(args[0], 1)
+
+    api.commands.register("poke", poke)
+"""
+
+
+def test_plugin_redis_keys_stay_inside_declared_prefixes(tmp_path, host_for):
+    from tests.fakes import StubSession
+
+    write_plugin(
+        tmp_path / "plugins",
+        "pokes",
+        COUNTER,
+        touches='commands = ["poke"]\nredis_prefixes = ["pokes"]',
+    )
+    host = host_for({"pokes": "^1"})
+    host.load()
+    handler = host.registry.get("poke").handler
+    asyncio.run(handler(StubSession("hero"), ["pokes:hero"]))
+    assert host.redis.client.strings["pokes:hero"] == "1"
+    with pytest.raises(PluginError, match="outside its redis_prefixes"):
+        asyncio.run(handler(StubSession("hero"), ["player:hero:stats"]))
+
+    reserved = tmp_path / "reserved"
+    write_plugin(reserved, "pokes", COUNTER, touches='redis_prefixes = ["player"]')
+    with pytest.raises(PluginError, match="reserved for the engine"):
+        read_manifest(reserved / "pokes")
+
+
+PUPPETEER = """
+from sage.api import PluginAPI, VirtualSession
+
+
+def setup(api: PluginAPI) -> None:
+    api.characters.claim_names(lambda: ["Puppet Pam"])
+
+    async def flush():
+        api.log.info("flushed")
+
+    api.persistence.on_flush(flush)
+
+    async def spawn(session, args):
+        pam = VirtualSession("Puppet Pam")
+        api.sessions.attach(pam)
+        await api.characters.place("Puppet Pam", {"hp": 5}, [], "town:gate")
+        stats = await api.characters.stats("Puppet Pam")
+        stats["hp"] = 4
+        await api.characters.save_stats("Puppet Pam", stats)
+        await api.sessions.dispatch(pam, "wave")
+
+    async def scribble(session, args):
+        await api.characters.save_stats("hero", {"hp": 0})
+
+    api.commands.register("spawn", spawn)
+    api.commands.register("scribble", scribble)
+"""
+
+
+def test_plugins_run_virtual_characters_they_place(tmp_path, host_for):
+    from types import SimpleNamespace
+
+    from tests.fakes import StubSession
+
+    write_plugin(
+        tmp_path / "plugins", "puppets", PUPPETEER, touches='commands = ["spawn", "scribble"]'
+    )
+    host = host_for({"puppets": "^1"})
+    dispatched: list[tuple[str, str]] = []
+
+    async def dispatch(session, line):
+        dispatched.append((session.player_id, line))
+
+    flush_hooks: list = []
+    host.server = SimpleNamespace(
+        session_manager=SimpleNamespace(sessions={}, player_to_session={}),
+        dispatcher=SimpleNamespace(dispatch=dispatch),
+        persistence=SimpleNamespace(flush_hooks=flush_hooks),
+    )
+    host.load()
+    asyncio.run(host.registry.get("spawn").handler(StubSession("admin"), []))
+
+    manager = host.server.session_manager
+    session_id = manager.player_to_session["Puppet Pam"]
+    assert manager.sessions[session_id].virtual is True
+    assert host.redis.stats["Puppet Pam"] == {"hp": 4}
+    assert host.redis.locations["Puppet Pam"] == "town:gate"
+    assert dispatched == [("Puppet Pam", "wave")]
+    assert len(flush_hooks) == 1
+    assert [sorted(fn()) for _, fn in host.name_claims] == [["Puppet Pam"]]
+
+    with pytest.raises(PluginError, match="did not place"):
+        asyncio.run(host.registry.get("scribble").handler(StubSession("admin"), []))
+
+    host.teardown()
+    assert manager.player_to_session == {} and flush_hooks == [] and host.name_claims == []
+
+
+def test_progression_slot_defaults_let_a_world_run_without_progression():
+    from sage.world.progression import (
+        default_seed_attributes,
+        default_skill_sheet,
+        default_total_levels,
+    )
+
+    stats: dict = {}
+    default_seed_attributes(stats, {"might": 3})
+    assert stats == {"might": 3}
+    assert default_total_levels(stats) == 0
+    assert default_skill_sheet(stats) == {"attributes": {}, "leaves": []}

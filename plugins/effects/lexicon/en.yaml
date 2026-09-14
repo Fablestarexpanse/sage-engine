@@ -1,0 +1,9 @@
+effects:
+  none: "Nothing ails or aids you."
+  header: "Active effects:"
+  rest_unsafe: "Too dangerous to rest here. Find somewhere safe."
+  rest_whole: "You are already in one piece."
+  rest_already: "You are already resting. Give it a moment."
+  rest_start: "You settle down and let your body knit itself back together."
+  rest_effect: "Your body knits itself back together."
+  succumbed: "\r\nYou succumb to your afflictions. Disconnecting..."

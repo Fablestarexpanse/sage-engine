@@ -39,8 +39,8 @@ written on demand, only after the Phase 1 contracts are approved.
 | 2a | CI and ratchets | done — CI jobs python, worldforge, live, licenses |
 | 2b | Mechanical move and rename to `engine/`, package `sage` | done — branch `sage/stage-2b`, 4 commits, CI green |
 | 2c | Seams, plugin loader, lexicon, skeleton second world | done — phases 05–12, CI green |
-| 3 | Migrate Fablestar system by system | blocked on 2 |
-| 4 | Second reference world, full size | blocked on 3 |
+| 3 | Migrate Fablestar system by system | done — steps 3.1–3.20 ([phase-3-plan.md](phase-3-plan.md)), PR #10 |
+| 4 | Second reference world, full size | next — after owner review of Phase 3 |
 | 5 | Tooling | decisions made (D.E); work after 2c |
 
 ## Phases (stage 2a)

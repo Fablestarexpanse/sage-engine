@@ -6,8 +6,9 @@ Usage:
   python worldforge-mcp/server.py
 
 Environment:
-  WORLDFORGE_ROOT  Path to content/world (the directory that contains zones/).
-                   Defaults to ./content/world relative to the project root.
+  WORLDFORGE_ROOT  Path to a world's content/world (the directory that contains zones/).
+                   Defaults to worlds/<world>/content/world, where <world> is server.world in
+                   config/server.toml (or the only world package present).
 """
 
 from __future__ import annotations
@@ -367,8 +368,41 @@ VALID_ROOM_TYPES = {
 # ---------------------------------------------------------------------------
 
 
+def _project_root() -> Path | None:
+    for base in (Path.cwd(), *Path(__file__).resolve().parents):
+        if (base / "worlds").is_dir():
+            return base
+    return None
+
+
+def _default_world_root() -> Path | None:
+    """worlds/<configured world>/content/world, or the only world package's."""
+    root = _project_root()
+    if root is None:
+        return None
+    worlds = sorted(p.name for p in (root / "worlds").iterdir() if (p / "world.toml").is_file())
+    wanted = None
+    server_toml = root / "config" / "server.toml"
+    if server_toml.is_file():
+        import tomllib
+
+        try:
+            data = tomllib.loads(server_toml.read_text(encoding="utf-8"))
+            wanted = data.get("world") or (data.get("server") or {}).get("world")
+        except (tomllib.TOMLDecodeError, OSError):
+            wanted = None
+    wanted = os.environ.get("SAGE_SERVER__WORLD") or wanted
+    world = wanted if wanted in worlds else (worlds[0] if len(worlds) == 1 else None)
+    return (root / "worlds" / world / "content" / "world") if world else None
+
+
 def _world_root() -> Path:
-    raw = os.environ.get("WORLDFORGE_ROOT", "content/world")
+    raw = os.environ.get("WORLDFORGE_ROOT", "")
+    if not raw:
+        default = _default_world_root()
+        if default is not None:
+            return default
+        raw = "content/world"
     p = Path(raw)
     if p.is_absolute():
         return p
@@ -380,6 +414,10 @@ def _world_root() -> Path:
     for ancestor in Path(__file__).resolve().parents:
         if (ancestor / raw).exists():
             return (ancestor / raw).resolve()
+    # A configured root that no longer exists (world content moved into its package).
+    default = _default_world_root()
+    if default is not None and default.exists():
+        return default
     return (Path.cwd() / raw).resolve()
 
 
@@ -1048,7 +1086,7 @@ def set_room_floor(zone_id: str, slug: str, floor: int) -> str:
 @mcp.tool()
 def set_room_position(zone_id: str, slug: str, x: float, y: float) -> str:
     """
-    Set the canvas position of a room in WorldForge (pixels from origin).
+    Set the canvas position of a room in WorldForge (px from origin).
     Typical spacing: 220px horizontal, 130px vertical between adjacent rooms.
     Rooms on the same floor share a canvas, so align positions within each floor.
     """
@@ -1547,8 +1585,8 @@ def validate_zone(zone_id: str) -> dict[str, Any]:
     Checks: missing room/feature descriptions, unknown exit destinations,
     self-referencing and asymmetric exits (one_way honoured), orphaned and
     disconnected rooms, depth jumps, unknown entity templates in spawns,
-    entity loot referencing unknown items, glyph prerequisite cycles to
-    unknown glyphs, and the feature-density metric (aim >= 0.5 draws/room).
+    entity loot referencing unknown items, and the feature-density metric
+    (aim >= 0.5 draws/room).
 
     Returns {"errors": [...], "warnings": [...], "info": [...], "counts": {...}}.
     """
@@ -1710,21 +1748,6 @@ def validate_zone(zone_id: str) -> dict[str, Any]:
                 iid = entry.get("item") if isinstance(entry, dict) else entry
                 if iid and iid not in item_ids:
                     errors.append(f'Entity {eid} loot references unknown item "{iid}"')
-
-    # Glyph prerequisites (global check, cheap).
-    glyph_dir = _world_root() / "glyphs"
-    if glyph_dir.exists():
-        glyph_docs = {}
-        for f in glyph_dir.glob("*.yaml"):
-            try:
-                doc = yaml.safe_load(f.read_text(encoding="utf-8")) or {}
-            except Exception:
-                continue
-            glyph_docs[str(doc.get("id", f.stem))] = doc
-        for gid, doc in glyph_docs.items():
-            for p in doc.get("prerequisites") or []:
-                if p and p not in glyph_docs:
-                    errors.append(f"Glyph {gid} prerequisite unknown: {p}")
 
     # Feature density (Epitaph metric): gameplay draws per room, aim >= 0.5.
     if multi:

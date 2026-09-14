@@ -9,11 +9,13 @@ Custom account (e.g. after a fresh DB wiped your user):
 
   python engine/scripts/ensure_test_user.py Ronan your-new-password
 
-Creates the account if missing, or resets the password if it already exists.
+Creates the account if missing, or resets the password if it already exists. Characters are not
+created here: sign in and create one in the player UI, so the running world's start room, wallet
+and character-creation plugins apply.
 
 Run from repo root:  python engine/scripts/ensure_test_user.py
-Requires PYTHONPATH=src (or pip install -e .).
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -21,7 +23,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-# Repo root on path
+# Engine source on path
 _ROOT = Path(__file__).resolve().parents[1]
 if str(_ROOT / "src") not in sys.path:
     sys.path.insert(0, str(_ROOT / "src"))
@@ -30,57 +32,37 @@ import bcrypt
 from sqlalchemy import select
 
 from sage.core.config import load_config
-from sage.state.models import Account, Character
+from sage.state.models import Account
 from sage.state.postgres import PostgresState
 
-# (username, password) — character name matches username for a default spawn.
 SEED_ACCOUNTS: tuple[tuple[str, str], ...] = (
     ("test", "test"),
     ("demo", "demo"),
 )
 
 
-async def ensure_account(session, username: str, password: str, starting_echo: int, starting_digi: int) -> None:
+async def ensure_account(session, username: str, password: str, starting_ai_credits: int) -> None:
     result = await session.execute(select(Account).where(Account.username == username))
     account = result.scalar_one_or_none()
     pw_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
     if account is None:
-        account = Account(
-            username=username,
-            password_hash=pw_hash,
-            last_login=datetime.utcnow(),
-            echo_credits=int(starting_echo),
-        )
-        session.add(account)
-        await session.flush()
         session.add(
-            Character(
-                account_id=account.id,
-                name=username,
-                room_id="test_zone:entrance",
-                digi_balance=int(starting_digi),
+            Account(
+                username=username,
+                password_hash=pw_hash,
+                last_login=datetime.utcnow(),
+                ai_credits=int(starting_ai_credits),
             )
         )
         await session.commit()
-        print(f"Created account '{username}' with default character.")
+        print(f"Created account '{username}'. Sign in to create a character.")
         return
 
     account.password_hash = pw_hash
     account.last_login = datetime.utcnow()
-    result = await session.execute(select(Character).where(Character.account_id == account.id))
-    chars = list(result.scalars().all())
-    if not chars:
-        session.add(
-            Character(
-                account_id=account.id,
-                name=username,
-                room_id="test_zone:entrance",
-                digi_balance=int(starting_digi),
-            )
-        )
     await session.commit()
-    print(f"Updated password for '{username}' (and added character if missing).")
+    print(f"Updated password for '{username}'.")
 
 
 async def main() -> None:
@@ -106,12 +88,12 @@ async def main() -> None:
 
     config = load_config(str(_ROOT.parent / "config"))
     db = PostgresState(config.database)
-    starting_echo = int(config.comfyui.starting_echo_credits)
-    starting_digi = int(config.server.starting_digi_balance)
     try:
         async with db.session_factory() as session:
             for username, password in pairs:
-                await ensure_account(session, username, password, starting_echo, starting_digi)
+                await ensure_account(
+                    session, username, password, config.comfyui.starting_ai_credits
+                )
     finally:
         await db.engine.dispose()
 

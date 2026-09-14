@@ -12,15 +12,9 @@ import {
 
 // ═══════════════════════════════════════════════════════════
 // CONTENT LIBRARY — one browsing surface for zones, rooms, entities, items,
-// and glyphs (replaces the former World & Zones / Locations / Entities /
-// Items / Glyphs pages, which were overlapping read-only shells).
+// (replaces the former World & Zones / Locations / Entities / Items pages, which were
+// overlapping read-only shells). Room layout and exits are edited in WorldForge.
 // ═══════════════════════════════════════════════════════════
-
-const openBuilderAt = (zoneId, zoneLabel) => {
-  window.dispatchEvent(
-    new CustomEvent("fs-admin-nav", { detail: { page: "builder", zoneId, zoneLabel } })
-  );
-};
 
 const openForgeStudio = () => {
   window.dispatchEvent(new CustomEvent("fs-admin-nav", { detail: { page: "forge" } }));
@@ -39,7 +33,6 @@ const ZonesLibTab = () => {
     const name = window.prompt("Display name:", zid) || zid;
     try {
       await axios.post(`${API_BASE}/content/zones`, { id: zid, name });
-      openBuilderAt(zid, name);
     } catch (e) {
       window.alert(e.response?.data?.detail || e.message);
     }
@@ -55,8 +48,7 @@ const ZonesLibTab = () => {
       {filtered.length === 0 && !zonesError && <div style={{ color: COLORS.textMuted, fontFamily: "'DM Sans', sans-serif" }}>No zones found under content/world/zones.</div>}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 14 }}>
         {filtered.map((zone) => (
-          <div key={zone.id} style={{ background: COLORS.bgCard, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 18, display: "flex", flexDirection: "column", gap: 12, cursor: "pointer" }}
-            onClick={() => openBuilderAt(zone.id, zone.name)}
+          <div key={zone.id} style={{ background: COLORS.bgCard, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 18, display: "flex", flexDirection: "column", gap: 12 }}
             onMouseEnter={(e) => { e.currentTarget.style.borderColor = COLORS.borderActive; }} onMouseLeave={(e) => { e.currentTarget.style.borderColor = COLORS.border; }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
               <div>
@@ -74,7 +66,6 @@ const ZonesLibTab = () => {
               ))}
             </div>
             <div style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
-              <ActionButton small variant="primary" icon={<Icons.Map />} onClick={(e) => { e.stopPropagation(); openBuilderAt(zone.id, zone.name); }}>Open in Builder</ActionButton>
               <ActionButton small variant="forge" icon={<Icons.Sparkles />} onClick={(e) => { e.stopPropagation(); openForgeStudio(); }}>AI Forge</ActionButton>
             </div>
           </div>
@@ -104,7 +95,6 @@ const RoomsLibTab = () => {
     if (!slug || !/^[a-zA-Z0-9_-]+$/.test(slug)) return;
     try {
       await axios.post(`${API_BASE}/content/zones/${selectedZone}/rooms`, { slug, room: {} });
-      openBuilderAt(selectedZone, zone?.name);
     } catch (e) {
       window.alert(e.response?.data?.detail || e.message);
     }
@@ -117,7 +107,6 @@ const RoomsLibTab = () => {
           {zones.map((z) => <option key={z.id} value={z.id}>{z.name}</option>)}
         </select>
         <ActionButton variant="primary" icon={<Icons.Plus />} onClick={addRoom}>Add Room</ActionButton>
-        <ActionButton variant="primary" icon={<Icons.Map />} onClick={() => openBuilderAt(selectedZone, zone?.name)}>Open in World Builder</ActionButton>
       </div>
       <FetchErrorBanner error={zonesError} label="zones" />
       <FetchErrorBanner error={roomsError} label="rooms" />
@@ -127,7 +116,7 @@ const RoomsLibTab = () => {
           <div style={{ fontSize: 12, color: COLORS.textMuted, fontFamily: "'JetBrains Mono', monospace", marginTop: 2 }}>{zone?.id} · {zone?.rooms ?? roomRows.length} rooms · depth {zone?.depth ?? "—"}</div>
         </div>
         <div style={{ fontSize: 11, color: COLORS.textDim, fontFamily: "'DM Sans', sans-serif" }}>
-          Bulk AI descriptions live in World Builder → open a zone → “AI Describe All”.
+          Edit room layout, exits and fields in WorldForge.
         </div>
       </div>
       <div style={{ background: COLORS.bgCard, border: `1px solid ${COLORS.border}`, borderRadius: 10, overflow: "hidden" }}>
@@ -137,7 +126,6 @@ const RoomsLibTab = () => {
           { label: "Exits", render: (row) => (<div style={{ display: "flex", gap: 3, flexWrap: "wrap" }}>{(row.exits || []).map((e) => (<span key={e} style={{ width: 22, height: 22, borderRadius: 4, background: COLORS.bgInput, border: `1px solid ${COLORS.border}`, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 600, color: COLORS.textMuted, fontFamily: "'JetBrains Mono', monospace" }}>{e}</span>))}</div>) },
           { label: "Entities", key: "entities", mono: true },
           { label: "Hazards", render: (row) => <span style={{ color: row.hazards > 0 ? COLORS.danger : COLORS.textDim }}>{row.hazards}</span> },
-          { label: "", render: () => (<ActionButton small variant="ghost" icon={<Icons.Map />} onClick={() => openBuilderAt(selectedZone, zone?.name)}>Edit</ActionButton>) },
         ]} rows={roomRows} />
       </div>
     </div>
@@ -270,47 +258,11 @@ const ItemsLibTab = () => {
   );
 };
 
-const GlyphsLibTab = () => {
-  const { colors: COLORS } = useAdminTheme();
-  const catColors = { Combat: COLORS.danger, Defense: COLORS.info, Utility: COLORS.success };
-  const { rows: glyphs, error: glyphsError } = usePolledList(`${API_BASE}/content/glyphs`, 15000);
-  const rows = glyphs.map((g) => ({
-    ...g,
-    tier: g.tier ?? "—",
-    energyCost: g.energyCost ?? "—",
-    bodySlot: g.bodySlot ?? g.body_slot ?? "—",
-    effect: g.effect ?? "",
-    category: g.category || "Utility",
-    name: g.name || g.id,
-  }));
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
-        <PlannedAction icon={<Icons.Plus />} hint="A glyph editor is planned. Today: generate YAML with AI Forge → Glyph, then save it under content/world/glyphs/.">Design Glyph</PlannedAction>
-        <ActionButton variant="forge" icon={<Icons.Sparkles />} onClick={openForgeStudio}>AI Forge Glyph</ActionButton>
-      </div>
-      <FetchErrorBanner error={glyphsError} label="glyphs" />
-      {!glyphs.length && !glyphsError && <div style={{ fontSize: 12, color: COLORS.textMuted, fontFamily: "'DM Sans', sans-serif" }}>No glyphs found. Add YAML under <code style={{ color: COLORS.textDim }}>content/world/glyphs/</code> or use AI Forge.</div>}
-      <div style={{ background: COLORS.bgCard, border: `1px solid ${COLORS.border}`, borderRadius: 10, overflow: "hidden" }}>
-        <DataTable columns={[
-          { label: "Glyph", render: (row) => (<div style={{ display: "flex", alignItems: "center", gap: 10 }}><div style={{ width: 32, height: 32, borderRadius: 6, background: `${(catColors[row.category] || COLORS.accent)}15`, border: `1px solid ${(catColors[row.category] || COLORS.accent)}30`, display: "flex", alignItems: "center", justifyContent: "center", color: (catColors[row.category] || COLORS.accent), fontSize: 14 }}><Icons.Glyphs /></div><div><div style={{ fontWeight: 600, fontSize: 13 }}>{row.name}</div><div style={{ fontSize: 11, color: COLORS.textMuted, fontFamily: "'JetBrains Mono', monospace" }}>{row.id}</div></div></div>) },
-          { label: "Category", render: (row) => <Badge color={catColors[row.category] || COLORS.textMuted}>{row.category}</Badge> },
-          { label: "Tier", key: "tier", mono: true },
-          { label: "Energy", render: (row) => <span style={{ color: COLORS.cyan, fontFamily: "'JetBrains Mono', monospace" }}>{row.energyCost}</span> },
-          { label: "Body Slot", key: "bodySlot" },
-          { label: "Effect", render: (row) => <span style={{ fontSize: 12, color: COLORS.textMuted }}>{row.effect}</span> },
-        ]} rows={rows} />
-      </div>
-    </div>
-  );
-};
-
 const CONTENT_LIB_TABS = [
   { id: "zones", label: "Zones" },
   { id: "rooms", label: "Rooms" },
   { id: "entities", label: "Entities" },
   { id: "items", label: "Items" },
-  { id: "glyphs", label: "Glyphs" },
 ];
 
 const ContentLibraryPage = () => {
@@ -326,7 +278,6 @@ const ContentLibraryPage = () => {
       {tab === "rooms" && <RoomsLibTab />}
       {tab === "entities" && <EntitiesLibTab />}
       {tab === "items" && <ItemsLibTab />}
-      {tab === "glyphs" && <GlyphsLibTab />}
     </div>
   );
 };

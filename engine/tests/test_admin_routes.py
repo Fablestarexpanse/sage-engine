@@ -1,4 +1,4 @@
-"""Admin HTTP surface tests — auth middleware, tool permissions, room-write 409 guard.
+"""Admin HTTP surface tests — auth middleware, tool permissions, staff and lexicon routes.
 
 Runs the real NexusApp (all routers + NexusAdminAuthMiddleware) over the
 in-memory fakes from tests/fakes.py via FastAPI's TestClient. No live
@@ -11,7 +11,6 @@ from types import SimpleNamespace
 import pytest
 from fastapi.testclient import TestClient
 
-from sage.admin import content_browser
 from sage.admin.admin_security import issue_staff_token
 from sage.admin.nexus import NexusApp
 from sage.state.models import AdminStaff
@@ -52,7 +51,6 @@ def server():
     srv = make_fake_server()
     srv.config = SimpleNamespace(
         server=SimpleNamespace(
-            proficiency_combat_hybrid=True,
             admin_auth_required=True,
             admin_jwt_secret=SECRET,
             cors_origins=[],
@@ -80,6 +78,19 @@ def _auth(server, staff_id: int) -> dict[str, str]:
 # ---- auth middleware -------------------------------------------------------
 
 
+def test_plugin_pages_list_mounted_admin_tools_the_staff_may_use(client, server):
+    server.plugins = SimpleNamespace(admin_tools=[("skilltree", "skills"), ("roster", "agents")])
+    r = client.get("/admin/plugin-pages", headers=_auth(server, 1))
+    assert r.status_code == 200
+    assert r.json() == [
+        {"plugin": "skilltree", "tool": "skills", "base": "/plugins/skilltree/admin"},
+        {"plugin": "roster", "tool": "agents", "base": "/plugins/roster/admin"},
+    ]
+    assert client.get("/admin/plugin-pages", headers=_auth(server, 2)).json() == []
+    server.plugins = SimpleNamespace(admin_tools=[])
+    assert client.get("/admin/plugin-pages", headers=_auth(server, 1)).json() == []
+
+
 def test_protected_route_requires_token(client):
     assert client.get("/admin/me").status_code == 401
 
@@ -94,6 +105,12 @@ def test_play_health_is_public(client):
     r = client.get("/play/health")
     assert r.status_code == 200
     assert r.json()["ok"] is True
+
+
+def test_play_world_names_the_running_world(client, server):
+    r = client.get("/play/world")
+    assert r.status_code == 200
+    assert r.json() == {"id": server.world.id, "name": server.world.manifest.world.name}
 
 
 def test_valid_staff_token_resolves_context(client, server):
@@ -121,28 +138,6 @@ def test_staff_routes_reject_non_head_admin(client, server):
 
 
 # ---- optimistic-concurrency 409 guard --------------------------------------
-
-
-def test_room_save_conflict_returns_409(client, server, monkeypatch):
-    monkeypatch.setattr(content_browser, "room_file_mtime", lambda z, r: 2000.0)
-    r = client.put(
-        "/content/room/somezone/someroom/yaml",
-        json={"path": "x", "yaml_content": "id: somezone:someroom", "expected_mtime": 1000.0},
-        headers=_auth(server, 1),
-    )
-    assert r.status_code == 409
-    assert r.json()["detail"] == "content_modified"
-
-
-def test_room_delete_conflict_returns_409(client, server, monkeypatch):
-    monkeypatch.setattr(content_browser, "room_file_mtime", lambda z, r: 2000.0)
-    r = client.delete(
-        "/content/zones/somezone/rooms/someroom",
-        params={"expected_mtime": 1000.0},
-        headers=_auth(server, 1),
-    )
-    assert r.status_code == 409
-    assert r.json()["detail"] == "content_modified"
 
 
 # ---- player-account moderation endpoints -----------------------------------

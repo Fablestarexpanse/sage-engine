@@ -1,0 +1,18 @@
+# Lodging: a room with a `lodging:` block is a rent desk letting the listed rooms on timed leases.
+# Leases live in the Redis hash `rentals` and mirror to the tenant as home_room / home_until.
+[plugin]
+id = "lodging"
+name = "Lodging"
+version = "1.0.0"
+engine = ">=0.2,<0.3"
+entry = "sage_plugin_lodging.main:setup"
+first_party = true
+
+[touches]
+commands = ["rent"]
+tick_jobs = ["lease_sweep"]
+state_blocks = ["home_room", "home_until"]
+services = ["lodging"]
+content_extensions = ["room.lodging"]
+redis_prefixes = ["rentals"]
+lexicon_prefix = "lodging."

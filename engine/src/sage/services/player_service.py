@@ -12,7 +12,7 @@ import bcrypt
 from sqlalchemy import func, select
 
 from sage.comfyui_client import generate_portrait_png
-from sage.core.config import resolve_config_asset_path
+from sage.core.config import resolve_workflow_path
 from sage.services._shared import (
     authenticate_account,
     resolve_play_account,
@@ -63,12 +63,12 @@ RESERVED_CHAR_NAMES = frozenset(
 )
 
 
-def reserved_name_reason(name: str, agent_names: set[str]) -> str | None:
+def reserved_name_reason(name: str, claimed_names: set[str]) -> str | None:
     """Why a character name can't be used, or None. Compares case-insensitively."""
     from sage.commands.registry import registry
 
     key = " ".join(name.split()).lower()
-    if key in agent_names:
+    if key in claimed_names:
         return "character_name_taken"
     if key in RESERVED_CHAR_NAMES or registry.get(key) is not None:
         return "character_name_reserved"
@@ -98,31 +98,26 @@ class PlayerService:
     def __init__(self, server: SageServer):
         self.server = server
 
-    def _agent_names(self) -> set[str]:
-        try:
-            return {p.name.lower() for p in self.server.content_loader.get_agent_registry().all()}
-        except Exception:
-            logger.debug("agent registry unavailable for name check", exc_info=True)
-            return set()
+    def _claimed_names(self) -> set[str]:
+        """Names plugins claim (automated characters), lowercased."""
+        names: set[str] = set()
+        for _owner, claim in getattr(getattr(self.server, "plugins", None), "name_claims", []):
+            try:
+                names |= {n.lower() for n in claim()}
+            except Exception:
+                logger.debug("name claim by %s failed", _owner, exc_info=True)
+        return names
 
     # ------------------------------------------------------------------
     # Shared response building
     # ------------------------------------------------------------------
 
-    def character_play_dict(self, character: Character) -> dict[str, Any]:
-        from sage.proficiencies.state_helpers import (
-            ensure_proficiency_block,
-            migrate_legacy_stats,
-            total_proficiency_levels,
-        )
+    async def character_play_dict(self, character: Character) -> dict[str, Any]:
+        from sage.world.progression import PREPARE
 
-        stats = migrate_legacy_stats(dict(character.stats or {}))
-        ensure_proficiency_block(stats)
-        try:
-            reg = self.server.content_loader.get_proficiency_registry()
-            total_lv = total_proficiency_levels(stats, registry=reg)
-        except Exception:
-            total_lv = total_proficiency_levels(stats)
+        stats = self.server.resolvers.get(PREPARE)(dict(character.stats or {}))
+        contributors = getattr(self.server, "snapshot_contributors", None)
+        sections = await contributors.build(character.name, stats) if contributors else {}
         return {
             "id": character.id,
             "name": character.name,
@@ -130,11 +125,9 @@ class PlayerService:
             "portrait_url": character.portrait_url,
             "portrait_prompt": character.portrait_prompt,
             "last_scene_image_url": character.last_scene_image_url,
-            "digi_balance": int(character.digi_balance),
             "pvp_enabled": bool(character.pvp_enabled),
-            "reputation": int(character.reputation),
             "stats": stats,
-            "resonance_levels_total": total_lv,
+            "sections": sections,
         }
 
     async def account_characters_response(self, db_session, account: Account) -> dict[str, Any]:
@@ -142,13 +135,13 @@ class PlayerService:
         result = await db_session.execute(
             select(Character).where(Character.account_id == account.id).order_by(Character.id)
         )
-        chars_payload = [self.character_play_dict(c) for c in result.scalars().all()]
+        chars_payload = [await self.character_play_dict(c) for c in result.scalars().all()]
         return {
             "ok": True,
             "username": account.username,
             "account_id": account.id,
             "characters": chars_payload,
-            "echo_credits": int(account.echo_credits),
+            "ai_credits": int(account.ai_credits),
             "is_gm": bool(account.is_gm),
             **self.server.economy.public_fields(),
         }
@@ -186,25 +179,25 @@ class PlayerService:
             if result.scalar_one_or_none():
                 return {"ok": False, "error": "username_taken"}
             pw_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-            start_credits = int(self.server.config.comfyui.starting_echo_credits)
+            start_credits = int(self.server.config.comfyui.starting_ai_credits)
             account = Account(
                 username=username,
                 password_hash=pw_hash,
                 last_login=datetime.utcnow(),
-                echo_credits=start_credits,
+                ai_credits=start_credits,
             )
             db_session.add(account)
             await db_session.commit()
             await db_session.refresh(account)
             aid = account.id
-            ec = account.echo_credits
+            ec = account.ai_credits
             is_gm = bool(account.is_gm)
         return {
             "ok": True,
             "username": username,
             "account_id": aid,
             "characters": [],
-            "echo_credits": ec,
+            "ai_credits": ec,
             "is_gm": is_gm,
             "play_token": issue_play_token(self.server, aid),
             **self.server.economy.public_fields(),
@@ -246,38 +239,16 @@ class PlayerService:
             return {"ok": False, "error": "portrait_prompt_too_long"}, None, None
         return None, p_url, pp
 
-    def _clean_starter_proficiencies(
-        self, starter_proficiencies: dict[str, int] | None
-    ) -> tuple[dict[str, Any] | None, dict[str, int]]:
-        """Coerce and validate the chargen skill allocation. Returns (error_response, cleaned)."""
-        from sage.proficiencies.starter import coerce_starter_level
+    def _clean_chargen(
+        self, chargen: dict[str, Any] | None
+    ) -> tuple[dict[str, Any] | None, dict[str, Any]]:
+        """World-defined creation choices through chargen.validate. Returns (error_response, cleaned)."""
+        from sage.world.chargen import VALIDATE
 
-        starter_clean: dict[str, int] = {}
-        seen: set[str] = set()
-        if starter_proficiencies:
-            for k, v in starter_proficiencies.items():
-                if not isinstance(k, str):
-                    continue
-                kid = k.strip()
-                if not kid:
-                    continue
-                if kid in seen:
-                    # " combat.melee.blades" and "combat.melee.blades" both given.
-                    return {"ok": False, "error": "invalid_starter_proficiencies"}, {}
-                seen.add(kid)
-                n = coerce_starter_level(v)
-                if n is None:
-                    return {"ok": False, "error": "invalid_starter_proficiencies"}, {}
-                if n != 0:
-                    starter_clean[kid] = n
-        if starter_clean:
-            from sage.proficiencies.starter import validate_starter_allocation
-
-            reg0 = self.server.content_loader.get_proficiency_registry()
-            ok_st, err_st = validate_starter_allocation(starter_clean, reg0)
-            if not ok_st:
-                return {"ok": False, "error": err_st}, {}
-        return None, starter_clean
+        error, cleaned = self.server.resolvers.get(VALIDATE)(dict(chargen or {}))
+        if error:
+            return {"ok": False, "error": error}, {}
+        return None, cleaned
 
     async def _generate_create_portrait(
         self, account_id: int, name: str, pp: str | None
@@ -287,7 +258,7 @@ class PlayerService:
         Returns (error_response, portrait_url, portrait_prompt, gen_failed_detail, charged).
         """
         cfg = self.server.config.comfyui
-        if not (cfg.enabled and resolve_config_asset_path(cfg.workflow_path).is_file()):
+        if not (cfg.enabled and resolve_workflow_path(cfg, "portrait").is_file()):
             return None, None, pp, None, 0
         prompt_use = pp if pp else _default_character_portrait_prompt(name)
         cost_c = int(cfg.character_create_portrait_cost)
@@ -312,14 +283,11 @@ class PlayerService:
         name: str,
         portrait_url: str | None,
         portrait_prompt: str | None,
-        starter_clean: dict[str, int] | None,
+        chargen_clean: dict[str, Any] | None,
     ) -> Character:
         """Insert a fresh character row with initialised stats (caller validated the name)."""
-        from sage.proficiencies.starter import apply_starter_to_stats
-        from sage.proficiencies.state_helpers import (
-            ensure_proficiency_block,
-            migrate_legacy_stats,
-        )
+        from sage.world.chargen import SEED
+        from sage.world.progression import PREPARE
 
         character = Character(
             account_id=account_id,
@@ -327,21 +295,15 @@ class PlayerService:
             room_id=self.server.world.start_room,
             portrait_url=portrait_url,
             portrait_prompt=portrait_prompt,
-            digi_balance=int(self.server.config.server.starting_digi_balance),
             pvp_enabled=False,
-            reputation=0,
         )
         db_session.add(character)
         await db_session.commit()
         await db_session.refresh(character)
-        merged_stats = migrate_legacy_stats(dict(character.stats or {}))
-        ensure_proficiency_block(merged_stats)
-        if starter_clean:
-            apply_starter_to_stats(
-                merged_stats,
-                starter_clean,
-                self.server.content_loader.get_proficiency_registry(),
-            )
+        merged_stats = self.server.resolvers.get(PREPARE)(dict(character.stats or {}))
+        self.server.resolvers.get(SEED)(merged_stats, dict(chargen_clean or {}))
+        if self.server.wallet.enabled:
+            self.server.wallet.set(merged_stats, self.server.wallet.starting())
         character.stats = merged_stats
         await db_session.commit()
         await db_session.refresh(character)
@@ -374,7 +336,7 @@ class PlayerService:
                     username=DEV_LOGIN_ACCOUNT,
                     password_hash=unusable,
                     last_login=datetime.utcnow(),
-                    echo_credits=int(self.server.config.comfyui.starting_echo_credits),
+                    ai_credits=int(self.server.config.comfyui.starting_ai_credits),
                 )
                 db_session.add(account)
                 await db_session.commit()
@@ -387,7 +349,7 @@ class PlayerService:
             if character is not None and character.account_id != account.id:
                 return {"ok": False, "error": "character_not_dev"}
             if character is None:
-                reason = reserved_name_reason(name, self._agent_names())
+                reason = reserved_name_reason(name, self._claimed_names())
                 if reason:
                     return {"ok": False, "error": reason}
                 character = await self._insert_character(
@@ -407,7 +369,7 @@ class PlayerService:
         name: str,
         portrait_prompt: str = "",
         portrait_url: str = "",
-        starter_proficiencies: dict[str, int] | None = None,
+        chargen: dict[str, Any] | None = None,
         *,
         token: str = "",
     ) -> dict[str, Any]:
@@ -418,7 +380,7 @@ class PlayerService:
         err, p_url, pp = self._validate_create_character_inputs(name, portrait_url, portrait_prompt)
         if err:
             return err
-        err, starter_clean = self._clean_starter_proficiencies(starter_proficiencies)
+        err, chargen_clean = self._clean_chargen(chargen)
         if err:
             return err
 
@@ -437,7 +399,7 @@ class PlayerService:
             if len(list(result.scalars().all())) >= MAX_CHARACTERS_PER_ACCOUNT:
                 return {"ok": False, "error": "character_limit"}
 
-            reason = reserved_name_reason(name, self._agent_names())
+            reason = reserved_name_reason(name, self._claimed_names())
             if reason:
                 return {"ok": False, "error": reason}
             taken = await db_session.execute(
@@ -461,13 +423,13 @@ class PlayerService:
 
         async with self.server.db.session_factory() as db_session:
             character = await self._insert_character(
-                db_session, account_id, name, p_url, pp, starter_clean
+                db_session, account_id, name, p_url, pp, chargen_clean
             )
-            payload = self.character_play_dict(character)
+            payload = await self.character_play_dict(character)
             result = await db_session.execute(
                 select(Character).where(Character.account_id == account_id).order_by(Character.id)
             )
-            all_chars = [self.character_play_dict(c) for c in result.scalars().all()]
+            all_chars = [await self.character_play_dict(c) for c in result.scalars().all()]
 
         final_bal = await self.server.economy.read_balance(account_id)
         out: dict[str, Any] = {
@@ -475,7 +437,7 @@ class PlayerService:
             "character": payload,
             "characters": all_chars,
             **self.server.economy.public_fields(),
-            "echo_credits": final_bal,
+            "ai_credits": final_bal,
             "is_gm": is_gm,
         }
         if create_portrait_charged and not portrait_gen_failed:

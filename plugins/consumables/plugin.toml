@@ -1,0 +1,15 @@
+# Consumables: items with `heal:` restore health when used (and are used up).
+[plugin]
+id = "consumables"
+name = "Consumables"
+version = "1.0.0"
+engine = ">=0.2,<0.3"
+entry = "sage_plugin_consumables.main:setup"
+first_party = true
+
+[touches]
+commands = ["use"]
+services = ["consumables"]
+content_extensions = ["item.heal"]
+stats_keys = ["hp"]
+lexicon_prefix = "consumables."

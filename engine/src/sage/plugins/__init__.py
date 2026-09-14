@@ -18,6 +18,7 @@ from sage.plugins.loader import (
     trust_banner,
 )
 from sage.plugins.manifest import PluginError
+from sage.world.extensions import ContentExtensions
 
 logger = logging.getLogger(__name__)
 
@@ -36,8 +37,16 @@ class PluginHost:
     redis: Any
     plugins_root: Path
     trusted_roots: list[Path]
+    content: Any = None  # ContentLoader
+    http: Any = None  # the Nexus FastAPI app (None in hosts without HTTP)
+    server: Any = None  # the running server: sessions, spawner (None in bare hosts)
+    extensions: ContentExtensions = field(default_factory=ContentExtensions)
     services: dict[str, tuple[str, Any]] = field(default_factory=dict)
     state_owners: dict[str, str] = field(default_factory=dict)
+    # (owner, () -> names) — character names players may not take.
+    name_claims: list[tuple[str, Any]] = field(default_factory=list)
+    # (owner, tool) per mounted admin router: the admin client opens the page for that tool.
+    admin_tools: list[tuple[str, str]] = field(default_factory=list)
     loaded: list[PluginRecord] = field(default_factory=list)
 
     def discover(self) -> list[PluginRecord]:

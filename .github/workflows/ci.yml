@@ -31,13 +31,13 @@ jobs:
           python -m pip install -e "./engine[dev]"
 
       - name: Format
-        run: python -m ruff format --check engine/src engine/tests
+        run: python -m ruff format --check engine/src engine/tests plugins worlds
 
       - name: Build
         run: python -m compileall -q engine/src engine/tests
 
       - name: Lint
-        run: python -m ruff check engine/src engine/tests
+        run: python -m ruff check engine/src engine/tests plugins worlds
 
       - name: SAGE invariant ratchet
         run: |

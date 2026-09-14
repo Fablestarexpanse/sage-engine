@@ -20,14 +20,44 @@ exit_dirs = ["north", "south", "east", "west", "up", "down",
 equipment_slots = ["weapon", "armor"]
 
 [plugins]
-# Populated as Fablestar systems become plugins (stage 2c loader, Phase 3 migration).
+# Fablestar systems move here from the engine during SAGE Phase 3.
+achievements = "^1"
+factions = "^1"
+shop = "^1"
+lodging = "^1"
+search = "^1"
+crafting = "^1"
+maestro = "^1"
+hazards = "^1"
+agents = "^1"
+conduit = "^1"
+ambient = "^1"
+effects = "^1"
+equipment = "^1"
+consumables = "^1"
+combat = "^1"
+morality = "^1"
 
 [params]
 # Tidegate clinic bills up to 10 Digi on respawn; half health on waking.
 "engine.death.respawn_bill_max" = 10
 "engine.death.respawn_hp_fraction" = 0.5
-
-[transition]
-# Content and prompts still live at the repository root until Phase 3 moves them in here.
-content_dir = "../../content"
-prompts_dir = "../../prompts"
+# Skill use reported to progression by combat and movement (proficiency leaves in this world).
+"combat.skills" = ["combat.melee.blades", "combat.melee.impact", "combat.ballistic.sidearms", "combat.tactics.threat_assessment"]
+"engine.movement.skill" = "traversal.navigation.pathfinding"
+# Personal combat uses max(legacy strength/dexterity, proficiency) ratings while true.
+"conduit.combat_hybrid" = true
+"shop.wallet_aliases" = ["digi", "money"]
+# Progression skill ids are Conduit proficiency leaves.
+"search.skill" = "interface.perception.anomaly_scan"
+"crafting.skills" = { weapon = "fabrication.weaponsmithing.energy_weapons", armor = "fabrication.armorcraft.plating", ammo = "fabrication.devices.utility_tools" }
+"crafting.default_skill" = "fabrication.materials.composites"
+"crafting.deconstruct_skill" = "fabrication.salvage.disassembly"
+"maestro.mercy_item" = "ration_pack"
+"hazards.resist_skill" = "traversal.survival.hazard_resist"
+# Agents' life-goal vocabulary: what food is, where it's foraged, which zone is social,
+# where the warm-hearted spend evenings.
+"agents.food_item" = "ration"
+"agents.forage_item" = "ration_pack"
+"agents.social_zones" = ["aipub"]
+"agents.evening_room" = "aipub:main_bar"

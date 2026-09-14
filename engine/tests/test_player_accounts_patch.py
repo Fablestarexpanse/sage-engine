@@ -48,9 +48,17 @@ def _server(session):
 
     srv = SimpleNamespace(
         db=SimpleNamespace(session_factory=lambda: session),
-        config=SimpleNamespace(comfyui=SimpleNamespace(currency_display_name="pixels")),
+        config=SimpleNamespace(comfyui=SimpleNamespace(currency_display_name="credits")),
         notify_play_clients_staff_audit=notify_audit,
         notify_play_clients_echo_grant=notify_grant,
+    )
+    from sage.core.resolvers import Resolvers
+    from sage.world.slots import define_engine_slots
+
+    srv.resolvers = Resolvers()
+    define_engine_slots(srv.resolvers)
+    srv.resolvers.provide(
+        "progression.prepare", lambda stats: {**stats, "prepared": True}, owner="test"
     )
     return srv, calls
 
@@ -60,7 +68,7 @@ def _account(credits=50, is_gm=False):
     a.id = 7
     a.username = "player"
     a.email = None
-    a.echo_credits = credits
+    a.ai_credits = credits
     a.is_gm = is_gm
     return a
 
@@ -71,9 +79,7 @@ def _character(account_id=7):
     c.account_id = account_id
     c.name = "Hero"
     c.room_id = "zone:room"
-    c.digi_balance = 10
     c.pvp_enabled = False
-    c.reputation = 0
     c.stats = {}
     c.inventory = []
     return c
@@ -95,9 +101,9 @@ def test_patch_account_credit_add_clamps_at_zero_and_notifies_actor():
         acc = _account(credits=10)
         srv, calls = _server(_FakeSession(get_row=acc))
         out = await player_accounts.patch_account(
-            srv, 7, {"echo_credits_add": -999}, actor={"username": "gm1", "role": "gm"}
+            srv, 7, {"ai_credits_add": -999}, actor={"username": "gm1", "role": "gm"}
         )
-        assert out["echo_credits"] == 0  # clamped, never negative
+        assert out["ai_credits"] == 0  # clamped, never negative
         assert len(calls["audit"]) == 1
         assert calls["grant"] == []
         _, kw = calls["audit"][0]
@@ -110,8 +116,8 @@ def test_patch_account_grant_without_actor_uses_grant_notification():
     async def check():
         acc = _account(credits=10)
         srv, calls = _server(_FakeSession(get_row=acc))
-        out = await player_accounts.patch_account(srv, 7, {"echo_credits_add": 25})
-        assert out["echo_credits"] == 35
+        out = await player_accounts.patch_account(srv, 7, {"ai_credits_add": 25})
+        assert out["ai_credits"] == 35
         assert calls["audit"] == []
         assert calls["grant"] == [(7, {"added": 25, "new_balance": 35})]
 
@@ -136,19 +142,20 @@ def test_patch_character_rejects_wrong_account():
     async def check():
         char = _character(account_id=42)  # belongs to another account
         srv, _ = _server(_FakeSession(get_row=char))
-        assert await player_accounts.patch_character(srv, 7, 3, {"digi_balance": 5}) is None
+        assert await player_accounts.patch_character(srv, 7, 3, {"pvp_enabled": True}) is None
 
     asyncio.run(check())
 
 
-def test_patch_character_clamps_balance_and_audits():
+def test_patch_character_audits_and_ignores_unknown_fields():
     async def check():
         char = _character()
         srv, calls = _server(_FakeSession(get_row=char))
+        # Balances live in stats (edited through the stats JSON); a stray balance field is inert.
         out = await player_accounts.patch_character(
-            srv, 7, 3, {"digi_balance": -5, "pvp_enabled": True}, actor={"username": "gm1"}
+            srv, 7, 3, {"balance": -5, "pvp_enabled": True}, actor={"username": "gm1"}
         )
-        assert out["digi_balance"] == 0
+        assert "balance" not in out
         assert out["pvp_enabled"] is True
         assert len(calls["audit"]) == 1
         _, kw = calls["audit"][0]
@@ -167,14 +174,11 @@ def test_patch_character_blank_room_id_ignored():
     asyncio.run(check())
 
 
-def test_patch_character_stats_migrated_and_proficiency_block_ensured():
+def test_patch_character_stats_go_through_the_world_prepare_slot():
     async def check():
         char = _character()
         srv, _ = _server(_FakeSession(get_row=char))
         out = await player_accounts.patch_character(srv, 7, 3, {"stats": {"hp": 12}})
-        assert out["stats"]["hp"] == 12
-        assert "conduit" in out["stats"] or any(
-            k for k in out["stats"] if "proficien" in k or "conduit" in k
-        )
+        assert out["stats"] == {"hp": 12, "prepared": True}
 
     asyncio.run(check())

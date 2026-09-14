@@ -1,0 +1,13 @@
+# Maestro: a director that picks on connected players when it gets bored — an ambush, a mercy,
+# or a line of dread — with a heavy "nothing happens" weight between notes.
+[plugin]
+id = "maestro"
+name = "Maestro"
+version = "1.0.0"
+engine = ">=0.2,<0.3"
+entry = "sage_plugin_maestro.main:setup"
+first_party = true
+
+[touches]
+tick_jobs = ["director"]
+lexicon_prefix = "maestro."

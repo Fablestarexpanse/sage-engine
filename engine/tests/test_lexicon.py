@@ -55,15 +55,28 @@ def _literal_keys_used_by_engine() -> set[str]:
     for path in ENGINE_SRC.rglob("*.py"):
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in ast.walk(tree):
+            if not (isinstance(node, ast.Call) and node.args):
+                continue
+            func = node.func
+            # session.say("k"), lexicon.t("k"), and t("k") after `from sage.lexicon import t`.
+            named = (isinstance(func, ast.Attribute) and func.attr in {"say", "t"}) or (
+                isinstance(func, ast.Name) and func.id == "t"
+            )
             if (
-                isinstance(node, ast.Call)
-                and isinstance(node.func, ast.Attribute)
-                and node.func.attr in {"say", "t"}
-                and node.args
+                named
                 and isinstance(node.args[0], ast.Constant)
                 and isinstance(node.args[0].value, str)
             ):
                 keys.add(node.args[0].value)
+            # t("a" if cond else "b"): every branch is a key.
+            elif named and isinstance(node.args[0], ast.IfExp):
+                stack = [node.args[0]]
+                while stack:
+                    expr = stack.pop()
+                    if isinstance(expr, ast.IfExp):
+                        stack += [expr.body, expr.orelse]
+                    elif isinstance(expr, ast.Constant) and isinstance(expr.value, str):
+                        keys.add(expr.value)
     return keys
 
 

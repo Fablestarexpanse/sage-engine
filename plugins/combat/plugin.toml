@@ -1,0 +1,20 @@
+# Combat: `attack` rolls deterministic damage (ratings from the combat.ratings slot plus worn gear),
+# the target strikes back, kills publish EntityKilled; optional LLM narration colours the result.
+# `flee` tries a random exit.
+[plugin]
+id = "combat"
+name = "Combat"
+version = "1.0.0"
+engine = ">=0.2,<0.3"
+entry = "sage_plugin_combat.main:setup"
+first_party = true
+
+[depends]
+equipment = { version = "^1", optional = true }
+
+[touches]
+commands = ["attack", "flee"]
+events_publish = ["EntityKilled"]
+stats_keys = ["hp"]
+ai_slots = ["combat.narration"]
+lexicon_prefix = "combat."

@@ -1,0 +1,16 @@
+# Search: room features with a `search:` block can be scavenged for items, a limited number of
+# finds per restock window shared by everyone.
+[plugin]
+id = "search"
+name = "Search"
+version = "1.0.0"
+engine = ">=0.2,<0.3"
+entry = "sage_plugin_search.main:setup"
+first_party = true
+
+[touches]
+commands = ["search"]
+services = ["search"]
+content_extensions = ["feature.search"]
+redis_prefixes = ["search"]
+lexicon_prefix = "search."

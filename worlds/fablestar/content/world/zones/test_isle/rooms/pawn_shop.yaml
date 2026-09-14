@@ -1,0 +1,46 @@
+id: test_isle:pawn_shop
+zone: test_isle
+type: chamber
+depth: 1
+description:
+  base: 'A cluttered den where everything on the island eventually washes up: drone parts, dented blades,
+    power cells of questionable charge. Aldo buys low, sells high, and asks no questions he''d have to
+    remember answers to.'
+exits:
+  north:
+    destination: test_isle:market_west
+    description: ''
+features:
+- id: salvage_bins
+  name: salvage bins
+  keywords:
+  - bins
+  - salvage
+  - parts
+  - junk
+  description: Bins of drone limbs, cracked lenses, and cells Aldo swears held charge this morning.
+  search:
+    items:
+    - power_cell
+    - scrap_blade
+    max_finds: 2
+    respawn_s: 1500
+    chance: 0.4
+entity_spawns: []
+hazards: []
+tags: []
+name: Aldo's Pawn & Salvage
+ambient:
+  min_interval: 50
+  max_interval: 130
+  lines:
+  - Aldo polishes something that was stolen at least once.
+  - A bin shifts and settles with a metallic sigh.
+shop:
+  name: Aldo's Pawn & Salvage
+  sells:
+  - template: scrap_blade
+    price: 25
+  buys: true
+  buy_rate: 0.5
+  owner: Aldo Vex

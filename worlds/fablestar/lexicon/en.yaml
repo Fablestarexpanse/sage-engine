@@ -3,7 +3,34 @@
 who:
   empty: "The station is silent. Nobody is connected."
 
+lodging:
+  no_desk: "Nobody lets rooms here. Try the AIpub bar or the Tidewater Bunkhouse."
+
+currency:
+  digi: {name: Digi}
+
 death:
   wake: "\r\nYou wake on a diagnostic bed, patched together and aching. The dispensary arm gives you an encouraging whir.{bill}"
   bill: " The clinic took {amount} {currency} for the trouble."
   no_bill: " You were too broke to bill; they patched you anyway."
+
+maestro:
+  mercy: "\r\nTucked behind a panel, something catches your eye: {item}. Someone's stash, once."
+  dread:
+    "1": "\r\nSomewhere far below, metal shrieks against metal, then goes quiet."
+    "2": "\r\nThe lights dim for half a heartbeat. Nothing admits to it."
+    "3": "\r\nA pressure door cycles in the distance — no one scheduled that."
+    "4": "\r\nFor a moment you are sure something in the walls is keeping pace with you."
+
+agents:
+  memory:
+    died_billed: "died and woke in the clinic, patched together ({bill} {currency} bill)"
+    died_free: "died and woke in the clinic; too broke to bill"
+  prompt:
+    setting: "a character in a space-station MUD"
+    banter_place: "the AIpub on Tidegate Isle"
+    world_notes: "Shops: the pawn_shop buys salvage; the general_store sells food; scavenging the wilds finds sellable goods.\nGoals and their targets: wander_to -> a room from the list above; hunt -> a creature (razor crab, rust hound, scrap drone); buy -> an item (ration, stout, charge cell); rest/scavenge/sell/idle -> empty."
+
+effects:
+  rest_unsafe: "Too dangerous to rest here. Find somewhere safe — the clinic, say."
+  rest_start: "You settle onto a diagnostic bed and let the station's hum take over."

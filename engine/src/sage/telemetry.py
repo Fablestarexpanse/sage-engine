@@ -73,7 +73,7 @@ async def heat(redis, map_name: str, key: str, by: int = 1) -> None:
     if _disabled:
         return
     try:
-        await redis.client.hincrby(f"heat:{map_name}", key, by)
+        await redis.client.hincrby(redis.key(f"heat:{map_name}"), key, by)
     except Exception:
         logger.debug("heatmap incr failed", exc_info=True)
 
@@ -82,7 +82,7 @@ async def read_heatmaps(redis, names: list[str]) -> dict[str, dict[str, int]]:
     out: dict[str, dict[str, int]] = {}
     for name in names:
         try:
-            raw = await redis.client.hgetall(f"heat:{name}")
+            raw = await redis.client.hgetall(redis.key(f"heat:{name}"))
             out[name] = {
                 (k.decode() if isinstance(k, bytes) else k): int(v) for k, v in (raw or {}).items()
             }

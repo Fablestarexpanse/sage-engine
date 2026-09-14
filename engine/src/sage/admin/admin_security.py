@@ -30,13 +30,11 @@ NAV_TOOL_IDS = frozenset(
         "world",
         "entities",
         "items",
-        "glyphs",
         "locations",
         "server",
         "content",
         "settings",
         "team",
-        "builder",
         "skills",
         "agents",
         "shops",
@@ -182,6 +180,10 @@ def is_public_admin_path(path: str) -> bool:
     if path in ("/status", "/play/health", "/docs", "/openapi.json", "/redoc"):
         return True
     if path.startswith("/play/"):
+        return True
+    # Plugin player-facing routes (/plugins/<id>/play/...) authenticate per request.
+    parts = path.split("/")
+    if len(parts) > 3 and parts[1] == "plugins" and parts[3] == "play":
         return True
     if path.startswith("/media/portraits/"):
         return True

@@ -6,6 +6,7 @@ may change without notice; an import-boundary check enforces this once plugins e
 
 from sage.core.events import (
     CommandExecuted,
+    CountersChanged,
     EntityKilled,
     Event,
     PlayerDied,
@@ -14,12 +15,16 @@ from sage.core.events import (
     SessionStarted,
 )
 from sage.lexicon import t
+from sage.network.virtual import VirtualSession
 from sage.plugins.api import PluginAPI
 from sage.plugins.manifest import PluginError
+from sage.telemetry import log_event
 from sage.world.death import Respawn
+from sage.world.wallet import Wallet, WalletError
 
 __all__ = [
     "CommandExecuted",
+    "CountersChanged",
     "EntityKilled",
     "Event",
     "PlayerDied",
@@ -29,5 +34,9 @@ __all__ = [
     "RoomEntered",
     "SessionEnded",
     "SessionStarted",
+    "VirtualSession",
+    "Wallet",
+    "WalletError",
+    "log_event",
     "t",
 ]

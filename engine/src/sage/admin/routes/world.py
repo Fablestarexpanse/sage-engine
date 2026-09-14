@@ -28,7 +28,7 @@ def build_world_router(server: SageServer) -> APIRouter:
     ):
         if not server.redis.is_connected:
             return await build_world_live_snapshot(None)
-        return await build_world_live_snapshot(server.redis.client)
+        return await build_world_live_snapshot(server.redis)
 
     @router.get("/world/rooms/{zone_id}/{room_slug}/state")
     async def room_live_state(

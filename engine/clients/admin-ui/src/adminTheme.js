@@ -1,4 +1,4 @@
-/** Admin console + world builder palettes (inline styles). */
+/** Admin console palettes (inline styles). */
 
 export const ADMIN_THEME_DARK = {
   bg: "#0a0b0f",
@@ -62,22 +62,3 @@ export const ADMIN_THEMES = {
   dark: ADMIN_THEME_DARK,
   light: ADMIN_THEME_LIGHT,
 };
-
-/** Room-type swatches for builder (depends on palette). */
-export function adminRoomTypeColors(C) {
-  return {
-    chamber: C.cyan,
-    corridor: C.textMuted,
-    junction: C.accent,
-    alcove: C.info,
-    descent: C.warning,
-    danger: C.danger,
-    safe: C.success,
-    boss: C.danger,
-    hub: C.forge,
-    command: C.info,
-    engineering: C.warning,
-    airlock: C.danger,
-    "?": C.textDim,
-  };
-}

@@ -1,0 +1,15 @@
+# Effects: advances timed effects (damage/heal over time, flags) on connected characters, and
+# the `effects` and `rest` commands. The effect data format and math are the engine's
+# (sage.effects.engine, api.effects); this plugin decides cadence, rest rules and wording.
+[plugin]
+id = "effects"
+name = "Effects"
+version = "1.0.0"
+engine = ">=0.2,<0.3"
+entry = "sage_plugin_effects.main:setup"
+first_party = true
+
+[touches]
+commands = ["effects", "rest"]
+tick_jobs = ["effects"]
+lexicon_prefix = "effects."

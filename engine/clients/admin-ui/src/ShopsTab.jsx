@@ -22,7 +22,7 @@ export default function ShopsTab() {
 
   const refresh = useCallback(async () => {
     try {
-      const r = await axios.get(`${API_BASE}/admin/shops`);
+      const r = await axios.get(`${API_BASE}/plugins/shop/admin/shops`);
       setRows(Array.isArray(r.data) ? r.data : []);
       setError("");
     } catch (e) {
@@ -50,7 +50,7 @@ export default function ShopsTab() {
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead><tr>
             <th style={th}>Shop</th><th style={th}>Keeper</th>
-            <th style={th} title="Keeper wallet">Digi</th>
+            <th style={th} title="Keeper wallet">Keeper wallet</th>
             <th style={th} title="Items sold to customers / revenue">Sold</th>
             <th style={th} title="Items bought from customers / spend">Bought</th>
             <th style={th}>Policy</th>
@@ -61,7 +61,7 @@ export default function ShopsTab() {
                 style={{ cursor: "pointer", background: (shop?.room_id === r.room_id) ? COLORS.bgInput : "transparent" }}>
                 <td style={cell} title={r.room_id}>{r.shop_name}</td>
                 <td style={cell}>{r.owner ? r.owner.name : <span style={{ color: COLORS.textMuted }}>house NPC</span>}</td>
-                <td style={cell}>{r.owner?.digi ?? "—"}</td>
+                <td style={cell}>{r.owner?.money ?? "—"}</td>
                 <td style={cell}>{r.sold_count} <span style={{ color: COLORS.success }}>+{r.revenue}</span></td>
                 <td style={cell}>{r.bought_count} <span style={{ color: COLORS.danger }}>−{r.spend}</span></td>
                 <td style={cell}>{r.buys ? `buys @ ${Math.round(r.buy_rate * 100)}%` : "sells only"}</td>
@@ -81,7 +81,7 @@ export default function ShopsTab() {
             {shop.owner && (
               <div style={{ fontSize: 11, color: COLORS.text, marginBottom: 10 }}>
                 <div style={label}>Keeper</div>
-                {shop.owner.name} — <b>{shop.owner.digi ?? "?"} Digi</b>
+                {shop.owner.name} — <b>{shop.owner.money ?? "?"} {shop.currency}</b>
                 {shop.owner.room_id && <span style={{ color: COLORS.textMuted }}> · now in {shop.owner.room_id.split(":")[1]}</span>}
                 {shop.owner.home_room && <span style={{ color: COLORS.textMuted }}> · lives at {shop.owner.home_room.split(":")[1]}</span>}
                 {Array.isArray(shop.owner.inventory) && (
@@ -93,7 +93,7 @@ export default function ShopsTab() {
             )}
             <div style={label}>Stock &amp; prices</div>
             <div style={{ fontSize: 11, color: COLORS.text }}>
-              {shop.stock.map((s) => <div key={s.template}>{s.name} — {s.price} Digi</div>)}
+              {shop.stock.map((s) => <div key={s.template}>{s.name} — {s.price} {shop.currency}</div>)}
               {!shop.stock.length && <span style={{ color: COLORS.textMuted }}>sells nothing (buyer only)</span>}
               {shop.buys && <div style={{ color: COLORS.textMuted, marginTop: 3 }}>buys most goods at {Math.round(shop.buy_rate * 100)}% of value</div>}
             </div>
@@ -103,7 +103,7 @@ export default function ShopsTab() {
                 <div style={{ fontSize: 11, color: COLORS.text }}>
                   {(shop.secondhand ?? []).map((s) => (
                     <div key={s.template}>
-                      {s.name} <b>x{s.count}</b> — {s.price} Digi each
+                      {s.name} <b>x{s.count}</b> — {s.price} {shop.currency} each
                       {s.count >= shop.stock_cap && <span style={{ color: COLORS.warning }}> · full</span>}
                     </div>
                   ))}
@@ -116,7 +116,7 @@ export default function ShopsTab() {
           <div style={{ ...card, padding: 12 }}>
             <div style={{ fontWeight: 700, fontSize: 12, color: COLORS.text, marginBottom: 6 }}>
               Ledger <span style={{ color: COLORS.textMuted, fontWeight: 400 }}>
-                — sold {shop.sold_count} (+{shop.revenue} Digi) · bought {shop.bought_count} (−{shop.spend} Digi)
+                — sold {shop.sold_count} (+{shop.revenue} {shop.currency}) · bought {shop.bought_count} (−{shop.spend} {shop.currency})
               </span>
             </div>
             <div style={{ maxHeight: 240, overflow: "auto", fontSize: 11, fontFamily: "monospace" }}>
@@ -128,7 +128,7 @@ export default function ShopsTab() {
                   </span>
                   <span style={{ color: COLORS.text, flex: 1 }}>{e.item}</span>
                   <span style={{ color: COLORS.textMuted }}>{e.kind === "sale" ? "to" : "from"} {e.actor}</span>
-                  <span style={{ color: COLORS.text }}>{e.price} Digi</span>
+                  <span style={{ color: COLORS.text }}>{e.price} {shop.currency}</span>
                 </div>
               ))}
               {!shop.ledger.length && <span style={{ color: COLORS.textMuted }}>No transactions yet.</span>}

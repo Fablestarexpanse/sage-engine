@@ -60,12 +60,12 @@ class TestAdminContextZones(unittest.TestCase):
         self.assertTrue(ctx.may_write_zone("anything"))
 
     def test_explicit_zone_list(self) -> None:
-        ctx = _ctx(permissions={"zones": ["starter_zone"]})
-        self.assertTrue(ctx.may_write_zone("starter_zone"))
+        ctx = _ctx(permissions={"zones": ["testzone"]})
+        self.assertTrue(ctx.may_write_zone("testzone"))
         self.assertFalse(ctx.may_write_zone("other_zone"))
 
     def test_head_admin_writes_any_zone(self) -> None:
-        ctx = _ctx(role="head_admin", permissions={"zones": ["starter_zone"]})
+        ctx = _ctx(role="head_admin", permissions={"zones": ["testzone"]})
         self.assertTrue(ctx.may_write_zone("other_zone"))
 
 

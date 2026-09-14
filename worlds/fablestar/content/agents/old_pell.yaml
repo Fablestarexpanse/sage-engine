@@ -1,0 +1,18 @@
+id: old_pell
+name: Old Pell
+spawn_room: test_isle:fishing_pier
+enabled: true
+temperament: {warmth: 0.7, caution: 0.5, ambition: 0.1, humor: 0.8}
+wants: one more truly enormous fish before his knees give out
+fears: dying indoors
+speech: slow, salt-cured, every answer starts with a weather report
+baseline_mood: {valence: 0.35, arousal: 0.15}
+hard_facts:
+  - "profession: fisherman"
+  - "the chair on the pier is his"
+  - "has fished Tidegate waters for fifty years"
+routine: [fishing_pier, fisherman_row, harbor_docks, fisherman_row]
+gear: {}
+stats: {hp: 45, max_hp: 45}
+attributes: {FRT: 11, RFX: 9, ACU: 9, RSV: 15, PRS: 10}
+money: 15

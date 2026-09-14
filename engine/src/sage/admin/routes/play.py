@@ -43,7 +43,9 @@ class PlayCreateCharacterBody(BaseModel):
     name: str
     portrait_prompt: str = ""
     portrait_url: str = ""
-    # Optional chargen: leaf_id -> levels, sum <= 15, each <= 5 (see /play/proficiencies/catalog).
+    # World-defined creation choices (chargen.validate), e.g. {"proficiencies": {leaf: level}}.
+    chargen: dict[str, Any] | None = None
+    # Older clients: the proficiency allocation alone; treated as {"proficiencies": ...}.
     starter_proficiencies: dict[str, Any] | None = None
 
 
@@ -122,7 +124,12 @@ def build_play_router(server: SageServer) -> APIRouter:
     @router.get("/play/health")
     async def play_health():
         """Cheap check that player REST routes are live (no DB)."""
-        return {"ok": True, "play_api": "v1", "proficiency_catalog": True}
+        return {"ok": True, "play_api": "v1"}
+
+    @router.get("/play/world")
+    async def play_world():
+        """Public: which world this server runs, for client titles and headers."""
+        return {"id": server.world.id, "name": server.world.manifest.world.name}
 
     @router.get("/media/room-art/{zone_id}/{room_slug}/v/{filename}")
     async def media_room_art_variant(zone_id: str, room_slug: str, filename: str):
@@ -207,39 +214,25 @@ def build_play_router(server: SageServer) -> APIRouter:
     @router.post("/play/characters/create")
     async def play_character_create(body: PlayCreateCharacterBody):
         """Create a new character for the account."""
-        starter = body.starter_proficiencies
-        if isinstance(starter, dict):
-            coerced: dict[str, Any] = {str(k): v for k, v in starter.items()}
-        else:
-            coerced = {}
+        chargen = dict(body.chargen or {})
+        if not chargen and isinstance(body.starter_proficiencies, dict):
+            chargen = {"proficiencies": {str(k): v for k, v in body.starter_proficiencies.items()}}
         return await server.player.create_character(
             body.username,
             body.password,
             body.name,
             portrait_prompt=body.portrait_prompt,
             portrait_url=body.portrait_url,
-            starter_proficiencies=coerced if coerced else None,
+            chargen=chargen or None,
             token=body.token,
         )
 
-    @router.get("/play/proficiencies/catalog")
-    async def play_proficiencies_catalog():
-        """Public read-only leaf list for chargen skill picker."""
-        from sage.proficiencies.starter import (
-            STARTER_MAX_PER_LEAF,
-            STARTER_POINTS_BUDGET,
-            catalog_leaves_for_client,
-        )
+    @router.get("/play/chargen/options")
+    async def play_chargen_options():
+        """Public: the world's character-creation options (chargen.options slot)."""
+        from sage.world.chargen import OPTIONS
 
-        reg = server.content_loader.get_proficiency_registry()
-        leaves = catalog_leaves_for_client(reg)
-        domains = sorted({x["domain"] for x in leaves})
-        return {
-            "budget": STARTER_POINTS_BUDGET,
-            "max_per_leaf": STARTER_MAX_PER_LEAF,
-            "domains": domains,
-            "leaves": leaves,
-        }
+        return server.resolvers.get(OPTIONS)()
 
     @router.post("/play/characters/delete")
     async def play_character_delete(body: PlayDeleteCharacterBody):

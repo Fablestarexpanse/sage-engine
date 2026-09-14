@@ -37,7 +37,7 @@ function fmtApiError(data) {
  * Props:
  * - worldRoot, zoneId, roomSlug: room identity, used for fs paths and API calls.
  * - bundleSceneArtIntoWorld: whether generated art is bundled under
- *   zones/<zone>/rooms/art/<room>/ (zones) vs. server-side (ships).
+ *   zones/<zone>/rooms/art/<room>/ vs. kept server-side.
  * - nexusUrl, nexusToken: Nexus API base + auth for forge endpoints.
  * - areaImageUrl: current room.area_image_url.
  * - onAreaImageUrlChange(url): called when a gallery image is selected, an
@@ -191,7 +191,7 @@ export default function SceneArtPanel({
             url: cur,
             filePath: null,
             deletable: false,
-            label: "Current URL (ship/runtime — delete file on server if needed)",
+            label: "Current URL (runtime — delete file on server if needed)",
           });
         }
 

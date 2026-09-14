@@ -38,10 +38,13 @@ class CommandExecuted(Event):
 
 @dataclass
 class RoomEntered(Event):
+    """A character arrived in a room; subscribers may add lines shown after the room."""
+
     player_id: str
     room_id: str
     from_room_id: str | None
     direction: str | None = None
+    messages: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -60,8 +63,18 @@ class PlayerDied(Event):
     player_id: str
     room_id: str | None
     cause: str
-    is_agent: bool = False
+    virtual: bool = False  # the character is driven by a virtual (socketless) session
     stats: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class CountersChanged(Event):
+    """Counters on a character's stats blob just moved; subscribers may add player lines."""
+
+    player_id: str
+    counters: list[str]
+    stats: dict[str, Any] = field(default_factory=dict)
+    messages: list[str] = field(default_factory=list)
 
 
 @dataclass

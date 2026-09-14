@@ -8,4 +8,6 @@ from sage.network.session import Session
 async def quit_cmd(session: Session, args: list[str]):
     """Save and disconnect from the server."""
     # The server loop notices the closed socket and saves/cleans up.
-    await session.end("quit", "Goodbye!")
+    from sage import lexicon
+
+    await session.end("quit", lexicon.t("session.goodbye"))

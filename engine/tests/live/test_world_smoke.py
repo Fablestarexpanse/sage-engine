@@ -21,7 +21,7 @@ import pytest
 import websockets
 
 from sage.world.package import available_worlds, load_world_package
-from tests.live.conftest import REPO_ROOT, open_redis
+from tests.live.conftest import REPO_ROOT, _admin_execute, open_redis
 
 pytestmark = pytest.mark.live
 
@@ -96,8 +96,27 @@ OPPOSITE = {
 }
 
 
+@pytest.fixture
+def world_database(live_config, live_database, world_id):
+    """One database per world (owner ruling): each world's plugin branches stay separate."""
+    db = live_config.database
+    name = f"{live_database}_{world_id}"
+    asyncio.run(_admin_execute(db, f'CREATE DATABASE "{name}"'))
+    try:
+        yield name
+    finally:
+        asyncio.run(
+            _admin_execute(
+                db,
+                "SELECT pg_terminate_backend(pid) FROM pg_stat_activity "
+                f"WHERE datname = '{name}' AND pid <> pg_backend_pid()",
+                f'DROP DATABASE IF EXISTS "{name}"',
+            )
+        )
+
+
 @pytest.mark.parametrize("world_id", WORLDS)
-def test_world_boots_and_plays(world_id, live_config, migrated_database, tmp_path):
+def test_world_boots_and_plays(world_id, live_config, world_database, tmp_path):
     world = load_world_package(REPO_ROOT / "worlds" / world_id)
     direction, destination = _first_exit(world)
     port = _free_port()
@@ -110,6 +129,7 @@ def test_world_boots_and_plays(world_id, live_config, migrated_database, tmp_pat
     env = {
         **os.environ,
         "SAGE_SERVER__WORLD": world_id,
+        "SAGE_DATABASE__DATABASE": world_database,
         "SAGE_SERVER__WEBSOCKET_PORT": str(port),
         "SAGE_SERVER__DEV_MODE": "true",
         "SAGE_SERVER__DEV_LOGIN": "true",
@@ -117,6 +137,17 @@ def test_world_boots_and_plays(world_id, live_config, migrated_database, tmp_pat
         "PYTHONUNBUFFERED": "1",
         "PYTHONIOENCODING": "utf-8",
     }
+    # Deploy the way an operator does: apply the world's plugin migrations, then boot.
+    upgrade = subprocess.run(
+        [sys.executable, "-m", "sage", "db", "upgrade"],
+        cwd=REPO_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    assert upgrade.returncode == 0, upgrade.stdout + upgrade.stderr
     log_path = tmp_path / f"{world_id}.log"
     with log_path.open("w", encoding="utf-8") as log:
         proc = subprocess.Popen(
@@ -144,6 +175,11 @@ def test_world_boots_and_plays(world_id, live_config, migrated_database, tmp_pat
                     )
                 time.sleep(0.5)
 
+            # Clients title themselves from this; it must be the package's name, not a default.
+            assert _get(f"http://127.0.0.1:{port}/play/world") == {
+                "id": world_id,
+                "name": world.manifest.world.name,
+            }
             back = OPPOSITE.get(direction, direction)
             text = "\n".join(
                 asyncio.run(_play(port, ["say smoke test", direction, back, "who", "quit"]))

@@ -1,0 +1,37 @@
+factions:
+  none: "No factions have taken notice of you yet."
+  panel:
+    standings: "Standings"
+  header: "Faction standings:"
+  entry: "  {name}: {standing} ({rep:+d}) — {description}"
+  standing_improves: "Your standing with {faction} improves: you are now {standing}."
+  standing_worsens: "Your standing with {faction} worsens: you are now {standing}."
+  standing:
+    loathed: loathed
+    hated: hated
+    disliked: disliked
+    neutral: neutral
+    liked: liked
+    loved: loved
+    exalted: exalted
+  mission:
+    kill: "Destroy {count}x {target} for {faction} ({progress}/{count})"
+    collect: "Deliver {count}x {target} for {faction} ({progress}/{count})"
+    progress: "Mission: {mission}"
+    complete: "Mission complete: {mission}"
+    paid: "{faction} credits your account ({rep:+d} rep, +{pay} {currency})."
+    rep_only: "{faction} credits your account ({rep:+d} rep)."
+    no_delivery: "You have no delivery to complete."
+    short: "You need {needed}x {target} but are carrying {have}. Mission: {mission}"
+    busy: "Finish or abandon your current mission first."
+    accept_usage: "Accept from whom? Usage: missions accept <faction>"
+    refused: "{faction} wants nothing to do with you."
+    no_work: "{faction} has no work right now."
+    accepted: "Contract accepted. {mission}"
+    none_active: "You have no active mission."
+    idle: "No active mission."
+    abandoned: "Contract abandoned. Nobody is impressed."
+    active: "Active — {mission}"
+    deliver_hint: "  Deliver with: missions complete"
+    hiring: "Hiring: {names}"
+    accept_hint: "  Take a contract with: missions accept <faction>"

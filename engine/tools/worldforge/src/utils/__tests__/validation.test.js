@@ -16,7 +16,7 @@ describe("runZoneValidation", () => {
     expect(issues.some((i) => i.msg.includes('Unknown entity template "ghost"'))).toBe(true);
   });
 
-  it("accepts known templates and reports loot/prereq problems from ctx", () => {
+  it("accepts known templates and reports loot problems from ctx", () => {
     const issues = runZoneValidation(
       [node("a", { entity_spawns: [{ template: "stalker" }] })],
       [],
@@ -25,14 +25,11 @@ describe("runZoneValidation", () => {
         entityIds: ["stalker"],
         itemIds: ["shard"],
         entityLoot: { stalker: ["shard", "phantom_item"] },
-        glyphIds: ["fire"],
-        glyphs: { fire: { prerequisites: ["missing_glyph"] } },
       }
     );
     const msgs = issues.map((i) => i.msg).join("\n");
     expect(msgs).not.toContain('Unknown entity template "stalker"');
     expect(msgs).toContain('unknown item "phantom_item"');
-    expect(msgs).toContain("prerequisite unknown: missing_glyph");
   });
 
   it("warns on low feature density and reports it as info when healthy", () => {

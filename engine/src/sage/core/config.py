@@ -6,7 +6,7 @@ import tomllib
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, Field, SecretStr, field_validator
+from pydantic import BaseModel, Field, SecretStr, field_validator, model_validator
 
 logger = logging.getLogger(__name__)
 
@@ -34,12 +34,6 @@ class ServerConfig(BaseModel):
     # Passwordless test logins via POST /play/dev/login, loopback clients only.
     # Needs dev_mode too; never enable on a networked host.
     dev_login: bool = False
-    # Shown in client UI for in-world economy (wallet / vendors); not the ComfyUI art balance.
-    game_currency_display_name: str = "Digi"
-    # Starting in-world balance for each new character (existing rows default 0 until granted in-game).
-    starting_digi_balance: int = 100
-    # When True, personal combat uses max(legacy strength/dexterity-derived, proficiency-derived) ratings.
-    proficiency_combat_hybrid: bool = True
     # When True, Nexus admin/content/forge/llm routes require a staff JWT (see /admin/auth/login).
     admin_auth_required: bool = True
     # HS256 secret; prefer env SAGE_ADMIN_JWT_SECRET in production.
@@ -71,32 +65,59 @@ class RedisConfig(BaseModel):
     password: str | None = None
 
 
+# comfyui.toml keys renamed in SAGE 0.2 (3.14c); the old names are read for one release.
+_COMFYUI_RENAMED_KEYS = {
+    "starting_echo_credits": "starting_ai_credits",
+    "pixels_per_usd": "credits_per_usd",
+}
+
+
 class ComfyUIConfig(BaseModel):
     """Optional ComfyUI HTTP API for character portraits and room area art."""
+
+    @model_validator(mode="before")
+    @classmethod
+    def _renamed_keys(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        old = [k for k in _COMFYUI_RENAMED_KEYS if k in data]
+        if old:
+            logger.warning(
+                "Deprecated comfyui.toml keys %s: rename to %s",
+                old,
+                [_COMFYUI_RENAMED_KEYS[k] for k in old],
+            )
+            data = dict(data)
+            for key in old:
+                data.setdefault(_COMFYUI_RENAMED_KEYS[key], data.pop(key))
+        return data
 
     enabled: bool = False
     base_url: str = "http://127.0.0.1:8188"
     # Defaults match shipped graphs: character portrait (CLIP 57 + SaveImage 40) vs area (34 + 31).
     # If comfyui.toml omits keys, we must NOT fall back to legacy SDXL example workflows.
-    workflow_path: str = "config/comfyui_character_portrait_workflow.json"
+    # Empty: the world's ai/comfyui/portrait.json. A path here (relative to the project root)
+    # overrides it for this deployment.
+    workflow_path: str = ""
     positive_prompt_node_id: str = "57"
     output_node_id: str = "40"
-    area_workflow_path: str = "config/comfyui_scene_workflow.json"
+    # Empty: the world's ai/comfyui/area.json, else the portrait graph.
+    area_workflow_path: str = ""
     area_positive_prompt_node_id: str = "16"
     area_output_node_id: str = "17"
     # If set, replaces inputs.ckpt_name on every CheckpointLoaderSimple node (avoids editing JSON).
     checkpoint_name: str = ""
     timeout_seconds: float = 600.0
     poll_interval_seconds: float = 0.75
-    # Player image generation economy (account echo_credits); label is the art currency (e.g. pixels).
+    # Player image generation economy (account ai_credits); label is the art currency's display name.
     economy_enabled: bool = True
-    starting_echo_credits: int = 50
+    starting_ai_credits: int = 50
     portrait_generation_cost: int = 3
     area_generation_cost: int = 3
     character_create_portrait_cost: int = 3
-    currency_display_name: str = "pixels"
+    currency_display_name: str = "credits"
     # Reference rate for storefront / admin bundle math (not enforced server-side).
-    pixels_per_usd: int = 100
+    credits_per_usd: int = 100
 
 
 class LLMConfig(BaseModel):
@@ -198,6 +219,41 @@ def resolve_project_root() -> Path:
         if (anc / "config").is_dir():
             return anc
     return cwd
+
+
+# The running world's ai/comfyui directory (set by the server at startup).
+_world_comfyui_dir: Path | None = None
+
+
+def set_world_comfyui_dir(path: Path | None) -> None:
+    global _world_comfyui_dir
+    _world_comfyui_dir = Path(path) if path is not None else None
+
+
+def resolve_workflow_path(cfg: ComfyUIConfig, role: str) -> Path:
+    """The ComfyUI graph for a role ("portrait" | "area").
+
+    A path in comfyui.toml wins when the file exists. Otherwise the world's
+    ``ai/comfyui/<role>.json`` is used (a configured path that no longer exists falls back to it
+    with a warning, so a deployment whose toml still names a moved file keeps working). An
+    area role with nothing of its own uses the portrait graph.
+    """
+    role = "area" if (role or "").lower().strip() == "area" else "portrait"
+    configured = (cfg.area_workflow_path if role == "area" else cfg.workflow_path or "").strip()
+    world_file = _world_comfyui_dir / f"{role}.json" if _world_comfyui_dir else None
+    if configured:
+        path = resolve_config_asset_path(configured)
+        if path.is_file() or world_file is None or not world_file.is_file():
+            return path
+        logger.warning(
+            "ComfyUI %s workflow %s not found; using the world's %s", role, path, world_file
+        )
+        return world_file
+    if world_file is not None and world_file.is_file():
+        return world_file
+    if role == "area":
+        return resolve_workflow_path(cfg, "portrait")
+    return world_file if world_file is not None else Path("")
 
 
 def resolve_config_asset_path(relative_or_absolute: str) -> Path:

@@ -5,7 +5,8 @@ import { PORTRAIT_ASPECT_RATIO_CSS } from "./portraitProfile.js";
 import { usePlayTheme } from "./PlayThemeContext.jsx";
 
 /**
- * Full-screen-style step for allocating starter proficiency points after identity/portrait.
+ * Full-screen-style step for allocating starting skill points (chargen options kind "skill_points")
+ * after identity/portrait.
  */
 export function ChargenProficienciesStep({
   characterName,
@@ -55,7 +56,7 @@ export function ChargenProficienciesStep({
           }}
         >
           <div style={{ fontSize: 10, color: T.text.muted, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8 }}>
-            Conduit preview
+            Character preview
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div
@@ -79,7 +80,7 @@ export function ChargenProficienciesStep({
                   style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center" }}
                 />
               ) : (
-                <span style={{ fontSize: 18, color: T.glyph.violet }}>◈</span>
+                <span style={{ fontSize: 18, color: T.hue.violet }}>◈</span>
               )}
             </div>
             <div style={{ minWidth: 0 }}>
@@ -105,7 +106,7 @@ export function ChargenProficienciesStep({
           <ul style={{ margin: "8px 0 0", paddingLeft: 18, lineHeight: 1.55 }}>
             <li>
               <strong style={{ color: T.text.secondary }}>Concept first:</strong> pick domains that match how you imagine this person
-              solving problems (piloting, medicine, social, tech, etc.).
+              solving problems.
             </li>
             <li>
               <strong style={{ color: T.text.secondary }}>Breadth vs spike:</strong> a few 1s across related skills reads as well-rounded;
@@ -118,16 +119,15 @@ export function ChargenProficienciesStep({
           </ul>
         </Explainer>
         <Explainer title="After you enter the world" T={T}>
-          Use the <code style={{ fontSize: 10, color: T.text.accent }}>score</code> command for conduit resonance and highlights, and{" "}
-          <code style={{ fontSize: 10, color: T.text.accent }}>prof</code> for the full proficiency sheet. Ranks change with time and
-          story; this screen is only the opening stance.
+          Your character sheet shows these ranks once you are in the world. Ranks change with time and story; this screen is only
+          the opening stance.
         </Explainer>
 
         <div
           style={{
             borderRadius: T.radius.lg,
-            border: `1px solid ${T.border.glyph}`,
-            background: T.glyph.violetDim,
+            border: `1px solid ${T.border.accent}`,
+            background: T.hue.violetDim,
             padding: "12px 14px",
           }}
         >
@@ -152,7 +152,7 @@ export function ChargenProficienciesStep({
                 width: `${pct}%`,
                 height: "100%",
                 borderRadius: 99,
-                background: `linear-gradient(90deg, ${T.glyph.violet}, ${T.glyph.cyan})`,
+                background: `linear-gradient(90deg, ${T.hue.violet}, ${T.hue.cyan})`,
                 transition: "width 0.2s ease",
               }}
             />

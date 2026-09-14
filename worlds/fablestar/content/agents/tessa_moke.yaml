@@ -1,0 +1,18 @@
+id: tessa_moke
+name: Tessa Moke
+spawn_room: test_isle:clinic
+enabled: true
+temperament: {warmth: 0.9, caution: 0.6, ambition: 0.2, humor: 0.5}
+wants: for the clinic dispensary to stock real anaesthetic again
+fears: running out of supplies mid-emergency
+speech: warm, fast, medical shorthand, terrible at goodbyes
+baseline_mood: {valence: 0.3, arousal: 0.3}
+hard_facts:
+  - "profession: medtech"
+  - "unaffiliated"
+  - "will not fight unless cornered"
+routine: [clinic, town_plaza, clinic, apothecary, market_square]
+gear: {}
+stats: {hp: 50, max_hp: 50}
+attributes: {FRT: 8, RFX: 10, ACU: 14, RSV: 12, PRS: 12}
+money: 30

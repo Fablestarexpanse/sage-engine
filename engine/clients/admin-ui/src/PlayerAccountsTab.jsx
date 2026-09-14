@@ -3,13 +3,13 @@ import axios from "axios";
 import { useAdminTheme } from "./AdminThemeContext.jsx";
 import { API_BASE } from "./apiConfig.js";
 
-/** Matches server comfyui.toml default: 100 pixels ≈ US $1 at list. */
-const PIXELS_PER_USD_REF = 100;
-const ADMIN_PIXEL_PURCHASE_BUNDLES = [
-  { id: "starter", label: "$4.99", pixels: 500, blurb: "~100 px/$" },
-  { id: "standard", label: "$9.99", pixels: 1000, blurb: "100 px/$" },
-  { id: "plus", label: "$19.99", pixels: 2200, blurb: "+10% vs straight rate" },
-  { id: "best", label: "$49.99", pixels: 5750, blurb: "+15% vs straight rate" },
+/** Matches server comfyui.toml default: 100 credits ≈ US $1 at list. */
+const CREDITS_PER_USD_REF = 100;
+const ADMIN_CREDIT_BUNDLES = [
+  { id: "starter", label: "$4.99", credits: 500, blurb: "~100 px/$" },
+  { id: "standard", label: "$9.99", credits: 1000, blurb: "100 px/$" },
+  { id: "plus", label: "$19.99", credits: 2200, blurb: "+10% vs straight rate" },
+  { id: "best", label: "$49.99", credits: 5750, blurb: "+15% vs straight rate" },
 ];
 
 function ConsoleAccessSection({ detail, accountId, disabled, onChanged }) {
@@ -225,11 +225,11 @@ export default function PlayerAccountsTab({ focusTarget = null }) {
     }
   };
 
-  const grantBundlePixels = async (pixels) => {
-    if (selectedId == null || pixels <= 0) return;
+  const grantBundleCredits = async (credits) => {
+    if (selectedId == null || credits <= 0) return;
     setBusy(true);
     try {
-      await axios.patch(`${API_BASE}/admin/player-accounts/${selectedId}`, { echo_credits_add: pixels });
+      await axios.patch(`${API_BASE}/admin/player-accounts/${selectedId}`, { ai_credits_add: credits });
       await reloadAccount();
     } catch (e) {
       window.alert(e.response?.data?.detail || e.message);
@@ -279,7 +279,7 @@ export default function PlayerAccountsTab({ focusTarget = null }) {
                 ) : null}
               </div>
               <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 4, fontFamily: "'JetBrains Mono', monospace" }}>
-                id {r.id} · {r.character_count} chars · pixels {r.echo_credits}
+                id {r.id} · {r.character_count} chars · credits {r.ai_credits}
               </div>
             </button>
           ))}
@@ -301,7 +301,7 @@ export default function PlayerAccountsTab({ focusTarget = null }) {
         <div style={{ fontSize: 11, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Account editor</div>
         {!selectedId && (
           <div style={{ color: COLORS.textMuted, fontSize: 13, lineHeight: 1.5 }}>
-            Select an account above for <strong style={{ color: COLORS.text }}>pixels</strong>, <strong style={{ color: COLORS.text }}>bundles</strong>, <strong style={{ color: COLORS.text }}>GM crown</strong>, Nexus console access, and characters.
+            Select an account above for <strong style={{ color: COLORS.text }}>credits</strong>, <strong style={{ color: COLORS.text }}>bundles</strong>, <strong style={{ color: COLORS.text }}>GM crown</strong>, Nexus console access, and characters.
           </div>
         )}
         {selectedId && busy && !detail && !detailErr && <div style={{ color: COLORS.textMuted }}>Loading…</div>}
@@ -323,7 +323,7 @@ export default function PlayerAccountsTab({ focusTarget = null }) {
               detail={detail}
               disabled={busy}
               onSave={saveAccount}
-              onGrantBundlePixels={grantBundlePixels}
+              onGrantBundleCredits={grantBundleCredits}
             />
 
             <div style={{ borderTop: `1px solid ${COLORS.border}`, paddingTop: 12 }}>
@@ -342,7 +342,7 @@ export default function PlayerAccountsTab({ focusTarget = null }) {
   );
 }
 
-function AccountEditForm({ detail, disabled, onSave, onGrantBundlePixels }) {
+function AccountEditForm({ detail, disabled, onSave, onGrantBundleCredits }) {
   const { colors: COLORS } = useAdminTheme();
   const inp = {
     padding: "8px 10px",
@@ -354,22 +354,22 @@ function AccountEditForm({ detail, disabled, onSave, onGrantBundlePixels }) {
     width: "100%",
     boxSizing: "border-box",
   };
-  const [echo, setEcho] = useState(String(detail.echo_credits ?? 0));
+  const [echo, setEcho] = useState(String(detail.ai_credits ?? 0));
   const [isGm, setIsGm] = useState(Boolean(detail.is_gm));
   const [email, setEmail] = useState(detail.email || "");
 
   useEffect(() => {
-    setEcho(String(detail.echo_credits ?? 0));
+    setEcho(String(detail.ai_credits ?? 0));
     setIsGm(Boolean(detail.is_gm));
     setEmail(detail.email || "");
-  }, [detail.id, detail.echo_credits, detail.is_gm, detail.email]);
+  }, [detail.id, detail.ai_credits, detail.is_gm, detail.email]);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <div style={{ fontSize: 11, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: "0.06em" }}>Play account (in-game)</div>
       <label style={{ fontSize: 11, color: COLORS.textMuted }}>Email (optional)</label>
       <input value={email} onChange={(e) => setEmail(e.target.value)} style={inp} disabled={disabled} />
-      <label style={{ fontSize: 11, color: COLORS.textMuted }}>Pixel balance (echo_credits)</label>
+      <label style={{ fontSize: 11, color: COLORS.textMuted }}>AI art credits (ai_credits)</label>
       <input value={echo} onChange={(e) => setEcho(e.target.value)} style={inp} disabled={disabled} />
       <div
         style={{
@@ -380,18 +380,18 @@ function AccountEditForm({ detail, disabled, onSave, onGrantBundlePixels }) {
         }}
       >
         <div style={{ fontSize: 11, color: COLORS.textMuted, marginBottom: 6 }}>
-          Grant purchase bundle <span style={{ fontFamily: "'JetBrains Mono', monospace", color: COLORS.textDim }}>({PIXELS_PER_USD_REF} px ≈ $1 list)</span>
+          Grant purchase bundle <span style={{ fontFamily: "'JetBrains Mono', monospace", color: COLORS.textDim }}>({CREDITS_PER_USD_REF} px ≈ $1 list)</span>
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {ADMIN_PIXEL_PURCHASE_BUNDLES.map((b) => (
+          {ADMIN_CREDIT_BUNDLES.map((b) => (
             <button
               key={b.id}
               type="button"
               disabled={disabled}
-              title={`${b.pixels} pixels — ${b.blurb}`}
+              title={`${b.credits} credits — ${b.blurb}`}
               onClick={() => {
-                if (window.confirm(`Grant ${b.pixels} pixels (${b.label}) to ${detail.username}?`)) {
-                  onGrantBundlePixels?.(b.pixels);
+                if (window.confirm(`Grant ${b.credits} credits (${b.label}) to ${detail.username}?`)) {
+                  onGrantBundleCredits?.(b.credits);
                 }
               }}
               style={{
@@ -408,7 +408,7 @@ function AccountEditForm({ detail, disabled, onSave, onGrantBundlePixels }) {
             >
               {b.label}
               <span style={{ display: "block", fontSize: 9, fontWeight: 500, color: COLORS.textMuted, marginTop: 2 }}>
-                +{b.pixels} px · {b.blurb}
+                +{b.credits} px · {b.blurb}
               </span>
             </button>
           ))}
@@ -422,7 +422,7 @@ function AccountEditForm({ detail, disabled, onSave, onGrantBundlePixels }) {
         type="button"
         disabled={disabled}
         onClick={() => onSave({
-          echo_credits: parseInt(echo, 10) || 0,
+          ai_credits: parseInt(echo, 10) || 0,
           is_gm: isGm,
           email: email.trim() || null,
         })}
@@ -456,36 +456,22 @@ function CharacterEditCard({ c, disabled, onSave }) {
     width: "100%",
     boxSizing: "border-box",
   };
-  const [digi, setDigi] = useState(String(c.digi_balance ?? 0));
-  const [rep, setRep] = useState(String(c.reputation ?? 0));
   const [room, setRoom] = useState(c.room_id || "");
   const [pvp, setPvp] = useState(Boolean(c.pvp_enabled));
   const [portraitUrl, setPortraitUrl] = useState(c.portrait_url || "");
   const [portraitPrompt, setPortraitPrompt] = useState(c.portrait_prompt || "");
 
   useEffect(() => {
-    setDigi(String(c.digi_balance ?? 0));
-    setRep(String(c.reputation ?? 0));
     setRoom(c.room_id || "");
     setPvp(Boolean(c.pvp_enabled));
     setPortraitUrl(c.portrait_url || "");
     setPortraitPrompt(c.portrait_prompt || "");
     setStatsJson(JSON.stringify(c.stats ?? {}, null, 2));
-  }, [c.id, c.digi_balance, c.reputation, c.room_id, c.pvp_enabled, c.portrait_url, c.portrait_prompt, c.stats]);
+  }, [c.id, c.room_id, c.pvp_enabled, c.portrait_url, c.portrait_prompt, c.stats]);
 
   return (
     <div style={{ marginBottom: 14, padding: 12, background: COLORS.bgInput, borderRadius: 8, border: `1px solid ${COLORS.border}` }}>
       <div style={{ fontWeight: 600, color: COLORS.forge, marginBottom: 8 }}>{c.name}</div>
-      <div style={{ display: "grid", gap: 8, gridTemplateColumns: "1fr 1fr" }}>
-        <div>
-          <div style={{ fontSize: 10, color: COLORS.textMuted, marginBottom: 4 }}>Digi</div>
-          <input value={digi} onChange={(e) => setDigi(e.target.value)} style={{ ...inp, padding: "6px 8px", fontSize: 12 }} disabled={disabled} />
-        </div>
-        <div>
-          <div style={{ fontSize: 10, color: COLORS.textMuted, marginBottom: 4 }}>Reputation</div>
-          <input value={rep} onChange={(e) => setRep(e.target.value)} style={{ ...inp, padding: "6px 8px", fontSize: 12 }} disabled={disabled} />
-        </div>
-      </div>
       <div style={{ marginTop: 8 }}>
         <div style={{ fontSize: 10, color: COLORS.textMuted, marginBottom: 4 }}>room_id</div>
         <input value={room} onChange={(e) => setRoom(e.target.value)} style={{ ...inp, padding: "6px 8px", fontSize: 12 }} disabled={disabled} />
@@ -504,7 +490,7 @@ function CharacterEditCard({ c, disabled, onSave }) {
       </div>
       <div style={{ marginTop: 8 }}>
         <div style={{ fontSize: 10, color: COLORS.textMuted, marginBottom: 4 }}>
-          Character stats JSON (legacy + <code style={{ color: COLORS.text }}>conduit</code> proficiency block)
+          Character stats JSON (vitals, wallet balances by currency key, world and plugin blocks)
         </div>
         <textarea
           value={statsJson}
@@ -530,8 +516,6 @@ function CharacterEditCard({ c, disabled, onSave }) {
             return;
           }
           onSave({
-          digi_balance: parseInt(digi, 10) || 0,
-          reputation: parseInt(rep, 10) || 0,
           room_id: room.trim(),
           pvp_enabled: pvp,
           portrait_url: portraitUrl.trim() || null,

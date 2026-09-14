@@ -66,7 +66,7 @@ async def ensure_dev_default_play_accounts(db: PostgresState, config: Config) ->
     """If dev_mode, ensure the default play logins exist. Create-only."""
     if not getattr(config.server, "dev_mode", False):
         return
-    start_credits = int(config.comfyui.starting_echo_credits)
+    start_credits = int(config.comfyui.starting_ai_credits)
     for username, password, is_gm in DEV_DEFAULT_PLAY_LOGINS:
         async with db.session_factory() as session:
             r = await session.execute(select(Account).where(Account.username == username))
@@ -76,7 +76,7 @@ async def ensure_dev_default_play_accounts(db: PostgresState, config: Config) ->
                 Account(
                     username=username,
                     password_hash=_hash_password(password),
-                    echo_credits=start_credits,
+                    ai_credits=start_credits,
                     is_gm=is_gm,
                 )
             )

@@ -1,0 +1,7 @@
+achievements:
+  unlocked: "*** Achievement unlocked ({level}): {story} ***"
+  none: "No achievements yet. Try 'achievements all' to see what's out there."
+  header: "Achievements ({earned}/{total}):"
+  all_header: "All achievements:"
+  entry: "  ({level}) {story}"
+  all_entry: "  {mark} ({level}) {name} — {instructions} ({progress})"

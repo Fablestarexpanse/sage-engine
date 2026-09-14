@@ -25,8 +25,22 @@ SUPPORTED_TOUCHES = (
     "tick_jobs",
     "state_blocks",
     "services",
+    "content_extensions",
+    "routes",
+    "redis_prefixes",
+    "tables",
+    "snapshot",
+    "panels",
+    "ai_slots",
+    "stats_keys",
     "lexicon_prefix",
 )
+
+# Redis key prefixes the engine uses; plugins may not declare them.
+ENGINE_REDIS_PREFIXES = frozenset(
+    {"player", "room", "combat", "entity", "item", "heat", "wallet_pending", "session"}
+)
+REDIS_PREFIX_RE = re.compile(r"^[a-z][a-z0-9_]{1,31}$")
 
 
 class PluginError(RuntimeError):
@@ -105,15 +119,20 @@ class Touches(BaseModel):
     state_blocks: list[str] = Field(default_factory=list)
     services: list[str] = Field(default_factory=list)
     lexicon_prefix: str | None = None
-    # Declared for later engine versions (contracts C.2); refused if a plugin uses them now.
-    content_types: list[str] = Field(default_factory=list)
+    # "<kind>.<field>", e.g. "room.shop" (sage.world.extensions).
     content_extensions: list[str] = Field(default_factory=list)
+    # Engine-owned top-level stats (vitals such as "hp") this plugin may change through state.edit.
+    stats_keys: list[str] = Field(default_factory=list)
     snapshot: list[str] = Field(default_factory=list)
     routes: list[str] = Field(default_factory=list)
+    # Declarative client panels, "<plugin>.<name>" (sage.network.panels).
     panels: list[str] = Field(default_factory=list)
     tables: list[str] = Field(default_factory=list)
     redis_prefixes: list[str] = Field(default_factory=list)
+    # Declared for later engine versions (contracts C.2); refused if a plugin uses them now.
+    content_types: list[str] = Field(default_factory=list)
     params: list[str] = Field(default_factory=list)
+    # AI slots this plugin declares, "<plugin>.<name>" (sage.llm.prompts).
     ai_slots: list[str] = Field(default_factory=list)
 
 
@@ -131,6 +150,31 @@ class PluginManifest(BaseModel):
             k: ({"version": v} if isinstance(v, str) else v) for k, v in deps.items()
         }
         return data
+
+    @model_validator(mode="after")
+    def _routes(self) -> PluginManifest:
+        allowed = f"/plugins/{self.plugin.id}/*"
+        for route in self.touches.routes:
+            if route != allowed:
+                raise ValueError(f"routes may only declare {allowed!r} (got {route!r})")
+        return self
+
+    @model_validator(mode="after")
+    def _tables(self) -> PluginManifest:
+        prefix = f"plg_{self.plugin.id}_"
+        for table in self.touches.tables:
+            if not table.startswith(prefix):
+                raise ValueError(f"table {table!r} must be named {prefix}*")
+        return self
+
+    @model_validator(mode="after")
+    def _redis_prefixes(self) -> PluginManifest:
+        for prefix in self.touches.redis_prefixes:
+            if not REDIS_PREFIX_RE.match(prefix):
+                raise ValueError(f"redis prefix {prefix!r} must match {REDIS_PREFIX_RE.pattern}")
+            if prefix in ENGINE_REDIS_PREFIXES:
+                raise ValueError(f"redis prefix {prefix!r} is reserved for the engine")
+        return self
 
     @model_validator(mode="after")
     def _lexicon_prefix(self) -> PluginManifest:

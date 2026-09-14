@@ -46,8 +46,7 @@ engine/clients/admin-ui/               React admin console (Vite, port 5174)
 engine/clients/player-ui/              React player client (Vite, port 5173)
 engine/tools/worldforge/             Tauri desktop WorldForge editor
 engine/tools/worldforge-mcp/         MCP server exposing map-building tools (mcp__worldforge__*)
-content/world/          Game content (YAML, tracked in git; changes hot-reload)
-  galaxy.yaml           Galaxy stub (no runtime loader; admin builder only)
+worlds/fablestar/content/world/   Fablestar game content (YAML, tracked in git; changes hot-reload)
   entities/             Entity templates (NPC/mob definitions)
   items/                Item templates
   zones/                Game zones (test_isle "Tidegate Isle", aipub)
@@ -55,12 +54,12 @@ content/world/          Game content (YAML, tracked in git; changes hot-reload)
       zone.yaml         Zone metadata
       .positions.json   Editor layout (v2: positions, floors, notes)
       rooms/            Room YAML files; file stem = room slug
-  (ships/, systems/, glyphs/, stamps/ are referenced by the editors but do not exist today)
-content/achievements/   Achievement YAML
-content/agents/         Agent personas (computer-controlled players)
-content/factions/       Faction YAML
-content/proficiencies/  Conduit proficiency catalog (catalog.json, 278 leaves)
-prompts/                Jinja2 prompt templates (*.j2)
+  (stamps/ is created by WorldForge when a stamp is saved)
+worlds/fablestar/content/achievements/   Achievement YAML
+worlds/fablestar/content/agents/         Agent personas (computer-controlled players)
+worlds/fablestar/content/factions/       Faction YAML
+worlds/fablestar/content/proficiencies/  Conduit proficiency catalog (catalog.json, 278 leaves)
+worlds/<world>/ai/prompts/  Jinja2 templates, one per AI slot (<slot>.j2)
 config/                 TOML config files (gitignored; copy from *.example.toml)
 engine/tests/           pytest suite (run from repo root: python -m pytest)
 engine/alembic/         Database migrations (engine/alembic.ini)
@@ -113,16 +112,16 @@ from sage.app import app_instance  # import inside handler, not at module top
 
 | Concern | Store | Location |
 |---|---|---|
-| Player location | Redis | `player:loc:{player_id}` |
-| Player stats / inventory | Redis | `player:stats:{player_id}`, `player:inv:{player_id}` |
-| Room occupants | Redis | `room:players:{room_id}`, `room:entities:{room_id}`, `room:items:{room_id}` |
-| Entity live state | Redis | `entity:state:{entity_id}` |
-| Item live state | Redis | `item:state:{item_id}` |
+| Player location | Redis | `<world>:player:{player_id}:location` |
+| Player stats / inventory | Redis | `<world>:player:{player_id}:stats`, `<world>:player:{player_id}:inventory` |
+| Room occupants | Redis | `<world>:room:{room_id}:players`, `...:entities`, `...:items` |
+| Entity live state | Redis | `<world>:entity:{entity_id}:state` |
+| Item live state | Redis | `<world>:item:{item_id}:state` |
 | Account / Character records | Postgres | `accounts`, `characters` tables |
 | Admin staff | Postgres | `admin_staff` table |
 | Scene images | Postgres | `account_scene_images` table |
 
-`RedisState` (`state/redis_client.py`) has typed async methods for every key pattern — use them; don't hand-craft keys.
+`RedisState` (`state/redis_client.py`) has typed async methods for every key pattern — use them; don't hand-craft keys. Every key is stored under the world's namespace (`<world>` = world id); anything that must build a raw key passes it through `redis.key()`.
 
 `PersistenceManager.flush_all()` copies live Redis player state back into the Postgres `characters` row every ~60 s and on server shutdown.
 
@@ -157,7 +156,7 @@ async def greet(session: Session, args: list[str]):
 
 ### Room
 
-Create `content/world/zones/{zone_id}/rooms/{room_slug}.yaml`:
+Create `worlds/<world>/content/world/zones/{zone_id}/rooms/{room_slug}.yaml`:
 
 ```yaml
 id: "my_zone:room_slug"     # must match zone_id:file_stem
@@ -187,11 +186,11 @@ The server loads rooms on first access (`ContentLoader.get_room(room_id)`). HotR
 
 ### Entity template
 
-Create `content/world/entities/{id}.yaml`. See `world/models.py` → `EntityTemplate` for the full schema.
+Create `worlds/<world>/content/world/entities/{id}.yaml`. See `world/models.py` → `EntityTemplate` for the full schema.
 
 ### Item template
 
-Create `content/world/items/{id}.yaml`. See `world/models.py` → `ItemTemplate`.
+Create `worlds/<world>/content/world/items/{id}.yaml`. See `world/models.py` → `ItemTemplate`.
 
 ---
 
@@ -201,8 +200,8 @@ Narration is **optional and fire-and-forget** — the game never blocks on LLM o
 
 ```
 Command handler
-  └─ app_instance.prompt_manager.render("template_name", **context)
-       └─ Jinja2 renders prompts/{template_name}.j2
+  └─ app_instance.prompt_manager.render("narrate.room", **context)   # an AI slot
+       └─ Jinja2 renders worlds/<world>/ai/prompts/narrate.room.j2 (SlotDisabled if absent)
   └─ app_instance.llm_client.generate(prompt, max_tokens=N)
        └─ POST to LM Studio / Ollama / OpenAI-compatible endpoint
   └─ app_instance.llm_client.validator.sanitize(response)
@@ -210,7 +209,7 @@ Command handler
   └─ session.send(narration)
 ```
 
-Prompt templates live in `prompts/`. Each `.j2` file receives named variables. If the LLM call fails, command handlers fall back to a plain-text message — see `commands/combat.py` for the pattern.
+AI slots are declared by the engine (`sage.llm.prompts.ENGINE_SLOTS`) and by plugins (`api.ai.slot(name)` -> `<plugin>.<name>`). The running world fills a slot with `ai/prompts/<slot>.j2`; a slot without a template is disabled and callers take their plain path. Each `.j2` file receives named variables. If the LLM call fails, command handlers fall back to a plain-text message — see `plugins/combat/sage_plugin_combat/main.py` (`api.ai.narrate`) for the pattern.
 
 **LLM client config:** `config/llm.toml` (optional). Defaults to disabled. Set `base_url`, `model`, `enabled = true`.
 
@@ -224,7 +223,7 @@ Proficiencies are organised as dot-path trees, e.g. `combat.melee.blades`. Five 
 |---|---|
 | `proficiencies/models.py` | Pydantic models: `ProficiencyLeafDefinition`, `ProficiencyNode`, `ProficiencyCatalogDocument` |
 | `proficiencies/registry.py` | `ProficiencyRegistry` — in-memory tree built from catalog |
-| `proficiencies/catalog_loader.py` | Loads `content/proficiencies/**/*.yaml` into registry |
+| `proficiencies/catalog_loader.py` | Loads the world's `content/proficiencies/` into the registry |
 | `proficiencies/engine.py` | `ProficiencyEngine` — `try_field_gain()`, XP math, level-up |
 | `proficiencies/state_helpers.py` | `ensure_proficiency_block()`, `combat_attack_defense_from_stats()` |
 | `proficiencies/tick.py` | Per-tick passive drain / decay |
@@ -307,17 +306,15 @@ Default ports: Nexus 8001, player UI 5173, admin UI 5174, Postgres 5432, Redis 6
 
 ## WorldForge content editor
 
-WorldForge is a Tauri desktop app (`engine/tools/worldforge/`) for visually editing zones and rooms. It exports content directly into `content/world/`. Stamps (reusable room groups) are saved to `content/world/stamps/`.
+WorldForge is a Tauri desktop app (`engine/tools/worldforge/`) for visually editing zones and rooms. It edits a world's `content/world/` (picking the repository root finds `worlds/<id>/content/world`). Stamps (reusable room groups) are saved to `content/world/stamps/`.
 
 **Resolved (kept for history):** WorldForge historically wrote exports to a nested `content/world/content/world/` path due to a root path misconfiguration. If you see a `content/world/content/` subtree appear after a WorldForge export, the room YAMLs must be moved to `content/world/zones/{zone_id}/rooms/` and the duplicate tree removed. This was corrected manually; check the WorldForge content root setting if it recurs.
 
 ### How WorldForge saves (and the conflict risk)
 
-WorldForge does **not** save through the Nexus HTTP API. Its `saveRoomFile()` (`engine/tools/worldforge/src/editors/ZoneEditor.jsx`) calls the Tauri `write_file` command (`engine/tools/worldforge/src-tauri/src/commands.rs`) and writes room YAML **directly to disk**; the server's `HotReloader` then notices the file change and invalidates the content cache. The admin-ui World Builder, by contrast, writes through Nexus (`PUT/POST/DELETE /content/zones/{zone}/rooms/*` in `admin/routes/content.py`).
+WorldForge does **not** save through the Nexus HTTP API. Its `saveRoomFile()` (`engine/tools/worldforge/src/editors/ZoneEditor.jsx`) calls the Tauri `write_file` command (`engine/tools/worldforge/src-tauri/src/commands.rs`) and writes room YAML **directly to disk**; the server's `HotReloader` then notices the file change and invalidates the content cache. The admin-ui World Builder that used to write rooms through Nexus was retired in SAGE 3.18 (owner G.6); the admin Content Library only lists zones and rooms and can create a zone or an empty room.
 
-Because these two paths are unsynchronized, running both editors on the same zone risks last-write-wins clobbering. The `/content/*` room-write routes accept an optional `expected_mtime` (returned by the room-read endpoints) and reject with **409 `content_modified`** when the file changed on disk since it was loaded — the admin-ui builder sends it; direct WorldForge disk writes bypass this guard entirely, so avoid editing the same zone in both tools at once.
-
-There is a **third writer**: `engine/tools/worldforge-mcp/server.py` (the MCP server behind the `mcp__worldforge__*` tools) also reads and writes room YAML and `.positions.json` directly to disk (`_read_room`/`_write_room`/`_write_positions`), with no `expected_mtime` guard — same accepted last-write-wins risk as the Tauri app. Treat any two of the three writers (admin-ui Builder, WorldForge Tauri app, worldforge-mcp tools) editing the same zone concurrently as unsafe.
+The other structural writer is `engine/tools/worldforge-mcp/server.py` (the MCP server behind the `mcp__worldforge__*` tools), which reads and writes room YAML and `.positions.json` directly to disk (`_read_room`/`_write_room`/`_write_positions`). Neither writer guards against the other (last write wins), so don't edit the same zone in the WorldForge app and through the MCP tools at the same time.
 
 Related Nexus endpoints (available for HTTP write-through, e.g. the forge chat deploy flow):
 

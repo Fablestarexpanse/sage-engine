@@ -3,15 +3,17 @@ import axios from "axios";
 import { useAdminTheme } from "./AdminThemeContext.jsx";
 import { API_BASE } from "./apiConfig.js";
 
-const WEIGHT_KEYS = ["FRT", "RFX", "ACU", "RSV", "PRS"];
+// Page for the "skills" admin tool. The plugin that mounts that tool (GET /admin/plugin-pages)
+// serves GET/PUT <base>/catalog: {version, leaves, weight_keys}; weight_keys name the attributes a
+// leaf's stat_weights split across.
 
-function emptyLeaf() {
+function emptyLeaf(weightKeys) {
   return {
     id: "domain.branch.new_skill",
     name: "",
     description: "",
     domain: "domain",
-    stat_weights: { FRT: 0.2, RFX: 0.2, ACU: 0.2, RSV: 0.2, PRS: 0.2 },
+    stat_weights: Object.fromEntries(weightKeys.map((k) => [k, 1 / weightKeys.length])),
     tree_depth: 0,
     tags: [],
   };
@@ -19,11 +21,12 @@ function emptyLeaf() {
 
 function weightSum(w) {
   if (!w || typeof w !== "object") return 0;
-  return WEIGHT_KEYS.reduce((a, k) => a + (Number(w[k]) || 0), 0);
+  return Object.values(w).reduce((a, x) => a + (Number(x) || 0), 0);
 }
 
-export default function ProficienciesPage() {
+export default function ProficienciesPage({ pluginBase }) {
   const { colors: COLORS } = useAdminTheme();
+  const catalogUrl = `${API_BASE}${pluginBase}/catalog`;
   const [doc, setDoc] = useState(null);
   const [loadErr, setLoadErr] = useState("");
   const [saveMsg, setSaveMsg] = useState("");
@@ -36,14 +39,15 @@ export default function ProficienciesPage() {
     setLoadErr("");
     setSaveMsg("");
     try {
-      const { data } = await axios.get(`${API_BASE}/content/proficiencies/catalog`);
+      const { data } = await axios.get(catalogUrl);
       setDoc(data);
       setSel(null);
     } catch (e) {
       setDoc(null);
       setLoadErr(e.response?.data?.detail || e.message || "Load failed");
     }
-  }, []);
+  }, [catalogUrl]);
+  const weightKeys = Array.isArray(doc?.weight_keys) ? doc.weight_keys : [];
 
   useEffect(() => {
     load();
@@ -106,7 +110,7 @@ export default function ProficienciesPage() {
     setBusy(true);
     setSaveMsg("");
     try {
-      const { data } = await axios.put(`${API_BASE}/content/proficiencies/catalog`, doc);
+      const { data } = await axios.put(catalogUrl, doc);
       setSaveMsg(`Saved ${data.leaf_count} leaves. Reload game content cache if players are online.`);
       await load();
     } catch (e) {
@@ -120,7 +124,7 @@ export default function ProficienciesPage() {
   const addLeaf = () => {
     let newIdx = 0;
     setDoc((d) => {
-      const leaves = [...(d?.leaves || []), emptyLeaf()];
+      const leaves = [...(d?.leaves || []), emptyLeaf(weightKeys)];
       newIdx = leaves.length - 1;
       return { ...(d || { version: 1 }), version: d?.version ?? 1, leaves };
     });
@@ -330,8 +334,8 @@ export default function ProficienciesPage() {
                 </label>
                 <div>
                   <div style={{ fontSize: 11, color: COLORS.textMuted, marginBottom: 4 }}>stat_weights (sum ≈ 1.0)</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 6 }}>
-                    {WEIGHT_KEYS.map((k) => (
+                  <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.max(1, weightKeys.length)}, 1fr)`, gap: 6 }}>
+                    {weightKeys.map((k) => (
                       <label key={k} style={{ fontSize: 10, color: COLORS.textDim }}>
                         {k}
                         <input
