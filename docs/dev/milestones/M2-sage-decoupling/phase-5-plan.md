@@ -24,7 +24,7 @@ message, and the full suite runs before each commit.
 |---|------|--------|
 | 5.1 | The server sends the command list: the player client autocompletes the running world's commands (engine + enabled plugins), not a hardcoded list. | done |
 | 5.2 | One validator. `sage validate [--world]` runs `sage.world.lint`, and worldforge-mcp's `validate_zone` and room types come from the world package. The MCP instructions lose the sci-fi examples. | done |
-| 5.3 | Content schemas. `sage schema export` and `GET /schema/world` give JSON Schema for rooms, features, entities and items (with every enabled plugin's extension fields) plus the world's lists (room types, exit directions, slots, attributes, currencies). | todo |
+| 5.3 | Content schemas. `sage schema export` and `GET /schema/world` give JSON Schema for rooms, features, entities and items (with every enabled plugin's extension fields) plus the world's lists (room types, exit directions, slots, attributes, currencies). | done |
 | 5.4 | WorldForge reads the world. Room types, exit directions and equipment slots come from the package's `world.toml`. | todo |
 | 5.5 | WorldForge edits plugin content: room, feature and item forms for extension fields, generated from the exported schema. | todo |
 | 5.6 | Credit bundles are deployment config (`comfyui.toml`), served to the admin console. | todo |
@@ -55,4 +55,16 @@ message, and the full suite runs before each commit.
     - `sage validate --world rivermoot` gives 0 errors, 0 warnings, exit 0.
     - `--world fablestar` gives the 3 dangling owner exits and a zero-density `aipub`, exit 1.
     - Called the MCP functions on a Rivermoot copy (`test_worldforge_mcp.py`); the MCP process already running in this session still has the old code, so its tool was not called.
+- **5.3 content schemas (done).**
+  - **`sage.world.schema.content_schema(world, extensions)`** collects:
+    - the world's id and name
+    - `content` lists (room types, exit directions, equipment slots)
+    - attributes, vitals and currencies
+    - JSON Schema for room, feature, entity, item and zone
+    - every enabled plugin's extension fields, with owners
+  - **How to get it:**
+    - Staff: `GET /schema/world`.
+    - Without a server: `python -m sage schema export [--world] [--out]`. This uses `sage.plugins.offline.registration_host`, which runs plugin setup with no database, Redis or HTTP and reads only what the plugins register.
+  - **Offline copies:** each world package commits one at `content.schema.json`, and `test_exported_schema_is_current` fails with the regenerate command when it goes stale.
+  - **Run:** the live `/schema/world` on both servers matched the exported files exactly (401 without a token).
 
