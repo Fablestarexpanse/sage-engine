@@ -1,6 +1,6 @@
 # Phase 4 plan: Rivermoot at full size
 
-**Milestone:** M2 — SAGE engine decoupling · **Branch:** `sage/phase-4` (stacked on `sage/phase-3`) · **Status:** in progress
+**Milestone:** M2 — SAGE engine decoupling · **Branch:** `sage/phase-4` (stacked on `sage/phase-3`) · **Status:** done
 
 Living plan. The brief (section 6) asks for a second world, deliberately unlike Fablestar, of
 20–40 rooms. It has three attributes, one currency, no glyphs, a different genre and a different
@@ -33,7 +33,7 @@ into `docs/sage/DECISIONS.md`.
 | 4.4 | The map. 20–40 rooms over three zones (town, docks and riverbank, the old mill and marsh), entities and items, north/south/east/west exits only. | done |
 | 4.5 | First-party plugins in a second world. Rivermoot enables equipment (hand/body), consumables, shop and lodging (priced in silver), search, effects (rest) and ambient; fix whatever assumes Fablestar. | done |
 | 4.6 | Rivermoot's AI. Room narration with its own style, and no image slots (owner G.9: no AI images). | done |
-| 4.7 | Proof. The live smoke test plays a longer Rivermoot script (buy, equip, fight, level, rest, die and wake at the shrine). A real server runs on its own Rivermoot database (one database per world). | todo |
+| 4.7 | Proof. The live smoke test plays a longer Rivermoot script (buy, equip, fight, level, rest, die and wake at the shrine). A real server runs on its own Rivermoot database (one database per world). | done |
 
 ## Notes
 - **4.1 stat schema (done).** At creation the engine seeds `stats.yaml` attribute defaults
@@ -105,4 +105,13 @@ into `docs/sage/DECISIONS.md`.
   - **No engine change:** the portrait endpoint returns `comfyui_not_configured` with no charge.
   - **Live run:** room narration arrived for the market and the crossroads, and combat narration for a rat kill.
   - **Tone fix:** the first tone string was a noun phrase ("a muddy low-fantasy river town"). The local model echoed it back verbatim, so the setting moved to the system prompt, and the template now forbids naming the genre.
+- **4.7 proof (done).**
+  - **Smoke test:** the live smoke test boots each world through a shared `_running_world` context manager. Rivermoot also plays its loop, `test_second_world_plays_its_loop`:
+    - buy bread and a cudgel in silver, ready the cudgel in the hand slot
+    - wait for the market rat to spawn and kill it for experience
+    - `rest` refused in the market, bread eaten at the shrine
+  - **Left out of the smoke test:** death at the shrine. The bandit captain fight is random and twelve rooms away. `test_events_resolvers.py` covers the respawn resolver, and the 4.5 live run died and woke there for real.
+  - **Real server:** runs on `sage_rivermoot` via the `nexus-rivermoot` launch config (port 8002), alongside Fablestar on 8001.
+  - **Result:** live tier 16 passed.
+  - **Noticed, not changed:** `use` on food at full health spends the item for +0 hp (consumables plugin behaviour in both worlds).
 

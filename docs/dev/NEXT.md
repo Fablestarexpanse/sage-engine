@@ -2,9 +2,9 @@
 
 Active milestone: **M2 — SAGE engine decoupling** (`docs/dev/milestones/M2-sage-decoupling/`).
 
-Active phase: **none — Phase 3 complete (2026-09-14), awaiting owner review.** Stages 2a, 2b and 2c
-and Phase 3 are up as stacked PRs #7 → #8 → #9 → #10. Next: Phase 4, the full-size second
-reference world. The live breadcrumb is the `NEXT:` line at the top of `docs/sage/DECISIONS.md`;
+Active phase: **none — Phases 3 and 4 complete (2026-09-14), awaiting owner review.** Stages 2a, 2b and 2c
+and Phase 3 are up as stacked PRs #7 → #8 → #9 → #10; Phase 4 (Rivermoot at full size) is on
+`sage/phase-4`, stacked on Phase 3. Next: Phase 5, tooling. The live breadcrumb is the `NEXT:` line at the top of `docs/sage/DECISIONS.md`;
 Phase 3 step notes are in `docs/dev/milestones/M2-sage-decoupling/phase-3-plan.md`.
 
 Layout: `engine/src/sage` (server, `python -m sage`), `engine/tests` (`python -m pytest` from the

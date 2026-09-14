@@ -13,7 +13,9 @@ worlds/fablestar/content DONE. 3.18a builder + glyph/galaxy/ship surfaces out of
 WorldForge editors, player-ui glyph remnants, galaxy.yaml DONE (3.18 complete). 3.19 ratchet sweep DONE (denylist
 43, all by design). 3.20 engine text in the lexicon DONE (player_literals 4, all in test_session.py). PHASE 3 COMPLETE
 (PR #10 ready for review). Phase 4 (Rivermoot full size) STARTED on sage/phase-4 after owner "Continue" (2026-09-14);
-plan docs/dev/milestones/M2-sage-decoupling/phase-4-plan.md. Next: 4.1 stat schema applied. Dev DB at r1s2t3u4v5w6. Commit 9a831ea does not boot (be48da3 completes it).
+plan docs/dev/milestones/M2-sage-decoupling/phase-4-plan.md. PHASE 4 COMPLETE (4.1-4.7): Rivermoot 30 rooms on 10 plugins,
+own DB sage_rivermoot (launch config nexus-rivermoot, port 8002). Next: owner review of Phases 3-4, then Phase 5 (tooling).
+Dev DBs: fablestar at r1s2t3u4v5w6, sage_rivermoot at head. Commit 9a831ea does not boot (be48da3 completes it).
 Open owner questions: none (Rivermoot license and stage PRs decided 2026-09-14, see log).
 Review page: https://claude.ai/code/artifact/2d488113-1ca9-4f45-b993-ac0253e0670c
 
