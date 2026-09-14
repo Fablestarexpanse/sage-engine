@@ -3,14 +3,15 @@ editing; creating zones and rooms. Structural room editing is WorldForge's job (
 
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
-from sage.admin import content_browser
+from sage.admin import content_browser, content_tables
 from sage.admin.admin_security import AdminContext
 from sage.admin.route_helpers import require_any_tool, require_tool
 
@@ -165,6 +166,38 @@ def build_content_router(server: SageServer) -> APIRouter:
     ):
         """List all entity templates defined on disk (a file that does not parse is listed too)."""
         return content_browser.list_entity_template_rows()
+
+    @router.get("/content/templates/{kind}")
+    async def template_table(
+        kind: str,
+        ctx: Annotated[AdminContext, Depends(require_any_tool("entities", "items"))],
+        q: str = "",
+        type: str = "",
+        sort: str = "name",
+        desc: bool = False,
+        limit: int = Query(default=50, ge=1, le=500),
+        offset: int = Query(default=0, ge=0),
+    ):
+        """Entity or item templates as a table: columns from the model and plugin fields."""
+        if kind not in content_tables.KINDS:
+            raise HTTPException(status_code=404, detail="unknown_template_kind")
+        if not ctx.may_use_tool(kind):
+            raise HTTPException(status_code=403, detail=f"tool_denied:{kind}")
+        extensions = getattr(getattr(server, "plugins", None), "extensions", None)
+        schemas = extensions.schemas() if extensions is not None else {}
+        # A thread: the first listing of a large world parses every file, and must not stall the
+        # game loop this route shares.
+        return await asyncio.to_thread(
+            content_tables.table,
+            kind,
+            schemas,
+            q=q,
+            type_=type,
+            sort=sort,
+            desc=desc,
+            limit=limit,
+            offset=offset,
+        )
 
     _register_template_routes("entities", "entities")
     _register_template_routes("items", "items")

@@ -41,22 +41,39 @@ async def _row(session: Any, character_id: int) -> Any:
     return char
 
 
-async def find(server: Any, query: str, limit: int = 25) -> list[dict[str, Any]]:
+async def find(
+    server: Any,
+    query: str = "",
+    limit: int = 25,
+    *,
+    offset: int = 0,
+    zone: str = "",
+    online: bool | None = None,
+) -> dict[str, Any]:
+    """One page of characters: name or account contains ``query``, saved room in ``zone``,
+    connected or not. Returns {rows, total}."""
     from sage.state.models import Account, Character
 
     q = (query or "").strip().lower()
-    stmt = (
-        select(Character, Account)
-        .join(Account, Account.id == Character.account_id)
-        .order_by(Character.name)
-        .limit(max(1, min(limit, 100)))
-    )
+    stmt = select(Character, Account).join(Account, Account.id == Character.account_id)
     if q:
         stmt = stmt.where(
             func.lower(Character.name).contains(q) | func.lower(Account.username).contains(q)
         )
+    if zone:
+        stmt = stmt.where(Character.room_id.startswith(f"{zone}:", autoescape=True))
+    if online is not None:
+        connected = list(getattr(server.session_manager, "player_to_session", {}) or {})
+        stmt = stmt.where(
+            Character.name.in_(connected) if online else Character.name.not_in(connected)
+        )
     async with server.db.session_factory() as session:
-        rows = (await session.execute(stmt)).all()
+        total = await session.scalar(select(func.count()).select_from(stmt.subquery()))
+        rows = (
+            await session.execute(
+                stmt.order_by(Character.name).limit(max(1, min(limit, 500))).offset(max(0, offset))
+            )
+        ).all()
     out = []
     for char, account in rows:
         hot = await _hot_room(server, char.name)
@@ -71,7 +88,7 @@ async def find(server: Any, query: str, limit: int = 25) -> list[dict[str, Any]]
                 "suspended": account.suspended_at is not None,
             }
         )
-    return out
+    return {"rows": out, "total": int(total or 0)}
 
 
 async def detail(server: Any, character_id: int) -> dict[str, Any]:

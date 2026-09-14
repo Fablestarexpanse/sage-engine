@@ -2,6 +2,9 @@ import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { useAdminTheme } from "./AdminThemeContext.jsx";
 import { API_BASE } from "./apiConfig.js";
+import { SearchBar } from "./adminCommon.jsx";
+import Pager from "./pager.jsx";
+import { useDebounced } from "./listHooks.js";
 
 /** Matches server comfyui.toml default: 100 credits ≈ US $1 at list. */
 
@@ -110,7 +113,9 @@ function ConsoleAccessSection({ detail, accountId, disabled, onChanged }) {
 }
 
 /** focusTarget: jump to an account (e.g. from Live sessions). */
-export default function PlayerAccountsTab({ focusTarget = null }) {
+const ACCOUNTS_PAGE = 50;
+
+export default function PlayerAccountsTab({ focusTarget = null, onSelect }) {
   const { colors: COLORS } = useAdminTheme();
   const inp = {
     padding: "8px 10px",
@@ -123,6 +128,12 @@ export default function PlayerAccountsTab({ focusTarget = null }) {
     boxSizing: "border-box",
   };
   const [rows, setRows] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [search, setSearch] = useState("");
+  const q = useDebounced(search);
+  const [filter, setFilter] = useState("all");
+  const [sort, setSort] = useState("username");
+  const [offset, setOffset] = useState(0);
   const [err, setErr] = useState("");
   const [selectedId, setSelectedId] = useState(null);
   const [detail, setDetail] = useState(null);
@@ -132,9 +143,11 @@ export default function PlayerAccountsTab({ focusTarget = null }) {
   const loadList = useCallback(async () => {
     setErr("");
     const url = `${API_BASE}/admin/player-accounts`;
+    const desc = sort === "created" || sort === "last_login" || sort === "characters";
     try {
-      const { data } = await axios.get(url);
-      setRows(Array.isArray(data) ? data : []);
+      const { data } = await axios.get(url, { params: { q, filter, sort, desc, limit: ACCOUNTS_PAGE, offset } });
+      setRows(data.rows || []);
+      setTotal(data.total || 0);
     } catch (e) {
       const detail = e.response?.data?.detail;
       const detailStr =
@@ -149,8 +162,9 @@ export default function PlayerAccountsTab({ focusTarget = null }) {
       ].filter(Boolean);
       setErr(parts.join(" — ") || "Failed to load accounts");
       setRows([]);
+      setTotal(0);
     }
-  }, []);
+  }, [q, filter, sort, offset]);
 
   const [economy, setEconomy] = useState(null);
   useEffect(() => {
@@ -255,8 +269,21 @@ export default function PlayerAccountsTab({ focusTarget = null }) {
       }}
     >
       <div style={{ background: COLORS.bgCard, border: `1px solid ${COLORS.border}`, borderRadius: 10, overflow: "hidden", width: "100%" }}>
-        <div style={{ padding: "10px 12px", borderBottom: `1px solid ${COLORS.border}`, fontSize: 12, color: COLORS.textMuted }}>
-          Play accounts — pick one; editor is <strong style={{ color: COLORS.text }}>below</strong> (full width so nothing is clipped).
+        <div style={{ padding: "10px 12px", borderBottom: `1px solid ${COLORS.border}`, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <SearchBar placeholder="Search login or email…" value={search} onChange={(v) => { setSearch(v); setOffset(0); }} />
+          <select id="accounts-filter" aria-label="Show" value={filter} onChange={(e) => { setFilter(e.target.value); setOffset(0); }} style={{ ...inp, width: "auto" }}>
+            <option value="all">All accounts</option>
+            <option value="suspended">Suspended</option>
+            <option value="gm">GM crown</option>
+            <option value="no_characters">No characters</option>
+          </select>
+          <select id="accounts-sort" aria-label="Sort by" value={sort} onChange={(e) => { setSort(e.target.value); setOffset(0); }} style={{ ...inp, width: "auto" }}>
+            <option value="username">Login A–Z</option>
+            <option value="last_login">Last signed in</option>
+            <option value="created">Newest</option>
+            <option value="characters">Most characters</option>
+          </select>
+          <span style={{ marginLeft: "auto" }}><Pager offset={offset} limit={ACCOUNTS_PAGE} total={total} onOffset={setOffset} /></span>
         </div>
         {err && <div style={{ padding: 12, color: COLORS.danger, fontSize: 12 }}>{String(err)}</div>}
         <div style={{ maxHeight: 260, overflowY: "auto" }}>
@@ -264,7 +291,7 @@ export default function PlayerAccountsTab({ focusTarget = null }) {
             <button
               key={r.id}
               type="button"
-              onClick={() => setSelectedId(r.id)}
+              onClick={() => { setSelectedId(r.id); onSelect?.(r.id); }}
               style={{
                 display: "block",
                 width: "100%",
@@ -288,11 +315,11 @@ export default function PlayerAccountsTab({ focusTarget = null }) {
                 ) : null}
               </div>
               <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 4, fontFamily: "'JetBrains Mono', monospace" }}>
-                id {r.id} · {r.character_count} chars · credits {r.ai_credits}
+                id {r.id} · {r.character_count} chars · credits {r.ai_credits}{r.last_login ? ` · last in ${new Date(r.last_login).toLocaleDateString()}` : ""}
               </div>
             </button>
           ))}
-          {rows.length === 0 && !err && <div style={{ padding: 16, color: COLORS.textMuted, fontSize: 13 }}>No accounts</div>}
+          {rows.length === 0 && !err && <div style={{ padding: 16, color: COLORS.textMuted, fontSize: 13 }}>{q || filter !== "all" ? "No accounts match." : "No accounts yet."}</div>}
         </div>
       </div>
 

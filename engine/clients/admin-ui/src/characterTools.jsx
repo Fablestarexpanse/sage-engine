@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { useAdminTheme } from "./AdminThemeContext.jsx";
 import { API_BASE } from "./apiConfig.js";
-import { Badge, ActionButton, SearchBar } from "./adminCommon.jsx";
+import { Badge, ActionButton, SearchBar, DataTable } from "./adminCommon.jsx";
+import Pager from "./pager.jsx";
+import { useDebounced, useHashParts } from "./listHooks.js";
 
 // Find a character and act on it: move, set money, give or take items, kick.
 // The server writes live state as well as the saved row, so a change to a character who has
@@ -155,41 +157,76 @@ function CharacterDetail({ characterId, onChanged }) {
   );
 }
 
+const PAGE = 25;
+
 export default function CharacterTools() {
   const { colors: COLORS } = useAdminTheme();
+  // #/characters/<id> opens that character.
+  const [parts, go] = useHashParts();
+  const selected = Number(parts[0]) > 0 ? Number(parts[0]) : null;
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState([]);
+  const q = useDebounced(query);
+  const [zone, setZone] = useState("");
+  const [online, setOnline] = useState("");
+  const [offset, setOffset] = useState(0);
+  const [data, setData] = useState(null);
+  const [zones, setZones] = useState([]);
   const [error, setError] = useState("");
-  const [selected, setSelected] = useState(null);
 
   useEffect(() => {
     let alive = true;
-    const t = setTimeout(() => {
-      axios.get(`${API_BASE}/admin/characters`, { params: { q: query, limit: 25 } })
-        .then(({ data }) => { if (alive) { setResults(data); setError(""); } })
-        .catch((e) => alive && setError(errorText(e)));
-    }, 250);
-    return () => { alive = false; clearTimeout(t); };
-  }, [query]);
+    const params = { q, zone, limit: PAGE, offset, ...(online ? { online: online === "yes" } : {}) };
+    axios.get(`${API_BASE}/admin/characters`, { params })
+      .then(({ data: d }) => { if (alive) { setData(d); setError(""); } })
+      .catch((e) => alive && setError(errorText(e)));
+    return () => { alive = false; };
+  }, [q, zone, online, offset]);
+
+  useEffect(() => {
+    let alive = true;
+    axios.get(`${API_BASE}/content/zones`).then(({ data: d }) => alive && setZones(d)).catch(() => {});
+    return () => { alive = false; };
+  }, []);
+
+  const select = { padding: "7px 10px", background: COLORS.bgInput, border: `1px solid ${COLORS.border}`, borderRadius: 8, color: COLORS.text, fontSize: 13 };
+  const rows = data?.rows || [];
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-        <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: COLORS.text, fontFamily: "'Space Grotesk', sans-serif" }}>Characters</h3>
-        <SearchBar placeholder="Find a character or account…" value={query} onChange={setQuery} />
+      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <SearchBar placeholder="Find a character or account…" value={query} onChange={(v) => { setQuery(v); setOffset(0); }} />
+        <select id="characters-zone" aria-label="Zone" value={zone} onChange={(e) => { setZone(e.target.value); setOffset(0); }} style={select}>
+          <option value="">every zone</option>
+          {zones.map((z) => <option key={z.id} value={z.id}>{z.id}</option>)}
+        </select>
+        <select id="characters-online" aria-label="Connected" value={online} onChange={(e) => { setOnline(e.target.value); setOffset(0); }} style={select}>
+          <option value="">online or not</option>
+          <option value="yes">online now</option>
+          <option value="no">offline</option>
+        </select>
+        <span style={{ marginLeft: "auto" }}><Pager offset={offset} limit={PAGE} total={data?.total || 0} onOffset={setOffset} /></span>
       </div>
       {error && <div role="alert" style={{ color: COLORS.danger, fontSize: 12 }}>{error}</div>}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-        {results.map((r) => (
-          <button key={r.id} type="button" onClick={() => setSelected(r.id)} aria-pressed={selected === r.id}
-            style={{ padding: "6px 10px", borderRadius: 6, cursor: "pointer", fontSize: 13, fontFamily: sans, color: COLORS.text, background: selected === r.id ? COLORS.accentGlow : COLORS.bgInput, border: `1px solid ${selected === r.id ? COLORS.accent : COLORS.border}` }}>
-            {r.name}
-            <span style={{ color: COLORS.textDim, fontFamily: mono, fontSize: 11 }}> {r.account}{r.online ? " · online" : ""}{r.suspended ? " · suspended" : ""}</span>
-          </button>
-        ))}
-        {results.length === 0 && !error && <span style={{ fontSize: 12, color: COLORS.textMuted }}>No characters match.</span>}
+      {selected != null && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <div><ActionButton small variant="ghost" onClick={() => go()}>Close</ActionButton></div>
+          <CharacterDetail key={selected} characterId={selected} />
+        </div>
+      )}
+      <div style={{ border: `1px solid ${COLORS.border}`, borderRadius: 8, overflow: "hidden" }}>
+        <DataTable columns={[
+          { label: "Character", render: (r) => <span style={{ fontWeight: 600 }}>{r.name}</span> },
+          { label: "Account", render: (r) => <a href={`#/accounts/${r.account_id}`} onClick={(e) => e.stopPropagation()} style={{ color: COLORS.accent, fontFamily: mono, fontSize: 12 }}>{r.account}</a> },
+          { label: "Room", key: "room_id", mono: true },
+          { label: "", render: (r) => (
+            <span style={{ display: "inline-flex", gap: 6 }}>
+              {r.online && <Badge color={COLORS.success}>online</Badge>}
+              {r.suspended && <Badge color={COLORS.danger}>suspended</Badge>}
+            </span>
+          ) },
+        ]} rows={rows} onRowClick={(r) => go(r.id)} />
+        {data && rows.length === 0 && <div style={{ padding: 14, fontSize: 12, color: COLORS.textMuted }}>No characters match.</div>}
       </div>
-      {selected != null && <CharacterDetail key={selected} characterId={selected} />}
     </div>
   );
 }

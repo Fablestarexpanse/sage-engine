@@ -22,6 +22,24 @@ Versions built before the first publication have no conversion date.
 
 ## [Unreleased]
 
+- **The admin console handles large worlds.**
+  - **Items and Creatures tables:** each is one searchable, sortable, paged table
+    (`GET /content/templates/{items,entities}`). The columns come from the template model and
+    the fields this world's plugins add, such as `attack`, `slot`, `heal`, `recipe`, and each
+    creature stat.
+  - **Content files are cached:** a file is parsed only when it changes. With 5,000 item
+    templates, the first listing took 0.64 s and later listings took 0.16 s. The first listing
+    runs in a thread, so it does not stall the game loop.
+  - **Accounts** search, filter (suspended, GM, no characters), sort (last sign-in, newest,
+    most characters) and page in the database. Before, the list loaded every account and ran
+    one count query per account.
+  - **Characters** filter by zone and by online or offline, and page.
+  - **Record addresses:** `#/content/items/<id>`, `#/content/creatures/<id>`,
+    `#/content/rooms/<zone>/<room>`, `#/characters/<id>` and `#/accounts/<id>` each open that
+    record.
+
+  Breaking for API clients: `GET /admin/player-accounts` and `GET /admin/characters` now return
+  `{rows, total}`.
 - **Fixed: staff moving an offline character put it in the room.** The character tools (and the
   account editor's character save) added a character who was not connected to the room's player
   set, so everyone in that room saw it standing there. Offline characters now get only their
