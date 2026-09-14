@@ -596,7 +596,7 @@ const AiForgePage = () => {
         </div>
       </div>
       <p style={{ margin: 0, fontSize: 12, color: COLORS.textDim, fontFamily: "'DM Sans', sans-serif" }}>
-        Forge uses the same model as in-game narration. Configure it under <strong>Server → LM Studio / LLM</strong>.
+        Forge uses the same model as in-game narration. Configure it under <strong>Server &amp; AI models</strong>.
       </p>
       {summary && !forgeCategories.some((c) => c.enabled) && (
         <div style={{ padding: "12px 14px", borderRadius: 8, border: `1px solid ${COLORS.warning}`, background: COLORS.warningBg, color: COLORS.text, fontSize: 13, fontFamily: "'DM Sans', sans-serif", lineHeight: 1.5 }}>

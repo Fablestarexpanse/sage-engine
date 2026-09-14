@@ -12,8 +12,7 @@ import {
 
 const OperationsPage = () => {
   const { colors: COLORS } = useAdminTheme();
-  const [tab, setTab] = useState("sessions");
-  const [players, setPlayers] = useState([]);
+  const [tab, setTab] = useState("broadcast");
   const [worldLive, setWorldLive] = useState(null);
   const [serverInfo, setServerInfo] = useState(null);
   const [broadcastText, setBroadcastText] = useState("");
@@ -30,8 +29,6 @@ const OperationsPage = () => {
         return fallback;
       }
     };
-    const pr = await run(() => axios.get(`${API_BASE}/players`), null);
-    if (pr) setPlayers(pr.data || []);
     const wl = await run(() => axios.get(`${API_BASE}/world/live`), null);
     if (wl) setWorldLive(wl.data);
     const si = await run(() => axios.get(`${API_BASE}/server/info`), null);
@@ -45,21 +42,6 @@ const OperationsPage = () => {
     const id = setInterval(refresh, 8000);
     return () => clearInterval(id);
   }, [refresh]);
-
-  const disconnectSession = async (sessionId, name) => {
-    if (!window.confirm(`Disconnect session ${sessionId.slice(0, 8)}… (${name})?`)) return;
-    setBusy(true);
-    setBannerMsg("");
-    try {
-      await axios.post(`${API_BASE}/admin/sessions/${sessionId}/disconnect`);
-      setBannerMsg("Session disconnected.");
-      await refresh();
-    } catch (e) {
-      window.alert(e.response?.data?.detail || e.message || "Failed");
-    } finally {
-      setBusy(false);
-    }
-  };
 
   const sendBroadcast = async () => {
     const t = broadcastText.trim();
@@ -91,28 +73,19 @@ const OperationsPage = () => {
     }
   };
 
-  const sessionsRows = (players || []).map((p) => ({
-    id: p.session_id,
-    name: p.player_id || "guest",
-    state: p.state,
-    location: p.room_id || "—",
-    peer: typeof p.peer === "string" ? p.peer : JSON.stringify(p.peer ?? "—"),
-  }));
-
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
         <div>
           <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: COLORS.text, fontFamily: "'Space Grotesk', sans-serif" }}>Operations</h2>
           <p style={{ margin: "4px 0 0", fontSize: 12, color: COLORS.textMuted, fontFamily: "'DM Sans', sans-serif", maxWidth: 560, lineHeight: 1.5 }}>
-            Sessions, server-wide broadcast, content cache reload, and a Redis snapshot of the live world. Every action here needs a staff login with the Operations tool.
+            Server-wide broadcast, content cache reload, a Redis snapshot of the live world, and tick metrics. Live sessions are under Players &amp; sessions. Every action here needs a staff login with the Operations tool.
           </p>
         </div>
         <ActionButton small variant="ghost" icon={<Icons.Refresh />} onClick={() => refresh()} disabled={busy}>Refresh</ActionButton>
       </div>
       <TabBar
         tabs={[
-          { id: "sessions", label: "Sessions" },
           { id: "broadcast", label: "Broadcast" },
           { id: "reload", label: "Reload caches" },
           { id: "world", label: "World live" },
@@ -122,27 +95,6 @@ const OperationsPage = () => {
         onChange={setTab}
       />
       {bannerMsg && <div style={{ fontSize: 12, color: COLORS.success, fontFamily: "'DM Sans', sans-serif" }}>{bannerMsg}</div>}
-      {tab === "sessions" && (
-        <div style={{ background: COLORS.bgCard, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 16, overflow: "hidden" }}>
-          <DataTable
-            columns={[
-              { label: "Player", render: (row) => <span style={{ fontWeight: 600 }}>{row.name}</span> },
-              { label: "State", key: "state", mono: true },
-              { label: "Location", key: "location", mono: true },
-              { label: "Peer", key: "peer", mono: true },
-              {
-                label: "",
-                render: (row) => (
-                  <ActionButton small variant="danger" disabled={busy} onClick={() => disconnectSession(row.id, row.name)}>
-                    Disconnect
-                  </ActionButton>
-                ),
-              },
-            ]}
-            rows={sessionsRows}
-          />
-        </div>
-      )}
       {tab === "broadcast" && (
         <div style={{ background: COLORS.bgCard, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 18, display: "flex", flexDirection: "column", gap: 12 }}>
           <label style={{ fontSize: 12, color: COLORS.textMuted }}>Message (prefixed with [Server] on the wire)</label>

@@ -29,7 +29,7 @@ export default function ShopsTab({ pluginBase: base = "/plugins/shop/admin" }) {
     } catch (e) {
       setError(e.response?.data?.detail || e.message || "shops API failed");
     }
-  }, []);
+  }, [base]);
   useEffect(() => {
     refresh();
     const t = setInterval(refresh, 5000);

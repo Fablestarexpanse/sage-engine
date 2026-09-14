@@ -145,56 +145,24 @@ const PresenceStrip = ({ online }) => {
 // NAVIGATION & MAIN APP
 // ═══════════════════════════════════════════════════════════════
 
-function SettingsPlaceholderPage() {
-  const { colors: COLORS, toggleMode, mode } = useAdminTheme();
-  return (
-    <div style={{ fontFamily: "'DM Sans', sans-serif", padding: 40, maxWidth: 560 }}>
-      <h2 style={{ margin: "0 0 12px", fontSize: 18, color: COLORS.text, fontFamily: "'Space Grotesk', sans-serif" }}>Settings</h2>
-      <p style={{ margin: "0 0 20px", fontSize: 14, color: COLORS.textMuted, lineHeight: 1.55 }}>
-        Configure server, LLM, and permissions from other sidebar areas. Theme preference is stored in this browser.
-      </p>
-      <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-        <span style={{ fontSize: 13, color: COLORS.text }}>Appearance</span>
-        <button
-          type="button"
-          onClick={toggleMode}
-          style={{
-            padding: "8px 16px",
-            borderRadius: 8,
-            border: `1px solid ${COLORS.border}`,
-            background: COLORS.bgCard,
-            color: COLORS.text,
-            fontWeight: 600,
-            cursor: "pointer",
-            fontFamily: "'DM Sans', sans-serif",
-          }}
-        >
-          {mode === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-        </button>
-      </div>
-    </div>
-  );
-}
-
+// Grouped by what an operator is doing. Plugin pages sit under Plugins and appear only when a
+// plugin of the running world mounts that admin tool (GET /admin/plugin-pages).
 const NAV_ITEMS = [
-  { id: "dashboard", label: "Dashboard", icon: <Icons.Dashboard /> },
+  { id: "dashboard", group: "Overview", label: "Dashboard", icon: <Icons.Dashboard /> },
   // The running world package, its plugins, content check and migration status.
-  { id: "world", label: "World & plugins", icon: <Icons.World />, anyOf: ["world", "server", "dashboard"] },
-  { id: "forge", label: "AI Forge", icon: <Icons.Forge />, highlight: true },
-  { id: "operations", label: "Operations", icon: <Icons.Alert /> },
-  { id: "players", label: "Players & accounts", icon: <Icons.Players /> },
+  { id: "world", group: "World", label: "World & plugins", icon: <Icons.World />, anyOf: ["world", "server", "dashboard"] },
   // One browsing surface for zones/rooms/entities/items; visible when
   // ANY of the legacy content tool grants apply (backend still gates per-route).
-  { id: "content", label: "Content Library", icon: <Icons.Content />, anyOf: ["content", "world", "locations", "entities", "items"] },
-  // Plugin pages: shown only when a plugin of the running world mounts that admin tool
-  // (GET /admin/plugin-pages), and pointed at the plugin's admin base URL.
-  { id: "skills", label: "Skills catalog", icon: <Icons.Skills />, pluginTool: true },
-  { id: "agents", label: "Agents", icon: <Icons.Players />, pluginTool: true },
-  { id: "shops", label: "Shops", icon: <Icons.Items />, pluginTool: true },
-  { id: "lexicon", label: "Lexicon & MOTD", icon: <Icons.Content /> },
-  { id: "server", label: "Server", icon: <Icons.Server /> },
-  { id: "settings", label: "Settings", icon: <Icons.Settings /> },
-  { id: "team", label: "Team & access", icon: <Icons.Players />, headOnly: true },
+  { id: "content", group: "World", label: "Content Library", icon: <Icons.Content />, anyOf: ["content", "world", "locations", "entities", "items"] },
+  { id: "lexicon", group: "World", label: "Lexicon & MOTD", icon: <Icons.Content /> },
+  { id: "players", group: "Players", label: "Players & sessions", icon: <Icons.Players /> },
+  { id: "skills", group: "Plugins", label: "Skills catalog", icon: <Icons.Skills />, pluginTool: true },
+  { id: "agents", group: "Plugins", label: "Agents", icon: <Icons.Players />, pluginTool: true },
+  { id: "shops", group: "Plugins", label: "Shops", icon: <Icons.Items />, pluginTool: true },
+  { id: "forge", group: "AI", label: "AI Forge", icon: <Icons.Forge />, highlight: true },
+  { id: "server", group: "System", label: "Server & AI models", icon: <Icons.Server /> },
+  { id: "operations", group: "System", label: "Operations", icon: <Icons.Alert /> },
+  { id: "team", group: "System", label: "Team & access", icon: <Icons.Players />, headOnly: true },
 ];
 
 const AgentsPage = ({ pluginBase }) => (
@@ -221,7 +189,6 @@ const PAGES = {
   shops: ShopsPage,
   lexicon: LexiconPage,
   server: ServerPage,
-  settings: SettingsPlaceholderPage,
   team: StaffTeamPage,
 };
 
@@ -430,27 +397,33 @@ export default function App() {
           <div style={{ fontSize: 10, color: COLORS.textDim, fontFamily: "'JetBrains Mono', monospace", marginTop: 4, letterSpacing: "0.08em", textTransform: "uppercase" }}>Admin Console</div>
         </div>
 
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 2, padding: "0 8px" }}>
-          {navFiltered.map(item => {
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 2, padding: "0 8px", overflowY: "auto" }}>
+          {navFiltered.map((item, index) => {
             const isActive = resolvedPage === item.id;
             const isHovered = sidebarHovered === item.id;
             const isForge = item.highlight;
+            const startsGroup = index === 0 || navFiltered[index - 1].group !== item.group;
             return (
-              <button key={item.id} onClick={() => setActivePage(item.id)}
-                onMouseEnter={() => setSidebarHovered(item.id)} onMouseLeave={() => setSidebarHovered(null)}
-                style={{
-                  display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", border: "none", borderRadius: 6,
-                  background: isActive ? (isForge ? COLORS.forgeGlow : COLORS.accentGlow) : isHovered ? COLORS.bgHover : "transparent",
-                  color: isActive ? (isForge ? COLORS.forge : COLORS.accent) : isHovered ? COLORS.text : COLORS.textMuted,
-                  cursor: "pointer", fontSize: 13, fontWeight: isActive ? 600 : 400,
-                  fontFamily: "'DM Sans', sans-serif", textAlign: "left", transition: "all 0.12s ease", position: "relative",
-                }}
-              >
-                {isActive && <div style={{ position: "absolute", left: 0, top: "50%", transform: "translateY(-50%)", width: 3, height: 18, borderRadius: "0 2px 2px 0", background: isForge ? COLORS.forge : COLORS.accent }} />}
-                <span style={{ opacity: isActive ? 1 : 0.6 }}>{item.icon}</span>
-                {item.label}
-                {isForge && !isActive && <span style={{ marginLeft: "auto", width: 6, height: 6, borderRadius: "50%", background: COLORS.forge, animation: "pulse 2s infinite" }} />}
-              </button>
+              <div key={item.id} style={{ display: "flex", flexDirection: "column" }}>
+                {startsGroup && (
+                  <div style={{ padding: index === 0 ? "0 12px 4px" : "12px 12px 4px", fontSize: 10, fontWeight: 600, color: COLORS.textDim, textTransform: "uppercase", letterSpacing: "0.1em", fontFamily: "'JetBrains Mono', monospace" }}>{item.group}</div>
+                )}
+                <button onClick={() => setActivePage(item.id)}
+                  onMouseEnter={() => setSidebarHovered(item.id)} onMouseLeave={() => setSidebarHovered(null)}
+                  aria-current={isActive ? "page" : undefined}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", border: "none", borderRadius: 6,
+                    background: isActive ? (isForge ? COLORS.forgeGlow : COLORS.accentGlow) : isHovered ? COLORS.bgHover : "transparent",
+                    color: isActive ? (isForge ? COLORS.forge : COLORS.accent) : isHovered ? COLORS.text : COLORS.textMuted,
+                    cursor: "pointer", fontSize: 13, fontWeight: isActive ? 600 : 400,
+                    fontFamily: "'DM Sans', sans-serif", textAlign: "left", transition: "all 0.12s ease", position: "relative",
+                  }}
+                >
+                  {isActive && <div style={{ position: "absolute", left: 0, top: "50%", transform: "translateY(-50%)", width: 3, height: 18, borderRadius: "0 2px 2px 0", background: isForge ? COLORS.forge : COLORS.accent }} />}
+                  <span style={{ opacity: isActive ? 1 : 0.6 }}>{item.icon}</span>
+                  {item.label}
+                </button>
+              </div>
             );
           })}
         </div>
