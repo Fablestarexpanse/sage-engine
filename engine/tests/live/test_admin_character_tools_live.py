@@ -355,3 +355,73 @@ def test_references_and_search_read_saved_characters(live_config, migrated_datab
             await db.close()
 
     asyncio.run(go())
+
+
+def test_every_staff_change_is_snapshotted_and_can_be_undone(live_config, migrated_database):
+    async def go():
+        db = PostgresState(live_config.database)
+        try:
+            async with open_redis(live_config) as redis:
+                server = _server(live_config, db, redis)
+                char_id, _ = await _character(db, redis, logged_in=True)
+
+                await character_tools.move(server, char_id, "town:market", by="gm_ann")
+                await character_tools.set_balance(server, char_id, "silver", 99, by="gm_ann")
+                given = await character_tools.give_item(server, char_id, "bread_loaf", by="gm_bo")
+                snaps = await character_tools.snapshots(server, char_id)
+                assert [(s["staff"], s["reason"]) for s in snaps] == [
+                    ("gm_bo", "give bread_loaf"),
+                    ("gm_ann", "set silver to 99"),
+                    ("gm_ann", "move to town:market"),
+                ]
+                before_move = snaps[-1]
+                assert (before_move["room_id"], before_move["stats"]["silver"]) == (
+                    "town:bridge",
+                    5,
+                )
+
+                # Refused changes take no snapshot.
+                with pytest.raises(character_tools.CharacterToolError):
+                    await character_tools.move(server, char_id, "town:nowhere", by="gm_ann")
+                assert len(await character_tools.snapshots(server, char_id)) == 3
+
+                restored = await character_tools.restore_snapshot(
+                    server, char_id, before_move["id"], by="head"
+                )
+                assert await redis.get_player_location(NAME) == "town:bridge"
+                assert (await redis.get_player_stats(NAME))["silver"] == 5
+                assert await redis.get_player_inventory(NAME) == []
+                row = await _flushed_row(server)
+                assert (row.room_id, row.stats["silver"], row.inventory) == ("town:bridge", 5, [])
+
+                # The state just before the restore is itself kept, so the restore can be undone.
+                undo = await character_tools.restore_snapshot(
+                    server, char_id, restored["undo_snapshot"], by="head"
+                )
+                assert undo["restored"] == restored["undo_snapshot"]
+                inventory = await redis.get_player_inventory(NAME)
+                assert [i["id"] for i in inventory] == [given["item"]["id"]]
+
+                with pytest.raises(LookupError):
+                    await character_tools.restore_snapshot(server, char_id, 999_999, by="head")
+
+                stats = await redis.get_player_stats(NAME)
+                stats["hp"] = 3
+                await redis.set_player_stats(NAME, stats)
+                healed = await character_tools.restore_vitals(server, char_id, by="gm_ann")
+                assert healed["changed"]["hp"]["before"] == 3
+                assert (await redis.get_player_stats(NAME))["hp"] == stats.get("max_hp", 12)
+
+                sheet = await character_tools.detail(server, char_id)
+                assert [v["key"] for v in sheet["vitals"]] == ["hp"]
+                assert {a["key"] for a in sheet["attributes"]} == {"mgt", "wts", "nrv"}
+
+                for n in range(character_tools.SNAPSHOTS_KEPT + 5):
+                    await character_tools.snapshot(server, char_id, f"bulk {n}", "script")
+                kept = await character_tools.snapshots(server, char_id)
+                assert len(kept) == character_tools.SNAPSHOTS_KEPT
+                assert kept[0]["reason"] == f"bulk {character_tools.SNAPSHOTS_KEPT + 4}"
+        finally:
+            await db.close()
+
+    asyncio.run(go())

@@ -4,6 +4,7 @@ import { useAdminTheme } from "./AdminThemeContext.jsx";
 import { API_BASE } from "./apiConfig.js";
 import { Badge, ActionButton, SearchBar, DataTable } from "./adminCommon.jsx";
 import Pager from "./pager.jsx";
+import PanelViews from "./panelViews.jsx";
 import { useDebounced, useHashParts } from "./listHooks.js";
 
 // Find a character and act on it: move, set money, give or take items, kick.
@@ -30,6 +31,54 @@ function Section({ title, children }) {
   );
 }
 
+// Saved states taken before each staff change; any of them can be put back (which is itself saved).
+function History({ characterId, version, busy, act }) {
+  const { colors: COLORS } = useAdminTheme();
+  const [rows, setRows] = useState(null);
+  const [open, setOpen] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    axios.get(`${API_BASE}/admin/characters/${characterId}/snapshots`)
+      .then(({ data }) => alive && setRows(data))
+      .catch(() => alive && setRows([]));
+    return () => { alive = false; };
+  }, [characterId, version]);
+  return (
+    <Section title={`History (${rows ? rows.length : "…"})`}>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        <span style={{ fontSize: 12, color: COLORS.textMuted }}>A snapshot is saved before every staff change. Restoring one saves the current state first, so a restore can be undone too.</span>
+        <span style={{ marginLeft: "auto" }}><ActionButton small variant="ghost" disabled={busy} onClick={() => act("Snapshot saved.", () => axios.post(`${API_BASE}/admin/characters/${characterId}/snapshots`))}>Save snapshot now</ActionButton></span>
+      </div>
+      {rows && rows.length === 0 && <div style={{ fontSize: 12, color: COLORS.textMuted }}>No snapshots yet.</div>}
+      {rows && rows.length > 0 && (
+        <div style={{ border: `1px solid ${COLORS.border}`, borderRadius: 8, maxHeight: 280, overflowY: "auto" }}>
+          {rows.map((r) => (
+            <div key={r.id} style={{ borderBottom: `1px solid ${COLORS.border}22`, padding: "6px 10px" }}>
+              <div style={{ display: "flex", gap: 10, alignItems: "center", fontSize: 12, flexWrap: "wrap" }}>
+                <span style={{ fontFamily: mono, color: COLORS.textDim }}>#{r.id}</span>
+                <span style={{ fontFamily: mono }}>{r.at ? new Date(r.at).toLocaleString() : "—"}</span>
+                <span style={{ color: COLORS.textMuted }}>before <b style={{ color: COLORS.text }}>{r.reason}</b> by {r.staff}</span>
+                <span style={{ fontFamily: mono, color: COLORS.textDim }}>{r.room_id} · {r.inventory.length} items</span>
+                <span style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
+                  <ActionButton small variant="ghost" onClick={() => setOpen(open === r.id ? null : r.id)}>{open === r.id ? "Hide" : "Show"}</ActionButton>
+                  <ActionButton small variant="danger" disabled={busy} onClick={() => {
+                    if (window.confirm(`Put the character back to snapshot #${r.id} (${r.room_id}, ${r.inventory.length} items)? The current state is saved first.`)) {
+                      act(`Restored snapshot #${r.id}.`, () => axios.post(`${API_BASE}/admin/characters/${characterId}/snapshots/${r.id}/restore`));
+                    }
+                  }}>Restore</ActionButton>
+                </span>
+              </div>
+              {open === r.id && (
+                <pre style={{ margin: "6px 0 0", fontSize: 11, fontFamily: mono, color: COLORS.textMuted, whiteSpace: "pre-wrap", maxHeight: 200, overflow: "auto" }}>{JSON.stringify({ room_id: r.room_id, stats: r.stats, inventory: r.inventory }, null, 2)}</pre>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </Section>
+  );
+}
+
 function CharacterDetail({ characterId, onChanged }) {
   const { colors: COLORS } = useAdminTheme();
   const [detail, setDetail] = useState(null);
@@ -41,6 +90,7 @@ function CharacterDetail({ characterId, onChanged }) {
   const [template, setTemplate] = useState("");
   const [rooms, setRooms] = useState([]);
   const [items, setItems] = useState([]);
+  const [version, setVersion] = useState(0);
   const input = { padding: "7px 10px", background: COLORS.bgInput, border: `1px solid ${COLORS.border}`, borderRadius: 6, color: COLORS.text, fontSize: 13, fontFamily: sans };
 
   const reload = async () => {
@@ -78,6 +128,7 @@ function CharacterDetail({ characterId, onChanged }) {
     try {
       await fn();
       await reload();
+      setVersion((v) => v + 1);
       setNote(label);
       onChanged?.();
     } catch (e) {
@@ -97,7 +148,7 @@ function CharacterDetail({ characterId, onChanged }) {
         <Badge color={detail.online ? COLORS.success : COLORS.textDim}>{detail.online ? "connected" : "offline"}</Badge>
         {detail.suspended && <Badge color={COLORS.danger}>account suspended</Badge>}
         <span style={{ fontSize: 12, color: COLORS.textMuted, fontFamily: mono }}>
-          account {detail.account} · {detail.room_id} · hp {detail.hp ?? "—"}/{detail.max_hp ?? "—"}
+          account {detail.account} · {detail.room_id}
         </span>
         {detail.online && (
           <span style={{ marginLeft: "auto" }}>
@@ -109,6 +160,32 @@ function CharacterDetail({ characterId, onChanged }) {
       </div>
       {error && <div role="alert" style={{ color: COLORS.danger, fontSize: 12, fontFamily: mono }}>Not done: {error}</div>}
       {note && <div style={{ color: COLORS.success, fontSize: 12, fontFamily: sans }}>{note}</div>}
+
+      <Section title="Character sheet">
+        <div style={{ display: "flex", gap: 18, flexWrap: "wrap", alignItems: "flex-start" }}>
+          {(detail.vitals || []).map((v) => (
+            <div key={v.key} style={{ minWidth: 160 }}>
+              <div style={{ display: "flex", gap: 8, fontSize: 12 }}>
+                <span style={{ color: COLORS.textMuted }}>{v.label}</span>
+                <span style={{ marginLeft: "auto", fontFamily: mono }}>{v.value ?? "—"}/{v.max ?? "—"}</span>
+              </div>
+              <div style={{ height: 6, background: COLORS.bgInput, borderRadius: 3, overflow: "hidden", marginTop: 3 }}>
+                <div style={{ width: `${v.max ? Math.max(0, Math.min(100, ((v.value ?? 0) / v.max) * 100)) : 0}%`, height: "100%", background: COLORS.success }} />
+              </div>
+            </div>
+          ))}
+          {(detail.vitals || []).length > 0 && (
+            <ActionButton small variant="primary" disabled={busy || detail.vitals.every((v) => v.value === v.max)}
+              onClick={() => act("Restored to full.", () => axios.post(`${API_BASE}/admin/characters/${characterId}/restore`))}>Restore to full</ActionButton>
+          )}
+          {(detail.attributes || []).length > 0 && (
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", fontSize: 12 }}>
+              {detail.attributes.map((a) => <span key={a.key}><span style={{ color: COLORS.textMuted }}>{a.label}</span> <b style={{ fontFamily: mono }}>{a.value}</b></span>)}
+            </div>
+          )}
+        </div>
+        <PanelViews panels={detail.panels} sections={detail.sections} />
+      </Section>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 18 }}>
         <Section title="Move to room">
@@ -152,6 +229,7 @@ function CharacterDetail({ characterId, onChanged }) {
           <ActionButton small variant="primary" disabled={busy || !template} onClick={() => act(`Gave ${template}.`, () => axios.post(`${API_BASE}/admin/characters/${characterId}/items`, { template }))}>Give</ActionButton>
         </div>
       </Section>
+      <History characterId={characterId} version={version} busy={busy} act={act} />
       <div style={{ fontSize: 11, color: COLORS.textDim, fontFamily: sans }}>Every change here is recorded in the audit log, and a connected player sees a notice.</div>
     </div>
   );

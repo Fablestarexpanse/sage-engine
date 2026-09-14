@@ -72,7 +72,7 @@ def build_characters_router(server: SageServer) -> APIRouter:
         if not ctx.may_write_zone(zone):
             raise HTTPException(status_code=403, detail="zone_denied")
         try:
-            result = await character_tools.move(server, character_id, body.room_id)
+            result = await character_tools.move(server, character_id, body.room_id, by=ctx.username)
         except (LookupError, ValueError) as exc:
             raise _refuse(exc) from None
         await audit.record(server, ctx, "character.move", result["name"], room_id=body.room_id)
@@ -82,7 +82,7 @@ def build_characters_router(server: SageServer) -> APIRouter:
     async def characters_wallet(character_id: int, body: WalletBody, ctx: AdminContext = players):
         try:
             result = await character_tools.set_balance(
-                server, character_id, body.currency, body.amount
+                server, character_id, body.currency, body.amount, by=ctx.username
             )
         except (LookupError, ValueError) as exc:
             raise _refuse(exc) from None
@@ -95,7 +95,9 @@ def build_characters_router(server: SageServer) -> APIRouter:
     @router.post("/admin/characters/{character_id}/items")
     async def characters_give(character_id: int, body: GiveItemBody, ctx: AdminContext = players):
         try:
-            result = await character_tools.give_item(server, character_id, body.template)
+            result = await character_tools.give_item(
+                server, character_id, body.template, by=ctx.username
+            )
         except (LookupError, ValueError) as exc:
             raise _refuse(exc) from None
         await audit.record(
@@ -107,12 +109,62 @@ def build_characters_router(server: SageServer) -> APIRouter:
     @router.delete("/admin/characters/{character_id}/items/{item_id}")
     async def characters_remove_item(character_id: int, item_id: str, ctx: AdminContext = players):
         try:
-            result = await character_tools.remove_item(server, character_id, item_id)
+            result = await character_tools.remove_item(
+                server, character_id, item_id, by=ctx.username
+            )
         except (LookupError, ValueError) as exc:
             raise _refuse(exc) from None
         await audit.record(
             server, ctx, "character.remove_item", result["name"],
             item_id=item_id, template=result["removed"].get("template"),
+        )  # fmt: skip
+        return result
+
+    @router.post("/admin/characters/{character_id}/restore")
+    async def characters_restore(character_id: int, ctx: AdminContext = players):
+        """Fill the character's vitals (hp ...) to their maximum."""
+        try:
+            result = await character_tools.restore_vitals(server, character_id, by=ctx.username)
+        except (LookupError, ValueError) as exc:
+            raise _refuse(exc) from None
+        await audit.record(
+            server, ctx, "character.restore", result["name"], changed=result["changed"]
+        )
+        return result
+
+    @router.get("/admin/characters/{character_id}/snapshots")
+    async def characters_snapshots(character_id: int, _ctx: AdminContext = players):
+        """Saved states of the character taken before staff changes, newest first."""
+        try:
+            return await character_tools.snapshots(server, character_id)
+        except LookupError as exc:
+            raise _refuse(exc) from None
+
+    @router.post("/admin/characters/{character_id}/snapshots")
+    async def characters_take_snapshot(character_id: int, ctx: AdminContext = players):
+        """Save the character as it is now, by hand."""
+        try:
+            snapshot_id = await character_tools.snapshot(
+                server, character_id, "saved by hand", ctx.username
+            )
+        except LookupError as exc:
+            raise _refuse(exc) from None
+        return {"id": snapshot_id}
+
+    @router.post("/admin/characters/{character_id}/snapshots/{snapshot_id}/restore")
+    async def characters_restore_snapshot(
+        character_id: int, snapshot_id: int, ctx: AdminContext = players
+    ):
+        """Put the character back to a snapshot; how it was just before is saved as a new one."""
+        try:
+            result = await character_tools.restore_snapshot(
+                server, character_id, snapshot_id, by=ctx.username
+            )
+        except (LookupError, ValueError) as exc:
+            raise _refuse(exc) from None
+        await audit.record(
+            server, ctx, "character.restore_snapshot", result["name"],
+            snapshot=snapshot_id, undo_snapshot=result["undo_snapshot"],
         )  # fmt: skip
         return result
 

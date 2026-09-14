@@ -157,3 +157,23 @@ class AdminAuditLog(Base):
     action: Mapped[str] = mapped_column(String(64), index=True)
     target: Mapped[str] = mapped_column(String(255))
     detail: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+
+
+class CharacterSnapshot(Base):
+    """A character's room, stats and inventory as they were, taken before a staff change.
+
+    Staff can put a character back to any snapshot. The newest few per character are kept.
+    """
+
+    __tablename__ = "character_snapshots"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    character_id: Mapped[int] = mapped_column(
+        ForeignKey("characters.id", ondelete="CASCADE"), index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    staff_username: Mapped[str] = mapped_column(String(64))
+    reason: Mapped[str] = mapped_column(String(64))
+    room_id: Mapped[str] = mapped_column(String(255))
+    stats: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    inventory: Mapped[list[Any]] = mapped_column(JSONB, default=list)

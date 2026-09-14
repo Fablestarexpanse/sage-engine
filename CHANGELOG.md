@@ -22,6 +22,19 @@ Versions built before the first publication have no conversion date.
 
 ## [Unreleased]
 
+- **Staff character sheet** (Players > Characters) shows the character as the player sees it:
+  - the world's vitals and attributes
+  - every panel plugins declare for the player client (levels, skills, gear, standings ...),
+    drawn from the same snapshot sections, so no console code is needed per world
+  - **Restore to full** fills the vitals (`POST /admin/characters/{id}/restore`)
+- **Undo for staff changes:** before every staff change to a character (move, money, items,
+  restore, the account editor's save), the room, stats and inventory are saved as a snapshot,
+  noting who made the change and why.
+  - **History** lists the snapshots, and any one can be put back
+    (`POST /admin/characters/{id}/snapshots/{snapshot}/restore`).
+  - A restore saves the current state first, so the restore can be undone too.
+  - The newest 50 snapshots are kept per character.
+  - Needs migration `t3u4v5w6x7y8` (`python -m sage db upgrade`).
 - **Search everything (Ctrl+K or /)** from any console page. It covers pages, characters,
   accounts, rooms, items, creatures and lexicon lines, and shows only the kinds the staff member
   has the tool for (`GET /admin/search`). Arrow keys move through results and Enter opens one.
