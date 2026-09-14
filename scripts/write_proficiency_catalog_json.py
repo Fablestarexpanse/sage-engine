@@ -9,9 +9,9 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from fablestar.proficiencies.catalog_loader import leaf_definitions_from_builtin_rows  # noqa: E402
-from fablestar.proficiencies.data import EXPECTED_LEAF_COUNT  # noqa: E402
-from fablestar.proficiencies.models import ProficiencyCatalogDocument  # noqa: E402
+from sage.proficiencies.catalog_loader import leaf_definitions_from_builtin_rows  # noqa: E402
+from sage.proficiencies.data import EXPECTED_LEAF_COUNT  # noqa: E402
+from sage.proficiencies.models import ProficiencyCatalogDocument  # noqa: E402
 
 
 def main() -> None:

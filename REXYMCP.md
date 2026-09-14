@@ -20,9 +20,9 @@ project — whatever agent acts as the architect reads this first.
 
 | Command | Purpose |
 |---|---|
-| `python -m ruff format src tests` | Format (writing form; idempotent after the post-write hook) |
-| `python -m compileall -q src tests` | Build (bytecode/syntax gate — Python has no compile step) |
-| `python -m ruff check src tests` | Lint / static analysis |
+| `python -m ruff format engine/src engine/tests` | Format (writing form; idempotent after the post-write hook) |
+| `python -m compileall -q engine/src engine/tests` | Build (bytecode/syntax gate — Python has no compile step) |
+| `python -m ruff check engine/src engine/tests` | Lint / static analysis |
 | `python -m pytest` | Tests |
 
 ## Executor

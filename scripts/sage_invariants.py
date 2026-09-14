@@ -26,17 +26,8 @@ ROOT = Path(__file__).resolve().parents[1]
 DENYLIST_FILE = ROOT / "scripts" / "sage_denylist.toml"
 BASELINE_FILE = ROOT / "scripts" / "sage_invariants_baseline.json"
 
-# Engine paths during the engine/ + worlds/ transition (NOTICE). Becomes ["engine"] after 2b.
-ENGINE_PATHS = [
-    "src",
-    "alembic",
-    "admin-ui",
-    "player-ui",
-    "worldforge",
-    "worldforge-mcp",
-    "scripts",
-    "tests",
-]
+# Engine code (NOTICE) plus repository tooling that ships beside it.
+ENGINE_PATHS = ["engine", "scripts"]
 EXTENSIONS = {".py", ".js", ".jsx", ".ts", ".tsx", ".html", ".css", ".json", ".toml", ".rs"}
 SKIP_DIRS = {"node_modules", "dist", "target", "__pycache__", ".desloppify", ".pytest_cache"}
 SKIP_FILES = {
@@ -45,7 +36,7 @@ SKIP_FILES = {
     "scripts/sage_invariants.py",
     "scripts/sage_denylist.toml",
     "scripts/sage_invariants_baseline.json",
-    "tests/test_sage_invariants.py",
+    "engine/tests/test_sage_invariants.py",
 }
 CATEGORIES = ("denylist", "player_literals")
 

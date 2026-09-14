@@ -19,7 +19,7 @@ proficiency_combat_hybrid = true
 admin_auth_required = true
 
 # REQUIRED when admin_auth_required = true.
-# Use: FABLESTAR_ADMIN_JWT_SECRET env var (preferred) or set here.
+# Use: SAGE_ADMIN_JWT_SECRET env var (preferred) or set here.
 # Generate with: python -c "import secrets; print(secrets.token_hex(32))"
 # admin_jwt_secret = "CHANGE_ME"
 

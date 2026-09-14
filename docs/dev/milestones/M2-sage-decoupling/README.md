@@ -37,7 +37,7 @@ written on demand, only after the Phase 1 contracts are approved.
 | 0 | Audit | done (`docs/sage/PHASE0_AUDIT.md`) |
 | 1 | Contracts | done — approved 2026-09-13 |
 | 2a | CI and ratchets | done — CI jobs python, worldforge, live, licenses |
-| 2b | Mechanical move and rename to `engine/`, package `sage` | todo |
+| 2b | Mechanical move and rename to `engine/`, package `sage` | done — branch `sage/stage-2b`, 4 commits, CI green |
 | 2c | Seams, plugin loader, lexicon, skeleton second world | todo |
 | 3 | Migrate Fablestar system by system | blocked on 2 |
 | 4 | Second reference world, full size | blocked on 3 |

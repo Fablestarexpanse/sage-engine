@@ -39,11 +39,11 @@ runaway_output_bytes = 102400     # single tool output bytes → hard-fail (100 
 # runaway_output_bytes = 204800      # override [governor] runaway_output_bytes
 
 [commands]
-format = "python -m ruff format src tests"                  # writing form — also run by the M9 post-write hook
-build = "python -m compileall -q src tests"                 # Python has no compile step; bytecode/syntax gate
-lint = "python -m ruff check src tests"                     # ruff lint (config in pyproject.toml [tool.ruff])
+format = "python -m ruff format engine/src engine/tests"                  # writing form — also run by the M9 post-write hook
+build = "python -m compileall -q engine/src engine/tests"                 # Python has no compile step; bytecode/syntax gate
+lint = "python -m ruff check engine/src engine/tests"                     # ruff lint (config in engine/pyproject.toml [tool.ruff])
 test = "python -m pytest"                                   # pytest suite under tests/
-lint_fix = "python -m ruff check --fix src tests"           # post-write autofix (not a gate, not advertised)
+lint_fix = "python -m ruff check --fix engine/src engine/tests"           # post-write autofix (not a gate, not advertised)
 
 [context]
 output_filter = true              # filter/truncate bash output to conserve context

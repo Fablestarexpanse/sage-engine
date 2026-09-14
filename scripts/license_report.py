@@ -25,8 +25,8 @@ from importlib import metadata
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-NPM_APPS = ("admin-ui", "player-ui", "worldforge")
-CARGO_MANIFEST = ROOT / "worldforge" / "src-tauri" / "Cargo.toml"
+NPM_APPS = ("engine/clients/admin-ui", "engine/clients/player-ui", "engine/tools/worldforge")
+CARGO_MANIFEST = ROOT / "engine" / "tools" / "worldforge" / "src-tauri" / "Cargo.toml"
 ALLOWLIST = ROOT / "scripts" / "license_allowlist.toml"
 
 RANK = {"permissive": 0, "weak": 1, "unknown": 2, "strong": 3}
@@ -148,7 +148,7 @@ def python_license(meta) -> str | None:
     return " OR ".join(names) if names else None
 
 
-def collect_python(lock: Path = ROOT / "requirements.lock") -> list[Dependency]:
+def collect_python(lock: Path = ROOT / "engine" / "requirements.lock") -> list[Dependency]:
     deps = []
     for line in lock.read_text(encoding="utf-8").splitlines():
         match = re.match(r"^([A-Za-z0-9_.\-]+)==([^\s;]+)", line)

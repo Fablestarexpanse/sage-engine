@@ -25,7 +25,7 @@ Before deploying Fablestar to a network-accessible environment:
 
 - [ ] Copy `config/database.example.toml` → `config/database.toml` and set a strong, unique password
 - [ ] Copy `config/server.example.toml` → `config/server.toml` with `dev_mode = false` and `admin_auth_required = true`
-- [ ] Set `FABLESTAR_ADMIN_JWT_SECRET` to a cryptographically random 32-byte hex string:
+- [ ] Set `SAGE_ADMIN_JWT_SECRET` to a cryptographically random 32-byte hex string:
   ```
   python -c "import secrets; print(secrets.token_hex(32))"
   ```

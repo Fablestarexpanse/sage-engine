@@ -25,9 +25,9 @@ Fablestar is a text MUD engine with an optional LLM narration layer. The core ga
 ## Repository layout
 
 ```
-src/fablestar/          Python server (Nexus)
+engine/src/sage/        SAGE engine Python package (Nexus server)
   app.py                Global singleton (app_instance)
-  server.py             FablestarServer class — owns all subsystems
+  server.py             SageServer class — owns all subsystems
   __main__.py           Entry point: asyncio.run(run_server())
   admin/                FastAPI REST + WebSocket admin API (NexusApp + routes/)
   commands/             MUD command handlers (@command decorator)
@@ -42,10 +42,10 @@ src/fablestar/          Python server (Nexus)
   state/                Redis (hot state), Postgres (persistent), ORM models
   world/                ContentLoader, world Pydantic models, EntitySpawnManager
 
-admin-ui/               React admin console (Vite, port 5174)
-player-ui/              React player client (Vite, port 5173)
-worldforge/             Tauri desktop WorldForge editor
-worldforge-mcp/         MCP server exposing map-building tools (mcp__worldforge__*)
+engine/clients/admin-ui/               React admin console (Vite, port 5174)
+engine/clients/player-ui/              React player client (Vite, port 5173)
+engine/tools/worldforge/             Tauri desktop WorldForge editor
+engine/tools/worldforge-mcp/         MCP server exposing map-building tools (mcp__worldforge__*)
 content/world/          Game content (YAML, tracked in git; changes hot-reload)
   galaxy.yaml           Galaxy stub (no runtime loader; admin builder only)
   entities/             Entity templates (NPC/mob definitions)
@@ -62,9 +62,11 @@ content/factions/       Faction YAML
 content/proficiencies/  Conduit proficiency catalog (catalog.json, 278 leaves)
 prompts/                Jinja2 prompt templates (*.j2)
 config/                 TOML config files (gitignored; copy from *.example.toml)
-scripts/                Admin bootstrap and maintenance scripts
-tests/                  pytest test suite
-alembic/                Database migration scripts
+engine/tests/           pytest suite (run from repo root: python -m pytest)
+engine/alembic/         Database migrations (engine/alembic.ini)
+engine/scripts/         Admin bootstrap scripts
+engine/pyproject.toml   Engine package (sage-engine), ruff config
+scripts/                Repo tooling: invariant ratchet, license report, proficiency catalog build
 ```
 
 ---
@@ -74,7 +76,7 @@ alembic/                Database migration scripts
 ```
 __main__.py
   └─ run_server()
-       └─ FablestarServer.start()
+       └─ SageServer.start()
             ├─ load_config()            config/ TOML files merged
             ├─ PostgresState.init()     SQLAlchemy async engine + sessionmaker
             ├─ RedisState.init()        redis[hiredis] connection pool
@@ -89,10 +91,10 @@ __main__.py
             └─ TickManager.start()      4 Hz game loop
 ```
 
-`app.py` holds the global singleton `app_instance: Optional[FablestarServer]`. Command handlers import it lazily:
+`app.py` holds the global singleton `app_instance: Optional[SageServer]`. Command handlers import it lazily:
 
 ```python
-from fablestar.app import app_instance  # import inside handler, not at module top
+from sage.app import app_instance  # import inside handler, not at module top
 ```
 
 ---
@@ -128,17 +130,17 @@ from fablestar.app import app_instance  # import inside handler, not at module t
 
 ## Adding a MUD command
 
-1. Create or edit a file in `src/fablestar/commands/`.
+1. Create or edit a file in `engine/src/sage/commands/`.
 2. Decorate with `@command`:
 
 ```python
-from fablestar.commands.registry import command
-from fablestar.network.session import Session
+from sage.commands.registry import command
+from sage.network.session import Session
 
 @command("greet", aliases=["hi", "hello"])
 async def greet(session: Session, args: list[str]):
     """Greet another player. Usage: greet <name>"""
-    from fablestar.app import app_instance   # lazy import — required pattern
+    from sage.app import app_instance   # lazy import — required pattern
     target = " ".join(args) or "the room"
     await session.send(f"You wave to {target}.")
 ```
@@ -269,7 +271,7 @@ Important `server.toml` keys:
 - `cors_origins` — list of allowed origins (default: localhost dev ports)
 - `proficiency_combat_hybrid` — blends old stat combat with proficiency system
 
-Environment overrides: `FABLESTAR_` prefix, double-underscore nesting, e.g. `FABLESTAR_SERVER__WEBSOCKET_PORT=8001`.
+Environment overrides: `SAGE_` prefix, double-underscore nesting, e.g. `SAGE_SERVER__WEBSOCKET_PORT=8001`. The pre-rename `FABLESTAR_` prefix still works for one release and logs a deprecation warning.
 
 ---
 
@@ -280,20 +282,20 @@ Environment overrides: `FABLESTAR_` prefix, double-underscore nesting, e.g. `FAB
 docker compose up -d redis postgres
 
 # 2. Run migrations
-python -m alembic upgrade head
+python -m alembic -c engine/alembic.ini upgrade head
 
 # 3. (Optional) Bootstrap head admin
-python scripts/bootstrap_admin.py --username admin --password 'your-password'
+python engine/scripts/bootstrap_admin.py --username admin --password 'your-password'
 
 # 4. Start game server
-python -m fablestar
+python -m sage
 
 # 5. Start admin UI (new terminal)
-cd admin-ui
+cd engine/clients/admin-ui
 VITE_API_BASE=http://localhost:8001 VITE_WS_BASE=ws://localhost:8001 npm run dev -- --port 5174 --host
 
 # 6. Start player UI (new terminal)
-cd player-ui
+cd engine/clients/player-ui
 VITE_NEXUS_PORT=8001 npm run dev -- --port 5173 --host
 ```
 
@@ -305,17 +307,17 @@ Default ports: Nexus 8001, player UI 5173, admin UI 5174, Postgres 5432, Redis 6
 
 ## WorldForge content editor
 
-WorldForge is a Tauri desktop app (`worldforge/`) for visually editing zones and rooms. It exports content directly into `content/world/`. Stamps (reusable room groups) are saved to `content/world/stamps/`.
+WorldForge is a Tauri desktop app (`engine/tools/worldforge/`) for visually editing zones and rooms. It exports content directly into `content/world/`. Stamps (reusable room groups) are saved to `content/world/stamps/`.
 
 **Resolved (kept for history):** WorldForge historically wrote exports to a nested `content/world/content/world/` path due to a root path misconfiguration. If you see a `content/world/content/` subtree appear after a WorldForge export, the room YAMLs must be moved to `content/world/zones/{zone_id}/rooms/` and the duplicate tree removed. This was corrected manually; check the WorldForge content root setting if it recurs.
 
 ### How WorldForge saves (and the conflict risk)
 
-WorldForge does **not** save through the Nexus HTTP API. Its `saveRoomFile()` (`worldforge/src/editors/ZoneEditor.jsx`) calls the Tauri `write_file` command (`worldforge/src-tauri/src/commands.rs`) and writes room YAML **directly to disk**; the server's `HotReloader` then notices the file change and invalidates the content cache. The admin-ui World Builder, by contrast, writes through Nexus (`PUT/POST/DELETE /content/zones/{zone}/rooms/*` in `admin/routes/content.py`).
+WorldForge does **not** save through the Nexus HTTP API. Its `saveRoomFile()` (`engine/tools/worldforge/src/editors/ZoneEditor.jsx`) calls the Tauri `write_file` command (`engine/tools/worldforge/src-tauri/src/commands.rs`) and writes room YAML **directly to disk**; the server's `HotReloader` then notices the file change and invalidates the content cache. The admin-ui World Builder, by contrast, writes through Nexus (`PUT/POST/DELETE /content/zones/{zone}/rooms/*` in `admin/routes/content.py`).
 
 Because these two paths are unsynchronized, running both editors on the same zone risks last-write-wins clobbering. The `/content/*` room-write routes accept an optional `expected_mtime` (returned by the room-read endpoints) and reject with **409 `content_modified`** when the file changed on disk since it was loaded — the admin-ui builder sends it; direct WorldForge disk writes bypass this guard entirely, so avoid editing the same zone in both tools at once.
 
-There is a **third writer**: `worldforge-mcp/server.py` (the MCP server behind the `mcp__worldforge__*` tools) also reads and writes room YAML and `.positions.json` directly to disk (`_read_room`/`_write_room`/`_write_positions`), with no `expected_mtime` guard — same accepted last-write-wins risk as the Tauri app. Treat any two of the three writers (admin-ui Builder, WorldForge Tauri app, worldforge-mcp tools) editing the same zone concurrently as unsafe.
+There is a **third writer**: `engine/tools/worldforge-mcp/server.py` (the MCP server behind the `mcp__worldforge__*` tools) also reads and writes room YAML and `.positions.json` directly to disk (`_read_room`/`_write_room`/`_write_positions`), with no `expected_mtime` guard — same accepted last-write-wins risk as the Tauri app. Treat any two of the three writers (admin-ui Builder, WorldForge Tauri app, worldforge-mcp tools) editing the same zone concurrently as unsafe.
 
 Related Nexus endpoints (available for HTTP write-through, e.g. the forge chat deploy flow):
 
@@ -328,11 +330,11 @@ Zone write permissions are controlled by `AdminStaff.permissions.zones` — `["*
 
 ## Database migrations
 
-Alembic manages schema: `alembic/versions/`. After changing SQLAlchemy models in `state/models.py`:
+Alembic manages schema: `engine/alembic/versions/`. After changing SQLAlchemy models in `state/models.py`:
 
 ```bash
-python -m alembic revision --autogenerate -m "describe change"
-python -m alembic upgrade head
+python -m alembic -c engine/alembic.ini revision --autogenerate -m "describe change"
+python -m alembic -c engine/alembic.ini upgrade head
 ```
 
 ---
@@ -340,19 +342,19 @@ python -m alembic upgrade head
 ## Testing
 
 ```bash
-pytest tests/
+python -m pytest
 ```
 
 Tests cover config loading, command dispatch, proficiency math, admin auth, and session state.
 
-**Two tiers (owner ruling 2026-09-13, `docs/dev/STANDARDS.md` §3.5):** the default suite is hermetic — `python -m pytest` passes with no services, using in-memory fakes in `tests/fakes.py`. A live tier (`@pytest.mark.live`, run with `SAGE_LIVE_TESTS=1` against Docker Postgres/Redis, required in CI) covers migrations, persistence, plugin install/uninstall and world smoke tests. Never test migrations or persistence against fakes alone — mocked tests have masked real migration failures in the past.
+**Two tiers (owner ruling 2026-09-13, `docs/dev/STANDARDS.md` §3.5):** the default suite is hermetic — `python -m pytest` passes with no services, using in-memory fakes in `engine/tests/fakes.py`. A live tier (`@pytest.mark.live`, run with `SAGE_LIVE_TESTS=1` against Docker Postgres/Redis, required in CI) covers migrations, persistence, plugin install/uninstall and world smoke tests. Never test migrations or persistence against fakes alone — mocked tests have masked real migration failures in the past.
 
 ```bash
 docker compose up -d redis postgres
 SAGE_LIVE_TESTS=1 python -m pytest -m live
 ```
 
-Live tests create and drop their own `sage_live_*` database and use Redis db 15, so they never touch the dev database. `tests/live/test_migrations.py::test_models_match_migrations` fails when the ORM models and migrations disagree — fix the model or add a migration, never weaken the test.
+Live tests create and drop their own `sage_live_*` database and use Redis db 15, so they never touch the dev database. `engine/tests/live/test_migrations.py::test_models_match_migrations` fails when the ORM models and migrations disagree — fix the model or add a migration, never weaken the test.
 
 **SAGE invariant ratchet** (CI step, `scripts/sage_invariants.py`): counts world-specific terms (`scripts/sage_denylist.toml`) and hardcoded player-facing strings (`session.send("...")`) per engine file, and fails if any file's count rises above `scripts/sage_invariants_baseline.json`. Run `python scripts/sage_invariants.py check` before committing. When you remove hits, run `python scripts/sage_invariants.py update` to lock in the lower counts. Never raise the baseline to make CI pass — put the term in a world package or the text behind a lexicon key instead.
 
@@ -360,7 +362,7 @@ Live tests create and drop their own `sage_live_*` database and use Redis db 15,
 
 ## Key patterns to follow
 
-- **Lazy `app_instance` imports inside handlers** — avoids circular imports at module load time. Always import from `fablestar.app` inside the function body.
+- **Lazy `app_instance` imports inside handlers** — avoids circular imports at module load time. Always import from `sage.app` inside the function body.
 - **Never block the game loop** — all game code is `async`. Network I/O, DB queries, and LLM calls must be `await`-ed.
 - **LLM failures are non-fatal** — wrap every LLM call in `try/except` and provide a plain-text fallback.
 - **Redis for speed, Postgres for durability** — update Redis immediately; PersistenceManager handles the Postgres write asynchronously.
