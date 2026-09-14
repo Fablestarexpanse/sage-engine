@@ -47,3 +47,32 @@ def test_every_shipped_template_names_a_slot_and_a_world_without_ai_has_none():
         assert shipped <= set(ENGINE_SLOTS) | plugin_slots, (world_id, shipped)
     worlds = [load_world_package(ROOT / "worlds" / w) for w in available_worlds(ROOT / "worlds")]
     assert any(not list(w.prompts_dir.glob("*.j2")) for w in worlds), "a world must run without AI"
+
+
+def test_style_file_reaches_templates_and_reloads(tmp_path):
+    prompts_dir = tmp_path / "prompts"
+    prompts_dir.mkdir()
+    (prompts_dir / "narrate.room.j2").write_text(
+        "[{{ style.tone }}] {{ observation_block }}", encoding="utf-8"
+    )
+    style = tmp_path / "style.yaml"
+    style.write_text(
+        "tone: grim\nsystem_prompt: Speak plainly.\ncontent_rules: ['gold']\n", encoding="utf-8"
+    )
+    prompts = PromptManager(prompts_dir, style)
+
+    assert prompts.render("narrate.room", observation_block="a gate") == "[grim] a gate"
+    assert prompts.style.system_prompt == "Speak plainly."
+    assert prompts.style.rules() == ["gold"]
+
+    style.write_text("tone: bright\n", encoding="utf-8")
+    prompts.reload()
+    assert prompts.render("narrate.room", observation_block="a gate") == "[bright] a gate"
+    assert "level" in " ".join(prompts.style.rules())  # no rules given: engine defaults
+
+
+def test_a_broken_style_file_falls_back_to_defaults(tmp_path):
+    style = tmp_path / "style.yaml"
+    style.write_text("content_rules: ['(unclosed']\n", encoding="utf-8")
+    assert PromptManager(tmp_path, style).style.tone == ""
+    assert PromptManager(tmp_path, tmp_path / "missing.yaml").style.image.negative == ""

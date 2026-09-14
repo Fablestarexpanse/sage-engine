@@ -178,6 +178,14 @@ class WorldPackage:
         return self.manifest.params.get(key, default)
 
     @property
+    def ai_dir(self) -> Path:
+        return self.root / "ai"
+
+    @property
+    def style_path(self) -> Path:
+        return self.ai_dir / "style.yaml"
+
+    @property
     def lexicon_dir(self) -> Path:
         return self.root / "lexicon"
 

@@ -133,7 +133,8 @@ class SageServer:
         from sage.llm.profiles import LLMProfile
 
         self.llm_profile = LLMProfile(self)
-        self.prompt_manager = PromptManager(self.world.prompts_dir)
+        self.prompt_manager = PromptManager(self.world.prompts_dir, self.world.style_path)
+        self.llm_client.default_system_prompt = self.prompt_manager.style.system_prompt
         from sage.lexicon.overrides import LexiconOverrides
 
         self.lexicon_overrides = LexiconOverrides(self.db.session_factory)
@@ -391,7 +392,7 @@ class SageServer:
                 str(self.world.content_dir),
                 str(PACKAGE_DIR / "commands"),
                 str(self.project_root / "config"),
-                str(self.world.prompts_dir),
+                str(self.world.ai_dir),
                 str(self.world.lexicon_dir),
             ]
         )
@@ -810,8 +811,9 @@ class SageServer:
         if world is not None and path.resolve().is_relative_to(world.content_dir):
             self.content_loader.invalidate(path)
 
-        if world is not None and path.resolve().is_relative_to(world.prompts_dir):
+        if world is not None and path.resolve().is_relative_to(world.ai_dir):
             self.prompt_manager.reload()
+            self.llm_client.default_system_prompt = self.prompt_manager.style.system_prompt
 
         if "commands" in path.parts:
             # path is <package dir>/commands/info.py -> module "<package>.commands.info",

@@ -14,6 +14,8 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, TemplateNotFound, select_autoescape
 
+from sage.llm.style import AiStyle, load_style
+
 logger = logging.getLogger(__name__)
 
 # The engine's own slots and what each produces.
@@ -34,8 +36,10 @@ class SlotDisabled(LookupError):
 class PromptManager:
     """Renders the running world's slot templates; hot reload clears the template cache."""
 
-    def __init__(self, prompt_dir: str | Path):
+    def __init__(self, prompt_dir: str | Path, style_path: str | Path | None = None):
         self.prompt_dir = Path(prompt_dir)
+        self.style_path = Path(style_path) if style_path is not None else None
+        self.style: AiStyle = load_style(self.style_path)
         self._slots: dict[str, str] = dict.fromkeys(ENGINE_SLOTS, "sage")
         self._env = Environment(
             loader=FileSystemLoader(str(self.prompt_dir)), autoescape=select_autoescape()
@@ -61,16 +65,21 @@ class PromptManager:
         return slot in self._slots and (self.prompt_dir / f"{slot}.j2").is_file()
 
     def render(self, slot: str, **kwargs) -> str:
-        """Render a slot's template; raises SlotDisabled when the world does not fill it."""
+        """Render a slot's template; raises SlotDisabled when the world does not fill it.
+
+        Templates also see ``style`` (the world's ai/style.yaml) unless the caller passes one.
+        """
         if slot not in self._slots:
             raise SlotDisabled(f"AI slot {slot!r} is not declared")
         try:
             template = self._env.get_template(f"{slot}.j2")
         except TemplateNotFound as exc:
             raise SlotDisabled(f"world ships no template for AI slot {slot!r}") from exc
+        kwargs.setdefault("style", self.style)
         return template.render(**kwargs)
 
     def reload(self):
-        """Clear the Jinja2 cache to pick up file changes."""
+        """Clear the Jinja2 cache and re-read the style file to pick up edits."""
         self._env.cache.clear()
+        self.style = load_style(self.style_path)
         logger.info("Prompt template cache cleared.")

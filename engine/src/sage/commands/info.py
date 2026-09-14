@@ -4,7 +4,7 @@ import logging
 
 from sage.commands.registry import command
 from sage.llm.observation import build_room_fact_block
-from sage.llm.validation import validator
+from sage.llm.validation import LLMValidator
 from sage.network.session import Session
 
 logger = logging.getLogger(__name__)
@@ -52,7 +52,8 @@ async def look(session: Session, args: list[str]):
                     "narrate.room", observation_block=observation_block
                 )
                 narration = await app_instance.llm_client.generate_or_raise(prompt)
-                clean = validator.sanitize(narration)
+                rules = app_instance.prompt_manager.style.rules()
+                clean = LLMValidator(rules).sanitize(narration)
                 # A scene of a room the player already left reads as a lie.
                 if await app_instance.redis.get_player_location(viewer) != room_id:
                     return

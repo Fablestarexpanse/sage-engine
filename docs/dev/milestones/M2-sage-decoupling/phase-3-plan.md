@@ -36,7 +36,7 @@ by owner G.4 ("every mechanic is a first-party plugin").
 | 3.13 | Declarative client panels; remove Fablestar panels/branding from player-ui: 3.13a API + renderer, 3.13b Conduit panels, 3.13c mock panels and branding out; 3.13d deferred until an admin panel is needed | done |
 | 3.14 | Schema: JSONB state, `digi_balance`/`reputation`/`echo_credits` columns, retire `agent_state` (backfill → drop) | done |
 | 3.15 | Redis key namespace by world slug | done |
-| 3.16 | AI slots and style; prompts into `worlds/fablestar/ai`: 3.16a slots + prompts moved done | in progress |
+| 3.16 | AI slots and style; prompts into `worlds/fablestar/ai`: 3.16a slots + prompts moved, 3.16b style done | in progress |
 | 3.17 | Move Fablestar content into `worlds/fablestar/content`; remove `[transition]` | todo |
 | 3.18 | Delete glyph/ship/system/galaxy surfaces and the admin World Builder (owner G.3, G.6) | todo |
 
@@ -237,9 +237,16 @@ by owner G.4 ("every mechanic is a first-party plugin").
     (`combat_narration` -> `combat.narration`, `room_description` -> `narrate.room`, ...);
     `[transition] prompts_dir` is gone. Rivermoot ships no templates and runs with every slot
     disabled.
-  - 3.16b `ai/style.yaml`: tone injected as `{{ style.tone }}`, content rules replacing the
-    validator's hardcoded patterns, system prompts for the image-prompt jobs, image style tokens and
-    negative prompt.
+  - 3.16b (done) `sage.llm.style`: optional `ai/style.yaml` with `tone`, `system_prompt`,
+    `image.style`/`image.negative` and `content_rules`. Every slot template sees `style`; the LLM
+    client's default system prompt comes from it (no more "dark sci-fi MUD" default); the room
+    narration validator uses its rules (engine golden-rule regexes when absent) and a rejected
+    narration is dropped instead of becoming "[The narration becomes garbled by static...]".
+    `LLMClient.generate()` and its in-fiction fallback strings are deleted (the one caller, the
+    Nexus test completion, reports the error). The server watches the world's `ai/` dir, so style
+    edits hot-reload. Fablestar's templates read their tone and image style from its style file.
+    The image-prompt jobs keep their generic engine system prompts ("output only a single
+    image-generation prompt"). `image.negative` has no consumer until 3.16c.
   - 3.16c ComfyUI graphs into `ai/comfyui/<role>.json` with `ai/loras.yaml`; config paths stay as
     deployment overrides.
   - Versioned prompt/style edits in Nexus (B.6 overrides) wait for a user of them (two-world

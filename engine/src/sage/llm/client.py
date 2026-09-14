@@ -88,6 +88,8 @@ class LLMClient:
     _probe_cache_ttl_s: float = 60.0
 
     def __init__(self, config: LLMConfig):
+        # The running world's narration voice (ai/style.yaml system_prompt); set by the server.
+        self.default_system_prompt = "You narrate for a text game."
         self.config = config
         self.client = self._build_openai_client()
         self.timeout = config.timeout_seconds
@@ -293,7 +295,7 @@ class LLMClient:
     async def generate_or_raise(
         self,
         prompt: str,
-        system_prompt: str = "You are a master storyteller for a dark sci-fi MUD.",
+        system_prompt: str | None = None,
         max_tokens: int = 250,
     ) -> str:
         """
@@ -301,8 +303,9 @@ class LLMClient:
 
         Use this when the caller needs to distinguish real output from failure
         (structured generation, API responses). Narration paths that want a
-        graceful in-fiction fallback should call generate() instead.
+        graceful fallback catch LLMGenerationError and send nothing.
         """
+        system_prompt = system_prompt or self.default_system_prompt
         if (self.config.primary_backend or "").lower().strip() == "embedded":
             embedded = self.embedded_getter() if self.embedded_getter else None
             if embedded is None:
@@ -348,24 +351,3 @@ class LLMClient:
         if not result or not result.strip():
             raise LLMGenerationError("LLM returned an empty response")
         return result.strip()
-
-    async def generate(
-        self,
-        prompt: str,
-        system_prompt: str = "You are a master storyteller for a dark sci-fi MUD.",
-        max_tokens: int = 250,
-    ) -> str:
-        """
-        Generate text from the LLM.
-        Returns an in-fiction fallback string if the request fails or times out.
-        """
-        try:
-            return await self.generate_or_raise(
-                prompt, system_prompt=system_prompt, max_tokens=max_tokens
-            )
-        except LLMGenerationError as e:
-            if "timed out" in str(e):
-                return "[The engine hums, but silence follows...]"
-            if "empty response" in str(e):
-                return "[The narration fades into static...]"
-            return "[Description unavailable: Connection to the Forge lost.]"

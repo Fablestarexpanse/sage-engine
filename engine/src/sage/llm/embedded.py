@@ -102,7 +102,7 @@ class EmbeddedLLM:
     async def generate_or_raise(
         self,
         prompt: str,
-        system_prompt: str = "You are a master storyteller for a dark sci-fi MUD.",
+        system_prompt: str | None = None,
         max_tokens: int = 250,
     ) -> str:
         now = time.monotonic()
@@ -112,7 +112,7 @@ class EmbeddedLLM:
             )
         try:
             return await asyncio.wait_for(
-                asyncio.to_thread(self._generate_sync, prompt, system_prompt, max_tokens),
+                asyncio.to_thread(self._generate_sync, prompt, system_prompt or "", max_tokens),
                 timeout=max(5.0, float(self.config.timeout_seconds) * 4),
             )
         except LLMGenerationError as exc:
