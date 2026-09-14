@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import axios from "axios";
-import WorldBuilderPage from "./builder/WorldBuilderPage.jsx";
 import PlayerAccountsTab from "./PlayerAccountsTab.jsx";
 import AgentsTab from "./AgentsTab.jsx";
 import ShopsTab from "./ShopsTab.jsx";
@@ -146,11 +145,10 @@ const NAV_ITEMS = [
   { id: "forge", label: "AI Forge", icon: <Icons.Forge />, highlight: true },
   { id: "operations", label: "Operations", icon: <Icons.Alert /> },
   { id: "players", label: "Players & accounts", icon: <Icons.Players /> },
-  // One browsing surface for zones/rooms/entities/items/glyphs; visible when
+  // One browsing surface for zones/rooms/entities/items; visible when
   // ANY of the legacy content tool grants apply (backend still gates per-route).
-  { id: "content", label: "Content Library", icon: <Icons.Content />, anyOf: ["content", "world", "locations", "entities", "items", "glyphs"] },
+  { id: "content", label: "Content Library", icon: <Icons.Content />, anyOf: ["content", "world", "locations", "entities", "items"] },
   { id: "skills", label: "Skills catalog", icon: <Icons.Skills /> },
-  { id: "builder", label: "World Builder", icon: <Icons.Map /> },
   { id: "agents", label: "Agents", icon: <Icons.Players /> },
   { id: "shops", label: "Shops", icon: <Icons.Items /> },
   { id: "lexicon", label: "Lexicon & MOTD", icon: <Icons.Content /> },
@@ -178,7 +176,6 @@ const PAGES = {
   players: PlayersPage,
   content: ContentLibraryPage,
   skills: ProficienciesPage,
-  builder: WorldBuilderPage,
   agents: AgentsPage,
   shops: ShopsPage,
   lexicon: LexiconPage,
@@ -295,50 +292,14 @@ export default function App() {
         return;
       }
       // Legacy page ids from before the Content Library consolidation.
-      if (["world", "locations", "entities", "items", "glyphs"].includes(d.page)) {
+      // Legacy page ids, including the retired World Builder (structural editing is WorldForge's).
+      if (["world", "locations", "entities", "items", "glyphs", "builder"].includes(d.page)) {
         setActivePage("content");
-        return;
       }
-      if (d.page !== "builder") return;
-      if (d.zoneId) {
-        sessionStorage.setItem(
-          "fs_builder_initial",
-          JSON.stringify({ scale: "zone", id: d.zoneId, label: d.zoneLabel || d.zoneId })
-        );
-      } else if (d.shipId) {
-        sessionStorage.setItem(
-          "fs_builder_initial",
-          JSON.stringify({ scale: "ship", id: d.shipId, label: d.shipLabel || d.shipId })
-        );
-      }
-      setActivePage("builder");
     };
     window.addEventListener("fs-admin-nav", onNav);
     return () => window.removeEventListener("fs-admin-nav", onNav);
   }, []);
-
-  useEffect(() => {
-    if (booting || !serverInfo) return;
-    try {
-      const u = new URL(window.location.href);
-      const zone = u.searchParams.get("zone");
-      const ship = u.searchParams.get("ship");
-      if (u.searchParams.get("page") === "builder" || u.searchParams.get("builder") === "1") {
-        if (zone) {
-          sessionStorage.setItem("fs_builder_initial", JSON.stringify({ scale: "zone", id: zone, label: zone }));
-        } else if (ship) {
-          sessionStorage.setItem("fs_builder_initial", JSON.stringify({ scale: "ship", id: ship, label: ship }));
-        }
-        setActivePage("builder");
-        u.searchParams.delete("page");
-        u.searchParams.delete("zone");
-        u.searchParams.delete("ship");
-        u.searchParams.delete("builder");
-        const qs = u.searchParams.toString();
-        window.history.replaceState({}, "", `${u.pathname}${qs ? `?${qs}` : ""}${u.hash}`);
-      }
-    } catch { /* ignore */ }
-  }, [booting, serverInfo]);
 
   const allowedSet = useMemo(() => {
     if (staffProfile?.tools_effective == null) return new Set(ALL_ADMIN_TOOLS);

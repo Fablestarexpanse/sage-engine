@@ -38,7 +38,7 @@ by owner G.4 ("every mechanic is a first-party plugin").
 | 3.15 | Redis key namespace by world slug | done |
 | 3.16 | AI slots and style; prompts into `worlds/fablestar/ai` | done |
 | 3.17 | Move Fablestar content into `worlds/fablestar/content`; remove `[transition]` | done |
-| 3.18 | Delete glyph/ship/system/galaxy surfaces and the admin World Builder (owner G.3, G.6) | todo |
+| 3.18 | Delete glyph/ship/system/galaxy surfaces and the admin World Builder (owner G.3, G.6): 3.18a engine + admin-ui done | in progress |
 
 ## Notes
 
@@ -272,4 +272,18 @@ by owner G.4 ("every mechanic is a first-party plugin").
   it when `WORLDFORGE_ROOT` names a directory that no longer exists (a local `.mcp.json` still
   pointing at `content/world` keeps working after the MCP server restarts); the WorldForge app
   finds `worlds/<id>/content/world` when the repository root is picked or auto-detected.
+- **3.18 deletions.**
+  - 3.18a (done) engine + admin-ui. Admin World Builder retired (owner G.6): `admin-ui/src/builder/`
+    (Zone/Galaxy/System/Ship editors, AutoLayout, validation panel) deleted with its nav entry and
+    `builder` tool id. Nexus loses the routes only it used: zone graph, positions PUT, room YAML
+    GET/PUT, structured room PUT/DELETE, galaxy, systems, ships, builder search, and `/content/glyphs`
+    (plus the `glyphs` tool id, the Content Library Glyphs tab, the dashboard glyph count and the
+    AI Forge glyph category). Kept: zone and room listing, zone creation and empty-room creation
+    (the Content Library uses them), template YAML routes, `/forge/inject`. The engine drops
+    `StarSystemModel`, `ShipTemplate` and the glyph models. The `expected_mtime` 409 guard and the
+    positions sidecar code went with the builder (their tests too): WorldForge and the MCP tools
+    write files directly and never used them. Staff rows that still list `builder`/`glyphs` are
+    unaffected (unknown tool ids are filtered out).
+  - 3.18b WorldForge Galaxy/Glyph/Ship editors, scaffold and validation; worldforge-mcp mentions;
+    player-ui `glyph_cast` narrative type and glyph entity kind; Fablestar's empty `galaxy.yaml`.
 

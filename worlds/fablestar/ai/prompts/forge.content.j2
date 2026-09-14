@@ -20,8 +20,6 @@ Output **ONLY** valid YAML. No markdown fences, no preamble, no commentary after
 YAML should describe one NPC or creature: id, name, type, zone, level, description (short/long), behavior states, and optional combat block.
 {% elif category == "item" %}
 YAML should describe item(s): either a single object or `items:` list with id, name, type, rarity, value, description.
-{% elif category == "glyph" %}
-YAML should describe a glyph ability: id, name, category, tier, energyCost, effect, bodySlot, description.
 {% elif category == "quest" %}
 YAML should describe a quest: id, title, type, difficulty, objectives (list), rewards.
 {% elif category == "dialogue" %}

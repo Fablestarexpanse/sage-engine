@@ -313,11 +313,9 @@ WorldForge is a Tauri desktop app (`engine/tools/worldforge/`) for visually edit
 
 ### How WorldForge saves (and the conflict risk)
 
-WorldForge does **not** save through the Nexus HTTP API. Its `saveRoomFile()` (`engine/tools/worldforge/src/editors/ZoneEditor.jsx`) calls the Tauri `write_file` command (`engine/tools/worldforge/src-tauri/src/commands.rs`) and writes room YAML **directly to disk**; the server's `HotReloader` then notices the file change and invalidates the content cache. The admin-ui World Builder, by contrast, writes through Nexus (`PUT/POST/DELETE /content/zones/{zone}/rooms/*` in `admin/routes/content.py`).
+WorldForge does **not** save through the Nexus HTTP API. Its `saveRoomFile()` (`engine/tools/worldforge/src/editors/ZoneEditor.jsx`) calls the Tauri `write_file` command (`engine/tools/worldforge/src-tauri/src/commands.rs`) and writes room YAML **directly to disk**; the server's `HotReloader` then notices the file change and invalidates the content cache. The admin-ui World Builder that used to write rooms through Nexus was retired in SAGE 3.18 (owner G.6); the admin Content Library only lists zones and rooms and can create a zone or an empty room.
 
-Because these two paths are unsynchronized, running both editors on the same zone risks last-write-wins clobbering. The `/content/*` room-write routes accept an optional `expected_mtime` (returned by the room-read endpoints) and reject with **409 `content_modified`** when the file changed on disk since it was loaded — the admin-ui builder sends it; direct WorldForge disk writes bypass this guard entirely, so avoid editing the same zone in both tools at once.
-
-There is a **third writer**: `engine/tools/worldforge-mcp/server.py` (the MCP server behind the `mcp__worldforge__*` tools) also reads and writes room YAML and `.positions.json` directly to disk (`_read_room`/`_write_room`/`_write_positions`), with no `expected_mtime` guard — same accepted last-write-wins risk as the Tauri app. Treat any two of the three writers (admin-ui Builder, WorldForge Tauri app, worldforge-mcp tools) editing the same zone concurrently as unsafe.
+The other structural writer is `engine/tools/worldforge-mcp/server.py` (the MCP server behind the `mcp__worldforge__*` tools), which reads and writes room YAML and `.positions.json` directly to disk (`_read_room`/`_write_room`/`_write_positions`). Neither writer guards against the other (last write wins), so don't edit the same zone in the WorldForge app and through the MCP tools at the same time.
 
 Related Nexus endpoints (available for HTTP write-through, e.g. the forge chat deploy flow):
 

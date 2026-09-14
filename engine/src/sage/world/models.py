@@ -1,4 +1,4 @@
-"""Pydantic world models — RoomModel, EntityTemplate, ItemTemplate, StarSystemModel, ShipTemplate."""
+"""Pydantic world models — RoomModel, EntityTemplate, ItemTemplate."""
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -120,60 +120,3 @@ class CelestialBody(BaseModel):
     orbit: float | None = None
     orbits: str | None = None
     zones: list[ZoneRef] = Field(default_factory=list)
-
-
-class StarSystemModel(BaseModel):
-    """On-disk star system YAML under content/world/systems/."""
-
-    id: str
-    name: str
-    coordinates: dict[str, float] = Field(default_factory=lambda: {"x": 0.0, "y": 0.0, "z": 0.0})
-    star: dict[str, str] = Field(default_factory=dict)
-    faction: str = "neutral"
-    security: str = "low"
-    connections: list[SystemConnection] = Field(default_factory=list)
-    bodies: list[CelestialBody] = Field(default_factory=list)
-
-
-class ShipRoom(BaseModel):
-    id: str
-    name: str
-    type: str = "room"
-    description: dict[str, str] = Field(default_factory=dict)
-    exits: dict[str, ExitModel] = Field(default_factory=dict)
-
-
-class ShipTemplate(BaseModel):
-    """Ship interior graph source (content/world/ships/)."""
-
-    id: str
-    name: str
-    size: str = "small"
-    rooms: list[ShipRoom] = Field(default_factory=list)
-
-
-class GlyphEffectModel(BaseModel):
-    type: str = "damage"
-    magnitude: int = 0
-    duration: int = 0
-    cooldown: int = 0
-
-
-class GlyphCostModel(BaseModel):
-    energy: int = 0
-
-
-class GlyphModel(BaseModel):
-    """On-disk glyph ability YAML under content/world/glyphs/."""
-
-    id: str
-    name: str
-    category: str = "combat"
-    tier: int = 1
-    body_slot: str = "forearm"
-    description: str = ""
-    inscription: str = ""
-    effect: GlyphEffectModel = Field(default_factory=GlyphEffectModel)
-    cost: GlyphCostModel = Field(default_factory=GlyphCostModel)
-    prerequisites: list[str] = Field(default_factory=list)
-    tags: set[str] = Field(default_factory=set)

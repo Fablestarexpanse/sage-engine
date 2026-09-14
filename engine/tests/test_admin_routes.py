@@ -1,4 +1,4 @@
-"""Admin HTTP surface tests — auth middleware, tool permissions, room-write 409 guard.
+"""Admin HTTP surface tests — auth middleware, tool permissions, staff and lexicon routes.
 
 Runs the real NexusApp (all routers + NexusAdminAuthMiddleware) over the
 in-memory fakes from tests/fakes.py via FastAPI's TestClient. No live
@@ -11,7 +11,6 @@ from types import SimpleNamespace
 import pytest
 from fastapi.testclient import TestClient
 
-from sage.admin import content_browser
 from sage.admin.admin_security import issue_staff_token
 from sage.admin.nexus import NexusApp
 from sage.state.models import AdminStaff
@@ -126,28 +125,6 @@ def test_staff_routes_reject_non_head_admin(client, server):
 
 
 # ---- optimistic-concurrency 409 guard --------------------------------------
-
-
-def test_room_save_conflict_returns_409(client, server, monkeypatch):
-    monkeypatch.setattr(content_browser, "room_file_mtime", lambda z, r: 2000.0)
-    r = client.put(
-        "/content/room/somezone/someroom/yaml",
-        json={"path": "x", "yaml_content": "id: somezone:someroom", "expected_mtime": 1000.0},
-        headers=_auth(server, 1),
-    )
-    assert r.status_code == 409
-    assert r.json()["detail"] == "content_modified"
-
-
-def test_room_delete_conflict_returns_409(client, server, monkeypatch):
-    monkeypatch.setattr(content_browser, "room_file_mtime", lambda z, r: 2000.0)
-    r = client.delete(
-        "/content/zones/somezone/rooms/someroom",
-        params={"expected_mtime": 1000.0},
-        headers=_auth(server, 1),
-    )
-    assert r.status_code == 409
-    assert r.json()["detail"] == "content_modified"
 
 
 # ---- player-account moderation endpoints -----------------------------------

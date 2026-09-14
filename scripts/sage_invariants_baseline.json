@@ -1,6 +1,6 @@
 {
   "totals": {
-    "denylist": 328,
+    "denylist": 259,
     "player_literals": 72
   },
   "denylist": {
@@ -10,13 +10,9 @@
     "engine/alembic/versions/q0r1s2t3u4v5_account_ai_credits.py": 1,
     "engine/alembic/versions/r1s2t3u4v5w6_drop_legacy_world_columns.py": 1,
     "engine/clients/admin-ui/src/AgentsTab.jsx": 1,
-    "engine/clients/admin-ui/src/App.jsx": 3,
+    "engine/clients/admin-ui/src/App.jsx": 1,
     "engine/clients/admin-ui/src/ProficienciesPage.jsx": 6,
-    "engine/clients/admin-ui/src/adminCommon.jsx": 2,
-    "engine/clients/admin-ui/src/pages/AiForgePage.jsx": 16,
-    "engine/clients/admin-ui/src/pages/ContentLibraryPage.jsx": 24,
-    "engine/clients/admin-ui/src/pages/DashboardPage.jsx": 3,
-    "engine/clients/admin-ui/src/pages/PlayersPage.jsx": 3,
+    "engine/clients/admin-ui/src/pages/AiForgePage.jsx": 6,
     "engine/clients/admin-ui/src/storageMigration.js": 8,
     "engine/clients/player-ui/src/App.jsx": 2,
     "engine/clients/player-ui/src/ChargenProficienciesStep.jsx": 3,
@@ -26,12 +22,7 @@
     "engine/clients/player-ui/src/storageMigration.js": 8,
     "engine/pyproject.toml": 1,
     "engine/scripts/ensure_test_user.py": 10,
-    "engine/src/sage/admin/admin_security.py": 1,
-    "engine/src/sage/admin/content_browser.py": 9,
-    "engine/src/sage/admin/routes/content.py": 5,
-    "engine/src/sage/admin/staff_service.py": 1,
     "engine/src/sage/core/config.py": 7,
-    "engine/src/sage/world/models.py": 9,
     "engine/tests/test_admin_security.py": 4,
     "engine/tests/test_command_integration.py": 4,
     "engine/tests/test_commands.py": 3,

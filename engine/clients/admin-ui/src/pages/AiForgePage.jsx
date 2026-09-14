@@ -66,22 +66,6 @@ const FORGE_CATEGORIES = [
     ],
   },
   {
-    id: "glyph", label: "Glyph / Ability", icon: <Icons.Glyphs />, colorKey: "accent",
-    desc: "Design glyph tattoos with mechanics, visual descriptions, and balance parameters",
-    fields: [
-      { key: "category", label: "Category", type: "select", options: ["Combat", "Defense", "Utility", "Perception", "Movement", "Social"] },
-      { key: "tier", label: "Tier", type: "select", options: ["1 (Initiate)", "2 (Adept)", "3 (Master)", "4 (Transcendent)", "5 (Mythic)"] },
-      { key: "body_slot", label: "Body Slot", type: "select", options: ["forearm", "upper arm", "chest", "back", "calf", "thigh", "palm", "temple", "spine", "shoulder"] },
-      { key: "details", label: "Ability Concept", type: "textarea", placeholder: "Mechanical effect, visual manifestation, lore origin..." },
-    ],
-    promptTemplates: [
-      "Design a glyph chain: 3 related glyphs that combo together",
-      "Create a defensive glyph with scaling based on adaptive level",
-      "Generate a utility glyph tree with 5 progression tiers",
-      "Design a mythic-tier glyph with dramatic inscription sequence narrative",
-    ],
-  },
-  {
     id: "quest", label: "Quest / Objective", icon: <Icons.Content />, colorKey: "danger",
     desc: "Create quest chains with objectives, branching paths, dialogue, and reward structures",
     fields: [
@@ -94,7 +78,7 @@ const FORGE_CATEGORIES = [
       "Create a 3-part quest chain with branching outcomes",
       "Design a hidden discovery quest with environmental clue progression",
       "Generate a repeatable hunt quest with adaptive difficulty scaling",
-      "Build a tutorial quest that teaches glyph combat mechanics naturally",
+      "Build a tutorial quest that teaches combat mechanics naturally",
     ],
   },
   {
