@@ -190,7 +190,7 @@ const StaffTeamPage = () => {
       <p style={{ margin: "0 0 16px", fontSize: 13, color: COLORS.textMuted, fontFamily: "'DM Sans', sans-serif" }}>
         Head admins can add staff, assign roles (admin / GM), and restrict <strong>tools</strong> (sidebar areas) and <strong>zones</strong> (world regions for room edits / forge inject / live spawns).
         Use zones <code style={{ color: COLORS.textDim }}>*</code> for all zones, or comma-separated ids e.g. <code style={{ color: COLORS.textDim }}>test_zone</code>.
-        {" "}Staff accounts are for this admin console only. To give a <strong>play</strong> login the in-game pink <strong>GM</strong> crown, use <strong>Players › Accounts</strong> and enable <em>Game Master play account</em> on that row.
+        {" "}Staff accounts are for this admin console only. A staff account whose name matches a <strong>play</strong> login that wears the <strong>GM crown</strong> (Players › Accounts) also gives that player in-game staff commands, limited by the tools and zones set here.
       </p>
       {loadErr && <div style={{ color: COLORS.danger, marginBottom: 12 }}>{loadErr}</div>}
 

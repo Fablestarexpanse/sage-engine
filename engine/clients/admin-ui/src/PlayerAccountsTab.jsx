@@ -603,9 +603,19 @@ function AccountEditForm({ detail, disabled, onSave, onGrantBundleCredits, econo
         </div>
       </div>
       <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: COLORS.text, cursor: "pointer" }}>
-        <input type="checkbox" checked={isGm} onChange={(e) => setIsGm(e.target.checked)} disabled={disabled} />
-        Game Master play account (pink crown in player client)
+        <input id={`account-${detail.id}-gm`} type="checkbox" checked={isGm} onChange={(e) => setIsGm(e.target.checked)} disabled={disabled} />
+        GM crown: in-game staff powers
       </label>
+      {(() => {
+        const staff = detail.console_access;
+        const linked = Boolean(staff?.is_active);
+        const text = !isGm
+          ? "Without the crown this player has no staff commands in the game."
+          : linked
+            ? `Active in game: staff commands (goto, where, stat, transfer, restore, mute …) use the ${staff.role} staff account "${staff.username}": its tools and zones decide what is allowed, and every use is in the audit log.`
+            : "Not active yet: the crown gives power only through a Nexus staff account with the same name. Grant console access above (or switch that staff account on).";
+        return <div role="note" style={{ fontSize: 12, color: isGm && !linked ? COLORS.warning : COLORS.textMuted, marginTop: -4, lineHeight: 1.5 }}>{text}</div>;
+      })()}
       <button
         type="button"
         disabled={disabled}

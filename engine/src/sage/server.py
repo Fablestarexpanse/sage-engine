@@ -410,6 +410,7 @@ class SageServer:
         registry.load_module_strict("sage.commands.items")
         registry.load_module_strict("sage.commands.admin")
         registry.load_module_strict("sage.commands.report")
+        registry.load_module_strict("sage.commands.staff")
 
         # 1b. The world's plugins, after engine commands so verb conflicts are caught.
         self.plugins.load(plugin_records)

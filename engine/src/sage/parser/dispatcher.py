@@ -46,15 +46,14 @@ def _resolve_verb(verb: str):
     command = registry.get(verb)
     if command:
         return command, []
-    names = sorted(registry._commands)
+    names = registry.names()
     starts = [n for n in names if n.startswith(verb)]
     if len(starts) == 1 and len(verb) >= 2 and starts[0] not in NO_PREFIX_COMMANDS:
         return registry.get(starts[0]), []
     if starts:
         return None, starts[:5]
-    return None, difflib.get_close_matches(
-        verb, names + sorted(registry._aliases), n=3, cutoff=0.75
-    )
+    public_aliases = sorted(a for a, target in registry._aliases.items() if target in names)
+    return None, difflib.get_close_matches(verb, names + public_aliases, n=3, cutoff=0.75)
 
 
 class CommandDispatcher:

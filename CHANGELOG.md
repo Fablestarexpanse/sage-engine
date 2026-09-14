@@ -22,6 +22,18 @@ Versions built before the first publication have no conversion date.
 
 ## [Unreleased]
 
+- **In-game staff commands. The GM crown now carries real staff power.**
+  - **Commands:** `goto`, `at`, `where`, `stat`, `transfer`, `restore`, `mute`, `unmute` and
+    `staff` (alias `wizhelp`).
+  - **Who has power:** a player whose account wears the GM crown, while an active Nexus staff
+    account uses the same name. That staff account's tools and zones decide what each command
+    allows, exactly as in the console.
+  - **Everyone else:** the commands answer as an unknown command, and they are left out of
+    `help`, autocomplete, prefix matching and "did you mean".
+  - **Audit and undo:** every use is written to the audit log (`ingame.<command>`). Changes to
+    characters take the same snapshots as the console.
+  - **Account editor:** shows whether an account's crown is active or still needs a staff account.
+  - **Registry:** commands can be registered `staff_only`.
 - **Staff feed** (Live > Staff feed, `GET /admin/feed`): sign-ins and sign-outs, deaths, kills,
   new characters, player reports and restart notices as they happen, filterable by kind, with
   agents hidden unless asked for. It is kept in memory since the last start. A new engine event,
