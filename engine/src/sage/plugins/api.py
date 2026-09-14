@@ -701,6 +701,33 @@ class _Snapshot:
         self._api._cleanup.append(lambda: contributors.withdraw(self._api.id))
 
 
+class _Ui:
+    def __init__(self, api: PluginAPI):
+        self._api = api
+
+    def panel(self, name: str, kind: str, section: str, icon: str = "") -> None:
+        """Declare player panel "<plugin>.<name>" drawing one of this plugin's snapshot sections.
+
+        Kinds and data shapes: sage.network.panels. The title is lexicon "<plugin>.panel.<name>".
+        """
+        from sage.network.panels import Panel
+
+        api = self._api
+        if section not in api._record.registered.get("snapshot", set()):
+            raise PluginError(
+                f"plugin {api.id}: panel {name!r} reads section {section!r}, which it does not "
+                "contribute (call api.snapshot.contribute first)"
+            )
+        panels = api._host.server.panels
+        panel = Panel(id=f"{api.id}.{name}", owner=api.id, kind=kind, section=section, icon=icon)
+        try:
+            panels.add(panel)
+        except ValueError as exc:
+            raise PluginError(f"plugin {api.id}: {exc}") from exc
+        api._record.record("panels", panel.id)
+        api._cleanup.append(lambda: panels.withdraw(api.id))
+
+
 class PluginAPI:
     def __init__(self, host: Any, record: Any):
         self._host = host
@@ -731,6 +758,7 @@ class PluginAPI:
         self.ai = _Ai(self)
         self.clock = _Clock()
         self.snapshot = _Snapshot(self)
+        self.ui = _Ui(self)
 
     @property
     def world(self) -> Any:

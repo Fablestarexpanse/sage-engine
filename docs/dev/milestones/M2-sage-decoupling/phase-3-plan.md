@@ -33,7 +33,7 @@ by owner G.4 ("every mechanic is a first-party plugin").
 | 3.10 | Conduit (proficiencies, FRT..PRS, combat ratings, chargen) → `worlds/fablestar/plugins/conduit` | done |
 | 3.11 | Combat, equipment, ambient, effects → first-party plugins (owner G.4): ambient, effects, combat, equipment, consumables (`use`) | done |
 | 3.12 | Snapshot contributors (`api.snapshot.contribute`); `resonance_levels_total` out of the protocol | done |
-| 3.13 | Declarative client panels; remove Fablestar panels/branding from player-ui | todo |
+| 3.13 | Declarative client panels; remove Fablestar panels/branding from player-ui: 3.13a API + renderer done | in progress |
 | 3.14 | Schema: JSONB state, `digi_balance`/`reputation`/`echo_credits` columns, retire `agent_state` (backfill → drop) | todo |
 | 3.15 | Redis key namespace by world slug | todo |
 | 3.16 | AI slots and style; prompts into `worlds/fablestar/ai` | todo |
@@ -147,3 +147,21 @@ by owner G.4 ("every mechanic is a first-party plugin").
   World param `engine.combat.skills` became `combat.skills`; `combat.flee_chance` (0.5) and
   `combat.narration_template` are optional. Rivermoot enables combat without equipment. Agents use
   the equipment/consumables services when those plugins are enabled (optional depends).
+- **3.13 plan (declarative panels).** Four commits, each playable:
+  - 3.13a engine + generic client renderer. `api.ui.panel(name, kind, section, icon="")` registers
+    player panel `<plugin>.<name>`, titled by lexicon `<plugin>.panel.<name>`, whose data is one of
+    the plugin's own snapshot sections; `[touches].panels` seals it. Kinds `stat_sheet`, `wallet`,
+    `tree`, `list`, `key_value`, `table`; `module` is refused at boot as unsupported in this engine
+    version (DECISIONS G.10). The character snapshot gains `panels` (specs with resolved titles);
+    player-ui renders each kind generically and lists declared panels in the panel toggles. Data
+    shapes are documented in `sage/network/panels.py`; a tree node may carry `actions`
+    (`{label, command}`), sent as typed commands, so panels gain no authority commands lack.
+    First users: factions (`list`), equipment (`key_value`), Rivermoot levels (`stat_sheet`).
+  - 3.13b Conduit declares its sheet (`stat_sheet`) and skill tree (`tree` with raise/lower/lock
+    actions); the Conduit strip and ProficienciesPanel leave player-ui.
+  - 3.13c player-ui loses mock panels (glyphs, quests, target, session stats, keybinds, triggers,
+    quick actions: owner G.3 "mock client panels") and Fablestar branding (header from world name,
+    wallet chip from the world's primary currency).
+  - 3.13d admin surface (`surface="admin"`, source = the plugin's admin route) only if an admin
+    panel is needed by then; the existing plugin admin tabs keep working through their routes.
+  `schema_form` waits for its first user (two-world ceiling).

@@ -1,5 +1,7 @@
 factions:
   none: "No factions have taken notice of you yet."
+  panel:
+    standings: "Standings"
   header: "Faction standings:"
   entry: "  {name}: {standing} ({rep:+d}) — {description}"
   standing_improves: "Your standing with {faction} improves: you are now {standing}."

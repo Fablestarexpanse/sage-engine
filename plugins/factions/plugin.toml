@@ -13,4 +13,6 @@ commands = ["factions", "missions"]
 events_subscribe = ["EntityKilled"]
 state_blocks = ["factions", "mission"]
 services = ["factions"]
+snapshot = ["factions"]
+panels = ["factions.standings"]
 lexicon_prefix = "factions."

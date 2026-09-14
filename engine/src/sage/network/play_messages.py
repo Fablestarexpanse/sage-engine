@@ -50,6 +50,8 @@ class CharacterSnapshotNotice(TypedDict, total=False):
     # Plugin- and engine-contributed panel data by section (sage.network.snapshot), e.g.
     # {"progression": {"levels_total": 42}}.
     sections: dict[str, Any]
+    # Declared client panels (sage.network.panels): [{"id", "kind", "title", "icon", "section"}].
+    panels: list[dict[str, Any]]
     # {"id": "zone:slug", "name": "Display Name" | None}
     location: dict[str, Any]
     # [{"name", "description", "debuff", "seconds_left" (None = indefinite)}]

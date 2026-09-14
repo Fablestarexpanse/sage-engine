@@ -12,5 +12,7 @@ first_party = true
 commands = ["equip", "unequip", "gear"]
 services = ["equipment"]
 state_blocks = ["equipment"]
+snapshot = ["equipment"]
+panels = ["equipment.gear"]
 content_extensions = ["item.slot", "item.attack", "item.defense", "item.ammo"]
 lexicon_prefix = "equipment."

@@ -88,3 +88,26 @@ def standings_lines(stats: dict[str, Any], registry: FactionRegistry) -> list[st
             )
         )
     return lines
+
+
+_TONES = {
+    "loathed": "bad",
+    "hated": "bad",
+    "disliked": "bad",
+    "liked": "good",
+    "loved": "good",
+    "exalted": "good",
+}
+
+
+def standings_panel(stats: dict[str, Any], registry: FactionRegistry) -> dict[str, Any]:
+    """The `list` panel data (sage.network.panels): one row per known faction."""
+    items = []
+    for faction in registry.all():
+        rep = get_rep(stats, faction)
+        item = {"label": faction.name, "detail": standing_label(rep), "value": f"{rep:+d}"}
+        tone = _TONES.get(standing_name(rep))
+        if tone:
+            item["tone"] = tone
+        items.append(item)
+    return {"items": items, "empty": t("factions.none")}

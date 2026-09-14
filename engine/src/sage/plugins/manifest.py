@@ -30,6 +30,7 @@ SUPPORTED_TOUCHES = (
     "redis_prefixes",
     "tables",
     "snapshot",
+    "panels",
     "stats_keys",
     "lexicon_prefix",
 )
@@ -121,13 +122,14 @@ class Touches(BaseModel):
     content_extensions: list[str] = Field(default_factory=list)
     # Engine-owned top-level stats (vitals such as "hp") this plugin may change through state.edit.
     stats_keys: list[str] = Field(default_factory=list)
-    # Declared for later engine versions (contracts C.2); refused if a plugin uses them now.
-    content_types: list[str] = Field(default_factory=list)
     snapshot: list[str] = Field(default_factory=list)
     routes: list[str] = Field(default_factory=list)
+    # Declarative client panels, "<plugin>.<name>" (sage.network.panels).
     panels: list[str] = Field(default_factory=list)
     tables: list[str] = Field(default_factory=list)
     redis_prefixes: list[str] = Field(default_factory=list)
+    # Declared for later engine versions (contracts C.2); refused if a plugin uses them now.
+    content_types: list[str] = Field(default_factory=list)
     params: list[str] = Field(default_factory=list)
     ai_slots: list[str] = Field(default_factory=list)
 

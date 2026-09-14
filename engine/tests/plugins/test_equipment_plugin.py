@@ -119,3 +119,16 @@ def test_commands_wear_show_and_remove_gear(plugin_host, tmp_path):
     assert "club" not in [it["template"] for it in host.redis.stats["hero"]["equipment"].values()]
     _run(host, "unequip", session, "hat")
     assert "nothing like that" in session.sent[-1]
+
+
+def test_gear_panel_shows_every_world_slot(plugin_host, tmp_path):
+    host = _host(plugin_host, tmp_path)
+    _run(host, "equip", StubSession("hero"), "club")
+    [spec] = host.server.panels.specs()
+    assert (spec["id"], spec["kind"], spec["title"]) == ("equipment.gear", "key_value", "Gear")
+    sections = asyncio.run(
+        host.server.snapshot_contributors.build("hero", host.redis.stats["hero"])
+    )
+    assert sections["equipment"] == {
+        "rows": [{"label": "weapon", "value": "iron club"}, {"label": "armor", "value": "—"}]
+    }

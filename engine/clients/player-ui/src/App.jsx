@@ -2264,6 +2264,8 @@ export default function App() {
                   liveEffects: Array.isArray(j.effects) ? j.effects : prev.liveEffects,
                   liveInventory: Array.isArray(j.inventory) ? j.inventory : prev.liveInventory,
                   liveMap: j.map && typeof j.map === "object" ? j.map : prev.liveMap,
+                  liveSections: j.sections && typeof j.sections === "object" ? j.sections : prev.liveSections,
+                  declaredPanels: Array.isArray(j.panels) ? j.panels : prev.declaredPanels,
                 }
               : prev
           );
@@ -2456,6 +2458,8 @@ export default function App() {
             liveEffects: playSession.liveEffects ?? null,
             liveInventory: playSession.liveInventory ?? null,
             liveMap: playSession.liveMap ?? null,
+            liveSections: playSession.liveSections ?? null,
+            declaredPanels: playSession.declaredPanels ?? null,
             chatMessages: playSession.chatMessages ?? null,
           }}
           onSignOut={onSignOut}

@@ -5,7 +5,8 @@ NEXT: Phase 3 on sage/phase-3 (plan: docs/dev/milestones/M2-sage-decoupling/phas
 lodging, 3.6 search and crafting (+ progression slots), 3.7 maestro, 3.8 hazards: DONE. 3.9 agents (virtual
 sessions, engine seams, plugins/agents with plg_agents_state) DONE; agent_state retirement moved to 3.14 (order-
 safe rename first). 3.12 snapshot sections, 3.10 Conduit world plugin, 3.11 ambient, effects, combat,
-equipment and consumables plugins DONE. Next: 3.13 declarative client panels. Dev DB at n7o8p9q0r1s2.
+equipment and consumables plugins DONE. 3.13a panel API + generic player-ui renderer DONE (factions,
+equipment, Rivermoot levels). Next: 3.13b Conduit sheet + skill tree as declared panels. Dev DB at n7o8p9q0r1s2.
 Ratchet 947/72. Commit 9a831ea does not boot (be48da3 completes it).
 Open owner questions: Rivermoot license; PRs for sage/stage-2b and sage/stage-2c.
 Review page: https://claude.ai/code/artifact/2d488113-1ca9-4f45-b993-ac0253e0670c

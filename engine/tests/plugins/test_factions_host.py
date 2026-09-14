@@ -84,3 +84,17 @@ def test_state_edit_refuses_keys_the_plugin_does_not_own(plugin_host):
 def test_worlds_without_the_plugin_have_no_faction_commands(plugin_host):
     host = plugin_host(repo_world(), ["achievements"])
     assert host.registry.get("missions") is None and host.registry.get("factions") is None
+
+
+def test_standings_panel_lists_every_faction_with_a_tone(plugin_host):
+    host = plugin_host(repo_world(), ["factions"])
+    [spec] = host.server.panels.specs()
+    assert (spec["id"], spec["kind"], spec["section"]) == ("factions.standings", "list", "factions")
+    sections = asyncio.run(
+        host.server.snapshot_contributors.build("hero", {"factions": {"dockworkers": -80}})
+    )
+    items = sections["factions"]["items"]
+    assert items and all({"label", "detail", "value"} <= set(item) for item in items)
+    assert {"value": "-80", "tone": "bad"}.items() <= next(
+        item for item in items if item["value"] == "-80"
+    ).items()

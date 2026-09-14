@@ -16,7 +16,7 @@ from .missions import (
     will_deal,
 )
 from .registry import FactionRegistry, load_factions
-from .standing import FACTIONS_KEY, apply_kill_reputation, standings_lines
+from .standing import FACTIONS_KEY, apply_kill_reputation, standings_lines, standings_panel
 
 
 class FactionsService:
@@ -136,5 +136,7 @@ def setup(api: PluginAPI) -> None:
 
     api.events.subscribe(EntityKilled, on_kill)
     api.commands.register("factions", factions, aliases=["rep", "reputation"])
+    api.snapshot.contribute("factions", lambda name, stats: standings_panel(stats, cache.get()))
+    api.ui.panel("standings", "list", "factions", icon="⚑")
     api.commands.register("missions", missions, aliases=["mission"])
     api.services.provide("factions", FactionsService(cache))

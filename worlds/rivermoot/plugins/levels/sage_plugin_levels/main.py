@@ -48,5 +48,21 @@ def setup(api: PluginAPI) -> None:
             )
         )
 
+    def sheet(name: str, stats: dict[str, Any]) -> dict[str, Any]:
+        block = stats.get(BLOCK) if isinstance(stats.get(BLOCK), dict) else fresh()
+        lvl = int(block.get("level", 1))
+        return {
+            "stats": [
+                {"label": api.t("levels.label.level"), "value": lvl},
+                {
+                    "label": api.t("levels.label.xp"),
+                    "value": int(block.get("xp", 0)),
+                    "max": lvl * per_level,
+                },
+            ]
+        }
+
     api.events.subscribe(EntityKilled, on_kill)
+    api.snapshot.contribute("levels", sheet)
+    api.ui.panel("sheet", "stat_sheet", "levels", icon="★")
     api.commands.register("level", level, aliases=["lvl"])

@@ -13,6 +13,8 @@ from sage.commands.registry import CommandRegistry
 from sage.core.events import EventBus
 from sage.core.resolvers import Resolvers
 from sage.core.tick import TickManager
+from sage.network.panels import PanelRegistry
+from sage.network.snapshot import SnapshotContributors
 from sage.plugins import PluginHost
 from sage.world.loader import ContentLoader
 from sage.world.slots import define_engine_slots
@@ -50,6 +52,14 @@ def plugin_host():
             trusted_roots=[REPO_ROOT / "plugins", REPO_ROOT / "worlds"],
         )
         define_engine_slots(host.resolvers)
+        # Plugins contribute snapshot sections and panels at setup; fake servers get real registries.
+        server = server if server is not None else SimpleNamespace()
+        for name, factory in (
+            ("snapshot_contributors", SnapshotContributors),
+            ("panels", PanelRegistry),
+        ):
+            if not hasattr(server, name):
+                setattr(server, name, factory())
         host.server = server
         host.load()
         lexicon.set_active(

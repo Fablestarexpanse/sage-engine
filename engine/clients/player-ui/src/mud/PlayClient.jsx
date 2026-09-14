@@ -12,6 +12,7 @@ import {
   CharacterPanel, GlyphBar, InventoryPanel, SocialPanel, ScenePanel,
 } from "./06-panels-b.jsx";
 import { ProficienciesPanel } from "./07-proficiencies-panel.jsx";
+import { DeclaredPanel } from "./08-declared-panels.jsx";
 import { PORTRAIT_ASPECT_RATIO_CSS } from "../portraitProfile.js";
 import { GmBadge } from "../GmBadge.jsx";
 
@@ -42,6 +43,11 @@ function useWorkspaceScale() {
   const sy = dims.ih / DESIGN_H;
   const layoutKey = `${Math.floor(dims.iw / 40)}x${Math.floor(dims.ih / 40)}`;
   return { sx, sy, layoutKey, iw: dims.iw, ih: dims.ih };
+}
+
+/** Where a server-declared panel opens the first time it is shown (cascaded by index). */
+function declaredPanelBox(index) {
+  return { x: 300 + (index % 5) * 30, y: 60 + (index % 5) * 30, w: 280, h: 260 };
 }
 
 const PRESETS = {
@@ -226,7 +232,16 @@ export default function PlayClient({
     { id: "keybinds", title: "Keybinds", icon: "⌨", accent: T.text.muted, minW: 240, minH: 280, content: <KeybindManager/> },
     { id: "triggers", title: "Triggers", icon: "⚡", accent: T.glyph.amber, minW: 260, minH: 260, content: <TriggerBuilder/> },
     { id: "quickactions", title: "Quick Actions", icon: "▶", accent: T.glyph.cyan, minW: 200, minH: 60, content: <QuickActions/> },
-  ], [narrativeLines, openCtx, sendCommand, focusProficienciesPanel, notifications, session?.characterName, session?.username, session?.portraitImageUrl, session?.digiBalance, session?.pvpEnabled, session?.reputation, session?.characterStats, session?.resonanceLevelsTotal, session?.liveEffects, session?.liveInventory, session?.liveMap, session?.chatMessages, sceneImageUrl, sceneGenerating, sceneRoomLabel, sceneDownloadBaseName, sceneGen, conduitLocation, gameCurrencyDisplayName, narrativeBackdropUrl, narrativeBackdropSource, openSceneGallerySignal]);
+    ...(session?.declaredPanels || []).map((spec) => ({
+      id: spec.id,
+      title: spec.title,
+      icon: spec.icon || "▣",
+      accent: T.text.accent,
+      minW: 200,
+      minH: 140,
+      content: <DeclaredPanel spec={spec} data={session?.liveSections?.[spec.section]} />,
+    })),
+  ], [session?.declaredPanels, session?.liveSections, narrativeLines, openCtx, sendCommand, focusProficienciesPanel, notifications, session?.characterName, session?.username, session?.portraitImageUrl, session?.digiBalance, session?.pvpEnabled, session?.reputation, session?.characterStats, session?.resonanceLevelsTotal, session?.liveEffects, session?.liveInventory, session?.liveMap, session?.chatMessages, sceneImageUrl, sceneGenerating, sceneRoomLabel, sceneDownloadBaseName, sceneGen, conduitLocation, gameCurrencyDisplayName, narrativeBackdropUrl, narrativeBackdropSource, openSceneGallerySignal]);
 
   return (
     <GameCmdContext.Provider value={{ sendCommand, focusProficienciesPanel }}>
@@ -531,7 +546,8 @@ export default function PlayClient({
       <main style={{ position: "absolute", top: HEADER_PX, left: 0, right: 0, bottom: 0, overflow: "hidden" }}>
         {panels.map(p => {
           if (!isVis(p.id)) return null;
-          const pp = preset.panels[p.id];
+          const declaredIndex = (session?.declaredPanels || []).findIndex((d) => d.id === p.id);
+          const pp = preset.panels[p.id] || (declaredIndex >= 0 ? declaredPanelBox(declaredIndex) : null);
           if (!pp) return null;
           const dw = Math.max(120, Math.round(pp.w * sx));
           const dh = Math.max(80, Math.round(pp.h * sy));

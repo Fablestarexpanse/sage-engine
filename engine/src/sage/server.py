@@ -92,6 +92,9 @@ class SageServer:
 
         self.snapshot_contributors = SnapshotContributors()
         self.snapshot_contributors.add("progression", progression_section(self.resolvers), "sage")
+        from sage.network.panels import PanelRegistry
+
+        self.panels = PanelRegistry()
         self.session_manager = SessionManager()
         self.redis = RedisState(self.config.redis)
         self.db = PostgresState(self.config.database)
@@ -621,6 +624,7 @@ class SageServer:
                 "character_name": player_id,
                 "stats": stats,
                 "sections": await self.snapshot_contributors.build(player_id, stats),
+                "panels": self.panels.specs(),
                 "location": {
                     "id": room_id or "",
                     "name": room.name if room and room.name else None,

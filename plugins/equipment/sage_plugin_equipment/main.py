@@ -153,7 +153,19 @@ def setup(api: PluginAPI) -> None:
             lines.append(api.t("equipment.slot_line", slot=slot, item=name))
         await session.send("\r\n".join(lines))
 
+    def gear_panel(name: str, stats: dict[str, Any]) -> dict[str, Any]:
+        worn = stats.get(EQUIPMENT_KEY) if isinstance(stats.get(EQUIPMENT_KEY), dict) else {}
+        empty = api.t("equipment.empty_slot")
+        return {
+            "rows": [
+                {"label": slot, "value": (worn.get(slot) or {}).get("name") or empty}
+                for slot in slots
+            ]
+        }
+
     api.commands.register("equip", equip, aliases=["wield", "wear"])
     api.commands.register("unequip", unequip, aliases=["remove", "stow"])
     api.commands.register("gear", gear, aliases=["equipment", "equipped"])
     api.services.provide("equipment", service)
+    api.snapshot.contribute("equipment", gear_panel)
+    api.ui.panel("gear", "key_value", "equipment", icon="⚔")

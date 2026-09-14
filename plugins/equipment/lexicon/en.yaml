@@ -12,3 +12,5 @@ equipment:
   empty_slot: "—"
   ammo_empty: "Your {item} clicks empty — no {ammo} left."
   ammo_last: "That was your last {ammo}."
+  panel:
+    gear: "Gear"
