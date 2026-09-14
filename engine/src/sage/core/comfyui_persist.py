@@ -37,4 +37,13 @@ def save_comfyui_toml(cfg: ComfyUIConfig, path: Path | None = None) -> Path:
         f"credits_per_usd = {int(cfg.credits_per_usd)}",
         "",
     ]
+    for bundle in cfg.credit_bundles:
+        lines += [
+            "[[credit_bundles]]",
+            f"id = {_toml_str(bundle.id)}",
+            f"label = {_toml_str(bundle.label)}",
+            f"credits = {int(bundle.credits)}",
+            f"blurb = {_toml_str(bundle.blurb)}",
+            "",
+        ]
     return atomic_write_toml(target, lines)

@@ -72,6 +72,15 @@ _COMFYUI_RENAMED_KEYS = {
 }
 
 
+class CreditBundle(BaseModel):
+    """One [[credit_bundles]] entry in comfyui.toml: a priced pack of AI art credits."""
+
+    id: str
+    label: str
+    credits: int = Field(gt=0)
+    blurb: str = ""
+
+
 class ComfyUIConfig(BaseModel):
     """Optional ComfyUI HTTP API for character portraits and room area art."""
 
@@ -118,6 +127,8 @@ class ComfyUIConfig(BaseModel):
     currency_display_name: str = "credits"
     # Reference rate for storefront / admin bundle math (not enforced server-side).
     credits_per_usd: int = 100
+    # Purchase bundles staff can grant from the admin console (deployment pricing; none by default).
+    credit_bundles: list[CreditBundle] = Field(default_factory=list)
 
 
 class LLMConfig(BaseModel):

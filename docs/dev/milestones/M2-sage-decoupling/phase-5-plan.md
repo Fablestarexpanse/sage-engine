@@ -27,7 +27,7 @@ message, and the full suite runs before each commit.
 | 5.3 | Content schemas. `sage schema export` and `GET /schema/world` give JSON Schema for rooms, features, entities and items (with every enabled plugin's extension fields) plus the world's lists (room types, exit directions, slots, attributes, currencies). | done |
 | 5.4 | WorldForge reads the world. Room types, exit directions and equipment slots come from the package's `world.toml`. | done |
 | 5.5 | WorldForge edits plugin content: room, feature and item forms for extension fields, generated from the exported schema. | done |
-| 5.6 | Credit bundles are deployment config (`comfyui.toml`), served to the admin console. | todo |
+| 5.6 | Credit bundles are deployment config (`comfyui.toml`), served to the admin console. | done |
 | 5.7 | World theme: `ui/theme.yaml` (accent colours, title glyph) served with `GET /play/world`, applied by player-ui. | todo |
 | 5.8 | Nexus write-through for WorldForge: decide (build or defer) and record. | todo |
 
@@ -92,4 +92,13 @@ message, and the full suite runs before each commit.
   - **A folder without a schema:** the form says to use the YAML tab.
   - **Run:** vitest 45 passed. The new tests render the forms from Rivermoot's real exported schema and check helper defaults and `$ref` resolution. The app builds.
   - **Not launched:** the Tauri app itself.
+- **5.6 credit bundles are deployment config (done).**
+  - **Config:** `ComfyUIConfig.credit_bundles` reads `[[credit_bundles]]` entries (`id`, `label`, `credits`, `blurb`). The default is none. The comfyui settings save writes the bundles back.
+  - **Admin console:** `GET /admin/economy` (players tool) serves the bundles with the credit rate and currency name. The Players & accounts editor shows them, or says none are configured. It no longer has its own dollar table or the hardcoded "100 px ≈ $1".
+  - **Example file:** `config/comfyui.example.toml` carries the four bundles the console used to hardcode.
+  - **Local dev config:** I appended the same four bundles to `config/comfyui.toml` so this machine's console is unchanged. The file is gitignored; a backup is in the scratchpad.
+  - **Run:**
+    - Live `/admin/economy` returns the four bundles, "pixels" and 100 (401 without a token).
+    - `test_credit_bundles.py` loads bundles from TOML, survives an admin save, and checks the route.
+    - The admin screen was not opened: signing in needs a password.
 
