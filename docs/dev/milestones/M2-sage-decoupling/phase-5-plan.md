@@ -22,7 +22,7 @@ message, and the full suite runs before each commit.
 
 | # | Step | Status |
 |---|------|--------|
-| 5.1 | The server sends the command list: the player client autocompletes the running world's commands (engine + enabled plugins), not a hardcoded list. | todo |
+| 5.1 | The server sends the command list: the player client autocompletes the running world's commands (engine + enabled plugins), not a hardcoded list. | done |
 | 5.2 | One validator. `sage validate [--world]` runs `sage.world.lint`, and worldforge-mcp's `validate_zone` and room types come from the world package. The MCP instructions lose the sci-fi examples. | todo |
 | 5.3 | Content schemas. `sage schema export` and `GET /schema/world` give JSON Schema for rooms, features, entities and items (with every enabled plugin's extension fields) plus the world's lists (room types, exit directions, slots, attributes, currencies). | todo |
 | 5.4 | WorldForge reads the world. Room types, exit directions and equipment slots come from the package's `world.toml`. | todo |
@@ -32,3 +32,10 @@ message, and the full suite runs before each commit.
 | 5.8 | Nexus write-through for WorldForge: decide (build or defer) and record. | todo |
 
 ## Notes
+- **5.1 server-sent command list (done).** `GET /play/commands` returns the registry's primary
+  command names (`CommandRegistry.names()`). The player UI's `WorldContext` loads the list, and
+  `CommandInput` autocompletes from it; the hardcoded 50-name list is gone.
+  Run: live Fablestar lists 49 commands (including `prof`, `cap`, `factions`, `achievements`) and
+  live Rivermoot 37 (including `level`, `rent`, `browse`; no `prof`/`cap`). In the browser (dev
+  login), typing `pr` in the command box suggested `prof` from the server list.
+

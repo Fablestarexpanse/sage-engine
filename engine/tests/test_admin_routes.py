@@ -107,6 +107,24 @@ def test_play_health_is_public(client):
     assert r.json()["ok"] is True
 
 
+def test_play_commands_lists_the_registry(client):
+    from sage.commands.registry import registry
+
+    async def handler(session, args):
+        return None
+
+    registry.register("zzprobe", handler, aliases=["zzp"])
+    try:
+        r = client.get("/play/commands")
+        assert r.status_code == 200
+        names = r.json()["commands"]
+        assert "zzprobe" in names and "zzp" not in names
+        assert names == sorted(names)
+    finally:
+        registry._commands.pop("zzprobe", None)
+        registry._aliases.pop("zzp", None)
+
+
 def test_play_world_names_the_running_world(client, server):
     r = client.get("/play/world")
     assert r.status_code == 200

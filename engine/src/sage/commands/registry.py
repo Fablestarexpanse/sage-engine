@@ -38,6 +38,10 @@ class CommandRegistry:
                 self._aliases[alias] = name
         logger.debug(f"Registered command: {name} (aliases: {aliases})")
 
+    def names(self) -> list[str]:
+        """Every registered command's primary name, sorted (engine and plugin commands alike)."""
+        return sorted(self._commands)
+
     def get(self, name: str) -> Command | None:
         """Retrieve a command by name or alias."""
         # Check primary name
