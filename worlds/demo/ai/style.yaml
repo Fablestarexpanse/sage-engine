@@ -1,0 +1,6 @@
+# AI style for the demo world. No templates exist under ai/prompts/, so narration and art are off;
+# add ai/prompts/narrate.room.j2 (see worlds/rivermoot) to turn room narration on.
+tone: "calm and plain: short sentences, concrete detail, no drama"
+system_prompt: "You narrate for a small demonstration world in a text game. Describe only what the facts give you."
+content_rules:
+  - '(health|hp):?\s*\d+'

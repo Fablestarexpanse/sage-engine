@@ -1,7 +1,7 @@
 # Zero to first world: onboarding plan
 
-Status: **proposal, awaiting owner review.** Nothing in this document is implemented. Scaffold
-work starts only after it is approved.
+Status: **approved by the owner 2026-09-14.** Stage 1 items 1 (JWT secret refusal) and 2 (demo
+world) are implemented; the rest is not yet.
 
 Revised 2026-09-14 after owner feedback: *starting a world should not include building the map,
 which is the tools' job (the map builder); get the player set up with the engine first, world
@@ -144,8 +144,8 @@ WorldForge like any other world, so its `.positions.json` is the editor's own la
 
 - **Rooms:** four, in one zone, laid out so every direction a newcomer tries early works: a start
   room with exits north, east and west, and one room beyond each. Plain, setting-neutral
-  descriptions, one examinable feature per room, one item to pick up. Start and respawn are the
-  first room.
+  descriptions, one examinable feature per room. No items: placing an item in a room needs a
+  plugin, and the demo enables none. Start and respawn are the first room.
 - **Package:** the same files as Rivermoot, trimmed to what four rooms need: `world.toml`,
   `stats.yaml` (three neutral attributes, `hp`), `currencies.yaml` (one currency), `lexicon/en.yaml`
   (banner and motd that say this is the SAGE demo and point at the tutorial), `ui/theme.yaml`,
@@ -153,15 +153,14 @@ WorldForge like any other world, so its `.positions.json` is the editor's own la
 - **Plugins:** none enabled by default, with every first-party plugin listed as a comment in
   `world.toml` `[plugins]` with its one-line description. The tutorial turns one on.
 - **Licensing:** FSL-1.1-ALv2 with the engine (`worlds/demo/LICENSE`) and a `NOTICE` entry, which
-  `scripts/notice_check.py` requires. **Owner decision needed** before it is added, like every new
-  path.
+  `scripts/notice_check.py` requires (owner approved 2026-09-14).
 - **Role next to Rivermoot:** Rivermoot stays the full proving ground (30 rooms, 10 plugins).
   The demo is the smallest world the engine accepts and the first thing a newcomer sees.
 - `config/server.example.toml` defaults to `world = "demo"`, so the example config never boots the
   proprietary world.
 - **Tests:** CI validates it (0 errors, 0 warnings), checks its exported schema is current, counts
-  zero denylist hits, and the live smoke test plays it: start room, each exit and back, `get`,
-  `quit`.
+  zero denylist hits, and the live smoke test plays it: start room, an exit and back, `say`,
+  `who`, `quit`.
 
 ### 3b. `sage world new <id>` (Stage 2)
 
@@ -345,7 +344,7 @@ with something they can see.
 2. **Install and start (5 min).** Commands 1–4 from section 1, and what `quickstart` did: services
    in Docker, config generated with local-only settings, the demo world's database, the player
    client built.
-3. **Walk the demo (2 min).** Press **Play**; `look`, `north`, `south`, `get`, `inventory`,
+3. **Walk the demo (2 min).** Press **Play**; `look`, `north`, `south`, `examine tree`,
    `say hello`, `help`. What a room line and exits mean.
 4. **Change a room (1 min).** Edit a demo room's `description.base`, save, `look`. It changes
    without a restart, and no engine file was touched.
@@ -417,5 +416,5 @@ day, M two to four days, L a week or more.
 | 11 | Revisit `sage plugin install` when a first external plugin exists | — | — | Section 5. |
 
 Item 1 is small enough to ship before the rest is approved, if the owner wants. Item 2 needs the
-owner's licensing call for `worlds/demo/`. Everything else waits for review of this plan.
+owner's licensing call for `worlds/demo/`. Status 2026-09-14: owner approved the plan and FSL for the demo; items 1 and 2 are done.
 

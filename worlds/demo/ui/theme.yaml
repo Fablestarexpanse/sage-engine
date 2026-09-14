@@ -1,0 +1,5 @@
+# Player client look for the demo world: the mark beside the world name and the accent colour.
+mark: "◇"
+accent:
+  dark: "#7fb4c9"
+  light: "#2f6a80"

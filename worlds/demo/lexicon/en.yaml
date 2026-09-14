@@ -1,0 +1,15 @@
+# Words the demo world uses. Any engine or plugin string can be overridden here by its key.
+login:
+  banner: "~ SAGE Demo ~  four rooms to walk around in."
+  motd: "Try look, north, examine bench, say hello, and help."
+
+stat:
+  bod: {name: Body, short: BOD}
+  mnd: {name: Mind, short: MND}
+  spr: {name: Spirit, short: SPR}
+
+vital:
+  hp: {name: Health}
+
+currency:
+  crowns: {name: crowns}

@@ -1,0 +1,10 @@
+# Attributes a character has, their vitals, and how many points character creation hands out.
+# Labels are lexicon keys (lexicon/en.yaml), so renaming a stat never touches this file.
+attributes:
+  - {key: bod, label: stat.bod.name, short: stat.bod.short, min: 1, max: 6, default: 2}
+  - {key: mnd, label: stat.mnd.name, short: stat.mnd.short, min: 1, max: 6, default: 2}
+  - {key: spr, label: stat.spr.name, short: stat.spr.short, min: 1, max: 6, default: 2}
+vitals:
+  - {key: hp, label: vital.hp.name, default_max: 10}
+chargen:
+  attribute_points: 8

@@ -22,6 +22,13 @@ Versions built before the first publication have no conversion date.
 
 ## [Unreleased]
 
+- **SAGE Demo world.** `worlds/demo/` ships four rooms around a hub with no plugins, and
+  `config/server.example.toml` now runs it instead of Fablestar Expanse. It is licensed with the
+  engine.
+- **The server refuses to start without a JWT secret** while `admin_auth_required` is on. Before,
+  it started and reported healthy, and the first registration or login returned HTTP 500. The
+  README quick start now generates the secret.
+
 - **Breaking: database defaults are now `sage`.** `config/database.toml` without `database` or
   `user` now connects to database `sage` as user `sage` (was `fablestar`), and
   `docker-compose.yml` creates `sage`/`sage` unless `.env` sets `POSTGRES_DB` and

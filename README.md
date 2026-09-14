@@ -11,7 +11,9 @@ factions, crafting, levels.
 
 **Golden rule:** LLMs describe what happened. Deterministic code decides what happens.
 
-Two reference worlds run on the same engine code:
+A new install runs **SAGE Demo** (`worlds/demo`), four plain rooms with no plugins, so there is
+something to walk around straight away. Two reference worlds show what the same engine code can
+carry:
 
 | | Fablestar Expanse | Rivermoot |
 |---|---|---|
@@ -70,6 +72,8 @@ pip install -e "./engine[dev]"
 cp config/server.example.toml config/server.toml
 cp config/database.example.toml config/database.toml
 echo "POSTGRES_PASSWORD=choose-a-strong-password" > .env
+#    and give the server a JWT secret (it refuses to start without one while admin auth is on):
+python -c "import secrets; open('config/server.toml', 'a').write(f'\nadmin_jwt_secret = \"{secrets.token_hex(32)}\"\n')"
 
 # 3. Start Redis and PostgreSQL, then apply engine and plugin migrations
 docker compose up -d redis postgres
@@ -91,8 +95,8 @@ cd engine/clients/admin-ui && VITE_API_BASE=http://localhost:8001 VITE_WS_BASE=w
 
 On PowerShell, set the variables first (`$env:VITE_NEXUS_PORT="8001"`), then `npm run dev`.
 
-**Choosing a world.** `config/server.toml` sets `world = "fablestar"`. Each world keeps its own
-database, so to run Rivermoot beside it, give it one and a port:
+**Choosing a world.** `config/server.toml` sets `world = "demo"` (from the example). Each world keeps
+its own database, so to run Rivermoot beside it, give it one and a port:
 
 ```bash
 SAGE_SERVER__WORLD=rivermoot SAGE_DATABASE__DATABASE=sage_rivermoot python -m sage db upgrade
@@ -185,6 +189,7 @@ engine/clients/admin-ui/    Nexus admin console (React, Vite)
 engine/tools/worldforge/    WorldForge desktop editor (Tauri)
 engine/tools/worldforge-mcp/  MCP map-building tools
 plugins/                    first-party plugins
+worlds/demo/                SAGE Demo, the four-room world a new install runs
 worlds/fablestar/           Fablestar Expanse world package (proprietary)
 worlds/rivermoot/           Rivermoot reference world
 scripts/                    invariant ratchet, license report
