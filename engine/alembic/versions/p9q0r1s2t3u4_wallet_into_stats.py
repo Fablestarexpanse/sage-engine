@@ -28,11 +28,21 @@ LEGACY_COLUMN = "digi_balance"
 
 
 def _primary_currency_key() -> str | None:
-    from sage.core.config import load_config, resolve_project_root
-    from sage.world.package import select_world
+    """The configured world's primary currency key; None when there is nothing to move.
 
+    A database with no characters needs no world (fresh installs, CI schema checks). One with
+    characters and no resolvable world stops the upgrade rather than guess a currency.
+    """
+    from sage.core.config import load_config, resolve_project_root
+    from sage.world.package import WorldPackageError, select_world
+
+    if not op.get_bind().execute(sa.text("SELECT 1 FROM characters LIMIT 1")).first():
+        return None
     config = load_config()
-    world = select_world(resolve_project_root() / config.server.worlds_dir, config.server.world)
+    try:
+        world = select_world(resolve_project_root() / config.server.worlds_dir, config.server.world)
+    except WorldPackageError as exc:
+        raise RuntimeError(f"moving wallet balances needs the database's world: {exc}") from exc
     return world.currencies[0].key if world.currencies else None
 
 

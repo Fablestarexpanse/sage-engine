@@ -63,23 +63,26 @@ def test_models_match_migrations(live_config, migrated_database):
     assert _run_sync(live_config, diff) == []
 
 
-def test_wallet_balances_move_into_stats_and_back(live_config, alembic_cfg, migrated_database):
+def test_wallet_balances_move_into_stats_and_back(
+    live_config, alembic_cfg, migrated_database, monkeypatch
+):
     """p9q0r1s2t3u4 copies the legacy wallet column into stats; downgrade copies it back."""
+    from sqlalchemy import text
+
     from alembic.script import ScriptDirectory
+    from sage.core.config import resolve_project_root
+    from sage.world.package import available_worlds, load_world_package
 
     legacy = (
         ScriptDirectory.from_config(alembic_cfg).get_revision("p9q0r1s2t3u4").module.LEGACY_COLUMN
     )
-    from sqlalchemy import text
-
-    from sage.core.config import resolve_project_root
-    from sage.world.package import select_world
-
-    world = select_world(
-        resolve_project_root() / live_config.server.worlds_dir, live_config.server.world
-    )
-    if not world.currencies:
-        pytest.skip(f"world {world.id} declares no currencies")
+    worlds_dir = resolve_project_root() / live_config.server.worlds_dir
+    packages = [load_world_package(worlds_dir / w) for w in available_worlds(worlds_dir)]
+    world = next((w for w in packages if w.currencies), None)
+    if world is None:
+        pytest.skip("no world package declares a currency")
+    # The migration reads the database's world from config, as `sage db upgrade` does.
+    monkeypatch.setenv("SAGE_SERVER__WORLD", world.id)
     key = world.currencies[0].key
 
     def execute(sql, **params):
