@@ -240,6 +240,7 @@ their schema in the package's `content.schema.json`.
 ### Check and export
 
 ```bash
+python -m sage world new <id> [--name NAME] [--dir DIR] [--force]   # one start room, no map
 python -m sage validate --world <id> [--zone <zone>] [--info]
 python -m sage schema export --world <id> --out worlds/<id>/content.schema.json
 ```
@@ -385,6 +386,7 @@ docker compose up -d redis postgres
 # 2. Create the configured database if missing, then run migrations (core + plugin branches)
 python -m sage db create
 python -m sage db upgrade
+#    (add --world <id> to either for another world's own sage_<id> database)
 
 # 3. (Optional) Bootstrap head admin
 python engine/scripts/bootstrap_admin.py --username admin --password 'your-password'

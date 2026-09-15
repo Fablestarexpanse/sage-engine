@@ -2,7 +2,7 @@
 
 Status: **approved by the owner 2026-09-14.** Stage 1 items 1 (JWT secret refusal), 2 (demo
 world) 3 (`sage quickstart`, `sage db create`), 4 (Nexus serves the player client) and 5 (Stage 1 tutorial, walked through
-by the author; timing with a real first-time reader still to do) are implemented. Stage 2 is not started.
+by the author; timing with a real first-time reader still to do) are implemented. Stage 2 item 6 (`sage world new`, `sage db create/upgrade --world`) is implemented; items 7-10 are not started.
 
 Revised 2026-09-14 after owner feedback: *starting a world should not include building the map,
 which is the tools' job (the map builder); get the player set up with the engine first, world
@@ -190,8 +190,9 @@ worlds/<id>/
   ai/style.yaml         tone and rules; prompts/<slot>.j2 turns narration on
   content/world/zones/start/
     zone.yaml
-    rooms/arrival.yaml  the single start room the engine requires: a name and a one-line
-                        description, no exits, no features
+    rooms/arrival.yaml  the single start room the engine requires: a name, a one-line
+                        description, no exits, and one blank signpost feature (the linter
+                        warns about a room with no features, and validation refuses warnings)
   content.schema.json   exported by the same code as `sage schema export`
 ```
 
@@ -417,5 +418,5 @@ day, M two to four days, L a week or more.
 | 11 | Revisit `sage plugin install` when a first external plugin exists | — | — | Section 5. |
 
 Item 1 is small enough to ship before the rest is approved, if the owner wants. Item 2 needs the
-owner's licensing call for `worlds/demo/`. Status 2026-09-14: owner approved the plan and FSL for the demo; items 1–5 are done (item 5 still needs a timed run with a real first-time reader).
+owner's licensing call for `worlds/demo/`. Status 2026-09-15: owner approved the plan and FSL for the demo; items 1–6 are done (item 5 still needs a timed run with a real first-time reader).
 

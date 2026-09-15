@@ -50,3 +50,10 @@ models/
 /rexymcp.toml
 /REXYMCP.md
 /.desloppify/
+
+# Worlds made locally with `sage world new` stay out of git. The shipped worlds are listed below;
+# a world meant to ship needs its own line here and a NOTICE entry.
+/worlds/*
+!/worlds/demo/
+!/worlds/fablestar/
+!/worlds/rivermoot/

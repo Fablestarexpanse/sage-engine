@@ -1,0 +1,17 @@
+id: start:arrival
+zone: start
+name: Arrival
+type: room
+depth: 1
+description:
+  base: An empty place, waiting for a map. Draw the rooms around it in WorldForge.
+exits: {}
+features:
+- id: signpost
+  name: blank signpost
+  keywords:
+  - signpost
+  - sign
+  description: A signpost with nothing written on it yet.
+entity_spawns: []
+tags: []

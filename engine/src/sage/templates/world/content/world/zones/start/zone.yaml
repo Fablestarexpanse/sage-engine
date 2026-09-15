@@ -1,0 +1,6 @@
+id: start
+name: Start
+description: Where new characters arrive.
+depth_range:
+- 1
+- 1

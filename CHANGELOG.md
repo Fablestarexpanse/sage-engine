@@ -22,6 +22,15 @@ Versions built before the first publication have no conversion date.
 
 ## [Unreleased]
 
+- **`sage world new <id>`: a new world package with one start room and no map.**
+  - **Makes:** `world.toml` (engine range of the installed engine, every first-party plugin listed
+    as a comment), neutral stats, one currency, lexicon, theme, AI style, the `start` zone with
+    `start:arrival`, and `content.schema.json`. The map is drawn afterwards in WorldForge.
+  - **Refuses:** a bad id, an existing directory without `--force` (which rewrites only template
+    files), and any result that does not validate with zero errors and warnings.
+  - **Database:** `sage db create|status|upgrade --world <id>` work on that world's own database;
+    `status` and `upgrade` refuse a missing database with the command that creates it.
+  - Locally made worlds are gitignored, and the invariant ratchet ignores them.
 - **In-game staff commands. The GM crown now carries real staff power.**
   - **Commands:** `goto`, `at`, `where`, `stat`, `transfer`, `restore`, `mute`, `unmute` and
     `staff` (alias `wizhelp`).

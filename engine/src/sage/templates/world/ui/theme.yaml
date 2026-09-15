@@ -1,0 +1,5 @@
+# Player client look: the mark beside the world name and the accent colour.
+mark: "◆"
+accent:
+  dark: "#9ab87a"
+  light: "#4d6b32"

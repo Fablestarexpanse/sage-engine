@@ -1,0 +1,27 @@
+# __WORLD_NAME__, made with `sage world new __WORLD_ID__`. Draw its map in WorldForge.
+
+[world]
+id = "__WORLD_ID__"
+name = "__WORLD_NAME__"
+version = "0.1.0"
+engine = "__ENGINE_RANGE__"
+locale = "en"
+
+[start]
+room = "start:arrival"
+respawn = "start:arrival"
+
+[content]
+# What WorldForge offers when you draw rooms. Add your own room types here.
+room_types = ["room", "hub", "outdoors"]
+exit_dirs = ["north", "south", "east", "west", "up", "down", "northeast", "northwest", "southeast", "southwest"]
+equipment_slots = []
+
+[plugins]
+# Mechanics are plugins. Uncomment one, then run `python -m sage db upgrade --world __WORLD_ID__`
+# and restart. Some add content fields: re-export content.schema.json so WorldForge shows them.
+__PLUGIN_LINES__
+
+[params]
+# Plugin and engine tuning, for example:
+# "engine.death.respawn_bill_max" = 0

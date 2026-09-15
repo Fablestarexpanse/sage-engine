@@ -2,9 +2,10 @@
 
 python -m sage                                  run the server
 python -m sage quickstart [--world ID] [--no-docker] [--no-client] [--no-server]   config, services, database, server
-python -m sage db create                        create the configured database if it is missing
-python -m sage db status                        list unapplied core/plugin migrations
-python -m sage db upgrade                       apply every core and plugin migration
+python -m sage world new ID [--name NAME] [--dir DIR] [--force]   a new world package (one room, no map)
+python -m sage db create [--world ID]           create the world's database if it is missing
+python -m sage db status [--world ID]           list unapplied core/plugin migrations
+python -m sage db upgrade [--world ID]          apply every core and plugin migration
 python -m sage plugin uninstall ID [--purge-state]
 python -m sage validate [--world ID] [--zone ZONE] [--info]
 python -m sage schema export [--world ID] [--out PATH]   content JSON Schema for editors
@@ -32,9 +33,60 @@ def _world_context():
     return config, world, records, PostgresState(config.database).url
 
 
+def _use_world(world: str | None) -> None:
+    """Point config at another world and its own database (`sage_<id>`), as quickstart does."""
+    import os
+
+    from sage.core.config import load_config
+    from sage.quickstart import database_for
+
+    if not world:
+        return
+    config = load_config()
+    os.environ["SAGE_SERVER__WORLD"] = world
+    os.environ["SAGE_DATABASE__DATABASE"] = database_for(
+        world, config.server.world, config.database.database
+    )
+
+
+def _world(args: argparse.Namespace) -> int:
+    from pathlib import Path
+
+    from sage.core.config import load_config, resolve_project_root
+    from sage.world.new import WorldNewError, create_world
+
+    root = resolve_project_root()
+    worlds_dir = Path(args.dir) if args.dir else root / load_config().server.worlds_dir
+    try:
+        result = create_world(args.world_id, worlds_dir, root, name=args.name, force=args.force)
+    except WorldNewError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    for rel in result.written:
+        print(f"  wrote {result.path.name}/{rel}")
+    for level, lines in (("error", result.errors), ("warning", result.warnings)):
+        for line in lines:
+            print(f"{level}: {line}", file=sys.stderr)
+    if result.errors or result.warnings:
+        print(f"{result.path}: does not validate; the files are kept", file=sys.stderr)
+        return 1
+    wid = args.world_id
+    print(f"\n{result.path} is ready: one room, start:arrival.")
+    print("Next:")
+    print(f"  1. draw the map in WorldForge (open the repository root, pick {wid})")
+    print(f"  2. python -m sage validate --world {wid}")
+    print(f"  3. sage quickstart --world {wid}")
+    print(
+        f"     (or on a running setup: sage db create --world {wid} && sage db upgrade --world {wid})"
+    )
+    return 0
+
+
 def _db(args: argparse.Namespace) -> int:
     from alembic import command
     from sage.plugins.migrations import alembic_config, pending_heads
+
+    _use_world(args.world)
 
     if args.action == "create":
         from sage.core.config import load_config
@@ -51,14 +103,34 @@ def _db(args: argparse.Namespace) -> int:
 
     config, world, records, url = _world_context()
     cfg = alembic_config([r.path for r in records])
-    if args.action == "status":
-        pending = pending_heads(cfg, url)
-        target = f"{config.database.database} (world {world.id})"
-        print(f"{target}: " + ("up to date" if not pending else f"unapplied heads {pending}"))
-        return 1 if pending else 0
-    command.upgrade(cfg, "heads")
+    try:
+        if args.action == "status":
+            pending = pending_heads(cfg, url)
+            target = f"{config.database.database} (world {world.id})"
+            print(f"{target}: " + ("up to date" if not pending else f"unapplied heads {pending}"))
+            return 1 if pending else 0
+        command.upgrade(cfg, "heads")
+    except Exception as exc:
+        if not _missing_database(exc):
+            raise
+        flag = f" --world {args.world}" if args.world else ""
+        print(
+            f"error: database {config.database.database} does not exist; "
+            f"run: python -m sage db create{flag}",
+            file=sys.stderr,
+        )
+        return 1
     print(f"{config.database.database}: upgraded core and {len(records)} plugin branch(es)")
     return 0
+
+
+def _missing_database(exc: BaseException | None) -> bool:
+    """True when Postgres refused the connection because the database does not exist."""
+    while exc is not None:
+        if type(exc).__name__ == "InvalidCatalogNameError":
+            return True
+        exc = exc.__cause__ or exc.__context__
+    return False
 
 
 def _plugin(args: argparse.Namespace) -> int:
@@ -134,6 +206,14 @@ def main(argv: list[str]) -> int:
     sub = parser.add_subparsers(dest="group")
     db = sub.add_parser("db", help="database migrations")
     db.add_argument("action", choices=["create", "status", "upgrade"])
+    db.add_argument("--world", help="another world, in its own database sage_<id>")
+    world = sub.add_parser("world", help="world packages")
+    world_sub = world.add_subparsers(dest="action", required=True)
+    new = world_sub.add_parser("new", help="make a world package with one start room and no map")
+    new.add_argument("world_id", help="lowercase letters, digits and underscores")
+    new.add_argument("--name", help="display name (default: the id in title case)")
+    new.add_argument("--dir", help="worlds directory (default: the configured worlds_dir)")
+    new.add_argument("--force", action="store_true", help="rewrite the template's files if present")
     quick = sub.add_parser(
         "quickstart", help="config, Postgres and Redis, database and migrations, then the server"
     )
@@ -160,6 +240,8 @@ def main(argv: list[str]) -> int:
 
     if args.group == "db":
         return _db(args)
+    if args.group == "world":
+        return _world(args)
     if args.group == "quickstart":
         from sage.quickstart import QuickstartError
         from sage.quickstart import run as quickstart
