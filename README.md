@@ -28,11 +28,30 @@ carry:
 
 **Fablestar Expanse in the player client:** narrative, character sheet, zone map and scene panel.
 
-![Fablestar Expanse player client](docs/screenshots/player-client-fablestar.png)
+![Fablestar Expanse player client, light theme](docs/screenshots/player-client-fablestar.png)
 
 **Rivermoot on the same client:** its own name, mark, brass accent, currency and level panel.
 
-![Rivermoot player client](docs/screenshots/player-client-rivermoot.png)
+![Rivermoot player client, light theme](docs/screenshots/player-client-rivermoot.png)
+
+### Building a world in the admin console
+
+**Item templates:** the YAML editor for one template (saves are checked before anything is
+written), what uses it across the world and who carries one, and every item as a sortable table.
+The attack, slot, heal, recipe and scraps columns come from the world's plugins, not console code.
+
+![Admin console: item template editor, used-by panel and item table](docs/screenshots/admin-content-items.png)
+
+**A room:** description, exits, features, spawns and plugin fields as the game loads them, what
+is in it right now, and every other room whose exits lead here. Rooms are drawn in WorldForge; the
+console reads them.
+
+![Admin console: room detail with exits, features, plugin fields and links](docs/screenshots/admin-room-detail.png)
+
+**World & plugins:** the plugins the world loaded, what each one registered, and which come with
+their own admin page.
+
+![Admin console: World and plugins page](docs/screenshots/admin-world-plugins.png)
 
 **WorldForge editing Rivermoot's town:** room types come from the world, and the Plugins tab is a
 form generated from the plugins' content schema (ambient lines, hazards, lodging, a market shop).
