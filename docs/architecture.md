@@ -297,10 +297,30 @@ waits up to 10 s for `{"type": "auth", "token": "<jwt>"}`. Tokens must never app
 Rate limits (via `slowapi`): login endpoints 10 req/min, register 5 req/min.
 
 Key modules and routes:
-- `admin/routes/` — domain routers: admin_ops, content, world, forge, play, llm_comfyui
-- `admin/admin_security.py` — JWT middleware, tool ids, `jwt_secret_for_server()`
+- `admin/routes/` — domain routers: admin_ops (staff, accounts, broadcast), about (`/admin/world`),
+  characters (character tools, suspension, audit), search (`/admin/search`,
+  `/content/references`), moderation (settings, bans, sign-ins, mutes, reports), operations
+  (staff feed, money, scheduled restart), content, world (live world), lexicon, forge, play,
+  llm_comfyui
+- `admin/admin_security.py` — JWT middleware, tool ids, role presets (`TOOL_PRESETS`),
+  `jwt_secret_for_server()`
 - `admin/staff_service.py`, `admin/player_accounts.py` — staff and player account management
-- `admin/content_browser.py` — zone/room/template listing and template YAML editing
+- `admin/audit.py` — the audit log: an ASGI middleware records every successful staff write;
+  character, suspension and in-game staff actions record their own detailed rows
+- `admin/character_tools.py` — staff edits to a character write live Redis state as well as the
+  saved row (a Postgres-only edit would be undone by the next flush) and snapshot the character
+  first (`character_snapshots`, newest 50 kept)
+- `admin/content_browser.py`, `admin/content_tables.py` — room and template listing through a
+  parse cache (a file is parsed again only when it changes), paged template tables whose columns
+  come from the content schema, template YAML editing
+- `admin/world_live.py`, `admin/references.py`, `admin/search.py` — Redis views (occupants,
+  creatures, floor items), what names a record, console-wide search
+- `admin/staff_feed.py`, `admin/restart.py`, `admin/economy.py` — in-memory feed of engine events,
+  the scheduled restart, currency totals
+- `services/moderation.py` — address bans, sign-in history (addresses only when
+  `config/moderation.toml` turns recording on), mutes, the report queue
+- `services/staff_powers.py`, `commands/staff.py` — in-game staff commands: power needs the GM
+  crown plus an active staff account with the same name, whose tools and zones gate each command
 - Plugins mount admin routers at `/plugins/<id>/admin` behind a tool; `GET /admin/plugin-pages`
   tells the console which plugin pages (skills, agents, shops) the running world has
 - `GET /schema/world` — the content schema; `GET /admin/economy` — AI credit settings and bundles
@@ -325,6 +345,8 @@ Important `server.toml` keys:
 - `admin_jwt_secret` — must be set when auth is required; generate with `python -c "import secrets; print(secrets.token_hex(32))"`
 - `cors_origins` — list of allowed origins (default: localhost dev ports)
 - `dev_mode` — local development only (seeds test accounts)
+- `config/moderation.toml` — `registration_open`, `record_login_addresses` (off by default),
+  `login_history_days`, `report_cooldown_seconds`; written by the console's Moderation page
 <!-- DEV-AUTH:BEGIN -->
 - `dev_login` — passwordless logins for local testing (see below); stripped for release
 <!-- DEV-AUTH:END -->

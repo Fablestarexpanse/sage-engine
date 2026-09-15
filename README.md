@@ -28,11 +28,30 @@ carry:
 
 **Fablestar Expanse in the player client:** narrative, character sheet, zone map and scene panel.
 
-![Fablestar Expanse player client](docs/screenshots/player-client-fablestar.png)
+![Fablestar Expanse player client, light theme](docs/screenshots/player-client-fablestar.png)
 
 **Rivermoot on the same client:** its own name, mark, brass accent, currency and level panel.
 
-![Rivermoot player client](docs/screenshots/player-client-rivermoot.png)
+![Rivermoot player client, light theme](docs/screenshots/player-client-rivermoot.png)
+
+### Building a world in the admin console
+
+**Item templates:** the YAML editor for one template (saves are checked before anything is
+written), what uses it across the world and who carries one, and every item as a sortable table.
+The attack, slot, heal, recipe and scraps columns come from the world's plugins, not console code.
+
+![Admin console: item template editor, used-by panel and item table](docs/screenshots/admin-content-items.png)
+
+**A room:** description, exits, features, spawns and plugin fields as the game loads them, what
+is in it right now, and every other room whose exits lead here. Rooms are drawn in WorldForge; the
+console reads them.
+
+![Admin console: room detail with exits, features, plugin fields and links](docs/screenshots/admin-room-detail.png)
+
+**World & plugins:** the plugins the world loaded, what each one registered, and which come with
+their own admin page.
+
+![Admin console: World and plugins page](docs/screenshots/admin-world-plugins.png)
 
 **WorldForge editing Rivermoot's town:** room types come from the world, and the Plugins tab is a
 form generated from the plugins' content schema (ambient lines, hazards, lodging, a market shop).
@@ -56,6 +75,9 @@ form generated from the plugins' content schema (ambient lines, hazards, lodging
 - **Clients and tools.** A player client, the Nexus admin console, the WorldForge desktop editor,
   and worldforge-mcp map tools for LLM-driven building. Every one of them reads the running
   world instead of assuming Fablestar.
+- **Running a world.** The admin console is laid out by staff job (see below), and players whose
+  account wears the GM crown get in-game staff commands backed by a console staff account. Every
+  staff change, in the console or in game, lands in one audit log.
 
 ## Quick start
 
@@ -141,6 +163,36 @@ head admin. Never enable either on a networked host. This is not a release featu
 It needs the [Tauri prerequisites](https://tauri.app/start/prerequisites/) (Rust toolchain). Open the
 repository root and pick a world.
 
+## Running a world
+
+The Nexus admin console (http://localhost:5174 in development) groups its pages by what staff are
+doing. A staff member only sees the pages their tools allow; head admins set tools and zones under
+**Team & access**, starting from the Builder, Game master, Moderator or Operator presets.
+
+| Group | Pages |
+|---|---|
+| Live | Who's online, Live world (who is in each room, live creatures, items on floors), Staff feed, Broadcast & restart |
+| Players | Characters (sheet, move, money, items, undo history), Accounts (suspend, mute, sign-ins), Reports, Moderation |
+| World | World & plugins, Content Library (rooms, and sortable item and creature tables), Skills catalog, Lexicon & MOTD, AI Forge |
+| Economy | Money, Shops, AI art credits |
+| NPCs | Agents |
+| System | Server & AI models, Team & access, Audit log |
+
+**Ctrl+K** searches characters, accounts, rooms, items, creatures and lexicon lines from any page,
+and every room, item and creature shows what uses it. Rooms and zones are made in WorldForge; the
+console reads them.
+
+Staff changes to a character (move, money, items, vitals) take a snapshot first, so any of them can
+be undone from the character's History. A scheduled restart warns players, closes sign-ins in the
+last minute, saves everyone and stops the server; your process manager or Docker restart policy
+starts it again.
+
+**In the game.** Players send bug reports, typos and ideas with `report <text>`; staff work through
+them under Players › Reports. A player has staff commands (`goto`, `at`, `where`, `stat`,
+`transfer`, `restore`, `mute`, `unmute`, `staff`) when their account wears the GM crown **and** an
+active console staff account has the same name. That staff account's tools and zones decide what
+each command may do, and to everyone else the commands do not exist.
+
 ## Building a world
 
 ```
@@ -179,7 +231,14 @@ double-underscore nesting (`SAGE_SERVER__WEBSOCKET_PORT=8001`).
 - `admin_jwt_secret`: required when auth is on. Generate one with
   `python -c "import secrets; print(secrets.token_hex(32))"`.
 - Optional: `llm.toml` (narration backend), `comfyui.toml` (art generation, AI credit costs and
-  purchase bundles), `agents_llm.toml` (agent characters).
+  purchase bundles), `agents_llm.toml` (agent characters), `moderation.toml` (whether new accounts
+  may register, sign-in history and report cooldown; the console's Moderation page writes it).
+- **Sign-in addresses are not recorded unless you turn it on** (Players › Moderation). They are
+  personal data in many countries, so check the rules that apply to you first. While recording is
+  on, the sign-in screens tell players, history is deleted after `login_history_days`, and staff
+  can erase an account's addresses. Address bans work either way. Behind a reverse proxy the
+  server sees the proxy's address, so bans and history need the real client address passed
+  through at the network level.
 
 Create the first head admin with
 `python engine/scripts/bootstrap_admin.py --username youradmin --password 'a-strong-password'`.
@@ -194,6 +253,7 @@ Do not expose Nexus directly to the internet: put it behind a reverse proxy with
 python -m pytest                                    # hermetic suite, no services needed
 SAGE_LIVE_TESTS=1 python -m pytest -m live          # migrations, persistence, both worlds booting and playing
 python scripts/sage_invariants.py check             # world terms and hardcoded player text in engine code may only go down
+python scripts/notice_check.py                      # every top-level path and world package has license terms in NOTICE
 (cd engine/tools/worldforge && npx vitest run)      # WorldForge unit and render tests
 ```
 
@@ -215,7 +275,7 @@ plugins/                    first-party plugins
 worlds/demo/                SAGE Demo, the four-room world a new install runs
 worlds/fablestar/           Fablestar Expanse world package (proprietary)
 worlds/rivermoot/           Rivermoot reference world
-scripts/                    invariant ratchet, license report
+scripts/                    invariant ratchet, NOTICE and release checks, license report
 docs/                       contracts, decisions, standards, milestones
 ```
 
@@ -224,7 +284,7 @@ docs/                       contracts, decisions, standards, milestones
 The SAGE engine is licensed under the Functional Source License, Version 1.1, ALv2 Future License
 (`FSL-1.1-ALv2`); see [`engine/LICENSE`](engine/LICENSE) and the plain-English
 [`LICENSE-FAQ.md`](LICENSE-FAQ.md). Each release becomes Apache-2.0 two years after it is
-published. Rivermoot ships under the same license.
+published. First-party plugins (`plugins/`), SAGE Demo and Rivermoot ship under the same license.
 
 Fablestar Expanse world content, lore, art and branding are proprietary, all rights reserved.
 [`NOTICE`](NOTICE) lists which paths are which.
