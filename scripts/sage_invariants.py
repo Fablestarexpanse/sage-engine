@@ -95,10 +95,17 @@ def load_denylist(root: Path = ROOT) -> Denylist:
 
 
 def world_terms(root: Path) -> list[str]:
-    """Attribute and currency keys declared by world packages (invariant 4)."""
+    """Attribute and currency keys declared by world packages (invariant 4).
+
+    Only worlds git would commit count: a world someone made locally with `sage world new` is
+    ignored (worlds/* in .gitignore), so its keys never change what CI measures.
+    """
     terms: set[str] = set()
+    tracked = _tracked_files(root)
     for name in ("stats.yaml", "currencies.yaml"):
         for path in sorted((root / "worlds").glob(f"*/{name}")):
+            if tracked is not None and path.relative_to(root).as_posix() not in tracked:
+                continue
             for line in path.read_text(encoding="utf-8").splitlines():
                 match = re.match(r"^\s*(?:-\s+)?key:\s*['\"]?([A-Za-z0-9_]+)", line)
                 if match:

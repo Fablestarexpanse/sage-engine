@@ -94,13 +94,15 @@ async def _play(port: int, lines: list[str]) -> list[str]:
     return text
 
 
-def _first_exit(world) -> tuple[str, str]:
+def _first_exit(world) -> tuple[str, str] | None:
+    """The start room's first exit, or None for a world with no map yet (`sage world new`)."""
     import yaml
 
     zone, slug = world.start_room.split(":")
     room = yaml.safe_load((world.zones_dir / zone / "rooms" / f"{slug}.yaml").read_text("utf-8"))
-    direction, exit_meta = next(iter(room["exits"].items()))
-    return direction, exit_meta["destination"]
+    for direction, exit_meta in (room.get("exits") or {}).items():
+        return direction, exit_meta["destination"]
+    return None
 
 
 OPPOSITE = {
@@ -133,9 +135,10 @@ def world_database(live_config, live_database, world_id):
 
 
 @contextlib.contextmanager
-def _running_world(world_id: str, live_config, database: str, tmp_path):
+def _running_world(world_id: str, live_config, database: str, tmp_path, worlds_dir=None):
     """Migrate the world's database, boot a server for it, yield (port, log path), stop it."""
     port = _free_port()
+    extra = {"SAGE_SERVER__WORLDS_DIR": str(worlds_dir)} if worlds_dir else {}
 
     async def flush():
         async with open_redis(live_config):
@@ -152,6 +155,7 @@ def _running_world(world_id: str, live_config, database: str, tmp_path):
         "SAGE_ADMIN_JWT_SECRET": secrets.token_hex(32),
         "PYTHONUNBUFFERED": "1",
         "PYTHONIOENCODING": "utf-8",
+        **extra,
     }
     # Deploy the way an operator does: apply the world's plugin migrations, then boot.
     upgrade = subprocess.run(
@@ -210,16 +214,15 @@ def _unresolved_keys(text: str) -> list[str]:
 @pytest.mark.parametrize("world_id", WORLDS)
 def test_world_boots_and_plays(world_id, live_config, world_database, tmp_path):
     world = load_world_package(REPO_ROOT / "worlds" / world_id)
-    direction, destination = _first_exit(world)
+    exit_ = _first_exit(world)
+    direction, destination = exit_ or (None, world.start_room)
+    walk = [direction, OPPOSITE.get(direction, direction)] if direction else []
     with _running_world(world_id, live_config, world_database, tmp_path) as (port, log_path):
         # Clients title themselves from this; it must be the package's name, not a default.
         announced = _get(f"http://127.0.0.1:{port}/play/world")
         assert (announced["id"], announced["name"]) == (world_id, world.manifest.world.name)
         assert announced["theme"]["mark"], announced
-        back = OPPOSITE.get(direction, direction)
-        text = "\n".join(
-            asyncio.run(_play(port, ["say smoke test", direction, back, "who", "quit"]))
-        )
+        text = "\n".join(asyncio.run(_play(port, ["say smoke test", *walk, "who", "quit"])))
 
     server_log = log_path.read_text("utf-8", errors="replace")
     print(f"--- {world_id} transcript ---\n{text}")  # shown with -s or on failure
@@ -229,6 +232,28 @@ def test_world_boots_and_plays(world_id, live_config, world_database, tmp_path):
     assert 'You say: "smoke test"' in text, text
     assert "Goodbye" in text, text
     assert "[" + "missing" not in text
+    assert _unresolved_keys(text) == [], f"unresolved lexicon keys: {_unresolved_keys(text)}"
+    assert "Traceback" not in server_log, server_log[-4000:]
+
+
+@pytest.mark.parametrize("world_id", ["fresh"])
+def test_a_new_world_boots_and_plays(world_id, live_config, world_database, tmp_path):
+    """`sage world new` output, untouched: migrate, boot, register, arrive in its one room."""
+    from sage.world.new import create_world
+
+    made = create_world(world_id, tmp_path / "worlds", REPO_ROOT, name="Fresh Start")
+    assert (made.errors, made.warnings) == ([], [])
+    with _running_world(
+        world_id, live_config, world_database, tmp_path, worlds_dir=made.path.parent
+    ) as (port, log_path):
+        announced = _get(f"http://127.0.0.1:{port}/play/world")
+        assert (announced["id"], announced["name"]) == (world_id, "Fresh Start")
+        text = "\n".join(asyncio.run(_play(port, ["look", "look signpost", "who", "quit"])))
+    server_log = log_path.read_text("utf-8", errors="replace")
+    print(f"--- {world_id} transcript ---\n{text}")
+    assert "[ start:arrival ]" in text, text
+    assert "nothing written on it" in text, text
+    assert "Goodbye" in text, text
     assert _unresolved_keys(text) == [], f"unresolved lexicon keys: {_unresolved_keys(text)}"
     assert "Traceback" not in server_log, server_log[-4000:]
 

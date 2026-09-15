@@ -113,6 +113,15 @@ def test_world_terms_from_packages(inv, tmp_path):
     assert inv.world_terms(tmp_path) == ["might", "silver"]
 
 
+def test_world_terms_skip_worlds_git_ignores(inv, tmp_path, monkeypatch):
+    for world_id, key in (("shipped", "might"), ("mytown", "coin")):
+        world = tmp_path / "worlds" / world_id
+        world.mkdir(parents=True)
+        (world / "currencies.yaml").write_text(f"- key: {key}\n", encoding="utf-8")
+    monkeypatch.setattr(inv, "_tracked_files", lambda root: {"worlds/shipped/currencies.yaml"})
+    assert inv.world_terms(tmp_path) == ["might"]
+
+
 def test_engine_may_not_import_world_or_plugin_code(inv):
     source = "import sage_worlds.fablestar\nfrom sage_plugins.shop import main\nimport sage.core\n"
     found = inv.engine_import_violations("engine/src/sage/x.py", source)

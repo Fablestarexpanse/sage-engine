@@ -40,7 +40,14 @@ sage = "sage.cli:run"
 fablestar = "sage.cli:run"
 
 [tool.setuptools.package-data]
-sage = ["lexicon/*.yaml"]
+sage = [
+    "lexicon/*.yaml",
+    # `sage world new` template (sage/world/new.py)
+    "templates/world/*",
+    "templates/world/*/*",
+    "templates/world/content/world/zones/start/*",
+    "templates/world/content/world/zones/start/rooms/*",
+]
 
 [build-system]
 requires = ["setuptools>=61.0"]

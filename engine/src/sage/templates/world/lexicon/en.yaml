@@ -1,0 +1,15 @@
+# Words this world uses. Any engine or plugin string can be overridden here by its key.
+login:
+  banner: "~ __WORLD_NAME__ ~"
+  motd: "Type look to see where you are, and help for what you can do."
+
+stat:
+  physical: {name: Physical, short: PHY}
+  mental: {name: Mental, short: MEN}
+  social: {name: Social, short: SOC}
+
+vital:
+  hp: {name: Health}
+
+currency:
+  coin: {name: coins}

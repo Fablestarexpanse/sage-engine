@@ -147,8 +147,9 @@ SAGE_SERVER__WORLD=rivermoot SAGE_DATABASE__DATABASE=sage_rivermoot python -m sa
 SAGE_SERVER__WORLD=rivermoot SAGE_DATABASE__DATABASE=sage_rivermoot SAGE_SERVER__WEBSOCKET_PORT=8002 python -m sage
 ```
 
-(Create its database first: `SAGE_DATABASE__DATABASE=sage_rivermoot python -m sage db create`, or
-use `sage quickstart --world rivermoot`, which does all of it.)
+(Create its database first with `python -m sage db create --world rivermoot`; `--world` on any
+`db` command uses that world's own `sage_<id>` database. `sage quickstart --world rivermoot` does
+all of it.)
 
 <!-- DEV-AUTH:BEGIN -->
 **Testing without passwords (development only).** With `dev_mode = true` and `dev_login = true`
@@ -194,6 +195,12 @@ active console staff account has the same name. That staff account's tools and z
 each command may do, and to everyone else the commands do not exist.
 
 ## Building a world
+
+Start one with `python -m sage world new mytown --name "My Town"`. It writes a package with one
+start room and no map, checks that it validates, and prints the next steps: draw the map in
+WorldForge, then `sage quickstart --world mytown` (or `python -m sage db create --world mytown`
+and `python -m sage db upgrade --world mytown` on a setup that is already running). Worlds made
+this way are gitignored; a world meant to ship needs a `.gitignore` exception and a `NOTICE` entry.
 
 ```
 worlds/<id>/

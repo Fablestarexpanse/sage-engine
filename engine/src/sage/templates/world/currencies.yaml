@@ -1,0 +1,2 @@
+# In-world money. The first currency is the primary one; its name is a lexicon key.
+- {key: coin, label: currency.coin.name, starting: 10, integer: true}
