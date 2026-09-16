@@ -2,7 +2,7 @@
 # Its own workspace so plugin dependencies stay out of the engine build.
 [workspace]
 resolver = "3"
-members = ["sage.wander"]
+members = ["sage.dialogue", "sage.wander"]
 
 [workspace.package]
 edition = "2024"

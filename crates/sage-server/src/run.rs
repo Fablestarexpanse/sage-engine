@@ -67,6 +67,12 @@ pub fn run(options: &RunOptions) -> Result<(), String> {
 
     let mut scheduler = Scheduler::new(&journal, options.checkpoint_every);
     for plugin in plugins {
+        if let Some(handler) = plugin.command_handler() {
+            scheduler
+                .commands_mut()
+                .register(handler)
+                .map_err(|e| format!("plugin `{}`: {e}", sage_core::System::name(&plugin)))?;
+        }
         scheduler.add(plugin);
     }
 

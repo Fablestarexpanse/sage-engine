@@ -1,4 +1,4 @@
-NEXT: M3 S1 part 1 (commands, perception, lexicon; ADR 0012) is committed. Part 2 is plugin command handlers: a `commands` export in WIT, the host running them, a `sage check` rule that `provides.commands` equals what the plugin handles, plugin lexicon defaults, and the `sage.dialogue` plugin with `tell`. Then S2: Mind component, scripted driver, agent runner.
+NEXT: M3 S1 is done (ADR 0013). S2 is the Mind component (`sage.mind`: driver, persona, goals as data), a scripted zero-AI driver that decides commands from perceptions, and an agent runner that submits agent commands through `Scheduler::submit`, the same path players use. Gate: 10 scripted agents run 1 h of world time (14,400 ticks) in fast mode, with `refused=0`, snapshot matching replay, and every agent action in the log as a `sage.command`. The design needs agreeing with the owner first.
 
 # Status
 
@@ -7,7 +7,7 @@ NEXT: M3 S1 part 1 (commands, perception, lexicon; ADR 0012) is committed. Part 
 | M0 Scaffold | done: workspace, CI (fmt, clippy, test, denylist), ADRs 0001–0004 |
 | M1 World model | **closed** 2026-09-16 (ADR 0005-0008; 24 h wall-clock run waived, fast-mode equivalent passed) |
 | M2 Plugin seal | **closed** 2026-09-16 (ADR 0009-0011; N-1 WIT adapter test deferred by owner ruling) |
-| M3 Agents | in progress: S1 part 1 done (commands, perception, lexicon; ADR 0012) |
+| M3 Agents | in progress: S1 done (commands, perception, lexicon, plugin commands, `sage.dialogue`; ADR 0012-0013) |
 | M4 Client + Foundry MVP | blocked on M3 |
 | M5 Workshop + social | blocked on M4 |
 | M6 Marketplace | blocked on M5 |
@@ -45,6 +45,8 @@ NEXT: M3 S1 part 1 (commands, perception, lexicon; ADR 0012) is committed. Part 
 - `sage run --plugin` refuses a plugin that fails `sage check` before touching the world file; the kill -9 restart gate passes with the `sage.wander` plugin driving the world
 
 - Commands and perception: core verbs, who perceives what, lexicon rendering, refusal and suspension paths, command logs replay (`crates/sage-core/src/command.rs` tests)
+
+- Plugin commands: `sage.dialogue` `tell` reaches only the teller and the target; plugins cannot emit other names' occurrences; `sage check` enforces `provides.commands` (`crates/sage-host/tests/dialogue.rs`, `crates/sage-server/tests/check.rs`)
 
 ## Open questions for the owner (not blocking M1)
 

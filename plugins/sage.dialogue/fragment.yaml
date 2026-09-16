@@ -1,0 +1,17 @@
+schema: sage.fragment/1
+id: sage.dialogue
+kind: plugin
+version: 0.1.0
+engine: "^0.0.1"
+title: Dialogue
+description: |
+  Directed conversation between actors in the same place. `tell <name> <text>` is heard by
+  the teller and the named actor only.
+creator:
+  handle: sage
+license: Apache-2.0
+provides:
+  commands: [tell]
+capabilities:
+  - sage:core/entities@0.1.0
+  - sage:core/space@0.1.0

@@ -247,3 +247,29 @@ fn plugin_without_wasm_fails_capabilities() {
     assert_eq!(s[2], ("capabilities".into(), "fail".into()));
     assert!(problems.contains("plugin.wasm"), "{problems}");
 }
+
+#[test]
+fn first_party_dialogue_passes_and_a_verb_mismatch_fails() {
+    let built = sage_build::first_party_plugin("sage.dialogue");
+    let (ok, report) = run_check(&built);
+    assert!(ok, "{report}");
+
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::copy(built.join("plugin.wasm"), dir.path().join("plugin.wasm")).unwrap();
+    let manifest = std::fs::read_to_string(built.join("fragment.yaml"))
+        .unwrap()
+        .replace("commands: [tell]", "commands: [whisper]");
+    std::fs::write(dir.path().join("fragment.yaml"), manifest).unwrap();
+    let (ok, report) = run_check(dir.path());
+    assert!(!ok);
+    let (s, problems) = summary(&report);
+    assert_eq!(s[3], ("boot".into(), "fail".into()));
+    assert!(
+        problems.contains("handles `tell` but provides.commands does not list it"),
+        "{problems}"
+    );
+    assert!(
+        problems.contains("provides.commands lists `whisper` but the plugin does not handle it"),
+        "{problems}"
+    );
+}

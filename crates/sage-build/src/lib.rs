@@ -6,12 +6,13 @@
 //!   ready-to-run fragment directories under `target/plugins/<id>/` (`fragment.yaml` and
 //!   `plugin.wasm`).
 //! - [`test_plugin`]: test plugins in `crates/sage-build/test-plugins` (`mover`, `spinner`,
-//!   `hog`, `forger`).
+//!   `hog`, `forger`, `impostor`).
 //! - [`schema_validator`]: `crates/sage-schema/wasm`, the WASM build of manifest validation.
 
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::OnceLock;
+use std::sync::{Mutex, OnceLock};
 
 /// Repository root.
 pub fn repo_root() -> &'static Path {
@@ -53,7 +54,8 @@ pub fn componentize(module_path: &Path) -> Result<Vec<u8>, String> {
         .map_err(|e| format!("{}: {e:#}", module_path.display()))
 }
 
-/// A test plugin as a component: `mover`, `spinner`, `hog` or `forger`. Panics on failure.
+/// A test plugin as a component: `mover`, `spinner`, `hog`, `forger` or `impostor`. Panics on
+/// failure.
 pub fn test_plugin(name: &str) -> Vec<u8> {
     static DIR: OnceLock<PathBuf> = OnceLock::new();
     let dir = DIR.get_or_init(|| {
@@ -100,16 +102,19 @@ pub fn first_party_plugins() -> Result<Vec<PathBuf>, String> {
         &repo_root().join("plugins/Cargo.toml"),
         "sage-build-plugins",
     )?;
+    let out_root = repo_root().join("target/plugins");
     first_party_plugin_ids()
         .into_iter()
-        .map(|id| assemble(&release, &id))
+        .map(|id| assemble(&release, &id, &out_root))
         .collect()
 }
 
 /// Builds the first-party plugin `id` (e.g. `sage.wander`) and returns its fragment directory.
-/// Panics on failure; for tests.
+/// For tests: each test process assembles into its own directory, once per id, so parallel
+/// test binaries never write a file another is reading. Panics on failure.
 pub fn first_party_plugin(id: &str) -> PathBuf {
     static RELEASE: OnceLock<PathBuf> = OnceLock::new();
+    static ASSEMBLED: Mutex<BTreeMap<String, PathBuf>> = Mutex::new(BTreeMap::new());
     let release = RELEASE.get_or_init(|| {
         build(
             &repo_root().join("plugins/Cargo.toml"),
@@ -117,15 +122,24 @@ pub fn first_party_plugin(id: &str) -> PathBuf {
         )
         .unwrap()
     });
-    assemble(release, id).unwrap()
+    let mut assembled = ASSEMBLED.lock().unwrap();
+    if let Some(dir) = assembled.get(id) {
+        return dir.clone();
+    }
+    let out_root = repo_root()
+        .join("target/sage-build-plugins/fragments")
+        .join(std::process::id().to_string());
+    let dir = assemble(release, id, &out_root).unwrap();
+    assembled.insert(id.to_owned(), dir.clone());
+    dir
 }
 
-/// Copies `plugins/<id>/fragment.yaml` and the componentized module into `target/plugins/<id>/`.
+/// Copies `plugins/<id>/fragment.yaml` and the componentized module into `<out_root>/<id>/`.
 /// The crate for plugin `creator.slug` is named `creator-slug`.
-fn assemble(release: &Path, id: &str) -> Result<PathBuf, String> {
+fn assemble(release: &Path, id: &str, out_root: &Path) -> Result<PathBuf, String> {
     let module = release.join(format!("{}.wasm", id.replace(['.', '-'], "_")));
     let component = componentize(&module)?;
-    let out = repo_root().join("target/plugins").join(id);
+    let out = out_root.join(id);
     std::fs::create_dir_all(&out).map_err(|e| format!("{}: {e}", out.display()))?;
     std::fs::copy(
         repo_root().join("plugins").join(id).join("fragment.yaml"),

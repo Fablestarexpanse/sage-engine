@@ -11,9 +11,13 @@
 //! the store has a memory cap. A plugin that runs out of either, traps, or returns an error is
 //! suspended by the scheduler; the world keeps running.
 
+use std::cell::RefCell;
+use std::rc::Rc;
 use std::sync::Arc;
 
-use sage_core::{EntityId, Event, EventRecord, System, Upcasters, World};
+use sage_core::{
+    CommandHandler, CommandOutcome, EntityId, Event, EventRecord, Line, System, Upcasters, World,
+};
 use thiserror::Error;
 use wasmtime::component::{Component, HasSelf, Linker};
 use wasmtime::{Config, Engine, Store, StoreLimits, StoreLimitsBuilder, Trap};
@@ -26,8 +30,23 @@ mod bindings {
     });
 }
 
+/// Bindings for the commands export, reusing the plugin world's import bindings.
+mod command_bindings {
+    wasmtime::component::bindgen!({
+        path: "../../wit/core",
+        world: "command-plugin",
+        imports: { default: trappable },
+        with: {
+            "sage:core/types": crate::bindings::sage::core::types,
+            "sage:core/entities": crate::bindings::sage::core::entities,
+            "sage:core/space": crate::bindings::sage::core::space,
+        },
+    });
+}
+
 use bindings::Plugin;
 use bindings::sage::core::{entities, space, types};
+use command_bindings::CommandPlugin;
 
 /// Version of the `sage:core` WIT package this host serves.
 pub const WIT_VERSION: &str = "0.1.0";
@@ -71,9 +90,12 @@ pub enum LoadError {
         /// The ungranted import.
         interface: String,
     },
-    /// Instantiation or the `name` call failed.
+    /// Instantiation or a startup call failed.
     #[error("plugin failed to start: {0}")]
     Start(String),
+    /// The plugin broke the host's rules for names, verbs or lexicon keys.
+    #[error("plugin breaks the plugin contract: {0}")]
+    Contract(String),
 }
 
 /// Compiles and loads plugins. One host can load many plugins.
@@ -166,79 +188,129 @@ impl PluginHost {
         let mut store = Store::new(&self.engine, state);
         store.limiter(|state| &mut state.limits);
         store.set_fuel(limits.fuel_per_call).map_err(start)?;
-        let plugin = Plugin::instantiate(&mut store, &component, &linker).map_err(start)?;
-        store.set_fuel(limits.fuel_per_call).map_err(start)?;
-        let name = plugin
-            .sage_core_system()
-            .call_name(&mut store)
-            .map_err(start)?;
+        let instance = linker.instantiate(&mut store, &component).map_err(start)?;
+        let plugin = Plugin::new(&mut store, &instance).map_err(start)?;
+        let exports_commands = component
+            .component_type()
+            .exports(&self.engine)
+            .any(|(name, _)| name == COMMANDS_EXPORT);
+        let commands = if exports_commands {
+            Some(CommandPlugin::new(&mut store, &instance).map_err(start)?)
+        } else {
+            None
+        };
 
-        Ok(PluginSystem {
-            // Plugins are loaded a handful of times per process, so leaking the name to get
-            // the `&'static str` the scheduler reports with costs nothing that matters.
-            name: Box::leak(name.into_boxed_str()),
+        let mut instance = Instance {
+            name: "",
             store,
             plugin,
+            commands,
             limits,
             upcasters: Upcasters::new(),
             last_fuel_used: 0,
+            poisoned: None,
+        };
+        let name = instance
+            .call(None, |plugin, _, store| {
+                plugin.sage_core_system().call_name(store)
+            })
+            .map_err(LoadError::Start)?;
+        // Plugins are loaded a handful of times per process, so leaking the name to get the
+        // `&'static str` the scheduler reports with costs nothing that matters.
+        let name: &'static str = Box::leak(name.into_boxed_str());
+        instance.name = name;
+
+        let (verbs, lexicon) = if instance.commands.is_some() {
+            let verbs = instance
+                .call(None, |_, commands, store| {
+                    commands
+                        .expect("checked")
+                        .sage_core_commands()
+                        .call_verbs(store)
+                })
+                .map_err(LoadError::Start)?;
+            let lexicon = instance
+                .call(None, |_, commands, store| {
+                    commands
+                        .expect("checked")
+                        .sage_core_commands()
+                        .call_lexicon(store)
+                })
+                .map_err(LoadError::Start)?;
+            (verbs, lexicon)
+        } else {
+            (Vec::new(), Vec::new())
+        };
+        let prefix = format!("{name}.");
+        if let Some((key, _)) = lexicon.iter().find(|(key, _)| !key.starts_with(&prefix)) {
+            return Err(LoadError::Contract(format!(
+                "lexicon key `{key}` does not start with `{prefix}`"
+            )));
+        }
+
+        Ok(PluginSystem {
+            instance: Rc::new(RefCell::new(instance)),
+            name,
+            verbs,
+            lexicon,
         })
     }
 }
 
-/// A loaded plugin, ready to add to a [`sage_core::Scheduler`].
-pub struct PluginSystem {
+/// The WIT interface a command plugin exports.
+pub const COMMANDS_EXPORT: &str = "sage:core/commands@0.1.0";
+
+/// One plugin instance, shared by its system and its command handler.
+struct Instance {
     name: &'static str,
     store: Store<HostState>,
     plugin: Plugin,
+    commands: Option<CommandPlugin>,
     limits: Limits,
     upcasters: Upcasters,
     last_fuel_used: u64,
+    /// Set after a trap. A trapped instance is never called again.
+    poisoned: Option<String>,
 }
 
-impl PluginSystem {
-    /// Fuel the most recent run used.
-    pub fn last_fuel_used(&self) -> u64 {
-        self.last_fuel_used
-    }
-}
-
-impl System for PluginSystem {
-    fn name(&self) -> &'static str {
-        self.name
-    }
-
-    fn run(&mut self, world: &Arc<World>, tick: u64) -> Result<Vec<Event>, String> {
+impl Instance {
+    /// Calls into the plugin with fresh fuel and the world lent for the call.
+    fn call<T>(
+        &mut self,
+        world: Option<&Arc<World>>,
+        call: impl FnOnce(&Plugin, Option<&CommandPlugin>, &mut Store<HostState>) -> wasmtime::Result<T>,
+    ) -> Result<T, String> {
+        if let Some(reason) = &self.poisoned {
+            return Err(format!("plugin already failed: {reason}"));
+        }
         self.store
             .set_fuel(self.limits.fuel_per_call)
             .map_err(|e| e.to_string())?;
-        self.store.data_mut().world = Some(Arc::clone(world));
-        let result = self
-            .plugin
-            .sage_core_system()
-            .call_run(&mut self.store, tick);
+        self.store.data_mut().world = world.map(Arc::clone);
+        let result = call(&self.plugin, self.commands.as_ref(), &mut self.store);
         // Release the world before anything else, including on a trap, so the journal can
         // commit.
         self.store.data_mut().world = None;
         self.last_fuel_used = self.limits.fuel_per_call - self.store.get_fuel().unwrap_or(0);
+        result.map_err(|error| {
+            let reason = match error.downcast_ref::<Trap>() {
+                Some(Trap::OutOfFuel) => format!(
+                    "out of fuel (budget {} per call)",
+                    self.limits.fuel_per_call
+                ),
+                _ if format!("{error:#}").contains("forcing trap when growing memory") => {
+                    format!("memory cap exceeded ({} bytes)", self.limits.memory_bytes)
+                }
+                _ => format!("trapped: {error:#}"),
+            };
+            self.poisoned = Some(reason.clone());
+            reason
+        })
+    }
 
-        let records = match result {
-            Ok(Ok(records)) => records,
-            Ok(Err(message)) => return Err(format!("plugin returned an error: {message}")),
-            Err(error) => {
-                return Err(match error.downcast_ref::<Trap>() {
-                    Some(Trap::OutOfFuel) => format!(
-                        "out of fuel (budget {} per call)",
-                        self.limits.fuel_per_call
-                    ),
-                    _ if format!("{error:#}").contains("forcing trap when growing memory") => {
-                        format!("memory cap exceeded ({} bytes)", self.limits.memory_bytes)
-                    }
-                    _ => format!("trapped: {error:#}"),
-                });
-            }
-        };
-
+    /// Turns plugin event records into events. Occurrences must use the plugin's own kinds.
+    fn decode(&self, records: Vec<types::EventRecord>) -> Result<Vec<Event>, String> {
+        let prefix = format!("{}.", self.name);
         records
             .into_iter()
             .enumerate()
@@ -254,10 +326,124 @@ impl System for PluginSystem {
                     schema_version: record.schema_version,
                     payload,
                 };
-                Event::from_record(&record, &self.upcasters)
-                    .map_err(|e| format!("event {index} is not a valid event: {e}"))
+                let event = Event::from_record(&record, &self.upcasters)
+                    .map_err(|e| format!("event {index} is not a valid event: {e}"))?;
+                if let Event::Occurred(occurred) = &event
+                    && !occurred.kind.starts_with(&prefix)
+                {
+                    return Err(format!(
+                        "event {index} is a `{}` occurrence; plugin `{}` may only emit kinds \
+                         starting with `{prefix}`",
+                        occurred.kind, self.name
+                    ));
+                }
+                Ok(event)
             })
             .collect()
+    }
+}
+
+/// A loaded plugin, ready to add to a [`sage_core::Scheduler`].
+pub struct PluginSystem {
+    instance: Rc<RefCell<Instance>>,
+    name: &'static str,
+    verbs: Vec<String>,
+    lexicon: Vec<(String, String)>,
+}
+
+impl PluginSystem {
+    /// Fuel the most recent call into the plugin used.
+    pub fn last_fuel_used(&self) -> u64 {
+        self.instance.borrow().last_fuel_used
+    }
+
+    /// The command handler, if the plugin exports `commands`. It shares this plugin's
+    /// instance: a trap in either suspends both.
+    pub fn command_handler(&self) -> Option<PluginCommands> {
+        self.instance.borrow().commands.as_ref()?;
+        Some(PluginCommands {
+            instance: Rc::clone(&self.instance),
+            name: self.name,
+            verbs: self.verbs.clone(),
+        })
+    }
+
+    /// Verbs the plugin handles; empty if it exports no commands.
+    pub fn verbs(&self) -> &[String] {
+        &self.verbs
+    }
+
+    /// The plugin's default lexicon templates, every key prefixed with its name.
+    pub fn lexicon(&self) -> &[(String, String)] {
+        &self.lexicon
+    }
+}
+
+impl System for PluginSystem {
+    fn name(&self) -> &'static str {
+        self.name
+    }
+
+    fn run(&mut self, world: &Arc<World>, tick: u64) -> Result<Vec<Event>, String> {
+        let mut instance = self.instance.borrow_mut();
+        let result = instance.call(Some(world), |plugin, _, store| {
+            plugin.sage_core_system().call_run(store, tick)
+        })?;
+        let records = result.map_err(|message| format!("plugin returned an error: {message}"))?;
+        instance.decode(records)
+    }
+}
+
+/// A plugin's command handler, ready to register with [`sage_core::Commands`].
+pub struct PluginCommands {
+    instance: Rc<RefCell<Instance>>,
+    name: &'static str,
+    verbs: Vec<String>,
+}
+
+impl CommandHandler for PluginCommands {
+    fn name(&self) -> &'static str {
+        self.name
+    }
+
+    fn verbs(&self) -> Vec<String> {
+        self.verbs.clone()
+    }
+
+    fn handle(
+        &mut self,
+        world: &Arc<World>,
+        actor: EntityId,
+        verb: &str,
+        args: &str,
+        tick: u64,
+    ) -> Result<CommandOutcome, String> {
+        let mut instance = self.instance.borrow_mut();
+        let result = instance.call(Some(world), |_, commands, store| {
+            commands
+                .expect("PluginCommands exists only for command plugins")
+                .sage_core_commands()
+                .call_handle(store, actor.0, verb, args, tick)
+        })?;
+        let outcome = result.map_err(|message| format!("plugin returned an error: {message}"))?;
+        let prefix = format!("{}.", self.name);
+        let mut output = Vec::with_capacity(outcome.output.len());
+        for line in outcome.output {
+            if !line.key.starts_with(&prefix) {
+                return Err(format!(
+                    "output key `{}` does not start with `{prefix}`",
+                    line.key
+                ));
+            }
+            output.push(Line {
+                key: line.key,
+                params: line.params.into_iter().collect(),
+            });
+        }
+        Ok(CommandOutcome {
+            events: instance.decode(outcome.events)?,
+            output,
+        })
     }
 }
 

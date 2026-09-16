@@ -65,9 +65,43 @@ interface system {
     run: func(tick: u64) -> result<list<event-record>, string>;
 }
 
+/// What a plugin exports to handle commands from players and agents.
+interface commands {
+    use types.{entity-id, event-record};
+
+    /// Something to show a player: a lexicon key and its parameters.
+    record line {
+        key: string,
+        params: list<tuple<string, string>>,
+    }
+
+    /// Events to commit with the command, and private lines for the acting actor.
+    record outcome {
+        events: list<event-record>,
+        output: list<line>,
+    }
+
+    /// Verbs this plugin handles: single lowercase words. Must equal the manifest's
+    /// `provides.commands`.
+    verbs: func() -> list<string>;
+
+    /// Default templates for the plugin's lexicon keys, as (key, template). Every key starts
+    /// with the plugin's id. A world may override any of them.
+    lexicon: func() -> list<tuple<string, string>>;
+
+    /// Handles `verb args` from `actor`. An error suspends the plugin.
+    handle: func(actor: entity-id, verb: string, args: string, tick: u64) -> result<outcome, string>;
+}
+
 /// A plugin that runs as a system. It may import any subset of these interfaces.
 world plugin {
     import entities;
     import space;
     export system;
+}
+
+/// A plugin that also handles commands.
+world command-plugin {
+    include plugin;
+    export commands;
 }

@@ -6,7 +6,8 @@
 //! 3. `capabilities` (plugins): `plugin.wasm` imports exactly the declared capabilities, and
 //!    this engine serves each of them.
 //! 4. `boot` (plugins): the plugin loads under its declared grants, reports its manifest id
-//!    as its name, and survives one tick on an empty world within the default limits.
+//!    as its name, handles exactly the verbs in `provides.commands` without claiming a core
+//!    verb, and survives one tick on an empty world within the default limits.
 //!
 //! The report is one line of JSON with a stable shape, for the Foundry and for scripts.
 
@@ -210,6 +211,29 @@ fn check_plugin(report: &mut Report, dir: &Path, manifest: &Manifest) -> bool {
                     plugin.name(),
                     manifest.id.as_str()
                 ));
+            }
+            let handled: std::collections::BTreeSet<&str> =
+                plugin.verbs().iter().map(String::as_str).collect();
+            let provided: std::collections::BTreeSet<&str> = manifest
+                .provides
+                .commands
+                .iter()
+                .map(String::as_str)
+                .collect();
+            for verb in handled.difference(&provided) {
+                problems.push(format!(
+                    "handles `{verb}` but provides.commands does not list it"
+                ));
+            }
+            for verb in provided.difference(&handled) {
+                problems.push(format!(
+                    "provides.commands lists `{verb}` but the plugin does not handle it"
+                ));
+            }
+            if let Some(handler) = plugin.command_handler()
+                && let Err(conflict) = sage_core::Commands::with_core().register(handler)
+            {
+                problems.push(conflict);
             }
             match dry_run(plugin) {
                 Ok(()) => {}

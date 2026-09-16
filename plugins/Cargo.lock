@@ -123,6 +123,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "sage-dialogue"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+ "wit-bindgen",
+]
+
+[[package]]
 name = "sage-wander"
 version = "0.1.0"
 dependencies = [
