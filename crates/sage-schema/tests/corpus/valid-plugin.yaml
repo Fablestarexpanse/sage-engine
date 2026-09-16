@@ -1,0 +1,13 @@
+# expect: valid
+schema: sage.fragment/1
+id: fixture.mover
+kind: plugin
+version: 0.1.0
+engine: ^0.0.1
+title: Mover
+creator:
+  handle: fixture
+license: Apache-2.0
+capabilities:
+  - sage:core/entities@0.1.0
+  - sage:core/space@0.1.0

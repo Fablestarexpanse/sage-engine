@@ -1,9 +1,7 @@
 //! M2 gate tests for the plugin seal and sandbox limits, run against real plugin components
-//! built from `crates/sage-host/fixtures`.
+//! built from `crates/sage-fixtures/plugins`.
 
-use std::path::PathBuf;
-use std::process::Command;
-use std::sync::{Arc, OnceLock};
+use std::sync::Arc;
 
 use sage_core::{
     ApplyError, Component, ComponentRegistry, ComponentSet, EntityCreated, EntityId, Event,
@@ -15,35 +13,8 @@ use sage_store::SqliteLog;
 const ENTITIES: &str = "sage:core/entities@0.1.0";
 const SPACE: &str = "sage:core/space@0.1.0";
 
-/// Builds every fixture once per test process and returns the directory holding the `.wasm`
-/// core modules.
-fn fixture_dir() -> &'static PathBuf {
-    static DIR: OnceLock<PathBuf> = OnceLock::new();
-    DIR.get_or_init(|| {
-        let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fixtures/Cargo.toml");
-        let target = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("fixtures");
-        let status = Command::new(env!("CARGO"))
-            .args(["build", "--release", "--target", "wasm32-unknown-unknown"])
-            .arg("--manifest-path")
-            .arg(&manifest)
-            .arg("--target-dir")
-            .arg(&target)
-            .status()
-            .expect("cargo runs");
-        assert!(status.success(), "building fixture plugins failed");
-        target.join("wasm32-unknown-unknown/release")
-    })
-}
-
-/// A fixture wrapped as a component, the form plugins ship in.
 fn component(name: &str) -> Vec<u8> {
-    let module = std::fs::read(fixture_dir().join(format!("{name}.wasm"))).unwrap();
-    wit_component::ComponentEncoder::default()
-        .module(&module)
-        .unwrap()
-        .validate(true)
-        .encode()
-        .unwrap()
+    sage_fixtures::plugin(name)
 }
 
 fn set<C: Component>(id: u64, c: &C) -> Event {
@@ -161,6 +132,16 @@ fn plugin_importing_an_ungranted_interface_is_refused_at_load() {
         .err()
         .unwrap();
     assert!(matches!(err, LoadError::Ungranted { .. }), "{err}");
+}
+
+#[test]
+fn imports_lists_only_interfaces_that_need_a_grant() {
+    let host = PluginHost::new().unwrap();
+    assert_eq!(
+        host.imports(&component("mover")).unwrap(),
+        [ENTITIES, SPACE]
+    );
+    assert!(host.imports(&component("spinner")).unwrap().is_empty());
 }
 
 #[test]

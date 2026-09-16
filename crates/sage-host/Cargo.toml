@@ -17,5 +17,6 @@ thiserror.workspace = true
 wasmtime = { version = "48", default-features = false, features = ["component-model", "cranelift", "runtime", "std"] }
 
 [dev-dependencies]
+sage-fixtures.workspace = true
+sage-schema.workspace = true
 sage-store.workspace = true
-wit-component = "0.259"

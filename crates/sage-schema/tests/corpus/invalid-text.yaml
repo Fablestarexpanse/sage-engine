@@ -1,0 +1,11 @@
+# expect: description, title
+schema: sage.fragment/1
+id: promptwaffle.noir-detective
+kind: agent
+version: 1.2.0
+engine: ">=0.0.1, <0.1"
+title: "   "
+creator:
+  handle: promptwaffle
+license: CC-BY-4.0
+description: "bell\u0007"

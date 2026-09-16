@@ -7,6 +7,7 @@ pub enum Command {
     Help,
     Run(RunOptions),
     Inspect { world: PathBuf },
+    Check { fragment: PathBuf },
 }
 
 #[derive(Debug, PartialEq)]
@@ -37,6 +38,15 @@ impl Args {
                 }
                 Command::Inspect {
                     world: world.into(),
+                }
+            }
+            Some("check") => {
+                let fragment = args.next().ok_or("check needs a fragment directory")?;
+                if let Some(extra) = args.next() {
+                    return Err(format!("unexpected argument `{extra}`"));
+                }
+                Command::Check {
+                    fragment: fragment.into(),
                 }
             }
             Some("run") => Command::Run(parse_run(args)?),

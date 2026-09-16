@@ -1,0 +1,14 @@
+# expect: provides.commands[1], provides.components[0], provides.panels[0]
+schema: sage.fragment/1
+id: promptwaffle.noir-detective
+kind: agent
+version: 1.2.0
+engine: ">=0.0.1, <0.1"
+title: The Noir Detective
+creator:
+  handle: promptwaffle
+license: CC-BY-4.0
+provides:
+  commands: [interrogate, interrogate]
+  panels: [Case Board]
+  components: [suspicion]

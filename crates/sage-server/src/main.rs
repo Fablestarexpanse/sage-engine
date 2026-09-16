@@ -2,9 +2,11 @@
 //!
 //! `sage run` drives a world stored in one SQLite file at a fixed tick rate. `sage inspect`
 //! reports on a world file and checks that its newest snapshot agrees with a full replay.
+//! `sage check` reports whether this engine can use a fragment.
 //! Network transport arrives at M4.
 
 mod args;
+mod check;
 mod run;
 mod wander;
 
@@ -23,7 +25,8 @@ usage:
       --checkpoint-every <ticks> record idle clock time this often (default 240)
       --wander-every <ticks>     M1 test harness: move located entities along links (default off)
       --report-every <ticks>     print a status line this often (default 240)
-  sage inspect <world.db>";
+  sage inspect <world.db>
+  sage check <fragment-dir>       validate fragment.yaml and, for plugins, plugin.wasm";
 
 fn main() -> ExitCode {
     let args = match Args::parse(std::env::args().skip(1)) {
@@ -44,6 +47,7 @@ fn main() -> ExitCode {
         }
         Command::Run(options) => run::run(&options),
         Command::Inspect { world } => run::inspect(&world),
+        Command::Check { fragment } => check::run(&fragment),
     };
     match result {
         Ok(()) => ExitCode::SUCCESS,

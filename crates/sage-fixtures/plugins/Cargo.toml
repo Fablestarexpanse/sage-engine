@@ -1,4 +1,4 @@
-# Test plugins for sage-host. Built to wasm32-unknown-unknown by the host's tests and wrapped
+# Test plugins. Built to wasm32-unknown-unknown by the sage-fixtures crate and wrapped
 # into components there. Not part of the main workspace and never shipped.
 [workspace]
 resolver = "3"

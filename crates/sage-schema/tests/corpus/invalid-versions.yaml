@@ -1,0 +1,16 @@
+# expect: derived_from[0].version, engine, requires[0].version, version
+schema: sage.fragment/1
+id: promptwaffle.noir-detective
+kind: agent
+version: "1.2"
+engine: ">=0.3 <0.5"
+title: The Noir Detective
+creator:
+  handle: promptwaffle
+license: CC-BY-4.0
+derived_from:
+  - id: someone.template
+    version: latest
+requires:
+  - id: sage.dialogue
+    version: one-ish

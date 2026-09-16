@@ -1,0 +1,9 @@
+/// Manifest validation, built from the same Rust code the engine uses, for hosts that cannot
+/// link Rust directly (Fragment Foundry, browser editors).
+package sage:schema@0.1.0;
+
+world validator {
+    /// Validates the text of a `fragment.yaml` and returns the report as JSON, identical to
+    /// `sage_schema::validate_manifest(text).to_json()` in a native build.
+    export validate-manifest: func(text: string) -> string;
+}

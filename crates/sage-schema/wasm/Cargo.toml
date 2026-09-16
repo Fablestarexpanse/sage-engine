@@ -1,0 +1,21 @@
+# The WASM build of sage-schema, as a component exporting sage:schema/validator.
+# Its own workspace so its wasm-only dependencies stay out of the engine build.
+[package]
+name = "sage-schema-wasm"
+version = "0.0.1"
+edition = "2024"
+license = "Apache-2.0"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+sage-schema = { path = ".." }
+wit-bindgen = "0.62"
+
+[profile.release]
+opt-level = "s"
+debug = false
+
+[workspace]

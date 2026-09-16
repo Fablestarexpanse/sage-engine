@@ -1,0 +1,15 @@
+[package]
+name = "sage-fixtures"
+description = "SAGE test support: builds the test plugins and the schema validator to WebAssembly components."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
+wit-component = "0.259"

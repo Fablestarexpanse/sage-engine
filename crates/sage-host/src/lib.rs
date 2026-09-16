@@ -103,6 +103,27 @@ impl PluginHost {
         Ok(PluginHost { engine })
     }
 
+    /// The interfaces a plugin component imports that need a grant, sorted. Type-only
+    /// interfaces every plugin may use are left out.
+    pub fn imports(&self, wasm: &[u8]) -> Result<Vec<String>, LoadError> {
+        Ok(self.imports_of(&self.compile(wasm)?))
+    }
+
+    fn compile(&self, wasm: &[u8]) -> Result<Component, LoadError> {
+        Component::new(&self.engine, wasm).map_err(|e| LoadError::Invalid(format!("{e:#}")))
+    }
+
+    fn imports_of(&self, component: &Component) -> Vec<String> {
+        let mut names: Vec<String> = component
+            .component_type()
+            .imports(&self.engine)
+            .map(|(name, _)| name.to_owned())
+            .filter(|name| !ALWAYS_ALLOWED.contains(&name.as_str()))
+            .collect();
+        names.sort();
+        names
+    }
+
     /// Loads a plugin component with `grants` (full interface names from [`GRANTABLE`]).
     /// Refuses the plugin if it imports anything not granted.
     pub fn load(
@@ -114,15 +135,13 @@ impl PluginHost {
         if let Some(unknown) = grants.iter().find(|g| !GRANTABLE.contains(g)) {
             return Err(LoadError::UnknownGrant((*unknown).to_owned()));
         }
-        let component =
-            Component::new(&self.engine, wasm).map_err(|e| LoadError::Invalid(format!("{e:#}")))?;
-
-        for (name, _) in component.component_type().imports(&self.engine) {
-            if !grants.contains(&name) && !ALWAYS_ALLOWED.contains(&name) {
-                return Err(LoadError::Ungranted {
-                    interface: name.to_owned(),
-                });
-            }
+        let component = self.compile(wasm)?;
+        if let Some(interface) = self
+            .imports_of(&component)
+            .into_iter()
+            .find(|name| !grants.contains(&name.as_str()))
+        {
+            return Err(LoadError::Ungranted { interface });
         }
 
         // The linker only ever holds granted interfaces, so the seal holds even if the check

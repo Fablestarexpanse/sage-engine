@@ -1,0 +1,13 @@
+# expect: capabilities, content.format
+schema: sage.fragment/1
+id: promptwaffle.noir-detective
+kind: agent
+version: 1.2.0
+engine: ">=0.0.1, <0.1"
+title: The Noir Detective
+creator:
+  handle: promptwaffle
+license: CC-BY-4.0
+capabilities: []
+content:
+  format: docx

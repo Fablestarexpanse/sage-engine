@@ -1,4 +1,4 @@
-NEXT: M2 slice 1 (seal) is committed and waiting for owner review. Slice 2: `fragment.yaml` manifest types in `sage-schema`, validation identical native and in WASM, and `sage check <fragment>` (manifest, WIT imports against grants, dry boot with fuel). Slice 3: `sage run --plugin`, port `harness.wander` to a plugin and delete the harness, then `sage.dialogue`.
+NEXT: M2 slice 2 (manifest v1, WASM validator, `sage check`; ADR 0010) is committed and waiting for owner review. Slice 3: `sage run --plugin <fragment-dir>` (grants from the manifest, after `sage check` passes), port `harness.wander` to a first-party plugin in `plugins/` and delete the harness, then `sage.dialogue`. After slice 3, M2's gate is met except the deferred N-1 adapter test.
 
 # Status
 
@@ -6,7 +6,7 @@ NEXT: M2 slice 1 (seal) is committed and waiting for owner review. Slice 2: `fra
 |---|---|
 | M0 Scaffold | done: workspace, CI (fmt, clippy, test, denylist), ADRs 0001–0004 |
 | M1 World model | **closed** 2026-09-16 (ADR 0005-0008; 24 h wall-clock run waived, fast-mode equivalent passed) |
-| M2 Plugin seal | in progress: slice 1 done (Wasmtime component host, seal, fuel and memory limits; ADR 0009) |
+| M2 Plugin seal | in progress: slices 1-2 done (seal and limits, manifest v1, WASM validator, `sage check`; ADR 0009-0010) |
 | M3 Agents | blocked on M2 |
 | M4 Client + Foundry MVP | blocked on M3 |
 | M5 Workshop + social | blocked on M4 |
@@ -15,7 +15,6 @@ NEXT: M2 slice 1 (seal) is committed and waiting for owner review. Slice 2: `fra
 ## Gate tests not yet written (they arrive with the code they test)
 
 - An event log from before a *real* schema change replays through its upcaster (M1). The mechanism is tested; this test ships with the first real change.
-- Manifest round-trip gives identical results native and in WASM (M2 slice 2)
 - A plugin built against WIT N-1 boots through an adapter (M2; deferred to the first real `sage:core` major bump, owner ruling)
 - The PNG chunk parser is fuzzed (whenever the parser exists)
 - The demo world plays with every AI driver disabled (M3)
@@ -39,9 +38,13 @@ NEXT: M2 slice 1 (seal) is committed and waiting for owner review. Slice 2: `fra
 - Fuel exhaustion and the memory cap each suspend a plugin while the world keeps ticking
 - Plugin events are validated like any others (refused, or the plugin is suspended if undecodable), and replay without the plugin
 
+- Manifest validation gives byte-identical reports native and in WASM across the 21-file corpus plus edge cases (`crates/sage-host/tests/schema_wasm.rs`)
+- Every corpus manifest produces exactly its expected problem paths (`crates/sage-schema/tests/corpus.rs`)
+- `sage check` passes a good plugin and fails, naming the problem, on an undeclared import, an unused or unserved capability, a name mismatch, a runaway plugin, a wrong engine, or a bad or missing manifest (`crates/sage-server/tests/check.rs`)
+
 ## Open questions for the owner (not blocking M1)
 
-1. Fragment namespace: `creator.slug` or `@creator/slug`?
+1. ~~Fragment namespace~~: decided `creator.slug` (2026-09-16).
 2. Should agent cards write the Tavern v2 `chara` chunk by default, or only on an explicit Tavern export?
 3. Merchant of record when the marketplace arrives: Lemon Squeezy, Paddle or Stripe Connect?
 4. Name of the setting-neutral demo world.

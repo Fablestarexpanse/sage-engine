@@ -1,0 +1,31 @@
+# expect: valid
+schema: sage.fragment/1
+id: promptwaffle.noir-detective
+kind: agent
+version: 1.2.0
+engine: ">=0.0.1, <0.1"
+title: The Noir Detective
+description: |
+  A tired investigator who remembers every lie.
+creator:
+  handle: promptwaffle
+  foundry_id: usr_01H8Z
+license: CC-BY-4.0
+derived_from:
+  - id: someone.hardboiled-template
+    version: 0.9.1
+requires:
+  - id: sage.dialogue
+    version: "^1"
+  - id: sage.economy
+    version: "^2"
+    optional: true
+provides:
+  commands: [interrogate]
+  panels: [case-board]
+  components: [promptwaffle.noir-detective.suspicion]
+content:
+  format: png-card
+  tavern_compatible: true
+integrity:
+  digest: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef

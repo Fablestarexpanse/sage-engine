@@ -1,0 +1,16 @@
+# expect: capabilities[0], capabilities[2], content
+schema: sage.fragment/1
+id: promptwaffle.noir-detective
+kind: plugin
+version: 1.2.0
+engine: ">=0.0.1, <0.1"
+title: The Noir Detective
+creator:
+  handle: promptwaffle
+license: CC-BY-4.0
+capabilities:
+  - filesystem
+  - sage:core/entities@0.1.0
+  - sage:core/entities@0.1.0
+content:
+  format: yaml
