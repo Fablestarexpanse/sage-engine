@@ -103,6 +103,19 @@ impl Scheduler {
         }
         Ok(report)
     }
+
+    /// Records the scheduler's current tick in the log if the log is behind it, so a clean
+    /// shutdown loses no world time. Returns whether anything was written.
+    pub fn record_clock<L: EventLog>(
+        &self,
+        journal: &mut Journal<L>,
+    ) -> Result<bool, JournalError> {
+        if journal.world().tick() >= self.tick {
+            return Ok(false);
+        }
+        journal.commit(self.tick, &[Event::ClockAdvanced(ClockAdvanced {})])?;
+        Ok(true)
+    }
 }
 
 #[cfg(test)]
@@ -236,6 +249,18 @@ mod tests {
             .map(|r| r.tick)
             .collect();
         assert!(checkpoints.is_empty(), "{checkpoints:?}");
+    }
+
+    #[test]
+    fn record_clock_saves_idle_ticks_once() {
+        let mut journal = open(MemoryLog::default());
+        let mut scheduler = Scheduler::new(&journal, 100);
+        for _ in 0..7 {
+            scheduler.step(&mut journal).unwrap();
+        }
+        assert!(scheduler.record_clock(&mut journal).unwrap());
+        assert!(!scheduler.record_clock(&mut journal).unwrap());
+        assert_eq!(Scheduler::new(&open(journal.into_log()), 100).tick(), 7);
     }
 
     #[test]

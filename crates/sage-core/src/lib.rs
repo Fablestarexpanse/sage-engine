@@ -26,5 +26,5 @@ pub use scheduler::{Scheduler, StepReport, System, SystemRefused};
 pub use upcast::{UpcastError, Upcasters};
 pub use world::{
     ApplyError, EntityId, SNAPSHOT_SCHEMA_VERSION, Snapshot, SnapshotComponent, SnapshotEntity,
-    SnapshotError, World,
+    SnapshotError, World, entities_to_events,
 };

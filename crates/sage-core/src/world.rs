@@ -511,31 +511,7 @@ impl World {
             return Err(ApplyError::IdReused(last.id).into());
         }
 
-        let mut events: Vec<Event> = snapshot
-            .entities
-            .iter()
-            .map(|e| Event::EntityCreated(EntityCreated { id: e.id }))
-            .collect();
-        // Containment goes last so every container already has its own `Located`, which the
-        // cycle check walks.
-        let (located, other): (Vec<_>, Vec<_>) = snapshot
-            .entities
-            .iter()
-            .flat_map(|e| {
-                e.components.iter().map(|(name, c)| {
-                    Event::ComponentSet(ComponentSet {
-                        id: e.id,
-                        component: name.clone(),
-                        component_version: c.version,
-                        data: c.data.clone(),
-                    })
-                })
-            })
-            .partition(|event| {
-                matches!(event, Event::ComponentSet(s) if s.component == <Located as crate::Component>::NAME)
-            });
-        events.extend(other);
-        events.extend(located);
+        let events = entities_to_events(&snapshot.entities);
 
         let mut world = World::empty(registry);
         let mut steps = Vec::new();
@@ -549,6 +525,36 @@ impl World {
         world.tick = snapshot.tick;
         Ok(world)
     }
+}
+
+/// The events that build `entities` into an empty world: every `EntityCreated` first, then
+/// components, with containment last so each container's own `Located` is already set when the
+/// cycle check walks it. Used by snapshot restore and by world seed files.
+pub fn entities_to_events(entities: &[SnapshotEntity]) -> Vec<Event> {
+    let mut events: Vec<Event> = entities
+        .iter()
+        .map(|e| Event::EntityCreated(EntityCreated { id: e.id }))
+        .collect();
+    // Containment goes last so every container already has its own `Located`, which the
+    // cycle check walks.
+    let (located, other): (Vec<_>, Vec<_>) = entities
+        .iter()
+        .flat_map(|e| {
+            e.components.iter().map(|(name, c)| {
+                Event::ComponentSet(ComponentSet {
+                    id: e.id,
+                    component: name.clone(),
+                    component_version: c.version,
+                    data: c.data.clone(),
+                })
+            })
+        })
+        .partition(|event| {
+            matches!(event, Event::ComponentSet(s) if s.component == <Located as crate::Component>::NAME)
+        });
+    events.extend(other);
+    events.extend(located);
+    events
 }
 
 #[cfg(test)]

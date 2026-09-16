@@ -1,0 +1,131 @@
+//! Command-line parsing. Small enough that a parser crate would cost more than it saves.
+
+use std::path::PathBuf;
+
+pub enum Command {
+    Version,
+    Help,
+    Run(RunOptions),
+    Inspect { world: PathBuf },
+}
+
+#[derive(Debug, PartialEq)]
+pub struct RunOptions {
+    pub world: PathBuf,
+    pub seed: Option<PathBuf>,
+    pub hz: u32,
+    pub until_tick: Option<u64>,
+    pub snapshot_every: u64,
+    pub checkpoint_every: u64,
+    pub wander_every: Option<u64>,
+    pub report_every: u64,
+}
+
+pub struct Args {
+    pub command: Command,
+}
+
+impl Args {
+    pub fn parse(mut args: impl Iterator<Item = String>) -> Result<Args, String> {
+        let command = match args.next().as_deref() {
+            None | Some("--version") | Some("-V") => Command::Version,
+            Some("--help") | Some("-h") | Some("help") => Command::Help,
+            Some("inspect") => {
+                let world = args.next().ok_or("inspect needs a world file")?;
+                if let Some(extra) = args.next() {
+                    return Err(format!("unexpected argument `{extra}`"));
+                }
+                Command::Inspect {
+                    world: world.into(),
+                }
+            }
+            Some("run") => Command::Run(parse_run(args)?),
+            Some(other) => return Err(format!("unknown command `{other}`")),
+        };
+        Ok(Args { command })
+    }
+}
+
+fn parse_run(mut args: impl Iterator<Item = String>) -> Result<RunOptions, String> {
+    let mut world = None;
+    let mut options = RunOptions {
+        world: PathBuf::new(),
+        seed: None,
+        hz: 4,
+        until_tick: None,
+        snapshot_every: 2400,
+        checkpoint_every: 240,
+        wander_every: None,
+        report_every: 240,
+    };
+    while let Some(arg) = args.next() {
+        if !arg.starts_with("--") {
+            if world.replace(PathBuf::from(&arg)).is_some() {
+                return Err(format!("unexpected argument `{arg}`"));
+            }
+            continue;
+        }
+        let mut value = || args.next().ok_or_else(|| format!("{arg} needs a value"));
+        match arg.as_str() {
+            "--seed" => options.seed = Some(value()?.into()),
+            "--hz" => options.hz = number(&arg, &value()?)?,
+            "--until-tick" => options.until_tick = Some(number(&arg, &value()?)?),
+            "--snapshot-every" => options.snapshot_every = positive(&arg, &value()?)?,
+            "--checkpoint-every" => options.checkpoint_every = positive(&arg, &value()?)?,
+            "--wander-every" => options.wander_every = Some(positive(&arg, &value()?)?),
+            "--report-every" => options.report_every = positive(&arg, &value()?)?,
+            _ => return Err(format!("unknown option `{arg}`")),
+        }
+    }
+    options.world = world.ok_or("run needs a world file")?;
+    Ok(options)
+}
+
+fn number<T: std::str::FromStr>(flag: &str, value: &str) -> Result<T, String> {
+    value
+        .parse()
+        .map_err(|_| format!("{flag} expects a whole number, got `{value}`"))
+}
+
+fn positive(flag: &str, value: &str) -> Result<u64, String> {
+    match number(flag, value)? {
+        0 => Err(format!("{flag} must be at least 1")),
+        n => Ok(n),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn run(args: &[&str]) -> Result<RunOptions, String> {
+        match Args::parse(args.iter().map(|s| s.to_string()))?.command {
+            Command::Run(options) => Ok(options),
+            _ => Err("not a run command".into()),
+        }
+    }
+
+    #[test]
+    fn run_defaults() {
+        let options = run(&["run", "w.db"]).unwrap();
+        assert_eq!(options.world, PathBuf::from("w.db"));
+        assert_eq!((options.hz, options.snapshot_every), (4, 2400));
+        assert_eq!(options.wander_every, None);
+    }
+
+    #[test]
+    fn run_flags_in_any_order() {
+        let options = run(&["run", "--hz", "0", "w.db", "--until-tick", "50"]).unwrap();
+        assert_eq!((options.hz, options.until_tick), (0, Some(50)));
+    }
+
+    #[test]
+    fn refuses_bad_input() {
+        assert!(run(&["run"]).is_err());
+        assert!(run(&["run", "a.db", "b.db"]).is_err());
+        assert!(run(&["run", "w.db", "--hz"]).is_err());
+        assert!(run(&["run", "w.db", "--hz", "fast"]).is_err());
+        assert!(run(&["run", "w.db", "--snapshot-every", "0"]).is_err());
+        assert!(run(&["run", "w.db", "--turbo"]).is_err());
+    }
+}

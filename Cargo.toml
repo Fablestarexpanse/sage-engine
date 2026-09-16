@@ -11,6 +11,7 @@ repository = "https://github.com/Fablestarexpanse/sage-engine"
 
 [workspace.dependencies]
 sage-core = { path = "crates/sage-core" }
+sage-store = { path = "crates/sage-store" }
 bevy_ecs = { version = "0.19", default-features = false, features = ["std"] }
 rusqlite = { version = "0.40", features = ["bundled"] }
 serde = { version = "1", features = ["derive"] }

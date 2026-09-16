@@ -8,7 +8,7 @@ Fragments are shared through [Fragment Foundry](https://fragmentfoundry.com), wh
 
 ## Status
 
-Pre-M1. The repository holds the workspace scaffold, the founding research and the decision records. No engine logic exists yet. See [docs/STATUS.md](docs/STATUS.md).
+M1 (world model) in progress. The event log, snapshots, space graph, world clock and run loop exist. See [docs/STATUS.md](docs/STATUS.md).
 
 | Milestone | Scope |
 |---|---|
@@ -34,6 +34,15 @@ cargo build --workspace
 cargo test --workspace
 scripts/check-denylist.sh
 ```
+
+## Run the demo world
+
+```bash
+cargo run --release -p sage-server -- run demo.db --seed worlds/demo/seed.json --wander-every 20
+cargo run --release -p sage-server -- inspect demo.db
+```
+
+`sage run` ticks at 4 Hz until Ctrl-C. There is no network client yet; that arrives at M4.
 
 ## Previous version
 

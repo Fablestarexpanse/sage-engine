@@ -1,11 +1,11 @@
-NEXT: M1 slice 2 (space graph, reference rules, apply-with-undo, clock; ADR 0006) is committed and waiting for owner review. Slice 3 is a `sage run` binary loop (open a SQLite world, fixed 4 Hz scheduler, periodic snapshots, clean shutdown), then the kill -9 restart test and the 24 h run with the demo world.
+NEXT: M1 slice 3 (`sage run`, `sage inspect`, demo seed, kill -9 restart test; ADR 0007) is committed and waiting for owner review. The last open M1 gate is the 24 h run. Start it with the command under "24 h gate run" below, then run `sage inspect` on the file and record the result in DECISIONS.md. After that, M1 closes and M2 (plugin seal) can begin.
 
 # Status
 
 | Milestone | State |
 |---|---|
 | M0 Scaffold | done: workspace, CI (fmt, clippy, test, denylist), ADRs 0001–0004 |
-| M1 World model | in progress: slices 1-2 done (event log, snapshots, space graph, reference rules, clock; ADR 0005-0006) |
+| M1 World model | in progress: slices 1-3 done (event log, snapshots, space graph, clock, run loop, restart gate; ADR 0005-0007); only the 24 h run remains |
 | M2 Plugin seal | blocked on M1 |
 | M3 Agents | blocked on M2 |
 | M4 Client + Foundry MVP | blocked on M3 |
@@ -15,8 +15,7 @@ NEXT: M1 slice 2 (space graph, reference rules, apply-with-undo, clock; ADR 0006
 ## Gate tests not yet written (they arrive with the code they test)
 
 - An event log from before a *real* schema change replays through its upcaster (M1). The mechanism is tested; this test ships with the first real change.
-- A 4-place, 100-entity world runs for 24 h (M1, needs the run loop)
-- After kill -9, restart rebuilds state from the log (M1, needs the run loop)
+- A 4-place, 100-entity world runs for 24 h (M1, manual run; see below)
 - A plugin importing an undeclared WIT interface fails at boot (M2)
 - Manifest round-trip gives identical results native and in WASM (M2)
 - The PNG chunk parser is fuzzed (whenever the parser exists)
@@ -32,6 +31,19 @@ NEXT: M1 slice 2 (space graph, reference rules, apply-with-undo, clock; ADR 0006
 - Space graph and containment: dangling references, destroying a referenced entity, containment cycles and ticks going backwards are all refused, and a refusal mid-batch leaves the world byte-identical
 - A failed log append undoes the world change
 - A scheduled world (a system moving entities along links, plus idle checkpoints) replays byte-identically and resumes its clock from the log
+
+- A demo world hard-killed mid-run and resumed ends byte-identical to an uninterrupted run (`crates/sage-server/tests/restart.rs`)
+- `--seed` is refused on a world that already has a history
+
+## 24 h gate run
+
+```bash
+cargo build --release -p sage-server
+target/release/sage run m1-24h.db --seed worlds/demo/seed.json --wander-every 40 --until-tick 345600
+target/release/sage inspect m1-24h.db
+```
+
+345,600 ticks at 4 Hz is 24 h. Pass criteria: the run exits 0 with `refused=0`, and `inspect` prints `"snapshot_matches_replay":true`, `"tick":345600` and `"entities":108`.
 
 ## Open questions for the owner (not blocking M1)
 

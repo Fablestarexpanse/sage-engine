@@ -83,9 +83,9 @@ impl SqliteLog {
     }
 
     fn init(conn: Connection) -> Result<Self, StoreError> {
+        conn.busy_timeout(std::time::Duration::from_secs(5))?;
         conn.pragma_update(None, "journal_mode", "WAL")?;
         conn.pragma_update(None, "synchronous", "FULL")?;
-        conn.busy_timeout(std::time::Duration::from_secs(5))?;
         let version: i64 = conn.pragma_query_value(None, "user_version", |row| row.get(0))?;
         match version {
             0 => conn.execute_batch(&format!("BEGIN;{SCHEMA}COMMIT;"))?,

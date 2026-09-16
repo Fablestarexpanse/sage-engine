@@ -1,0 +1,164 @@
+//! `sage run` and `sage inspect`.
+
+use std::path::Path;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::{Duration, Instant};
+
+use sage_core::{
+    ComponentRegistry, Journal, Scheduler, SnapshotEntity, Upcasters, entities_to_events,
+};
+use sage_store::SqliteLog;
+
+use crate::args::RunOptions;
+use crate::wander::Wander;
+
+const SEED_SCHEMA: &str = "sage.seed/1";
+
+fn open(path: &Path) -> Result<Journal<SqliteLog>, String> {
+    let log = SqliteLog::open(path).map_err(|e| format!("{}: {e}", path.display()))?;
+    Journal::open(log, ComponentRegistry::with_core(), Upcasters::new())
+        .map_err(|e| format!("{}: {e}", path.display()))
+}
+
+/// Reads a `sage.seed/1` file: `{"schema": "sage.seed/1", "entities": [...]}`, where entities
+/// use the snapshot entity shape.
+fn read_seed(path: &Path) -> Result<Vec<SnapshotEntity>, String> {
+    let fail = |e: &dyn std::fmt::Display| format!("seed {}: {e}", path.display());
+    let text = std::fs::read_to_string(path).map_err(|e| fail(&e))?;
+    let mut value: serde_json::Value = serde_json::from_str(&text).map_err(|e| fail(&e))?;
+    match value.get("schema").and_then(|s| s.as_str()) {
+        Some(SEED_SCHEMA) => {}
+        other => {
+            return Err(fail(&format!(
+                "schema is {other:?}, expected \"{SEED_SCHEMA}\""
+            )));
+        }
+    }
+    serde_json::from_value(value["entities"].take()).map_err(|e| fail(&e))
+}
+
+pub fn run(options: &RunOptions) -> Result<(), String> {
+    let mut journal = open(&options.world)?;
+
+    if let Some(seed) = &options.seed {
+        if !journal.world().is_empty() || journal.world().last_seq() > 0 {
+            return Err(format!(
+                "{} already has a history; --seed only applies to a new world",
+                options.world.display()
+            ));
+        }
+        let events = entities_to_events(&read_seed(seed)?);
+        journal
+            .commit(0, &events)
+            .map_err(|e| format!("seed {}: {e}", seed.display()))?;
+        journal.save_snapshot().map_err(|e| e.to_string())?;
+    }
+
+    let mut scheduler = Scheduler::new(&journal, options.checkpoint_every);
+    if let Some(every) = options.wander_every {
+        scheduler.add(Wander { every });
+    }
+
+    let stop = Arc::new(AtomicBool::new(false));
+    {
+        let stop = Arc::clone(&stop);
+        ctrlc::set_handler(move || stop.store(true, Ordering::SeqCst))
+            .map_err(|e| format!("cannot install shutdown handler: {e}"))?;
+    }
+
+    println!(
+        "start world={} tick={} seq={} entities={}",
+        options.world.display(),
+        scheduler.tick(),
+        journal.world().last_seq(),
+        journal.world().len()
+    );
+
+    let period = (options.hz > 0).then(|| Duration::from_secs(1) / options.hz);
+    let mut deadline = Instant::now();
+    let mut refused_total = 0usize;
+    while !stop.load(Ordering::SeqCst)
+        && options
+            .until_tick
+            .is_none_or(|until| scheduler.tick() < until)
+    {
+        let report = scheduler.step(&mut journal).map_err(|e| e.to_string())?;
+        for refused in &report.refused {
+            eprintln!(
+                "tick={} refused system={} index={}: {}",
+                report.tick, refused.system, refused.index, refused.error
+            );
+        }
+        refused_total += report.refused.len();
+
+        if report.tick.is_multiple_of(options.snapshot_every) {
+            journal.save_snapshot().map_err(|e| e.to_string())?;
+        }
+        if report.tick.is_multiple_of(options.report_every) {
+            println!(
+                "tick={} seq={} entities={} refused={}",
+                report.tick,
+                journal.world().last_seq(),
+                journal.world().len(),
+                refused_total
+            );
+        }
+
+        if let Some(period) = period {
+            deadline += period;
+            let now = Instant::now();
+            if deadline > now {
+                std::thread::sleep(deadline - now);
+            } else if now - deadline > period * 10 {
+                // Far behind: resync instead of running a burst of catch-up ticks.
+                deadline = now;
+            }
+        }
+    }
+
+    scheduler
+        .record_clock(&mut journal)
+        .map_err(|e| e.to_string())?;
+    journal.save_snapshot().map_err(|e| e.to_string())?;
+    println!(
+        "stop tick={} seq={} entities={} refused={}",
+        scheduler.tick(),
+        journal.world().last_seq(),
+        journal.world().len(),
+        refused_total
+    );
+    Ok(())
+}
+
+pub fn inspect(path: &Path) -> Result<(), String> {
+    if !path.exists() {
+        return Err(format!("{}: no such file", path.display()));
+    }
+    let from_snapshot = open(path)?;
+    let snapshot_seq = sage_core::EventLog::latest_snapshot(from_snapshot.log())
+        .map_err(|e| e.to_string())?
+        .map(|s| s.seq);
+    let log = SqliteLog::open(path).map_err(|e| e.to_string())?;
+    let from_genesis =
+        Journal::open_from_genesis(log, ComponentRegistry::with_core(), Upcasters::new())
+            .map_err(|e| e.to_string())?;
+    let agree =
+        from_snapshot.world().snapshot().to_bytes() == from_genesis.world().snapshot().to_bytes();
+    let world = from_genesis.world();
+    println!(
+        "{}",
+        serde_json::json!({
+            "tick": world.tick(),
+            "last_seq": world.last_seq(),
+            "entities": world.len(),
+            "snapshot_seq": snapshot_seq,
+            "snapshot_matches_replay": agree,
+        })
+    );
+    if agree {
+        Ok(())
+    } else {
+        Err("snapshot and full replay disagree".into())
+    }
+}
