@@ -1335,6 +1335,7 @@ dependencies = [
  "sage-store",
  "serde",
  "serde_json",
+ "tempfile",
 ]
 
 [[package]]
