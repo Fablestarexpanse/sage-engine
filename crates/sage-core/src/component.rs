@@ -24,12 +24,18 @@ pub trait Component:
     fn references(&self) -> Vec<EntityId> {
         Vec::new()
     }
+
+    /// Rules the data must follow beyond its shape. A world refuses a component that fails,
+    /// exactly as it refuses data that does not deserialize.
+    fn validate(&self) -> Result<(), String> {
+        Ok(())
+    }
 }
 
 pub(crate) struct Entry {
     pub(crate) version: u32,
     /// Parses data and returns its references, without touching the world.
-    pub(crate) parse: fn(Value) -> Result<Vec<EntityId>, serde_json::Error>,
+    pub(crate) parse: fn(Value) -> Result<Vec<EntityId>, String>,
     pub(crate) insert: fn(&mut EntityWorldMut, Value) -> Result<(), serde_json::Error>,
     pub(crate) remove: fn(&mut EntityWorldMut),
     pub(crate) read: fn(&EntityRef) -> Option<Value>,
@@ -87,8 +93,10 @@ impl ComponentRegistry {
     }
 }
 
-fn parse<C: Component>(data: Value) -> Result<Vec<EntityId>, serde_json::Error> {
-    serde_json::from_value::<C>(data).map(|c| c.references())
+fn parse<C: Component>(data: Value) -> Result<Vec<EntityId>, String> {
+    let component: C = serde_json::from_value(data).map_err(|e| e.to_string())?;
+    component.validate()?;
+    Ok(component.references())
 }
 
 fn insert<C: Component>(entity: &mut EntityWorldMut, data: Value) -> Result<(), serde_json::Error> {

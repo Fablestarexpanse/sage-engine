@@ -5,9 +5,8 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
-use sage_core::{
-    ComponentRegistry, Journal, Scheduler, SnapshotEntity, Upcasters, entities_to_events,
-};
+use sage_agents::Agents;
+use sage_core::{Journal, Scheduler, SnapshotEntity, Upcasters, entities_to_events};
 use sage_host::{Limits, PluginHost, PluginSystem};
 use sage_store::SqliteLog;
 
@@ -17,7 +16,7 @@ const SEED_SCHEMA: &str = "sage.seed/1";
 
 fn open(path: &Path) -> Result<Journal<SqliteLog>, String> {
     let log = SqliteLog::open(path).map_err(|e| format!("{}: {e}", path.display()))?;
-    Journal::open(log, ComponentRegistry::with_core(), Upcasters::new())
+    Journal::open(log, sage_agents::registry(), Upcasters::new())
         .map_err(|e| format!("{}: {e}", path.display()))
 }
 
@@ -83,8 +82,14 @@ pub fn run(options: &RunOptions) -> Result<(), String> {
             .map_err(|e| format!("cannot install shutdown handler: {e}"))?;
     }
 
+    let mut agents = Agents::new();
+    let mut agent_commands = 0usize;
+    let agent_count = journal
+        .world()
+        .entities_with(<sage_agents::Mind as sage_core::Component>::NAME)
+        .len();
     println!(
-        "start world={} tick={} seq={} entities={}",
+        "start world={} tick={} seq={} entities={} agents={agent_count}",
         options.world.display(),
         scheduler.tick(),
         journal.world().last_seq(),
@@ -107,6 +112,11 @@ pub fn run(options: &RunOptions) -> Result<(), String> {
             );
         }
         refused_total += report.refused.len();
+        agents.observe(journal.world(), &report);
+        for thought in agents.think(journal.world(), report.tick + 1) {
+            scheduler.submit(thought.agent, thought.command);
+            agent_commands += 1;
+        }
         for suspended in &report.suspended {
             eprintln!(
                 "tick={} suspended system={}: {}",
@@ -119,7 +129,7 @@ pub fn run(options: &RunOptions) -> Result<(), String> {
         }
         if report.tick.is_multiple_of(options.report_every) {
             println!(
-                "tick={} seq={} entities={} refused={}",
+                "tick={} seq={} entities={} refused={} agent_commands={agent_commands}",
                 report.tick,
                 journal.world().last_seq(),
                 journal.world().len(),
@@ -144,7 +154,7 @@ pub fn run(options: &RunOptions) -> Result<(), String> {
         .map_err(|e| e.to_string())?;
     journal.save_snapshot().map_err(|e| e.to_string())?;
     println!(
-        "stop tick={} seq={} entities={} refused={}",
+        "stop tick={} seq={} entities={} refused={} agent_commands={agent_commands}",
         scheduler.tick(),
         journal.world().last_seq(),
         journal.world().len(),
@@ -200,9 +210,8 @@ pub fn inspect(path: &Path) -> Result<(), String> {
         .map_err(|e| e.to_string())?
         .map(|s| s.seq);
     let log = SqliteLog::open(path).map_err(|e| e.to_string())?;
-    let from_genesis =
-        Journal::open_from_genesis(log, ComponentRegistry::with_core(), Upcasters::new())
-            .map_err(|e| e.to_string())?;
+    let from_genesis = Journal::open_from_genesis(log, sage_agents::registry(), Upcasters::new())
+        .map_err(|e| e.to_string())?;
     let agree =
         from_snapshot.world().snapshot().to_bytes() == from_genesis.world().snapshot().to_bytes();
     let world = from_genesis.world();

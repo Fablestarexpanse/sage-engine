@@ -15,6 +15,7 @@ path = "src/main.rs"
 workspace = true
 
 [dependencies]
+sage-agents.workspace = true
 sage-core.workspace = true
 sage-host.workspace = true
 sage-schema.workspace = true

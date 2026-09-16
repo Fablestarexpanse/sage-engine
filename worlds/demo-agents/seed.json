@@ -1,0 +1,2599 @@
+{
+  "schema": "sage.seed/1",
+  "entities": [
+    {
+      "id": 1,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "First place",
+            "description": "An empty, setting-neutral test place."
+          }
+        },
+        "sage.place": {
+          "version": 1,
+          "data": {}
+        }
+      }
+    },
+    {
+      "id": 2,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "Second place",
+            "description": "An empty, setting-neutral test place."
+          }
+        },
+        "sage.place": {
+          "version": 1,
+          "data": {}
+        }
+      }
+    },
+    {
+      "id": 3,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "Third place",
+            "description": "An empty, setting-neutral test place."
+          }
+        },
+        "sage.place": {
+          "version": 1,
+          "data": {}
+        }
+      }
+    },
+    {
+      "id": 4,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "Fourth place",
+            "description": "An empty, setting-neutral test place."
+          }
+        },
+        "sage.place": {
+          "version": 1,
+          "data": {}
+        }
+      }
+    },
+    {
+      "id": 5,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "way onward",
+            "description": "Leads to the next place."
+          }
+        },
+        "sage.link": {
+          "version": 1,
+          "data": {
+            "from": 1,
+            "to": 2,
+            "label": "onward"
+          }
+        }
+      }
+    },
+    {
+      "id": 6,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "way onward",
+            "description": "Leads to the next place."
+          }
+        },
+        "sage.link": {
+          "version": 1,
+          "data": {
+            "from": 2,
+            "to": 3,
+            "label": "onward"
+          }
+        }
+      }
+    },
+    {
+      "id": 7,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "way onward",
+            "description": "Leads to the next place."
+          }
+        },
+        "sage.link": {
+          "version": 1,
+          "data": {
+            "from": 3,
+            "to": 4,
+            "label": "onward"
+          }
+        }
+      }
+    },
+    {
+      "id": 8,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "way onward",
+            "description": "Leads to the next place."
+          }
+        },
+        "sage.link": {
+          "version": 1,
+          "data": {
+            "from": 4,
+            "to": 1,
+            "label": "onward"
+          }
+        }
+      }
+    },
+    {
+      "id": 9,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 1",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 1
+          }
+        }
+      }
+    },
+    {
+      "id": 10,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 2",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 2
+          }
+        }
+      }
+    },
+    {
+      "id": 11,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 3",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 3
+          }
+        }
+      }
+    },
+    {
+      "id": 12,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 4",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 4
+          }
+        }
+      }
+    },
+    {
+      "id": 13,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 5",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 1
+          }
+        }
+      }
+    },
+    {
+      "id": 14,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 6",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 2
+          }
+        }
+      }
+    },
+    {
+      "id": 15,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 7",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 3
+          }
+        }
+      }
+    },
+    {
+      "id": 16,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 8",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 4
+          }
+        }
+      }
+    },
+    {
+      "id": 17,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 9",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 1
+          }
+        }
+      }
+    },
+    {
+      "id": 18,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 10",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 2
+          }
+        }
+      }
+    },
+    {
+      "id": 19,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 11",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 3
+          }
+        }
+      }
+    },
+    {
+      "id": 20,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 12",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 4
+          }
+        }
+      }
+    },
+    {
+      "id": 21,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 13",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 1
+          }
+        }
+      }
+    },
+    {
+      "id": 22,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 14",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 2
+          }
+        }
+      }
+    },
+    {
+      "id": 23,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 15",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 3
+          }
+        }
+      }
+    },
+    {
+      "id": 24,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 16",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 4
+          }
+        }
+      }
+    },
+    {
+      "id": 25,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 17",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 1
+          }
+        }
+      }
+    },
+    {
+      "id": 26,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 18",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 2
+          }
+        }
+      }
+    },
+    {
+      "id": 27,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 19",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 3
+          }
+        }
+      }
+    },
+    {
+      "id": 28,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 20",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 4
+          }
+        }
+      }
+    },
+    {
+      "id": 29,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 21",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 1
+          }
+        }
+      }
+    },
+    {
+      "id": 30,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 22",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 2
+          }
+        }
+      }
+    },
+    {
+      "id": 31,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 23",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 3
+          }
+        }
+      }
+    },
+    {
+      "id": 32,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 24",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 4
+          }
+        }
+      }
+    },
+    {
+      "id": 33,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 25",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 1
+          }
+        }
+      }
+    },
+    {
+      "id": 34,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 26",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 2
+          }
+        }
+      }
+    },
+    {
+      "id": 35,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 27",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 3
+          }
+        }
+      }
+    },
+    {
+      "id": 36,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 28",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 4
+          }
+        }
+      }
+    },
+    {
+      "id": 37,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 29",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 1
+          }
+        }
+      }
+    },
+    {
+      "id": 38,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 30",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 2
+          }
+        }
+      }
+    },
+    {
+      "id": 39,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 31",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 3
+          }
+        }
+      }
+    },
+    {
+      "id": 40,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 32",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 4
+          }
+        }
+      }
+    },
+    {
+      "id": 41,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 33",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 1
+          }
+        }
+      }
+    },
+    {
+      "id": 42,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 34",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 2
+          }
+        }
+      }
+    },
+    {
+      "id": 43,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 35",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 3
+          }
+        }
+      }
+    },
+    {
+      "id": 44,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 36",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 4
+          }
+        }
+      }
+    },
+    {
+      "id": 45,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 37",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 1
+          }
+        }
+      }
+    },
+    {
+      "id": 46,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 38",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 2
+          }
+        }
+      }
+    },
+    {
+      "id": 47,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 39",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 3
+          }
+        }
+      }
+    },
+    {
+      "id": 48,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 40",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 4
+          }
+        }
+      }
+    },
+    {
+      "id": 49,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 41",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 1
+          }
+        }
+      }
+    },
+    {
+      "id": 50,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 42",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 2
+          }
+        }
+      }
+    },
+    {
+      "id": 51,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 43",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 3
+          }
+        }
+      }
+    },
+    {
+      "id": 52,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 44",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 4
+          }
+        }
+      }
+    },
+    {
+      "id": 53,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 45",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 1
+          }
+        }
+      }
+    },
+    {
+      "id": 54,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 46",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 2
+          }
+        }
+      }
+    },
+    {
+      "id": 55,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 47",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 3
+          }
+        }
+      }
+    },
+    {
+      "id": 56,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 48",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 4
+          }
+        }
+      }
+    },
+    {
+      "id": 57,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 49",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 1
+          }
+        }
+      }
+    },
+    {
+      "id": 58,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 50",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 2
+          }
+        }
+      }
+    },
+    {
+      "id": 59,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 51",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 3
+          }
+        }
+      }
+    },
+    {
+      "id": 60,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 52",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 4
+          }
+        }
+      }
+    },
+    {
+      "id": 61,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 53",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 1
+          }
+        }
+      }
+    },
+    {
+      "id": 62,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 54",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 2
+          }
+        }
+      }
+    },
+    {
+      "id": 63,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 55",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 3
+          }
+        }
+      }
+    },
+    {
+      "id": 64,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 56",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 4
+          }
+        }
+      }
+    },
+    {
+      "id": 65,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 57",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 1
+          }
+        }
+      }
+    },
+    {
+      "id": 66,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 58",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 2
+          }
+        }
+      }
+    },
+    {
+      "id": 67,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 59",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 3
+          }
+        }
+      }
+    },
+    {
+      "id": 68,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 60",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 4
+          }
+        }
+      }
+    },
+    {
+      "id": 69,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 61",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 1
+          }
+        }
+      }
+    },
+    {
+      "id": 70,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 62",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 2
+          }
+        }
+      }
+    },
+    {
+      "id": 71,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 63",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 3
+          }
+        }
+      }
+    },
+    {
+      "id": 72,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 64",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 4
+          }
+        }
+      }
+    },
+    {
+      "id": 73,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 65",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 1
+          }
+        }
+      }
+    },
+    {
+      "id": 74,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 66",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 2
+          }
+        }
+      }
+    },
+    {
+      "id": 75,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 67",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 3
+          }
+        }
+      }
+    },
+    {
+      "id": 76,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 68",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 4
+          }
+        }
+      }
+    },
+    {
+      "id": 77,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 69",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 1
+          }
+        }
+      }
+    },
+    {
+      "id": 78,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 70",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 2
+          }
+        }
+      }
+    },
+    {
+      "id": 79,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 71",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 3
+          }
+        }
+      }
+    },
+    {
+      "id": 80,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 72",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 4
+          }
+        }
+      }
+    },
+    {
+      "id": 81,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 73",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 1
+          }
+        }
+      }
+    },
+    {
+      "id": 82,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 74",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 2
+          }
+        }
+      }
+    },
+    {
+      "id": 83,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 75",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 3
+          }
+        }
+      }
+    },
+    {
+      "id": 84,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 76",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 4
+          }
+        }
+      }
+    },
+    {
+      "id": 85,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 77",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 1
+          }
+        }
+      }
+    },
+    {
+      "id": 86,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 78",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 2
+          }
+        }
+      }
+    },
+    {
+      "id": 87,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 79",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 3
+          }
+        }
+      }
+    },
+    {
+      "id": 88,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 80",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 4
+          }
+        }
+      }
+    },
+    {
+      "id": 89,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 81",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 1
+          }
+        }
+      }
+    },
+    {
+      "id": 90,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 82",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 2
+          }
+        }
+      }
+    },
+    {
+      "id": 91,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 83",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 3
+          }
+        }
+      }
+    },
+    {
+      "id": 92,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 84",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 4
+          }
+        }
+      }
+    },
+    {
+      "id": 93,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 85",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 1
+          }
+        }
+      }
+    },
+    {
+      "id": 94,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 86",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 2
+          }
+        }
+      }
+    },
+    {
+      "id": 95,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 87",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 3
+          }
+        }
+      }
+    },
+    {
+      "id": 96,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 88",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 4
+          }
+        }
+      }
+    },
+    {
+      "id": 97,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 89",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 1
+          }
+        }
+      }
+    },
+    {
+      "id": 98,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 90",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 2
+          }
+        }
+      }
+    },
+    {
+      "id": 99,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 91",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 3
+          }
+        }
+      }
+    },
+    {
+      "id": 100,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 92",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 4
+          }
+        }
+      }
+    },
+    {
+      "id": 101,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 93",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 1
+          }
+        }
+      }
+    },
+    {
+      "id": 102,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 94",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 2
+          }
+        }
+      }
+    },
+    {
+      "id": 103,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 95",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 3
+          }
+        }
+      }
+    },
+    {
+      "id": 104,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 96",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 4
+          }
+        }
+      }
+    },
+    {
+      "id": 105,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 97",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 1
+          }
+        }
+      }
+    },
+    {
+      "id": 106,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 98",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 2
+          }
+        }
+      }
+    },
+    {
+      "id": 107,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 99",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 3
+          }
+        }
+      }
+    },
+    {
+      "id": 108,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "marker 100",
+            "description": "A plain marker used to exercise the engine."
+          }
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 4
+          }
+        }
+      }
+    },
+    {
+      "id": 109,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "Ada",
+            "description": "Talks to anyone, remembers no one."
+          }
+        },
+        "sage.actor": {
+          "version": 1,
+          "data": {}
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 1
+          }
+        },
+        "sage.mind": {
+          "version": 1,
+          "data": {
+            "driver": "scripted",
+            "think_every": 6,
+            "persona": "Talks to anyone, remembers no one.",
+            "goals": [],
+            "rules": [
+              {
+                "when": {
+                  "heard": "sage.said",
+                  "text_contains": "good day"
+                },
+                "do": "say Well met, {speaker}."
+              },
+              {
+                "when": {
+                  "heard": "sage.dialogue.told"
+                },
+                "do": "tell {speaker} I hear you."
+              },
+              {
+                "when": {
+                  "alone": false,
+                  "chance": 0.05
+                },
+                "do": "say Good day, {any_actor}."
+              },
+              {
+                "when": {
+                  "chance": 0.03
+                },
+                "do": "emote looks around."
+              },
+              {
+                "when": {
+                  "chance": 0.12
+                },
+                "do": "go {any_exit}"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 110,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "Bo",
+            "description": "Walks everywhere, says little."
+          }
+        },
+        "sage.actor": {
+          "version": 1,
+          "data": {}
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 2
+          }
+        },
+        "sage.mind": {
+          "version": 1,
+          "data": {
+            "driver": "scripted",
+            "think_every": 7,
+            "persona": "Walks everywhere, says little.",
+            "goals": [],
+            "rules": [
+              {
+                "when": {
+                  "heard": "sage.said",
+                  "text_contains": "good day"
+                },
+                "do": "say Well met, {speaker}."
+              },
+              {
+                "when": {
+                  "heard": "sage.dialogue.told"
+                },
+                "do": "tell {speaker} I hear you."
+              },
+              {
+                "when": {
+                  "alone": false,
+                  "chance": 0.05
+                },
+                "do": "say Good day, {any_actor}."
+              },
+              {
+                "when": {
+                  "chance": 0.03
+                },
+                "do": "emote looks around."
+              },
+              {
+                "when": {
+                  "chance": 0.13999999999999999
+                },
+                "do": "go {any_exit}"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 111,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "Cy",
+            "description": "Greets people and moves on."
+          }
+        },
+        "sage.actor": {
+          "version": 1,
+          "data": {}
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 3
+          }
+        },
+        "sage.mind": {
+          "version": 1,
+          "data": {
+            "driver": "scripted",
+            "think_every": 8,
+            "persona": "Greets people and moves on.",
+            "goals": [],
+            "rules": [
+              {
+                "when": {
+                  "heard": "sage.said",
+                  "text_contains": "good day"
+                },
+                "do": "say Well met, {speaker}."
+              },
+              {
+                "when": {
+                  "heard": "sage.dialogue.told"
+                },
+                "do": "tell {speaker} I hear you."
+              },
+              {
+                "when": {
+                  "alone": false,
+                  "chance": 0.05
+                },
+                "do": "say Good day, {any_actor}."
+              },
+              {
+                "when": {
+                  "chance": 0.03
+                },
+                "do": "emote looks around."
+              },
+              {
+                "when": {
+                  "chance": 0.16
+                },
+                "do": "go {any_exit}"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 112,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "Dee",
+            "description": "Stays put unless the room empties."
+          }
+        },
+        "sage.actor": {
+          "version": 1,
+          "data": {}
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 4
+          }
+        },
+        "sage.mind": {
+          "version": 1,
+          "data": {
+            "driver": "scripted",
+            "think_every": 9,
+            "persona": "Stays put unless the room empties.",
+            "goals": [],
+            "rules": [
+              {
+                "when": {
+                  "heard": "sage.said",
+                  "text_contains": "good day"
+                },
+                "do": "say Well met, {speaker}."
+              },
+              {
+                "when": {
+                  "heard": "sage.dialogue.told"
+                },
+                "do": "tell {speaker} I hear you."
+              },
+              {
+                "when": {
+                  "alone": false,
+                  "chance": 0.05
+                },
+                "do": "say Good day, {any_actor}."
+              },
+              {
+                "when": {
+                  "chance": 0.03
+                },
+                "do": "emote looks around."
+              },
+              {
+                "when": {
+                  "chance": 0.18
+                },
+                "do": "go {any_exit}"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 113,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "Eli",
+            "description": "Restless; rarely in one place long."
+          }
+        },
+        "sage.actor": {
+          "version": 1,
+          "data": {}
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 1
+          }
+        },
+        "sage.mind": {
+          "version": 1,
+          "data": {
+            "driver": "scripted",
+            "think_every": 10,
+            "persona": "Restless; rarely in one place long.",
+            "goals": [],
+            "rules": [
+              {
+                "when": {
+                  "heard": "sage.said",
+                  "text_contains": "good day"
+                },
+                "do": "say Well met, {speaker}."
+              },
+              {
+                "when": {
+                  "heard": "sage.dialogue.told"
+                },
+                "do": "tell {speaker} I hear you."
+              },
+              {
+                "when": {
+                  "alone": false,
+                  "chance": 0.05
+                },
+                "do": "say Good day, {any_actor}."
+              },
+              {
+                "when": {
+                  "chance": 0.03
+                },
+                "do": "emote looks around."
+              },
+              {
+                "when": {
+                  "chance": 0.12
+                },
+                "do": "go {any_exit}"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 114,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "Fay",
+            "description": "Polite to a fault."
+          }
+        },
+        "sage.actor": {
+          "version": 1,
+          "data": {}
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 2
+          }
+        },
+        "sage.mind": {
+          "version": 1,
+          "data": {
+            "driver": "scripted",
+            "think_every": 11,
+            "persona": "Polite to a fault.",
+            "goals": [],
+            "rules": [
+              {
+                "when": {
+                  "heard": "sage.said",
+                  "text_contains": "good day"
+                },
+                "do": "say Well met, {speaker}."
+              },
+              {
+                "when": {
+                  "heard": "sage.dialogue.told"
+                },
+                "do": "tell {speaker} I hear you."
+              },
+              {
+                "when": {
+                  "alone": false,
+                  "chance": 0.05
+                },
+                "do": "say Good day, {any_actor}."
+              },
+              {
+                "when": {
+                  "chance": 0.03
+                },
+                "do": "emote looks around."
+              },
+              {
+                "when": {
+                  "chance": 0.13999999999999999
+                },
+                "do": "go {any_exit}"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 115,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "Gus",
+            "description": "Hums while walking."
+          }
+        },
+        "sage.actor": {
+          "version": 1,
+          "data": {}
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 3
+          }
+        },
+        "sage.mind": {
+          "version": 1,
+          "data": {
+            "driver": "scripted",
+            "think_every": 12,
+            "persona": "Hums while walking.",
+            "goals": [],
+            "rules": [
+              {
+                "when": {
+                  "heard": "sage.said",
+                  "text_contains": "good day"
+                },
+                "do": "say Well met, {speaker}."
+              },
+              {
+                "when": {
+                  "heard": "sage.dialogue.told"
+                },
+                "do": "tell {speaker} I hear you."
+              },
+              {
+                "when": {
+                  "alone": false,
+                  "chance": 0.05
+                },
+                "do": "say Good day, {any_actor}."
+              },
+              {
+                "when": {
+                  "chance": 0.03
+                },
+                "do": "emote looks around."
+              },
+              {
+                "when": {
+                  "chance": 0.16
+                },
+                "do": "go {any_exit}"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 116,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "Hal",
+            "description": "Answers every greeting."
+          }
+        },
+        "sage.actor": {
+          "version": 1,
+          "data": {}
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 4
+          }
+        },
+        "sage.mind": {
+          "version": 1,
+          "data": {
+            "driver": "scripted",
+            "think_every": 13,
+            "persona": "Answers every greeting.",
+            "goals": [],
+            "rules": [
+              {
+                "when": {
+                  "heard": "sage.said",
+                  "text_contains": "good day"
+                },
+                "do": "say Well met, {speaker}."
+              },
+              {
+                "when": {
+                  "heard": "sage.dialogue.told"
+                },
+                "do": "tell {speaker} I hear you."
+              },
+              {
+                "when": {
+                  "alone": false,
+                  "chance": 0.05
+                },
+                "do": "say Good day, {any_actor}."
+              },
+              {
+                "when": {
+                  "chance": 0.03
+                },
+                "do": "emote looks around."
+              },
+              {
+                "when": {
+                  "chance": 0.18
+                },
+                "do": "go {any_exit}"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 117,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "Ivy",
+            "description": "Keeps to the edges of rooms."
+          }
+        },
+        "sage.actor": {
+          "version": 1,
+          "data": {}
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 1
+          }
+        },
+        "sage.mind": {
+          "version": 1,
+          "data": {
+            "driver": "scripted",
+            "think_every": 14,
+            "persona": "Keeps to the edges of rooms.",
+            "goals": [],
+            "rules": [
+              {
+                "when": {
+                  "heard": "sage.said",
+                  "text_contains": "good day"
+                },
+                "do": "say Well met, {speaker}."
+              },
+              {
+                "when": {
+                  "heard": "sage.dialogue.told"
+                },
+                "do": "tell {speaker} I hear you."
+              },
+              {
+                "when": {
+                  "alone": false,
+                  "chance": 0.05
+                },
+                "do": "say Good day, {any_actor}."
+              },
+              {
+                "when": {
+                  "chance": 0.03
+                },
+                "do": "emote looks around."
+              },
+              {
+                "when": {
+                  "chance": 0.12
+                },
+                "do": "go {any_exit}"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 118,
+      "components": {
+        "sage.describable": {
+          "version": 1,
+          "data": {
+            "name": "Jo",
+            "description": "Looks around a lot."
+          }
+        },
+        "sage.actor": {
+          "version": 1,
+          "data": {}
+        },
+        "sage.located": {
+          "version": 1,
+          "data": {
+            "within": 2
+          }
+        },
+        "sage.mind": {
+          "version": 1,
+          "data": {
+            "driver": "scripted",
+            "think_every": 15,
+            "persona": "Looks around a lot.",
+            "goals": [],
+            "rules": [
+              {
+                "when": {
+                  "heard": "sage.said",
+                  "text_contains": "good day"
+                },
+                "do": "say Well met, {speaker}."
+              },
+              {
+                "when": {
+                  "heard": "sage.dialogue.told"
+                },
+                "do": "tell {speaker} I hear you."
+              },
+              {
+                "when": {
+                  "alone": false,
+                  "chance": 0.05
+                },
+                "do": "say Good day, {any_actor}."
+              },
+              {
+                "when": {
+                  "chance": 0.03
+                },
+                "do": "emote looks around."
+              },
+              {
+                "when": {
+                  "chance": 0.13999999999999999
+                },
+                "do": "go {any_exit}"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

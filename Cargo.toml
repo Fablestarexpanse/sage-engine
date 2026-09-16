@@ -17,6 +17,7 @@ sage-store = { path = "crates/sage-store" }
 sage-schema = { path = "crates/sage-schema" }
 sage-host = { path = "crates/sage-host" }
 sage-build = { path = "crates/sage-build" }
+sage-agents = { path = "crates/sage-agents" }
 bevy_ecs = { version = "0.19", default-features = false, features = ["std"] }
 rusqlite = { version = "0.40", features = ["bundled"] }
 serde = { version = "1", features = ["derive"] }

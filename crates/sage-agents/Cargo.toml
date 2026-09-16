@@ -11,3 +11,10 @@ repository.workspace = true
 workspace = true
 
 [dependencies]
+bevy_ecs.workspace = true
+sage-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+sage-store.workspace = true

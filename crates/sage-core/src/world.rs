@@ -359,11 +359,12 @@ impl World {
                         found: set.component_version,
                     });
                 }
-                let references =
-                    (entry.parse)(set.data.clone()).map_err(|e| ApplyError::ComponentData {
+                let references = (entry.parse)(set.data.clone()).map_err(|reason| {
+                    ApplyError::ComponentData {
                         component: set.component.clone(),
-                        reason: e.to_string(),
-                    })?;
+                        reason,
+                    }
+                })?;
                 if let Some(target) = references.into_iter().find(|t| !self.contains(*t)) {
                     return Err(ApplyError::DanglingReference {
                         component: set.component.clone(),
