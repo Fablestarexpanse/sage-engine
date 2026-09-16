@@ -29,6 +29,16 @@ impl Component for Place {
     const VERSION: u32 = 1;
 }
 
+/// Marks an entity that can submit commands and perceive occurrences: a player's character
+/// or a synthetic agent. Both use exactly the same path.
+#[derive(bevy_ecs::component::Component, Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct Actor {}
+
+impl Component for Actor {
+    const NAME: &'static str = "sage.actor";
+    const VERSION: u32 = 1;
+}
+
 /// Containment: this entity is inside `within`. Containment never forms a cycle.
 #[derive(bevy_ecs::component::Component, Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Located {

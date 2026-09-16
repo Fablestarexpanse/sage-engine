@@ -6,7 +6,7 @@ use bevy_ecs::world::{EntityRef, EntityWorldMut};
 use serde::{Serialize, de::DeserializeOwned};
 use serde_json::Value;
 
-use crate::components::{Describable, Link, Located, Place};
+use crate::components::{Actor, Describable, Link, Located, Place};
 use crate::world::EntityId;
 
 /// Data attached to an entity. Every component has a stable name and a schema version, because
@@ -56,6 +56,7 @@ impl ComponentRegistry {
         registry.register::<Place>();
         registry.register::<Located>();
         registry.register::<Link>();
+        registry.register::<Actor>();
         registry
     }
 

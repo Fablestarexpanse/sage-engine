@@ -83,6 +83,29 @@ impl EventPayload for ClockAdvanced {
     const VERSION: u32 = 1;
 }
 
+/// Something happened that changes no component: speech, travel, a command being issued.
+/// Occurrences are what actors perceive, and what agent memory is built from.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct Occurred {
+    /// Namespaced kind, e.g. `sage.said`. A plugin's kinds start with its fragment id.
+    pub kind: String,
+    /// Schema version of `data` for this kind. Starts at 1.
+    pub kind_version: u32,
+    /// Who did it, if anyone.
+    pub actor: Option<EntityId>,
+    /// Places where it can be perceived, in a meaningful order (e.g. from, then to).
+    pub places: Vec<EntityId>,
+    /// Entities it is directed at; they perceive it wherever they are.
+    pub targets: Vec<EntityId>,
+    /// Kind-specific details.
+    pub data: Value,
+}
+
+impl EventPayload for Occurred {
+    const TYPE: &'static str = "Occurred";
+    const VERSION: u32 = 1;
+}
+
 /// Every core event.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Event {
@@ -96,6 +119,8 @@ pub enum Event {
     ComponentRemoved(ComponentRemoved),
     /// See [`ClockAdvanced`].
     ClockAdvanced(ClockAdvanced),
+    /// See [`Occurred`].
+    Occurred(Occurred),
 }
 
 /// An event as persisted: type name, schema version and JSON payload.
@@ -142,6 +167,7 @@ impl Event {
             Event::ComponentSet(_) => ComponentSet::TYPE,
             Event::ComponentRemoved(_) => ComponentRemoved::TYPE,
             Event::ClockAdvanced(_) => ClockAdvanced::TYPE,
+            Event::Occurred(_) => Occurred::TYPE,
         }
     }
 
@@ -160,6 +186,7 @@ impl Event {
             Event::ComponentSet(p) => record(p),
             Event::ComponentRemoved(p) => record(p),
             Event::ClockAdvanced(p) => record(p),
+            Event::Occurred(p) => record(p),
         }
     }
 
@@ -191,6 +218,7 @@ impl Event {
             ComponentSet::TYPE => Event::ComponentSet(decode(record, upcasters)?),
             ComponentRemoved::TYPE => Event::ComponentRemoved(decode(record, upcasters)?),
             ClockAdvanced::TYPE => Event::ClockAdvanced(decode(record, upcasters)?),
+            Occurred::TYPE => Event::Occurred(decode(record, upcasters)?),
             other => return Err(DecodeError::UnknownType(other.to_owned())),
         })
     }
@@ -218,6 +246,14 @@ mod tests {
                 component: "sage.place".into(),
             }),
             Event::ClockAdvanced(ClockAdvanced {}),
+            Event::Occurred(Occurred {
+                kind: "sage.said".into(),
+                kind_version: 1,
+                actor: Some(id),
+                places: vec![EntityId(1)],
+                targets: vec![],
+                data: json!({"text": "hi"}),
+            }),
         ]
     }
 

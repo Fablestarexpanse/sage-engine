@@ -4,8 +4,12 @@
 
 use std::sync::Arc;
 
+use crate::command::{CommandReport, CommandResult, Commands, occurrence};
+use crate::components::Actor;
 use crate::event::{ClockAdvanced, Event};
 use crate::journal::{EventLog, Journal, JournalError};
+use crate::lexicon::Line;
+use crate::perception::Delivery;
 use crate::world::{ApplyError, World};
 
 /// Behaviour that runs once per tick. A system reads the world and proposes events; it never
@@ -53,10 +57,15 @@ pub struct StepReport {
     pub suspended: Vec<SystemSuspended>,
     /// Whether an idle-clock checkpoint was recorded.
     pub checkpoint: bool,
+    /// Commands processed this tick, in submission order.
+    pub commands: Vec<CommandReport>,
+    /// What each actor perceived or was told this tick, in order.
+    pub deliveries: Vec<Delivery>,
 }
 
 /// Runs systems tick by tick.
 pub struct Scheduler {
+    commands: Commands,
     systems: Vec<(Box<dyn System>, bool)>,
     tick: u64,
     checkpoint_every: u64,
@@ -69,10 +78,22 @@ impl Scheduler {
     pub fn new<L: EventLog>(journal: &Journal<L>, checkpoint_every: u64) -> Scheduler {
         assert!(checkpoint_every > 0, "checkpoint_every must be at least 1");
         Scheduler {
+            commands: Commands::with_core(),
             systems: Vec::new(),
             tick: journal.world().tick(),
             checkpoint_every,
         }
+    }
+
+    /// The command handlers and queue. Commands submitted here run at the start of the next
+    /// step, before any system.
+    pub fn commands_mut(&mut self) -> &mut Commands {
+        &mut self.commands
+    }
+
+    /// Queues a command from `actor` for the next step.
+    pub fn submit(&mut self, actor: crate::EntityId, text: impl Into<String>) {
+        self.commands.submit(actor, text);
     }
 
     /// Adds a system after the ones already added.
@@ -107,6 +128,9 @@ impl Scheduler {
             tick,
             ..StepReport::default()
         };
+        for (actor, text) in self.commands.take_queue() {
+            self.run_command(journal, tick, actor, text, &mut report)?;
+        }
         for (system, suspended) in &mut self.systems {
             if *suspended {
                 continue;
@@ -126,7 +150,12 @@ impl Scheduler {
                 continue;
             }
             match journal.commit(tick, &events) {
-                Ok(_) => report.committed.push(system.name()),
+                Ok(_) => {
+                    report.committed.push(system.name());
+                    report
+                        .deliveries
+                        .extend(journal.world().deliveries_for(tick, &events));
+                }
                 Err(JournalError::Refused { index, error }) => report.refused.push(SystemRefused {
                     system: system.name(),
                     index,
@@ -140,6 +169,123 @@ impl Scheduler {
             report.checkpoint = true;
         }
         Ok(report)
+    }
+
+    fn run_command<L: EventLog>(
+        &mut self,
+        journal: &mut Journal<L>,
+        tick: u64,
+        actor: crate::EntityId,
+        text: String,
+        report: &mut StepReport,
+    ) -> Result<(), JournalError> {
+        let text = text.trim().to_owned();
+        let world = journal.world_handle();
+        let mut result = if text.is_empty() {
+            Some(CommandResult::Empty)
+        } else if !world.contains(actor) || world.get::<Actor>(actor).is_none() {
+            Some(CommandResult::NotAnActor)
+        } else {
+            None
+        };
+        if let Some(result) = result.take() {
+            report.commands.push(CommandReport {
+                actor,
+                text,
+                result,
+            });
+            return Ok(());
+        }
+
+        let logged = occurrence(
+            "sage.command",
+            actor,
+            Vec::new(),
+            Vec::new(),
+            serde_json::json!({ "text": text }),
+        );
+        let failed = || vec![Line::new("sage.command.failed")];
+        let (mut result, mut events, mut output) = match self.commands.resolve(world, actor, &text)
+        {
+            None => {
+                let verb = text.split_whitespace().next().unwrap_or_default();
+                (
+                    CommandResult::UnknownVerb,
+                    vec![logged.clone()],
+                    vec![Line::new("sage.command.unknown").with("verb", verb)],
+                )
+            }
+            Some((index, verb, args)) => {
+                let (handler, suspended) = self.commands.handler(index);
+                let name = handler.name();
+                if *suspended {
+                    (
+                        CommandResult::HandlerFailed {
+                            handler: name,
+                            reason: "handler is suspended".into(),
+                        },
+                        vec![logged.clone()],
+                        failed(),
+                    )
+                } else {
+                    match handler.handle(world, actor, &verb, &args, tick) {
+                        Err(reason) => {
+                            *suspended = true;
+                            (
+                                CommandResult::HandlerFailed {
+                                    handler: name,
+                                    reason,
+                                },
+                                vec![logged.clone()],
+                                failed(),
+                            )
+                        }
+                        Ok(outcome) => {
+                            let mut events = vec![logged.clone()];
+                            events.extend(outcome.events);
+                            (
+                                CommandResult::Handled { handler: name },
+                                events,
+                                outcome.output,
+                            )
+                        }
+                    }
+                }
+            }
+        };
+
+        match journal.commit(tick, &events) {
+            Ok(_) => {}
+            Err(JournalError::Refused { error, .. }) if events.len() > 1 => {
+                let handler = match result {
+                    CommandResult::Handled { handler } => handler,
+                    _ => unreachable!("only handled commands carry extra events"),
+                };
+                events = vec![logged];
+                journal.commit(tick, &events)?;
+                result = CommandResult::Refused { handler, error };
+                output = failed();
+            }
+            Err(other) => return Err(other),
+        }
+
+        report
+            .deliveries
+            .extend(journal.world().deliveries_for(tick, &events));
+        report
+            .deliveries
+            .extend(output.into_iter().map(|line| Delivery {
+                to: actor,
+                tick,
+                line,
+                occurred: None,
+            }));
+        report.commands.push(CommandReport {
+            actor,
+            text,
+            result,
+        });
+        Ok(())
     }
 
     /// Records the scheduler's current tick in the log if the log is behind it, so a clean

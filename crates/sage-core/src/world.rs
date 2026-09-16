@@ -37,7 +37,7 @@ pub struct EntityId(pub u64);
 pub const SNAPSHOT_SCHEMA_VERSION: u32 = 1;
 
 /// Why an event cannot be applied. Nothing is written when this happens.
-#[derive(Debug, Error, PartialEq)]
+#[derive(Clone, Debug, Error, PartialEq)]
 pub enum ApplyError {
     /// `EntityCreated` for an id that exists or once existed.
     #[error("entity {0:?} already exists or was used before")]
@@ -91,6 +91,14 @@ pub enum ApplyError {
         id: EntityId,
         /// Intended container.
         within: EntityId,
+    },
+    /// An occurrence is malformed or points at missing entities.
+    #[error("occurrence `{kind}` is invalid: {reason}")]
+    BadOccurrence {
+        /// The occurrence kind as given.
+        kind: String,
+        /// What is wrong.
+        reason: String,
     },
     /// A batch's tick is earlier than the world's.
     #[error("tick {tick} is earlier than the world's tick {current}")]
@@ -396,6 +404,7 @@ impl World {
                 });
             }
             Event::ClockAdvanced(_) => {}
+            Event::Occurred(occurred) => self.check_occurrence(occurred)?,
         }
         Ok(())
     }
@@ -432,6 +441,40 @@ impl World {
         self.last_seq = undo.last_seq;
         self.tick = undo.tick;
         self.next_entity_id = undo.next_entity_id;
+    }
+
+    fn check_occurrence(&self, occurred: &crate::event::Occurred) -> Result<(), ApplyError> {
+        let bad = |reason: String| ApplyError::BadOccurrence {
+            kind: occurred.kind.clone(),
+            reason,
+        };
+        let segments: Vec<&str> = occurred.kind.split('.').collect();
+        let well_formed = occurred.kind.len() <= 128
+            && segments.len() >= 2
+            && segments.iter().all(|s| {
+                !s.is_empty()
+                    && s.bytes()
+                        .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
+            });
+        if !well_formed {
+            return Err(bad(
+                "kind must be at least two dot-separated lowercase segments".into(),
+            ));
+        }
+        if occurred.kind_version == 0 {
+            return Err(bad("kind_version must be at least 1".into()));
+        }
+        for id in occurred
+            .actor
+            .iter()
+            .chain(&occurred.places)
+            .chain(&occurred.targets)
+        {
+            if !self.contains(*id) {
+                return Err(bad(format!("refers to missing entity {id:?}")));
+            }
+        }
+        Ok(())
     }
 
     fn entity(&self, id: EntityId) -> Result<Entity, ApplyError> {

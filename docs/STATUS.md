@@ -1,4 +1,4 @@
-NEXT: M2 is closed (ADR 0011). Next is M3, synthetic agents. Its plan is not written or agreed yet. Start by agreeing the slice order with the owner. Known inputs: blueprint §C, the ADR 0004 M3 gate (ten scripted agents offline for 1 h, which needs a fast-mode equivalent per the owner's no-long-waits preference; the LLM same-command-interface test; the zero-AI demo in CI), the need for a command interface and perception, and `sage.dialogue` as the first plugin M3 builds.
+NEXT: M3 S1 part 1 (commands, perception, lexicon; ADR 0012) is committed. Part 2 is plugin command handlers: a `commands` export in WIT, the host running them, a `sage check` rule that `provides.commands` equals what the plugin handles, plugin lexicon defaults, and the `sage.dialogue` plugin with `tell`. Then S2: Mind component, scripted driver, agent runner.
 
 # Status
 
@@ -7,7 +7,7 @@ NEXT: M2 is closed (ADR 0011). Next is M3, synthetic agents. Its plan is not wri
 | M0 Scaffold | done: workspace, CI (fmt, clippy, test, denylist), ADRs 0001–0004 |
 | M1 World model | **closed** 2026-09-16 (ADR 0005-0008; 24 h wall-clock run waived, fast-mode equivalent passed) |
 | M2 Plugin seal | **closed** 2026-09-16 (ADR 0009-0011; N-1 WIT adapter test deferred by owner ruling) |
-| M3 Agents | next |
+| M3 Agents | in progress: S1 part 1 done (commands, perception, lexicon; ADR 0012) |
 | M4 Client + Foundry MVP | blocked on M3 |
 | M5 Workshop + social | blocked on M4 |
 | M6 Marketplace | blocked on M5 |
@@ -43,6 +43,8 @@ NEXT: M2 is closed (ADR 0011). Next is M3, synthetic agents. Its plan is not wri
 - `sage check` passes a good plugin and fails, naming the problem, on an undeclared import, an unused or unserved capability, a name mismatch, a runaway plugin, a wrong engine, or a bad or missing manifest (`crates/sage-server/tests/check.rs`)
 
 - `sage run --plugin` refuses a plugin that fails `sage check` before touching the world file; the kill -9 restart gate passes with the `sage.wander` plugin driving the world
+
+- Commands and perception: core verbs, who perceives what, lexicon rendering, refusal and suspension paths, command logs replay (`crates/sage-core/src/command.rs` tests)
 
 ## Open questions for the owner (not blocking M1)
 
