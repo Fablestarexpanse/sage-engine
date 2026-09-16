@@ -1,8 +1,8 @@
 [workspace]
 resolver = "3"
 members = ["crates/*"]
-# Built to wasm with their own workspaces, by sage-fixtures.
-exclude = ["crates/sage-fixtures/plugins", "crates/sage-schema/wasm"]
+# Built to wasm with their own workspaces, by sage-build.
+exclude = ["crates/sage-build/test-plugins", "crates/sage-schema/wasm", "plugins"]
 
 [workspace.package]
 version = "0.0.1"
@@ -16,7 +16,7 @@ sage-core = { path = "crates/sage-core" }
 sage-store = { path = "crates/sage-store" }
 sage-schema = { path = "crates/sage-schema" }
 sage-host = { path = "crates/sage-host" }
-sage-fixtures = { path = "crates/sage-fixtures" }
+sage-build = { path = "crates/sage-build" }
 bevy_ecs = { version = "0.19", default-features = false, features = ["std"] }
 rusqlite = { version = "0.40", features = ["bundled"] }
 serde = { version = "1", features = ["derive"] }

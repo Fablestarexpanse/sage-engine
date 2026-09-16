@@ -25,6 +25,6 @@ serde_json.workspace = true
 ctrlc = "3.5"
 
 [dev-dependencies]
-sage-fixtures.workspace = true
+sage-build.workspace = true
 rusqlite.workspace = true
 tempfile.workspace = true

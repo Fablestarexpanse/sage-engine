@@ -21,7 +21,7 @@ struct Wasm {
 impl Wasm {
     fn new() -> Wasm {
         let engine = Engine::new(&Config::new()).unwrap();
-        let component = Component::new(&engine, sage_fixtures::schema_validator()).unwrap();
+        let component = Component::new(&engine, sage_build::schema_validator()).unwrap();
         let linker = Linker::new(&engine);
         let mut store = Store::new(&engine, ());
         let validator = bindings::Validator::instantiate(&mut store, &component, &linker)

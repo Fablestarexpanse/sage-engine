@@ -8,7 +8,7 @@ Fragments are shared through [Fragment Foundry](https://fragmentfoundry.com), wh
 
 ## Status
 
-M1 (world model) in progress. The event log, snapshots, space graph, world clock and run loop exist. See [docs/STATUS.md](docs/STATUS.md).
+M1 (world model) and M2 (plugin seal) are done. The event log, space graph, world clock and run loop exist, along with sandboxed WebAssembly plugins, fragment manifests and `sage check`. Next is M3, synthetic agents. See [docs/STATUS.md](docs/STATUS.md).
 
 | Milestone | Scope |
 |---|---|
@@ -38,11 +38,13 @@ scripts/check-denylist.sh
 ## Run the demo world
 
 ```bash
-cargo run --release -p sage-server -- run demo.db --seed worlds/demo/seed.json --wander-every 20
+cargo run -p sage-build -- plugins
+cargo run --release -p sage-server -- check target/plugins/sage.wander
+cargo run --release -p sage-server -- run demo.db --seed worlds/demo/seed.json --plugin target/plugins/sage.wander
 cargo run --release -p sage-server -- inspect demo.db
 ```
 
-`sage run` ticks at 4 Hz until Ctrl-C. There is no network client yet; that arrives at M4.
+`sage-build plugins` compiles the first-party plugins in `plugins/` to WebAssembly components. `sage run` loads a plugin only if `sage check` passes, grants it exactly the interfaces its manifest declares, and ticks at 4 Hz until Ctrl-C. There is no network client yet; that arrives at M4.
 
 ## Previous version
 

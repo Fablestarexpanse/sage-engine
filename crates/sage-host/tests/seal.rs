@@ -1,5 +1,5 @@
 //! M2 gate tests for the plugin seal and sandbox limits, run against real plugin components
-//! built from `crates/sage-fixtures/plugins`.
+//! built from `crates/sage-build/test-plugins`.
 
 use std::sync::Arc;
 
@@ -14,7 +14,7 @@ const ENTITIES: &str = "sage:core/entities@0.1.0";
 const SPACE: &str = "sage:core/space@0.1.0";
 
 fn component(name: &str) -> Vec<u8> {
-    sage_fixtures::plugin(name)
+    sage_build::test_plugin(name)
 }
 
 fn set<C: Component>(id: u64, c: &C) -> Event {

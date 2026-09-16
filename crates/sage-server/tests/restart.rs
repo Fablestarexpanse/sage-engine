@@ -20,6 +20,7 @@ fn sage() -> Command {
 }
 
 fn run_args(world: &Path) -> Vec<String> {
+    let wander = sage_build::first_party_plugin("sage.wander");
     [
         "run",
         world.to_str().unwrap(),
@@ -27,8 +28,8 @@ fn run_args(world: &Path) -> Vec<String> {
         "0",
         "--until-tick",
         UNTIL,
-        "--wander-every",
-        "50",
+        "--plugin",
+        wander.to_str().unwrap(),
         "--checkpoint-every",
         "100",
         "--snapshot-every",
@@ -161,6 +162,46 @@ fn seed_is_refused_on_a_world_with_history() {
         String::from_utf8_lossy(&second.stderr).contains("already has a history"),
         "{}",
         String::from_utf8_lossy(&second.stderr)
+    );
+}
+
+#[test]
+fn run_refuses_a_plugin_that_fails_sage_check_before_touching_the_world() {
+    let dir = tempfile::tempdir().unwrap();
+    let fragment = dir.path().join("bad-mover");
+    std::fs::create_dir(&fragment).unwrap();
+    // The mover imports entities and space but only declares entities.
+    std::fs::write(
+        fragment.join("fragment.yaml"),
+        "schema: sage.fragment/1\nid: fixture.mover\nkind: plugin\nversion: 0.1.0\n\
+         engine: \"^0.0.1\"\ntitle: Mover\ncreator:\n  handle: fixture\n\
+         license: Apache-2.0\ncapabilities:\n  - sage:core/entities@0.1.0\n",
+    )
+    .unwrap();
+    std::fs::write(
+        fragment.join("plugin.wasm"),
+        sage_build::test_plugin("mover"),
+    )
+    .unwrap();
+
+    let world = dir.path().join("w.db");
+    let output = sage()
+        .args(["run", world.to_str().unwrap(), "--seed"])
+        .arg(seed())
+        .args(["--hz", "0", "--until-tick", "5", "--plugin"])
+        .arg(&fragment)
+        .output()
+        .unwrap();
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(!output.status.success());
+    assert!(stderr.contains("refused"), "{stderr}");
+    assert!(
+        stderr.contains("imports `sage:core/space@0.1.0` but does not declare it"),
+        "{stderr}"
+    );
+    assert!(
+        !world.exists(),
+        "a refused plugin must not create or seed the world"
     );
 }
 

@@ -18,7 +18,7 @@ pub struct RunOptions {
     pub until_tick: Option<u64>,
     pub snapshot_every: u64,
     pub checkpoint_every: u64,
-    pub wander_every: Option<u64>,
+    pub plugins: Vec<PathBuf>,
     pub report_every: u64,
 }
 
@@ -65,7 +65,7 @@ fn parse_run(mut args: impl Iterator<Item = String>) -> Result<RunOptions, Strin
         until_tick: None,
         snapshot_every: 2400,
         checkpoint_every: 240,
-        wander_every: None,
+        plugins: Vec::new(),
         report_every: 240,
     };
     while let Some(arg) = args.next() {
@@ -82,7 +82,7 @@ fn parse_run(mut args: impl Iterator<Item = String>) -> Result<RunOptions, Strin
             "--until-tick" => options.until_tick = Some(number(&arg, &value()?)?),
             "--snapshot-every" => options.snapshot_every = positive(&arg, &value()?)?,
             "--checkpoint-every" => options.checkpoint_every = positive(&arg, &value()?)?,
-            "--wander-every" => options.wander_every = Some(positive(&arg, &value()?)?),
+            "--plugin" => options.plugins.push(value()?.into()),
             "--report-every" => options.report_every = positive(&arg, &value()?)?,
             _ => return Err(format!("unknown option `{arg}`")),
         }
@@ -120,13 +120,19 @@ mod tests {
         let options = run(&["run", "w.db"]).unwrap();
         assert_eq!(options.world, PathBuf::from("w.db"));
         assert_eq!((options.hz, options.snapshot_every), (4, 2400));
-        assert_eq!(options.wander_every, None);
+        assert!(options.plugins.is_empty());
     }
 
     #[test]
     fn run_flags_in_any_order() {
         let options = run(&["run", "--hz", "0", "w.db", "--until-tick", "50"]).unwrap();
         assert_eq!((options.hz, options.until_tick), (0, Some(50)));
+    }
+
+    #[test]
+    fn plugins_keep_their_order() {
+        let options = run(&["run", "w.db", "--plugin", "b", "--plugin", "a"]).unwrap();
+        assert_eq!(options.plugins, [PathBuf::from("b"), PathBuf::from("a")]);
     }
 
     #[test]

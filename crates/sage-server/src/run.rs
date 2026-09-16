@@ -8,10 +8,10 @@ use std::time::{Duration, Instant};
 use sage_core::{
     ComponentRegistry, Journal, Scheduler, SnapshotEntity, Upcasters, entities_to_events,
 };
+use sage_host::{Limits, PluginHost, PluginSystem};
 use sage_store::SqliteLog;
 
 use crate::args::RunOptions;
-use crate::wander::Wander;
 
 const SEED_SCHEMA: &str = "sage.seed/1";
 
@@ -39,6 +39,16 @@ fn read_seed(path: &Path) -> Result<Vec<SnapshotEntity>, String> {
 }
 
 pub fn run(options: &RunOptions) -> Result<(), String> {
+    // Plugins are checked and loaded before the world file is touched, so a refused plugin
+    // leaves no trace.
+    let mut plugins = Vec::new();
+    if !options.plugins.is_empty() {
+        let host = PluginHost::new().map_err(|e| e.to_string())?;
+        for dir in &options.plugins {
+            plugins.push(load_checked_plugin(&host, dir)?);
+        }
+    }
+
     let mut journal = open(&options.world)?;
 
     if let Some(seed) = &options.seed {
@@ -56,8 +66,8 @@ pub fn run(options: &RunOptions) -> Result<(), String> {
     }
 
     let mut scheduler = Scheduler::new(&journal, options.checkpoint_every);
-    if let Some(every) = options.wander_every {
-        scheduler.add(Wander { every });
+    for plugin in plugins {
+        scheduler.add(plugin);
     }
 
     let stop = Arc::new(AtomicBool::new(false));
@@ -135,6 +145,44 @@ pub fn run(options: &RunOptions) -> Result<(), String> {
         refused_total
     );
     Ok(())
+}
+
+/// Loads a plugin only if `sage check` passes on its fragment directory, granting exactly the
+/// capabilities its manifest declares.
+fn load_checked_plugin(host: &PluginHost, dir: &Path) -> Result<PluginSystem, String> {
+    let report = crate::check::check(dir);
+    if !report.ok {
+        return Err(format!(
+            "plugin {} refused; sage check reports: {}",
+            dir.display(),
+            serde_json::to_string(&report).expect("reports serialize")
+        ));
+    }
+    let text = std::fs::read_to_string(dir.join("fragment.yaml")).map_err(|e| e.to_string())?;
+    let manifest = sage_schema::validate_manifest(&text)
+        .manifest
+        .expect("sage check passed, so the manifest is valid");
+    let grants: Vec<&str> = manifest
+        .capabilities
+        .iter()
+        .flatten()
+        .map(String::as_str)
+        .collect();
+    let wasm = std::fs::read(dir.join("plugin.wasm")).map_err(|e| e.to_string())?;
+    let plugin = host
+        .load(&wasm, &grants, Limits::default())
+        .map_err(|e| format!("plugin {}: {e}", dir.display()))?;
+    println!(
+        "plugin id={} version={} grants={}",
+        manifest.id.as_str(),
+        manifest.version,
+        if grants.is_empty() {
+            "none".to_owned()
+        } else {
+            grants.join(",")
+        }
+    );
+    Ok(plugin)
 }
 
 pub fn inspect(path: &Path) -> Result<(), String> {

@@ -1,0 +1,16 @@
+schema: sage.fragment/1
+id: sage.wander
+kind: plugin
+version: 0.1.0
+engine: "^0.0.1"
+title: Wander
+description: |
+  Every 20 ticks, moves each entity that is inside a place one step along the first link
+  leaving that place (links sorted by label). Gives a world steady, deterministic motion
+  for testing.
+creator:
+  handle: sage
+license: Apache-2.0
+capabilities:
+  - sage:core/entities@0.1.0
+  - sage:core/space@0.1.0

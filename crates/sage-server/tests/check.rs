@@ -36,7 +36,11 @@ fn check(manifest: Option<&str>, plugin: Option<&str>) -> (bool, Value) {
         std::fs::write(dir.path().join("fragment.yaml"), text).unwrap();
     }
     if let Some(name) = plugin {
-        std::fs::write(dir.path().join("plugin.wasm"), sage_fixtures::plugin(name)).unwrap();
+        std::fs::write(
+            dir.path().join("plugin.wasm"),
+            sage_build::test_plugin(name),
+        )
+        .unwrap();
     }
     run_check(dir.path())
 }

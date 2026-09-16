@@ -1,4 +1,4 @@
-NEXT: M2 slice 2 (manifest v1, WASM validator, `sage check`; ADR 0010) is committed and waiting for owner review. Slice 3: `sage run --plugin <fragment-dir>` (grants from the manifest, after `sage check` passes), port `harness.wander` to a first-party plugin in `plugins/` and delete the harness, then `sage.dialogue`. After slice 3, M2's gate is met except the deferred N-1 adapter test.
+NEXT: M2 is closed (ADR 0011). Next is M3, synthetic agents. Its plan is not written or agreed yet. Start by agreeing the slice order with the owner. Known inputs: blueprint §C, the ADR 0004 M3 gate (ten scripted agents offline for 1 h, which needs a fast-mode equivalent per the owner's no-long-waits preference; the LLM same-command-interface test; the zero-AI demo in CI), the need for a command interface and perception, and `sage.dialogue` as the first plugin M3 builds.
 
 # Status
 
@@ -6,8 +6,8 @@ NEXT: M2 slice 2 (manifest v1, WASM validator, `sage check`; ADR 0010) is commit
 |---|---|
 | M0 Scaffold | done: workspace, CI (fmt, clippy, test, denylist), ADRs 0001–0004 |
 | M1 World model | **closed** 2026-09-16 (ADR 0005-0008; 24 h wall-clock run waived, fast-mode equivalent passed) |
-| M2 Plugin seal | in progress: slices 1-2 done (seal and limits, manifest v1, WASM validator, `sage check`; ADR 0009-0010) |
-| M3 Agents | blocked on M2 |
+| M2 Plugin seal | **closed** 2026-09-16 (ADR 0009-0011; N-1 WIT adapter test deferred by owner ruling) |
+| M3 Agents | next |
 | M4 Client + Foundry MVP | blocked on M3 |
 | M5 Workshop + social | blocked on M4 |
 | M6 Marketplace | blocked on M5 |
@@ -41,6 +41,8 @@ NEXT: M2 slice 2 (manifest v1, WASM validator, `sage check`; ADR 0010) is commit
 - Manifest validation gives byte-identical reports native and in WASM across the 21-file corpus plus edge cases (`crates/sage-host/tests/schema_wasm.rs`)
 - Every corpus manifest produces exactly its expected problem paths (`crates/sage-schema/tests/corpus.rs`)
 - `sage check` passes a good plugin and fails, naming the problem, on an undeclared import, an unused or unserved capability, a name mismatch, a runaway plugin, a wrong engine, or a bad or missing manifest (`crates/sage-server/tests/check.rs`)
+
+- `sage run --plugin` refuses a plugin that fails `sage check` before touching the world file; the kill -9 restart gate passes with the `sage.wander` plugin driving the world
 
 ## Open questions for the owner (not blocking M1)
 

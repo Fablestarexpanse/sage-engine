@@ -24,7 +24,7 @@ pub const ENGINE_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub struct Report {
     fragment: Option<String>,
     engine: &'static str,
-    ok: bool,
+    pub ok: bool,
     checks: Vec<Check>,
 }
 

@@ -1,5 +1,11 @@
-# First-party code fragments
+# First-party plugins
 
-Each plugin is a WASM component with its own `fragment.yaml`. First-party plugins get no native escape hatch: they run in the same sandbox and follow the same manifest rules as community plugins.
+Each directory is a code fragment named by its id, holding a `fragment.yaml` and the Rust crate
+that builds its `plugin.wasm`. The crate for `creator.slug` is named `creator-slug`. First-party
+plugins get no native escape hatch: same sandbox, same manifest rules, same `sage check` as
+community plugins.
 
-Empty until M2. The first plugin is `sage.dialogue`.
+```bash
+cargo run -p sage-build -- plugins
+target/debug/sage check target/plugins/sage.wander
+```

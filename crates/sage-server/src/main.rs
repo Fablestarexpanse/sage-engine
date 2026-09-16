@@ -8,7 +8,6 @@
 mod args;
 mod check;
 mod run;
-mod wander;
 
 use std::process::ExitCode;
 
@@ -23,7 +22,7 @@ usage:
       --until-tick <n>           stop cleanly once this tick has run
       --snapshot-every <ticks>   save a snapshot this often (default 2400)
       --checkpoint-every <ticks> record idle clock time this often (default 240)
-      --wander-every <ticks>     M1 test harness: move located entities along links (default off)
+      --plugin <fragment-dir>    load a plugin after `sage check` passes; repeatable, runs in order
       --report-every <ticks>     print a status line this often (default 240)
   sage inspect <world.db>
   sage check <fragment-dir>       validate fragment.yaml and, for plugins, plugin.wasm";

@@ -1,0 +1,18 @@
+# First-party plugins, built to wasm32-unknown-unknown by `sage-build plugins`.
+# Its own workspace so plugin dependencies stay out of the engine build.
+[workspace]
+resolver = "3"
+members = ["sage.wander"]
+
+[workspace.package]
+edition = "2024"
+publish = false
+license = "Apache-2.0"
+
+[workspace.dependencies]
+wit-bindgen = "0.62"
+serde_json = "1"
+
+[profile.release]
+opt-level = "s"
+debug = false
