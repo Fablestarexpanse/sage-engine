@@ -1,12 +1,12 @@
-NEXT: The 24 h gate run is running: PID 30948, started 2026-09-16 11:29:34 local, due around 2026-09-17 11:30. Binary `sage-f27e95e.exe` (commit f27e95e). Its files are in `F:\Cursor Projects\SAGE-runs\m1-24h\` (db, stdout.log, stderr.log). When it exits, run `sage inspect` on `m1-24h.db`, check the pass criteria below, and record the result in DECISIONS.md. M2 must not start before then. Paged replay is done (commit after f27e95e). The running binary predates it, which doesn't matter: inspect the result with a current build.
+NEXT: M1 is closed (ADR 0008). Next is M2, the plugin seal. Its plan is not written or agreed yet. Start by agreeing the slice order with the owner.
 
 # Status
 
 | Milestone | State |
 |---|---|
 | M0 Scaffold | done: workspace, CI (fmt, clippy, test, denylist), ADRs 0001–0004 |
-| M1 World model | in progress: slices 1-3 done (event log, snapshots, space graph, clock, run loop, restart gate; ADR 0005-0007); only the 24 h run remains |
-| M2 Plugin seal | blocked on M1 |
+| M1 World model | **closed** 2026-09-16 (ADR 0005-0008; 24 h wall-clock run waived, fast-mode equivalent passed) |
+| M2 Plugin seal | next |
 | M3 Agents | blocked on M2 |
 | M4 Client + Foundry MVP | blocked on M3 |
 | M5 Workshop + social | blocked on M4 |
@@ -15,7 +15,6 @@ NEXT: The 24 h gate run is running: PID 30948, started 2026-09-16 11:29:34 local
 ## Gate tests not yet written (they arrive with the code they test)
 
 - An event log from before a *real* schema change replays through its upcaster (M1). The mechanism is tested; this test ships with the first real change.
-- A 4-place, 100-entity world runs for 24 h (M1, manual run; see below)
 - A plugin importing an undeclared WIT interface fails at boot (M2)
 - Manifest round-trip gives identical results native and in WASM (M2)
 - The PNG chunk parser is fuzzed (whenever the parser exists)
@@ -34,16 +33,7 @@ NEXT: The 24 h gate run is running: PID 30948, started 2026-09-16 11:29:34 local
 
 - A demo world hard-killed mid-run and resumed ends byte-identical to an uninterrupted run (`crates/sage-server/tests/restart.rs`)
 - `--seed` is refused on a world that already has a history
-
-## 24 h gate run
-
-```bash
-cargo build --release -p sage-server
-target/release/sage run m1-24h.db --seed worlds/demo/seed.json --wander-every 40 --until-tick 345600
-target/release/sage inspect m1-24h.db
-```
-
-345,600 ticks at 4 Hz is 24 h. Pass criteria: the run exits 0 with `refused=0`, and `inspect` prints `"snapshot_matches_replay":true`, `"tick":345600` and `"entities":108`.
+- 24 h of world time (345,600 ticks, 864,324 events) in fast mode: `refused=0`, snapshot matches replay, 16 MB peak during replay (ADR 0008)
 
 ## Open questions for the owner (not blocking M1)
 
