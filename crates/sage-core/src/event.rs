@@ -72,6 +72,17 @@ impl EventPayload for ComponentRemoved {
     const VERSION: u32 = 1;
 }
 
+/// Time passed with nothing else happening. The scheduler records one every few ticks while a
+/// world is idle, so a restart loses at most that many ticks of world time. The tick itself is
+/// stored with the event, so the payload is empty.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct ClockAdvanced {}
+
+impl EventPayload for ClockAdvanced {
+    const TYPE: &'static str = "ClockAdvanced";
+    const VERSION: u32 = 1;
+}
+
 /// Every core event.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Event {
@@ -83,6 +94,8 @@ pub enum Event {
     ComponentSet(ComponentSet),
     /// See [`ComponentRemoved`].
     ComponentRemoved(ComponentRemoved),
+    /// See [`ClockAdvanced`].
+    ClockAdvanced(ClockAdvanced),
 }
 
 /// An event as persisted: type name, schema version and JSON payload.
@@ -128,6 +141,7 @@ impl Event {
             Event::EntityDestroyed(_) => EntityDestroyed::TYPE,
             Event::ComponentSet(_) => ComponentSet::TYPE,
             Event::ComponentRemoved(_) => ComponentRemoved::TYPE,
+            Event::ClockAdvanced(_) => ClockAdvanced::TYPE,
         }
     }
 
@@ -145,6 +159,7 @@ impl Event {
             Event::EntityDestroyed(p) => record(p),
             Event::ComponentSet(p) => record(p),
             Event::ComponentRemoved(p) => record(p),
+            Event::ClockAdvanced(p) => record(p),
         }
     }
 
@@ -175,6 +190,7 @@ impl Event {
             EntityDestroyed::TYPE => Event::EntityDestroyed(decode(record, upcasters)?),
             ComponentSet::TYPE => Event::ComponentSet(decode(record, upcasters)?),
             ComponentRemoved::TYPE => Event::ComponentRemoved(decode(record, upcasters)?),
+            ClockAdvanced::TYPE => Event::ClockAdvanced(decode(record, upcasters)?),
             other => return Err(DecodeError::UnknownType(other.to_owned())),
         })
     }
@@ -201,6 +217,7 @@ mod tests {
                 id,
                 component: "sage.place".into(),
             }),
+            Event::ClockAdvanced(ClockAdvanced {}),
         ]
     }
 

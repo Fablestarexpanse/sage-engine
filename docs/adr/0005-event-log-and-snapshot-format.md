@@ -1,6 +1,6 @@
 # 0005 — Event log, snapshot format and the single mutation path
 
-- **Status:** accepted
+- **Status:** accepted; commit order superseded by 0006
 - **Date:** 2026-09-16
 - **Supersedes:** none
 

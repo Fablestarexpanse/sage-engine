@@ -1,4 +1,5 @@
-//! The journal: the only path that changes a world. Check, append, then apply.
+//! The journal: the only path that changes a world. Apply, append, and undo if the append
+//! fails.
 
 use thiserror::Error;
 
@@ -159,12 +160,11 @@ impl<L: EventLog> Journal<L> {
                 }
             })?;
             world
-                .check_batch(std::slice::from_ref(&event))
+                .apply_batch(stored.seq, stored.tick, std::slice::from_ref(&event))
                 .map_err(|(_, error)| JournalError::Corrupt {
                     seq: stored.seq,
                     error,
                 })?;
-            world.apply_checked(stored.seq, stored.tick, &event);
         }
         Ok(Journal {
             log,
@@ -188,21 +188,22 @@ impl<L: EventLog> Journal<L> {
         &self.log
     }
 
-    /// Checks `events` against the world, appends them atomically, then applies them. If the
-    /// check or the append fails, neither the log nor the world changes. Returns the sequence
-    /// number of the last event.
+    /// Applies `events` to the world, appends them to the log in one transaction, and undoes
+    /// the world change if the append fails. Either both change or neither does. Returns the
+    /// sequence number of the last event; an empty batch changes nothing.
     pub fn commit(&mut self, tick: u64, events: &[Event]) -> Result<u64, JournalError> {
-        self.world
-            .check_batch(events)
-            .map_err(|(index, error)| JournalError::Refused { index, error })?;
+        if events.is_empty() {
+            return Ok(self.world.last_seq());
+        }
         let first_seq = self.world.last_seq() + 1;
+        let undo = self
+            .world
+            .apply_batch(first_seq, tick, events)
+            .map_err(|(index, error)| JournalError::Refused { index, error })?;
         let records: Vec<EventRecord> = events.iter().map(Event::to_record).collect();
-        self.log
-            .append(first_seq, tick, &records)
-            .map_err(log_error)?;
-        for (offset, event) in events.iter().enumerate() {
-            self.world
-                .apply_checked(first_seq + offset as u64, tick, event);
+        if let Err(error) = self.log.append(first_seq, tick, &records) {
+            self.world.undo(undo);
+            return Err(log_error(error));
         }
         Ok(self.world.last_seq())
     }
@@ -225,4 +226,131 @@ impl<L: EventLog> Journal<L> {
 
 fn log_error<E: std::error::Error + Send + Sync + 'static>(e: E) -> JournalError {
     JournalError::Log(Box::new(e))
+}
+
+#[cfg(test)]
+pub(crate) mod test_log {
+    use std::fmt;
+
+    use super::*;
+
+    /// In-memory log for core tests. `fail_appends` makes every append fail.
+    #[derive(Default)]
+    pub(crate) struct MemoryLog {
+        pub(crate) events: Vec<StoredEvent>,
+        pub(crate) snapshots: Vec<StoredSnapshot>,
+        pub(crate) fail_appends: bool,
+    }
+
+    #[derive(Debug)]
+    pub(crate) struct Refused;
+
+    impl fmt::Display for Refused {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            f.write_str("append refused")
+        }
+    }
+
+    impl std::error::Error for Refused {}
+
+    impl EventLog for MemoryLog {
+        type Error = Refused;
+
+        fn append(
+            &mut self,
+            first_seq: u64,
+            tick: u64,
+            events: &[EventRecord],
+        ) -> Result<(), Refused> {
+            if self.fail_appends || first_seq != self.events.len() as u64 + 1 {
+                return Err(Refused);
+            }
+            for (offset, record) in events.iter().enumerate() {
+                self.events.push(StoredEvent {
+                    seq: first_seq + offset as u64,
+                    tick,
+                    record: record.clone(),
+                });
+            }
+            Ok(())
+        }
+
+        fn read_from(&self, from: u64) -> Result<Vec<StoredEvent>, Refused> {
+            Ok(self
+                .events
+                .iter()
+                .filter(|e| e.seq >= from)
+                .cloned()
+                .collect())
+        }
+
+        fn save_snapshot(&mut self, snapshot: &StoredSnapshot) -> Result<(), Refused> {
+            self.snapshots.push(snapshot.clone());
+            Ok(())
+        }
+
+        fn latest_snapshot(&self) -> Result<Option<StoredSnapshot>, Refused> {
+            Ok(self.snapshots.last().cloned())
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::test_log::MemoryLog;
+    use super::*;
+    use crate::{Describable, EntityCreated, EntityId};
+
+    #[test]
+    fn failed_append_undoes_the_world() {
+        let mut journal = Journal::open(
+            MemoryLog::default(),
+            ComponentRegistry::with_core(),
+            Upcasters::new(),
+        )
+        .unwrap();
+        let id = journal.world().next_entity_id();
+        journal
+            .commit(1, &[Event::EntityCreated(EntityCreated { id })])
+            .unwrap();
+        let before = journal.world().snapshot().to_bytes();
+
+        journal.log.fail_appends = true;
+        let next = EntityId(id.0 + 1);
+        let err = journal
+            .commit(
+                2,
+                &[
+                    Event::EntityCreated(EntityCreated { id: next }),
+                    Event::ComponentSet(crate::ComponentSet {
+                        id,
+                        component: "sage.describable".into(),
+                        component_version: 1,
+                        data: serde_json::to_value(Describable {
+                            name: "x".into(),
+                            description: "y".into(),
+                        })
+                        .unwrap(),
+                    }),
+                ],
+            )
+            .unwrap_err();
+        assert!(matches!(err, JournalError::Log(_)));
+        assert_eq!(journal.world().snapshot().to_bytes(), before);
+        assert_eq!(journal.world().tick(), 1);
+        assert_eq!(journal.log.events.len(), 1);
+    }
+
+    #[test]
+    fn empty_commit_writes_nothing() {
+        let mut journal = Journal::open(
+            MemoryLog::default(),
+            ComponentRegistry::with_core(),
+            Upcasters::new(),
+        )
+        .unwrap();
+        assert_eq!(journal.commit(5, &[]).unwrap(), 0);
+        assert_eq!(journal.world().tick(), 0);
+        assert!(journal.log.events.is_empty());
+    }
 }

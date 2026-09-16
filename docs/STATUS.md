@@ -1,11 +1,11 @@
-NEXT: M1 slice 1 (event log + projection) is committed and waiting for owner review. Slice 2 is the space graph (`Link` component, containment queries) plus a world clock/scheduler with a fixed tick. Slice 3 is a `sage run` loop and the kill -9 / 24 h gate runs.
+NEXT: M1 slice 2 (space graph, reference rules, apply-with-undo, clock; ADR 0006) is committed and waiting for owner review. Slice 3 is a `sage run` binary loop (open a SQLite world, fixed 4 Hz scheduler, periodic snapshots, clean shutdown), then the kill -9 restart test and the 24 h run with the demo world.
 
 # Status
 
 | Milestone | State |
 |---|---|
 | M0 Scaffold | done: workspace, CI (fmt, clippy, test, denylist), ADRs 0001–0004 |
-| M1 World model | in progress: slice 1 done (Journal, SQLite log, snapshots, replay tests; ADR 0005) |
+| M1 World model | in progress: slices 1-2 done (event log, snapshots, space graph, reference rules, clock; ADR 0005-0006) |
 | M2 Plugin seal | blocked on M1 |
 | M3 Agents | blocked on M2 |
 | M4 Client + Foundry MVP | blocked on M3 |
@@ -29,6 +29,9 @@ NEXT: M1 slice 1 (event log + projection) is committed and waiting for owner rev
 - The database refuses events with no schema version, and refuses edits or deletes on events
 - A refused batch writes nothing; a second writer is refused
 - A log or store written by a newer engine is refused
+- Space graph and containment: dangling references, destroying a referenced entity, containment cycles and ticks going backwards are all refused, and a refusal mid-batch leaves the world byte-identical
+- A failed log append undoes the world change
+- A scheduled world (a system moving entities along links, plus idle checkpoints) replays byte-identically and resumes its clock from the log
 
 ## Open questions for the owner (not blocking M1)
 
@@ -36,3 +39,4 @@ NEXT: M1 slice 1 (event log + projection) is committed and waiting for owner rev
 2. Should agent cards write the Tavern v2 `chara` chunk by default, or only on an explicit Tavern export?
 3. Merchant of record when the marketplace arrives: Lemon Squeezy, Paddle or Stripe Connect?
 4. Name of the setting-neutral demo world.
+5. Should world time pass while the server is down? Currently it doesn't: on restart the clock resumes from the last recorded tick (ADR 0006). The alternative is a catch-up step on boot.

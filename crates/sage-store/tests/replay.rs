@@ -2,7 +2,8 @@
 
 use sage_core::{
     Component, ComponentRegistry, ComponentSet, Describable, EntityCreated, EntityDestroyed,
-    EntityId, Event, EventLog, EventRecord, Journal, JournalError, Located, Place, Upcasters,
+    EntityId, Event, EventLog, EventRecord, Journal, JournalError, Link, Located, Place, Scheduler,
+    System, Upcasters, World,
 };
 use sage_store::{SqliteLog, StoreError};
 use serde_json::json;
@@ -61,6 +62,21 @@ fn build_world(journal: &mut Journal<SqliteLog>, ticks: u64) {
             )
             .unwrap();
         places.push(id);
+    }
+    // A ring of one-way links between the places.
+    for (i, from) in places.iter().enumerate() {
+        let id = journal.world().next_entity_id();
+        let link = Link {
+            from: *from,
+            to: places[(i + 1) % places.len()],
+            label: "onward".into(),
+        };
+        journal
+            .commit(
+                0,
+                &[Event::EntityCreated(EntityCreated { id }), set(id, &link)],
+            )
+            .unwrap();
     }
 
     let mut rng = Lcg(42);
@@ -125,7 +141,7 @@ fn replay_from_genesis_reproduces_snapshot_bytes() {
     build_world(&mut journal, 200);
     let live = journal.world().snapshot().to_bytes();
     let live_seq = journal.world().last_seq();
-    assert!(journal.world().len() >= 104);
+    assert_eq!(journal.world().len(), 108);
     drop(journal);
 
     let replayed = open_from_genesis(SqliteLog::open(&path).unwrap());
@@ -286,4 +302,55 @@ fn replay_refuses_log_that_does_not_apply() {
         .err()
         .unwrap();
     assert!(matches!(err, JournalError::Corrupt { seq: 1, .. }), "{err}");
+}
+
+/// Walks every entity with a `Located` one link onward every `every` ticks.
+struct Wander {
+    every: u64,
+}
+
+impl System for Wander {
+    fn name(&self) -> &'static str {
+        "wander"
+    }
+
+    fn run(&mut self, world: &World, tick: u64) -> Vec<Event> {
+        if !tick.is_multiple_of(self.every) {
+            return Vec::new();
+        }
+        (1..world.next_entity_id().0)
+            .map(EntityId)
+            .filter_map(|id| {
+                let here = world.get::<Located>(id)?.within;
+                let (_, link) = world.link_named(here, "onward")?;
+                Some(set(id, &Located { within: link.to }))
+            })
+            .collect()
+    }
+}
+
+#[test]
+fn scheduled_world_replays_and_resumes_its_clock() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("world.db");
+
+    let mut journal = open(SqliteLog::open(&path).unwrap());
+    build_world(&mut journal, 0);
+    let mut scheduler = Scheduler::new(&journal, 20);
+    scheduler.add(Wander { every: 50 });
+    let mut checkpoints = 0;
+    for _ in 0..130 {
+        let report = scheduler.step(&mut journal).unwrap();
+        assert!(report.refused.is_empty(), "{report:?}");
+        checkpoints += usize::from(report.checkpoint);
+    }
+    // Moves at 50 and 100; idle checkpoints at 20, 40, 70, 90, 120.
+    assert_eq!(checkpoints, 5);
+    assert_eq!(journal.world().tick(), 120);
+    let live = journal.world().snapshot().to_bytes();
+    drop(journal);
+
+    let replayed = open_from_genesis(SqliteLog::open(&path).unwrap());
+    assert_eq!(replayed.world().snapshot().to_bytes(), live);
+    assert_eq!(Scheduler::new(&replayed, 20).tick(), 120);
 }

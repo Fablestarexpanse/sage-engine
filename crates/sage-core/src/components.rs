@@ -1,5 +1,5 @@
-//! Core components. Only what every world needs: a name, being a place, and being inside
-//! something. Anything genre-specific is a fragment.
+//! Core components. Only what every world needs: a name, being a place, being inside something,
+//! and a way between places. Anything genre-specific is a fragment.
 
 use serde::{Deserialize, Serialize};
 
@@ -29,7 +29,7 @@ impl Component for Place {
     const VERSION: u32 = 1;
 }
 
-/// Containment: this entity is inside `within`.
+/// Containment: this entity is inside `within`. Containment never forms a cycle.
 #[derive(bevy_ecs::component::Component, Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Located {
     /// The containing entity.
@@ -39,4 +39,31 @@ pub struct Located {
 impl Component for Located {
     const NAME: &'static str = "sage.located";
     const VERSION: u32 = 1;
+
+    fn references(&self) -> Vec<EntityId> {
+        vec![self.within]
+    }
+}
+
+/// A one-way edge in the space graph, carried by its own entity so a way between places can
+/// have a description and fragment components (doors, locks, costs) of its own. A two-way
+/// passage is two links.
+#[derive(bevy_ecs::component::Component, Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct Link {
+    /// Where the link starts.
+    pub from: EntityId,
+    /// Where it leads.
+    pub to: EntityId,
+    /// What a traveller names to take it, e.g. `north` or `ladder`. Player-facing wording is
+    /// the world's business; the engine only matches it.
+    pub label: String,
+}
+
+impl Component for Link {
+    const NAME: &'static str = "sage.link";
+    const VERSION: u32 = 1;
+
+    fn references(&self) -> Vec<EntityId> {
+        vec![self.from, self.to]
+    }
 }

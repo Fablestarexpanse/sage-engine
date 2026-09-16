@@ -1,6 +1,11 @@
 //! The world: a projection of the event log onto a `bevy_ecs` world.
+//!
+//! A batch of events is applied for real, one event at a time, and every step records how to
+//! undo itself. If any event is refused, or the log then refuses the append, the steps are
+//! undone in reverse. Rules are checked against the real world state, so there is one
+//! implementation of each rule, not a checker and an applier that could disagree.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 use bevy_ecs::entity::Entity;
 use serde::{Deserialize, Serialize};
@@ -8,6 +13,7 @@ use serde_json::Value;
 use thiserror::Error;
 
 use crate::component::ComponentRegistry;
+use crate::components::Located;
 use crate::event::{ComponentRemoved, ComponentSet, EntityCreated, EntityDestroyed, Event};
 
 /// Stable entity identity. Stored in events and snapshots; never reused.
@@ -30,7 +36,7 @@ pub struct EntityId(pub u64);
 /// Schema version of [`Snapshot`].
 pub const SNAPSHOT_SCHEMA_VERSION: u32 = 1;
 
-/// Why an event cannot be applied. Checked before anything is written.
+/// Why an event cannot be applied. Nothing is written when this happens.
 #[derive(Debug, Error, PartialEq)]
 pub enum ApplyError {
     /// `EntityCreated` for an id that exists or once existed.
@@ -60,6 +66,40 @@ pub enum ApplyError {
         /// Deserialization error.
         reason: String,
     },
+    /// A component points at an entity that does not exist.
+    #[error("component `{component}` points at missing entity {target:?}")]
+    DanglingReference {
+        /// Component name.
+        component: String,
+        /// Missing entity.
+        target: EntityId,
+    },
+    /// An entity cannot be destroyed while another entity points at it.
+    #[error("entity {id:?} is still referenced by `{component}` on {by:?}")]
+    StillReferenced {
+        /// Entity being destroyed.
+        id: EntityId,
+        /// Entity holding the reference.
+        by: EntityId,
+        /// Component holding the reference.
+        component: &'static str,
+    },
+    /// Putting `id` inside `within` would make containment loop.
+    #[error("placing {id:?} inside {within:?} would make containment loop")]
+    ContainmentCycle {
+        /// Entity being placed.
+        id: EntityId,
+        /// Intended container.
+        within: EntityId,
+    },
+    /// A batch's tick is earlier than the world's.
+    #[error("tick {tick} is earlier than the world's tick {current}")]
+    TickWentBackwards {
+        /// Tick of the batch.
+        tick: u64,
+        /// World tick.
+        current: u64,
+    },
 }
 
 /// Why a snapshot cannot be restored.
@@ -71,9 +111,12 @@ pub enum SnapshotError {
     /// The snapshot format version is not one this engine reads.
     #[error("snapshot format v{0} is not supported (this engine reads v{SNAPSHOT_SCHEMA_VERSION})")]
     Version(u32),
-    /// The snapshot's contents fail the same checks events do.
+    /// The snapshot's contents fail the same rules events do.
     #[error("snapshot content is invalid: {0}")]
     Content(#[from] ApplyError),
+    /// Entities in the snapshot are not sorted by id.
+    #[error("snapshot entities are not in id order at {0:?}")]
+    Unordered(EntityId),
 }
 
 /// Full world state at one point in the log, in a canonical, byte-stable form: entities sorted
@@ -126,9 +169,30 @@ impl Snapshot {
     }
 }
 
+enum UndoStep {
+    Created(EntityId),
+    Destroyed {
+        id: EntityId,
+        components: Vec<(&'static str, Value)>,
+    },
+    Component {
+        id: EntityId,
+        name: &'static str,
+        previous: Option<Value>,
+    },
+}
+
+/// How to take back an applied batch.
+pub(crate) struct Undo {
+    steps: Vec<UndoStep>,
+    last_seq: u64,
+    tick: u64,
+    next_entity_id: u64,
+}
+
 /// Current world state. Read it freely; change it only through [`crate::Journal`].
 pub struct World {
-    ecs: bevy_ecs::world::World,
+    pub(crate) ecs: bevy_ecs::world::World,
     index: BTreeMap<EntityId, Entity>,
     registry: ComponentRegistry,
     next_entity_id: u64,
@@ -184,99 +248,212 @@ impl World {
         self.ecs.get::<C>(entity)
     }
 
-    /// Checks that `events`, applied in order, would all succeed. Changes nothing.
-    pub(crate) fn check_batch(&self, events: &[Event]) -> Result<(), (usize, ApplyError)> {
-        let mut created = BTreeSet::new();
-        let mut destroyed = BTreeSet::new();
-        let mut next_id = self.next_entity_id;
-        let live = |id: &EntityId, created: &BTreeSet<EntityId>, destroyed: &BTreeSet<EntityId>| {
-            (self.index.contains_key(id) || created.contains(id)) && !destroyed.contains(id)
+    /// Applies `events` as `first_seq..` at `tick`. On refusal the world is exactly as before
+    /// and the error names the refused event's position.
+    pub(crate) fn apply_batch(
+        &mut self,
+        first_seq: u64,
+        tick: u64,
+        events: &[Event],
+    ) -> Result<Undo, (usize, ApplyError)> {
+        debug_assert_eq!(first_seq, self.last_seq + 1, "events apply in sequence");
+        if tick < self.tick {
+            return Err((
+                0,
+                ApplyError::TickWentBackwards {
+                    tick,
+                    current: self.tick,
+                },
+            ));
+        }
+        let mut undo = Undo {
+            steps: Vec::new(),
+            last_seq: self.last_seq,
+            tick: self.tick,
+            next_entity_id: self.next_entity_id,
         };
-
         for (i, event) in events.iter().enumerate() {
-            let fail = |e| (i, e);
-            match event {
-                Event::EntityCreated(EntityCreated { id }) => {
-                    if id.0 < next_id {
-                        return Err(fail(ApplyError::IdReused(*id)));
-                    }
-                    next_id = id.0 + 1;
-                    created.insert(*id);
-                }
-                Event::EntityDestroyed(EntityDestroyed { id }) => {
-                    if !live(id, &created, &destroyed) {
-                        return Err(fail(ApplyError::NoSuchEntity(*id)));
-                    }
-                    destroyed.insert(*id);
-                }
-                Event::ComponentSet(set) => {
-                    if !live(&set.id, &created, &destroyed) {
-                        return Err(fail(ApplyError::NoSuchEntity(set.id)));
-                    }
-                    self.check_component(set).map_err(fail)?;
-                }
-                Event::ComponentRemoved(ComponentRemoved { id, component }) => {
-                    if !live(id, &created, &destroyed) {
-                        return Err(fail(ApplyError::NoSuchEntity(*id)));
-                    }
-                    if self.registry.get(component).is_none() {
-                        return Err(fail(ApplyError::UnknownComponent(component.clone())));
-                    }
-                }
+            if let Err(error) = self.apply_one(event, &mut undo.steps) {
+                self.undo(undo);
+                return Err((i, error));
             }
+        }
+        self.last_seq = first_seq + events.len() as u64 - 1;
+        self.tick = tick;
+        Ok(undo)
+    }
+
+    /// Validates one event against the current state, then applies it. Changes nothing when it
+    /// returns an error.
+    fn apply_one(&mut self, event: &Event, steps: &mut Vec<UndoStep>) -> Result<(), ApplyError> {
+        match event {
+            Event::EntityCreated(EntityCreated { id }) => {
+                if id.0 < self.next_entity_id {
+                    return Err(ApplyError::IdReused(*id));
+                }
+                let entity = self.ecs.spawn(*id).id();
+                self.index.insert(*id, entity);
+                self.next_entity_id = id.0 + 1;
+                steps.push(UndoStep::Created(*id));
+            }
+            Event::EntityDestroyed(EntityDestroyed { id }) => {
+                let entity = self.entity(*id)?;
+                if let Some((by, component)) = self.referrer_of(*id) {
+                    return Err(ApplyError::StillReferenced {
+                        id: *id,
+                        by,
+                        component,
+                    });
+                }
+                let entity_ref = self.ecs.entity(entity);
+                let components = self
+                    .registry
+                    .iter()
+                    .filter_map(|(name, entry)| (entry.read)(&entity_ref).map(|v| (name, v)))
+                    .collect();
+                self.ecs.despawn(entity);
+                self.index.remove(id);
+                steps.push(UndoStep::Destroyed {
+                    id: *id,
+                    components,
+                });
+            }
+            Event::ComponentSet(set) => {
+                let entity = self.entity(set.id)?;
+                let (name, entry) = self
+                    .registry
+                    .get(&set.component)
+                    .ok_or_else(|| ApplyError::UnknownComponent(set.component.clone()))?;
+                if entry.version != set.component_version {
+                    return Err(ApplyError::ComponentVersion {
+                        component: set.component.clone(),
+                        registered: entry.version,
+                        found: set.component_version,
+                    });
+                }
+                let references =
+                    (entry.parse)(set.data.clone()).map_err(|e| ApplyError::ComponentData {
+                        component: set.component.clone(),
+                        reason: e.to_string(),
+                    })?;
+                if let Some(target) = references.into_iter().find(|t| !self.contains(*t)) {
+                    return Err(ApplyError::DanglingReference {
+                        component: set.component.clone(),
+                        target,
+                    });
+                }
+                if name == <Located as crate::Component>::NAME {
+                    let located: Located =
+                        serde_json::from_value(set.data.clone()).expect("parsed above");
+                    if self.contains_transitively(set.id, located.within) {
+                        return Err(ApplyError::ContainmentCycle {
+                            id: set.id,
+                            within: located.within,
+                        });
+                    }
+                }
+                let previous = (entry.read)(&self.ecs.entity(entity));
+                (entry.insert)(&mut self.ecs.entity_mut(entity), set.data.clone())
+                    .expect("parsed above");
+                steps.push(UndoStep::Component {
+                    id: set.id,
+                    name,
+                    previous,
+                });
+            }
+            Event::ComponentRemoved(ComponentRemoved { id, component }) => {
+                let entity = self.entity(*id)?;
+                let (name, entry) = self
+                    .registry
+                    .get(component)
+                    .ok_or_else(|| ApplyError::UnknownComponent(component.clone()))?;
+                let previous = (entry.read)(&self.ecs.entity(entity));
+                (entry.remove)(&mut self.ecs.entity_mut(entity));
+                steps.push(UndoStep::Component {
+                    id: *id,
+                    name,
+                    previous,
+                });
+            }
+            Event::ClockAdvanced(_) => {}
         }
         Ok(())
     }
 
-    fn check_component(&self, set: &ComponentSet) -> Result<(), ApplyError> {
-        let entry = self
-            .registry
-            .get(&set.component)
-            .ok_or_else(|| ApplyError::UnknownComponent(set.component.clone()))?;
-        if entry.version != set.component_version {
-            return Err(ApplyError::ComponentVersion {
-                component: set.component.clone(),
-                registered: entry.version,
-                found: set.component_version,
-            });
+    /// Takes back a batch applied by [`World::apply_batch`].
+    pub(crate) fn undo(&mut self, undo: Undo) {
+        for step in undo.steps.into_iter().rev() {
+            match step {
+                UndoStep::Created(id) => {
+                    let entity = self.index.remove(&id).expect("undo: created entity exists");
+                    self.ecs.despawn(entity);
+                }
+                UndoStep::Destroyed { id, components } => {
+                    let entity = self.ecs.spawn(id).id();
+                    self.index.insert(id, entity);
+                    for (name, data) in components {
+                        let (_, entry) = self.registry.get(name).expect("undo: registered");
+                        (entry.insert)(&mut self.ecs.entity_mut(entity), data)
+                            .expect("undo: data came from this world");
+                    }
+                }
+                UndoStep::Component { id, name, previous } => {
+                    let entity = self.index[&id];
+                    let (_, entry) = self.registry.get(name).expect("undo: registered");
+                    let mut entity_mut = self.ecs.entity_mut(entity);
+                    match previous {
+                        Some(data) => (entry.insert)(&mut entity_mut, data)
+                            .expect("undo: data came from this world"),
+                        None => (entry.remove)(&mut entity_mut),
+                    }
+                }
+            }
         }
-        (entry.check)(set.data.clone()).map_err(|e| ApplyError::ComponentData {
-            component: set.component.clone(),
-            reason: e.to_string(),
-        })
+        self.last_seq = undo.last_seq;
+        self.tick = undo.tick;
+        self.next_entity_id = undo.next_entity_id;
     }
 
-    /// Applies one event that already passed [`World::check_batch`]. Panics on a failed
-    /// precondition, since that means the check and apply paths disagree.
-    pub(crate) fn apply_checked(&mut self, seq: u64, tick: u64, event: &Event) {
-        assert_eq!(seq, self.last_seq + 1, "events must be applied in sequence");
-        match event {
-            Event::EntityCreated(EntityCreated { id }) => {
-                let entity = self.ecs.spawn(*id).id();
-                self.index.insert(*id, entity);
-                self.next_entity_id = id.0 + 1;
+    fn entity(&self, id: EntityId) -> Result<Entity, ApplyError> {
+        self.index
+            .get(&id)
+            .copied()
+            .ok_or(ApplyError::NoSuchEntity(id))
+    }
+
+    /// Some live entity other than `id` whose components point at `id`. Scans every entity;
+    /// fine at M1 sizes, replace with a reverse index when profiling says so.
+    fn referrer_of(&self, id: EntityId) -> Option<(EntityId, &'static str)> {
+        self.index
+            .iter()
+            .filter(|(other, _)| **other != id)
+            .find_map(|(other, entity)| {
+                let entity_ref = self.ecs.entity(*entity);
+                self.registry.iter().find_map(|(name, entry)| {
+                    (entry.read_references)(&entity_ref)
+                        .contains(&id)
+                        .then_some((*other, name))
+                })
+            })
+    }
+
+    /// Whether `id` is `target` or contains it at any depth.
+    fn contains_transitively(&self, id: EntityId, target: EntityId) -> bool {
+        let mut current = Some(target);
+        let mut steps = 0;
+        while let Some(at) = current {
+            if at == id {
+                return true;
             }
-            Event::EntityDestroyed(EntityDestroyed { id }) => {
-                let entity = self.index.remove(id).expect("checked: entity exists");
-                self.ecs.despawn(entity);
-            }
-            Event::ComponentSet(set) => {
-                let entry = self
-                    .registry
-                    .get(&set.component)
-                    .expect("checked: registered");
-                let entity = self.index[&set.id];
-                (entry.insert)(&mut self.ecs.entity_mut(entity), set.data.clone())
-                    .expect("checked: data deserializes");
-            }
-            Event::ComponentRemoved(ComponentRemoved { id, component }) => {
-                let entry = self.registry.get(component).expect("checked: registered");
-                let entity = self.index[id];
-                (entry.remove)(&mut self.ecs.entity_mut(entity));
-            }
+            steps += 1;
+            assert!(steps <= self.index.len() + 1, "containment already loops");
+            current = self.get::<Located>(at).map(|l| l.within);
         }
-        self.last_seq = seq;
-        self.tick = tick;
+        false
+    }
+
+    pub(crate) fn live_entities(&self) -> impl Iterator<Item = (EntityId, Entity)> + '_ {
+        self.index.iter().map(|(id, entity)| (*id, *entity))
     }
 
     /// The world's full state in canonical form.
@@ -314,7 +491,8 @@ impl World {
         }
     }
 
-    /// Rebuilds a world from a snapshot, validating every component like an event.
+    /// Rebuilds a world from a snapshot by applying it as events, so it passes every rule an
+    /// event would.
     pub(crate) fn restore(
         registry: ComponentRegistry,
         snapshot: &Snapshot,
@@ -322,26 +500,49 @@ impl World {
         if snapshot.schema_version != SNAPSHOT_SCHEMA_VERSION {
             return Err(SnapshotError::Version(snapshot.schema_version));
         }
+        for pair in snapshot.entities.windows(2) {
+            if pair[0].id >= pair[1].id {
+                return Err(SnapshotError::Unordered(pair[1].id));
+            }
+        }
+        if let Some(last) = snapshot.entities.last()
+            && last.id.0 >= snapshot.next_entity_id
+        {
+            return Err(ApplyError::IdReused(last.id).into());
+        }
+
+        let mut events: Vec<Event> = snapshot
+            .entities
+            .iter()
+            .map(|e| Event::EntityCreated(EntityCreated { id: e.id }))
+            .collect();
+        // Containment goes last so every container already has its own `Located`, which the
+        // cycle check walks.
+        let (located, other): (Vec<_>, Vec<_>) = snapshot
+            .entities
+            .iter()
+            .flat_map(|e| {
+                e.components.iter().map(|(name, c)| {
+                    Event::ComponentSet(ComponentSet {
+                        id: e.id,
+                        component: name.clone(),
+                        component_version: c.version,
+                        data: c.data.clone(),
+                    })
+                })
+            })
+            .partition(|event| {
+                matches!(event, Event::ComponentSet(s) if s.component == <Located as crate::Component>::NAME)
+            });
+        events.extend(other);
+        events.extend(located);
+
         let mut world = World::empty(registry);
-        for e in &snapshot.entities {
-            if e.id.0 >= snapshot.next_entity_id || world.index.contains_key(&e.id) {
-                return Err(ApplyError::IdReused(e.id).into());
-            }
-            for (name, component) in &e.components {
-                world.check_component(&ComponentSet {
-                    id: e.id,
-                    component: name.clone(),
-                    component_version: component.version,
-                    data: component.data.clone(),
-                })?;
-            }
-            let entity = world.ecs.spawn(e.id).id();
-            world.index.insert(e.id, entity);
-            for (name, component) in &e.components {
-                let entry = world.registry.get(name).expect("checked: registered");
-                (entry.insert)(&mut world.ecs.entity_mut(entity), component.data.clone())
-                    .expect("checked: data deserializes");
-            }
+        let mut steps = Vec::new();
+        for event in &events {
+            world
+                .apply_one(event, &mut steps)
+                .map_err(SnapshotError::Content)?;
         }
         world.next_entity_id = snapshot.next_entity_id;
         world.last_seq = snapshot.last_seq;
@@ -355,10 +556,14 @@ mod tests {
     use serde_json::json;
 
     use super::*;
-    use crate::{Component, Describable, Located, Place};
+    use crate::{Component, Describable, Link, Located, Place};
 
     fn created(id: u64) -> Event {
         Event::EntityCreated(EntityCreated { id: EntityId(id) })
+    }
+
+    fn destroyed(id: u64) -> Event {
+        Event::EntityDestroyed(EntityDestroyed { id: EntityId(id) })
     }
 
     fn set<C: Component>(id: u64, c: &C) -> Event {
@@ -370,104 +575,235 @@ mod tests {
         })
     }
 
-    fn apply_all(world: &mut World, events: &[Event]) {
-        world.check_batch(events).unwrap();
-        for event in events {
-            let seq = world.last_seq() + 1;
-            world.apply_checked(seq, 0, event);
+    fn within(id: u64) -> Located {
+        Located {
+            within: EntityId(id),
         }
+    }
+
+    fn world() -> World {
+        World::empty(ComponentRegistry::with_core())
+    }
+
+    fn apply(world: &mut World, events: &[Event]) -> Result<(), (usize, ApplyError)> {
+        let seq = world.last_seq() + 1;
+        world.apply_batch(seq, 0, events).map(|_| ())
+    }
+
+    /// A refused batch leaves the world byte-identical to before.
+    fn refused(world: &mut World, events: &[Event]) -> (usize, ApplyError) {
+        let before = world.snapshot().to_bytes();
+        let err = apply(world, events).err().unwrap();
+        assert_eq!(
+            world.snapshot().to_bytes(),
+            before,
+            "refusal changed the world"
+        );
+        err
     }
 
     #[test]
     fn create_then_set_in_one_batch_is_valid() {
-        let mut world = World::empty(ComponentRegistry::with_core());
-        apply_all(&mut world, &[created(1), set(1, &Place {})]);
-        assert!(world.get::<Place>(EntityId(1)).is_some());
-        assert_eq!(world.next_entity_id(), EntityId(2));
+        let mut w = world();
+        apply(&mut w, &[created(1), set(1, &Place {})]).unwrap();
+        assert!(w.get::<Place>(EntityId(1)).is_some());
+        assert_eq!(w.next_entity_id(), EntityId(2));
     }
 
     #[test]
     fn refuses_id_reuse_even_after_destroy() {
-        let mut world = World::empty(ComponentRegistry::with_core());
-        apply_all(
-            &mut world,
-            &[
-                created(1),
-                Event::EntityDestroyed(EntityDestroyed { id: EntityId(1) }),
-            ],
+        let mut w = world();
+        apply(&mut w, &[created(1), destroyed(1)]).unwrap();
+        assert_eq!(
+            refused(&mut w, &[created(1)]),
+            (0, ApplyError::IdReused(EntityId(1)))
         );
-        let (i, err) = world.check_batch(&[created(1)]).unwrap_err();
-        assert_eq!((i, err), (0, ApplyError::IdReused(EntityId(1))));
     }
 
     #[test]
     fn refuses_set_after_destroy_in_same_batch() {
-        let world = World::empty(ComponentRegistry::with_core());
-        let batch = [
-            created(1),
-            Event::EntityDestroyed(EntityDestroyed { id: EntityId(1) }),
-            set(1, &Place {}),
-        ];
-        let (i, err) = world.check_batch(&batch).unwrap_err();
-        assert_eq!((i, err), (2, ApplyError::NoSuchEntity(EntityId(1))));
+        let mut w = world();
+        let err = refused(&mut w, &[created(1), destroyed(1), set(1, &Place {})]);
+        assert_eq!(err, (2, ApplyError::NoSuchEntity(EntityId(1))));
+        assert_eq!(w.next_entity_id(), EntityId(1));
     }
 
     #[test]
     fn refuses_unregistered_component() {
-        let world = World::empty(ComponentRegistry::new());
-        let (_, err) = world
-            .check_batch(&[created(1), set(1, &Place {})])
-            .unwrap_err();
+        let mut w = World::empty(ComponentRegistry::new());
+        let (_, err) = refused(&mut w, &[created(1), set(1, &Place {})]);
         assert_eq!(err, ApplyError::UnknownComponent("sage.place".into()));
     }
 
     #[test]
     fn refuses_component_version_mismatch() {
-        let world = World::empty(ComponentRegistry::with_core());
+        let mut w = world();
         let mut event = set(1, &Place {});
         if let Event::ComponentSet(s) = &mut event {
             s.component_version = 2;
         }
-        let (_, err) = world.check_batch(&[created(1), event]).unwrap_err();
+        let (_, err) = refused(&mut w, &[created(1), event]);
         assert!(matches!(err, ApplyError::ComponentVersion { found: 2, .. }));
     }
 
     #[test]
     fn refuses_bad_component_data() {
-        let world = World::empty(ComponentRegistry::with_core());
+        let mut w = world();
         let event = Event::ComponentSet(ComponentSet {
             id: EntityId(1),
             component: Located::NAME.into(),
             component_version: 1,
             data: json!({"within": "the cupboard"}),
         });
-        let (_, err) = world.check_batch(&[created(1), event]).unwrap_err();
+        let (_, err) = refused(&mut w, &[created(1), event]);
         assert!(matches!(err, ApplyError::ComponentData { .. }));
     }
 
     #[test]
-    fn snapshot_restores_to_identical_bytes() {
-        let mut world = World::empty(ComponentRegistry::with_core());
+    fn refuses_dangling_reference() {
+        let mut w = world();
+        let (_, err) = refused(&mut w, &[created(1), set(1, &within(9))]);
+        assert_eq!(
+            err,
+            ApplyError::DanglingReference {
+                component: Located::NAME.into(),
+                target: EntityId(9)
+            }
+        );
+    }
+
+    #[test]
+    fn refuses_destroying_a_referenced_entity_then_allows_it_once_free() {
+        let mut w = world();
+        let link = Link {
+            from: EntityId(1),
+            to: EntityId(2),
+            label: "out".into(),
+        };
+        apply(&mut w, &[created(1), created(2), created(3), set(3, &link)]).unwrap();
+        let (_, err) = refused(&mut w, &[destroyed(2)]);
+        assert_eq!(
+            err,
+            ApplyError::StillReferenced {
+                id: EntityId(2),
+                by: EntityId(3),
+                component: Link::NAME
+            }
+        );
+        apply(&mut w, &[destroyed(3), destroyed(2)]).unwrap();
+        assert!(!w.contains(EntityId(2)));
+    }
+
+    #[test]
+    fn refuses_containment_cycles() {
+        let mut w = world();
+        apply(
+            &mut w,
+            &[
+                created(1),
+                created(2),
+                created(3),
+                set(2, &within(1)),
+                set(3, &within(2)),
+            ],
+        )
+        .unwrap();
+        let (_, self_err) = refused(&mut w, &[set(1, &within(1))]);
+        assert!(matches!(self_err, ApplyError::ContainmentCycle { .. }));
+        let (_, loop_err) = refused(&mut w, &[set(1, &within(3))]);
+        assert_eq!(
+            loop_err,
+            ApplyError::ContainmentCycle {
+                id: EntityId(1),
+                within: EntityId(3)
+            }
+        );
+    }
+
+    #[test]
+    fn refusal_mid_batch_restores_destroyed_and_changed_entities() {
+        let mut w = world();
         let hall = Describable {
             name: "Hall".into(),
-            description: "Bare stone.".into(),
+            description: "Bare.".into(),
         };
-        apply_all(
-            &mut world,
+        apply(
+            &mut w,
             &[
                 created(1),
                 set(1, &Place {}),
                 set(1, &hall),
                 created(2),
+                set(2, &within(1)),
+            ],
+        )
+        .unwrap();
+        let err = refused(
+            &mut w,
+            &[
+                Event::ComponentRemoved(ComponentRemoved {
+                    id: EntityId(2),
+                    component: Located::NAME.into(),
+                }),
                 set(
-                    2,
-                    &Located {
-                        within: EntityId(1),
+                    1,
+                    &Describable {
+                        name: "Changed".into(),
+                        description: String::new(),
                     },
                 ),
+                destroyed(1),
+                created(3),
+                set(3, &within(99)),
             ],
         );
-        let bytes = world.snapshot().to_bytes();
+        assert_eq!(err.0, 4);
+        assert_eq!(w.get::<Describable>(EntityId(1)), Some(&hall));
+        assert_eq!(w.get::<Located>(EntityId(2)), Some(&within(1)));
+        assert!(!w.contains(EntityId(3)));
+    }
+
+    #[test]
+    fn refuses_tick_going_backwards() {
+        let mut w = world();
+        w.apply_batch(1, 10, &[created(1)]).unwrap();
+        let err = w.apply_batch(2, 9, &[created(2)]).err().unwrap();
+        assert_eq!(
+            err,
+            (
+                0,
+                ApplyError::TickWentBackwards {
+                    tick: 9,
+                    current: 10
+                }
+            )
+        );
+        assert_eq!((w.last_seq(), w.tick()), (1, 10));
+    }
+
+    #[test]
+    fn snapshot_restores_to_identical_bytes() {
+        let mut w = world();
+        let hall = Describable {
+            name: "Hall".into(),
+            description: "Bare stone.".into(),
+        };
+        // Entity 1 sits inside entity 3, created later, to prove restore does not depend on
+        // containers having lower ids.
+        apply(
+            &mut w,
+            &[
+                created(1),
+                set(1, &Place {}),
+                set(1, &hall),
+                created(2),
+                set(2, &within(1)),
+                created(3),
+                set(1, &within(3)),
+            ],
+        )
+        .unwrap();
+        let bytes = w.snapshot().to_bytes();
         let restored = World::restore(
             ComponentRegistry::with_core(),
             &Snapshot::from_bytes(&bytes).unwrap(),
@@ -478,8 +814,33 @@ mod tests {
     }
 
     #[test]
+    fn restore_refuses_snapshot_breaking_a_rule() {
+        let mut snapshot = world().snapshot();
+        snapshot.next_entity_id = 2;
+        let mut components = BTreeMap::new();
+        components.insert(
+            Located::NAME.to_owned(),
+            SnapshotComponent {
+                version: 1,
+                data: json!({"within": 1}),
+            },
+        );
+        snapshot.entities.push(SnapshotEntity {
+            id: EntityId(1),
+            components,
+        });
+        let err = World::restore(ComponentRegistry::with_core(), &snapshot)
+            .err()
+            .unwrap();
+        assert!(matches!(
+            err,
+            SnapshotError::Content(ApplyError::ContainmentCycle { .. })
+        ));
+    }
+
+    #[test]
     fn restore_refuses_unknown_snapshot_version() {
-        let mut snapshot = World::empty(ComponentRegistry::with_core()).snapshot();
+        let mut snapshot = world().snapshot();
         snapshot.schema_version = 99;
         assert!(matches!(
             Snapshot::from_bytes(&snapshot.to_bytes()),
