@@ -32,8 +32,13 @@ pub trait Component:
     }
 }
 
+/// Converts a component's stored data from version `n` to `n + 1`.
+pub type ComponentUpcastFn = fn(Value) -> Result<Value, String>;
+
 pub(crate) struct Entry {
     pub(crate) version: u32,
+    /// Steps from older versions, keyed by the version they convert from.
+    pub(crate) upcasters: BTreeMap<u32, ComponentUpcastFn>,
     /// Parses data and returns its references, without touching the world.
     pub(crate) parse: fn(Value) -> Result<Vec<EntityId>, String>,
     pub(crate) insert: fn(&mut EntityWorldMut, Value) -> Result<(), serde_json::Error>,
@@ -71,6 +76,7 @@ impl ComponentRegistry {
     pub fn register<C: Component>(&mut self) {
         let entry = Entry {
             version: C::VERSION,
+            upcasters: BTreeMap::new(),
             parse: parse::<C>,
             insert: insert::<C>,
             remove: remove::<C>,
@@ -80,6 +86,23 @@ impl ComponentRegistry {
         if self.entries.insert(C::NAME, entry).is_some() {
             panic!("component name `{}` registered twice", C::NAME);
         }
+    }
+
+    /// Registers how to convert `C`'s stored data from version `from` to `from + 1`, so events
+    /// and snapshots written before `C` changed still apply. Stored data is never rewritten.
+    /// Panics if `C` is not registered or `from` is not older than its current version.
+    pub fn register_upcaster<C: Component>(&mut self, from: u32, step: ComponentUpcastFn) {
+        let entry = self
+            .entries
+            .get_mut(C::NAME)
+            .unwrap_or_else(|| panic!("component `{}` is not registered", C::NAME));
+        assert!(
+            from >= 1 && from < entry.version,
+            "`{}` upcaster from v{from} is not below v{}",
+            C::NAME,
+            entry.version
+        );
+        entry.upcasters.insert(from, step);
     }
 
     pub(crate) fn get(&self, name: &str) -> Option<(&'static str, &Entry)> {

@@ -22,7 +22,7 @@ pub use command::{
     CommandHandler, CommandOutcome, CommandReport, CommandResult, Commands, CoreCommands,
     occurrence,
 };
-pub use component::{Component, ComponentRegistry};
+pub use component::{Component, ComponentRegistry, ComponentUpcastFn};
 pub use components::{Actor, Describable, Link, Located, Place};
 pub use event::{
     ClockAdvanced, ComponentRemoved, ComponentSet, DecodeError, EntityCreated, EntityDestroyed,

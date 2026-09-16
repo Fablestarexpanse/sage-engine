@@ -177,6 +177,8 @@ fn hybrid(rules: Vec<Rule>) -> Mind {
         persona: "A weary ferryman who hates the river.".into(),
         goals: vec!["Earn passage fees.".into()],
         rules,
+        importance: Default::default(),
+        reflect_threshold: None,
     }
 }
 
@@ -467,6 +469,8 @@ fn only_one_request_per_agent_is_in_flight() {
         persona: String::new(),
         goals: vec![],
         rules: vec![],
+        importance: Default::default(),
+        reflect_threshold: None,
     };
     let (mut j, mut s) = world(mind);
     let thinker = Thinker::start(HttpTransport::new(config(&stub.url)), 4);
@@ -511,6 +515,8 @@ fn without_a_model_hybrid_rules_fall_through_and_llm_agents_idle() {
         persona: String::new(),
         goals: vec![],
         rules: vec![],
+        importance: Default::default(),
+        reflect_threshold: None,
     };
     let (mut j, mut s) = world(idle);
     let mut agents = agents_for(&mut s, None);

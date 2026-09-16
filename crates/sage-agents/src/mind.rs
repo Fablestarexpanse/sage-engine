@@ -1,6 +1,9 @@
 //! The `sage.mind` component.
 
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 /// Drivers this engine can run: `scripted` (rules only), `hybrid` (rules, where a rule may
 /// `@think`), `llm` (the model decides every think).
@@ -29,6 +32,22 @@ pub struct Mind {
     /// Scripted driver: tried in order; the first whose conditions all hold fires.
     #[serde(default)]
     pub rules: Vec<Rule>,
+    /// Importance (0 to 10) of occurrences by kind, replacing the built-in rules for those
+    /// kinds when choosing what to remember. Since v2.
+    #[serde(default)]
+    pub importance: BTreeMap<String, f64>,
+    /// Reflect once the importance of new memories adds up to this. `None` uses the default
+    /// for model-driven minds. Since v2.
+    #[serde(default)]
+    pub reflect_threshold: Option<f64>,
+}
+
+/// `sage.mind` v1 had no `importance` or `reflect_threshold`; both default when absent.
+pub(crate) fn mind_v1_to_v2(data: Value) -> Result<Value, String> {
+    if !data.is_object() {
+        return Err("sage.mind v1 data is not an object".into());
+    }
+    Ok(data)
 }
 
 /// One scripted rule.
@@ -63,7 +82,7 @@ pub struct When {
 
 impl sage_core::Component for Mind {
     const NAME: &'static str = "sage.mind";
-    const VERSION: u32 = 1;
+    const VERSION: u32 = 2;
 
     fn validate(&self) -> Result<(), String> {
         if !DRIVERS.contains(&self.driver.as_str()) {
@@ -81,6 +100,25 @@ impl sage_core::Component for Mind {
         }
         if self.rules.len() > 64 {
             return Err("at most 64 rules".into());
+        }
+        for (kind, weight) in &self.importance {
+            let well_formed = kind.split('.').count() >= 2
+                && kind.split('.').all(|s| {
+                    !s.is_empty()
+                        && s.bytes()
+                            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
+                });
+            if !well_formed {
+                return Err(format!("importance: `{kind}` is not an occurrence kind"));
+            }
+            if !(weight.is_finite() && (0.0..=10.0).contains(weight)) {
+                return Err(format!("importance of `{kind}` must be between 0 and 10"));
+            }
+        }
+        if let Some(threshold) = self.reflect_threshold
+            && !(threshold.is_finite() && threshold > 0.0)
+        {
+            return Err("reflect_threshold must be above 0".into());
         }
         for (i, rule) in self.rules.iter().enumerate() {
             let fail = |why: String| Err(format!("rules[{i}]: {why}"));

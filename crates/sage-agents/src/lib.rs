@@ -12,6 +12,7 @@
 pub mod llm;
 mod memory;
 mod mind;
+pub mod retrieval;
 mod scripted;
 
 use sage_core::{
@@ -28,6 +29,7 @@ pub use mind::{Mind, Rule, When};
 pub fn registry() -> ComponentRegistry {
     let mut registry = ComponentRegistry::with_core();
     registry.register::<Mind>();
+    registry.register_upcaster::<Mind>(1, mind::mind_v1_to_v2);
     registry
 }
 
@@ -191,11 +193,12 @@ impl Agents {
             exits,
         };
         let memories: Vec<&Memory> = self.memories.of(agent).collect();
-        let messages = llm::prompt(world, agent, mind, &memories, &allowed, &self.lexicon);
+        let parts =
+            llm::PromptParts::gather(world, agent, mind, &memories, &allowed, &self.lexicon, tick);
         self.thinker
             .as_mut()
             .expect("asked only when a thinker is available")
-            .ask(agent, tick, messages, allowed);
+            .ask(agent, tick, parts, allowed);
     }
 
     /// Model answers that have arrived, as commands for `tick`. Answers to requests made more

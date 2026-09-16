@@ -352,19 +352,27 @@ impl World {
                     .registry
                     .get(&set.component)
                     .ok_or_else(|| ApplyError::UnknownComponent(set.component.clone()))?;
-                if entry.version != set.component_version {
-                    return Err(ApplyError::ComponentVersion {
-                        component: set.component.clone(),
-                        registered: entry.version,
-                        found: set.component_version,
-                    });
+                let version_error = || ApplyError::ComponentVersion {
+                    component: set.component.clone(),
+                    registered: entry.version,
+                    found: set.component_version,
+                };
+                if set.component_version == 0 || set.component_version > entry.version {
+                    return Err(version_error());
                 }
-                let references = (entry.parse)(set.data.clone()).map_err(|reason| {
-                    ApplyError::ComponentData {
+                let mut data = set.data.clone();
+                for from in set.component_version..entry.version {
+                    let step = entry.upcasters.get(&from).ok_or_else(version_error)?;
+                    data = step(data).map_err(|reason| ApplyError::ComponentData {
+                        component: set.component.clone(),
+                        reason: format!("upcasting from v{from}: {reason}"),
+                    })?;
+                }
+                let references =
+                    (entry.parse)(data.clone()).map_err(|reason| ApplyError::ComponentData {
                         component: set.component.clone(),
                         reason,
-                    }
-                })?;
+                    })?;
                 if let Some(target) = references.into_iter().find(|t| !self.contains(*t)) {
                     return Err(ApplyError::DanglingReference {
                         component: set.component.clone(),
@@ -373,7 +381,7 @@ impl World {
                 }
                 if name == <Located as crate::Component>::NAME {
                     let located: Located =
-                        serde_json::from_value(set.data.clone()).expect("parsed above");
+                        serde_json::from_value(data.clone()).expect("parsed above");
                     if self.contains_transitively(set.id, located.within) {
                         return Err(ApplyError::ContainmentCycle {
                             id: set.id,
@@ -382,8 +390,7 @@ impl World {
                     }
                 }
                 let previous = (entry.read)(&self.ecs.entity(entity));
-                (entry.insert)(&mut self.ecs.entity_mut(entity), set.data.clone())
-                    .expect("parsed above");
+                (entry.insert)(&mut self.ecs.entity_mut(entity), data).expect("parsed above");
                 steps.push(UndoStep::Component {
                     id: set.id,
                     name,
@@ -714,6 +721,102 @@ mod tests {
         }
         let (_, err) = refused(&mut w, &[created(1), event]);
         assert!(matches!(err, ApplyError::ComponentVersion { found: 2, .. }));
+    }
+
+    /// `test.counter` v2 renamed `n` to `count`.
+    #[derive(bevy_ecs::component::Component, Serialize, Deserialize, Clone, Debug, PartialEq)]
+    #[serde(deny_unknown_fields)]
+    struct Counter {
+        count: u64,
+    }
+
+    impl Component for Counter {
+        const NAME: &'static str = "test.counter";
+        const VERSION: u32 = 2;
+    }
+
+    fn counter_v1_to_v2(mut data: Value) -> Result<Value, String> {
+        let n = data
+            .as_object_mut()
+            .and_then(|o| o.remove("n"))
+            .ok_or("missing `n`")?;
+        Ok(json!({ "count": n }))
+    }
+
+    fn set_raw(id: u64, name: &str, version: u32, data: Value) -> Event {
+        Event::ComponentSet(ComponentSet {
+            id: EntityId(id),
+            component: name.into(),
+            component_version: version,
+            data,
+        })
+    }
+
+    #[test]
+    fn old_component_data_is_upcast_on_apply_and_restore() {
+        let registry = || {
+            let mut r = ComponentRegistry::with_core();
+            r.register::<Counter>();
+            r.register_upcaster::<Counter>(1, counter_v1_to_v2);
+            r
+        };
+        let mut w = World::empty(registry());
+        apply(
+            &mut w,
+            &[created(1), set_raw(1, "test.counter", 1, json!({"n": 7}))],
+        )
+        .unwrap();
+        assert_eq!(w.get::<Counter>(EntityId(1)), Some(&Counter { count: 7 }));
+
+        // A snapshot written by the old engine stores version 1 data.
+        let mut old = w.snapshot();
+        old.entities[0].components.insert(
+            "test.counter".into(),
+            SnapshotComponent {
+                version: 1,
+                data: json!({"n": 9}),
+            },
+        );
+        let restored = World::restore(registry(), &old).unwrap();
+        assert_eq!(
+            restored.get::<Counter>(EntityId(1)),
+            Some(&Counter { count: 9 })
+        );
+        // Snapshots always store the current version.
+        assert_eq!(
+            restored.snapshot().entities[0].components["test.counter"].version,
+            2
+        );
+
+        let (_, bad) = refused(&mut w, &[set_raw(1, "test.counter", 1, json!({"m": 1}))]);
+        assert!(matches!(bad, ApplyError::ComponentData { .. }), "{bad:?}");
+        let (_, newer) = refused(
+            &mut w,
+            &[set_raw(1, "test.counter", 3, json!({"count": 1}))],
+        );
+        assert!(matches!(
+            newer,
+            ApplyError::ComponentVersion { found: 3, .. }
+        ));
+    }
+
+    #[test]
+    fn old_component_data_without_an_upcaster_is_refused() {
+        let mut registry = ComponentRegistry::with_core();
+        registry.register::<Counter>();
+        let mut w = World::empty(registry);
+        let (_, err) = refused(
+            &mut w,
+            &[created(1), set_raw(1, "test.counter", 1, json!({"n": 7}))],
+        );
+        assert!(matches!(
+            err,
+            ApplyError::ComponentVersion {
+                registered: 2,
+                found: 1,
+                ..
+            }
+        ));
     }
 
     #[test]

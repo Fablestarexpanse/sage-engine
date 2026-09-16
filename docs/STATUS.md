@@ -1,4 +1,4 @@
-NEXT: M3 S3a is done (ADR 0016). Remaining M3 work is S3b: memory retrieval (recency, importance, relevance), a rebuildable embedding cache (OpenAI-compatible /embeddings), and reflection and planning stored as agent events. Agree S3b's design with the owner first. Not yet done: a run against a real model (no local Ollama was available). With Ollama running: `sage run w.db --seed worlds/demo-agents/seed.json --llm-url http://localhost:11434/v1 --llm-model <model>` on a world with hybrid agents.
+NEXT: M3 S3b part 1 is done (ADR 0017). Part 2 is embeddings: an OpenAI-compatible `/embeddings` client (`--embed-url`, `--embed-model`), a rebuildable cache in `<world>.embeddings.db` keyed by model and text hash, cosine relevance computed on the worker, and a fall back to word overlap when the endpoint is down. Part 3 is reflection (`sage.mind.reflected`, triggered by an importance budget). Not yet done: a run against a real model.
 
 # Status
 
@@ -7,7 +7,7 @@ NEXT: M3 S3a is done (ADR 0016). Remaining M3 work is S3b: memory retrieval (rec
 | M0 Scaffold | done: workspace, CI (fmt, clippy, test, denylist), ADRs 0001–0004 |
 | M1 World model | **closed** 2026-09-16 (ADR 0005-0008; 24 h wall-clock run waived, fast-mode equivalent passed) |
 | M2 Plugin seal | **closed** 2026-09-16 (ADR 0009-0011; N-1 WIT adapter test deferred by owner ruling) |
-| M3 Agents | in progress: S1-S3a done (commands, scripted and LLM agents, memory from the log; ADR 0012-0016); S3b next |
+| M3 Agents | in progress: S1-S3a done; S3b part 1 done (component upcasters, importance, retrieval; ADR 0017) |
 | M4 Client + Foundry MVP | blocked on M3 |
 | M5 Workshop + social | blocked on M4 |
 | M6 Marketplace | blocked on M5 |
@@ -54,6 +54,9 @@ NEXT: M3 S3a is done (ADR 0016). Remaining M3 work is S3b: memory retrieval (rec
 - A crash on any append mid-tick loses the whole tick, never half of it (`crates/sage-store/tests/replay.rs`)
 - LLM agents act only through the player command path; injected text stays data; unreachable or slow models never block ticks and scripted rules take over (`crates/sage-agents/tests/llm.rs`, `crates/sage-server/tests/llm.rs`), all against stub servers
 - The demo worlds play with no AI in CI (`crates/sage-server/tests/agents.rs`)
+
+- Component data from older versions is upcast through events and snapshots; a v1 mind still applies (`crates/sage-core/src/world.rs`, `crates/sage-agents/tests/retrieval.rs`)
+- A prompt keeps an important old message over repetitive recent chatter (`crates/sage-agents/tests/retrieval.rs`)
 
 ## Open questions for the owner (not blocking M1)
 

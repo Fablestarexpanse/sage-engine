@@ -37,6 +37,8 @@ fn mind(think_every: u64, rules: Vec<Rule>) -> Mind {
         persona: "A test agent.".into(),
         goals: vec![],
         rules,
+        importance: Default::default(),
+        reflect_threshold: None,
     }
 }
 

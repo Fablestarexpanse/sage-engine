@@ -82,6 +82,8 @@ fn seed(journal: &mut Journal<SqliteLog>) {
                     command: "say Good day, {any_actor}.".into(),
                 },
             ],
+            importance: Default::default(),
+            reflect_threshold: None,
         };
         events.extend([
             set(id, &named(name)),
