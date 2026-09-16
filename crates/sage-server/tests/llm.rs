@@ -14,6 +14,7 @@ use serde_json::{Value, json};
 struct Seen {
     authorization: Vec<String>,
     bodies: Vec<Value>,
+    embedding_inputs: usize,
 }
 
 fn stub(content: &'static str) -> (String, Arc<Mutex<Seen>>) {
@@ -27,6 +28,10 @@ fn stub(content: &'static str) -> (String, Arc<Mutex<Seen>>) {
             let record = Arc::clone(&record);
             std::thread::spawn(move || {
                 let mut reader = BufReader::new(stream.try_clone().unwrap());
+                let mut request_line = String::new();
+                if reader.read_line(&mut request_line).unwrap_or(0) == 0 {
+                    return;
+                }
                 let (mut length, mut authorization) = (0, String::new());
                 loop {
                     let mut line = String::new();
@@ -47,12 +52,20 @@ fn stub(content: &'static str) -> (String, Arc<Mutex<Seen>>) {
                 }
                 let mut body = vec![0; length];
                 reader.read_exact(&mut body).unwrap();
-                {
+                let body: Value = serde_json::from_slice(&body).unwrap();
+                let reply = if request_line.contains("/embeddings") {
+                    let inputs = body["input"].as_array().unwrap().len();
+                    record.lock().unwrap().embedding_inputs += inputs;
+                    let data: Vec<Value> = (0..inputs)
+                        .map(|i| json!({"index": i, "embedding": [1.0, i as f64]}))
+                        .collect();
+                    json!({ "data": data }).to_string()
+                } else {
                     let mut seen = record.lock().unwrap();
                     seen.authorization.push(authorization);
-                    seen.bodies.push(serde_json::from_slice(&body).unwrap());
-                }
-                let reply = json!({"choices": [{"message": {"content": content}}]}).to_string();
+                    seen.bodies.push(body);
+                    json!({"choices": [{"message": {"content": content}}]}).to_string()
+                };
                 let _ = write!(
                     stream,
                     "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{reply}",
@@ -123,6 +136,7 @@ fn a_hybrid_agent_answers_through_a_model_in_a_real_run() {
             "1000",
         ])
         .args(["--llm-url", &url, "--llm-model", "stub-model"])
+        .args(["--embed-url", &url, "--embed-model", "stub-embed"])
         .output()
         .unwrap();
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -169,6 +183,16 @@ fn a_hybrid_agent_answers_through_a_model_in_a_real_run() {
             .iter()
             .all(|a| a == "Bearer test-secret-key")
     );
+    assert!(seen.embedding_inputs > 0, "memories were embedded");
+    let cache = rusqlite::Connection::open(dir.path().join("dock.db.embeddings.db")).unwrap();
+    let cached: i64 = cache
+        .query_row(
+            "SELECT COUNT(*) FROM embeddings WHERE model = 'stub-embed'",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert!(cached > 0, "the embedding cache sits beside the world file");
     let system = seen.bodies[0]["messages"][0]["content"].as_str().unwrap();
     assert!(system.contains("A weary ferryman."), "{system}");
     assert!(

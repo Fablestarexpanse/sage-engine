@@ -6,6 +6,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
 use sage_agents::Agents;
+use sage_agents::embeddings::{EmbeddingCache, HttpEmbedder, Relevance};
 use sage_agents::llm::{HttpTransport, LlmConfig, Thinker};
 use sage_core::{Journal, Scheduler, SnapshotEntity, Upcasters, entities_to_events};
 use sage_host::{Limits, PluginHost, PluginSystem};
@@ -107,8 +108,36 @@ pub fn run(options: &RunOptions) -> Result<(), String> {
             "llm url={url} model={model} workers={}",
             options.llm_workers
         );
-        agents = agents.with_thinker(Thinker::start(
+        let relevance = match (&options.embed_url, &options.embed_model) {
+            (Some(embed_url), Some(embed_model)) => {
+                let cache_path = {
+                    let mut name = options.world.as_os_str().to_owned();
+                    name.push(".embeddings.db");
+                    std::path::PathBuf::from(name)
+                };
+                let key = std::env::var("SAGE_EMBED_API_KEY")
+                    .or_else(|_| std::env::var("SAGE_LLM_API_KEY"))
+                    .ok()
+                    .filter(|k| !k.is_empty());
+                println!(
+                    "embeddings url={embed_url} model={embed_model} cache={}",
+                    cache_path.display()
+                );
+                Relevance::embedded(
+                    HttpEmbedder::new(
+                        embed_url.clone(),
+                        embed_model.clone(),
+                        key,
+                        Duration::from_secs(60),
+                    ),
+                    EmbeddingCache::open(&cache_path)?,
+                )
+            }
+            _ => Relevance::Lexical,
+        };
+        agents = agents.with_thinker(Thinker::start_with(
             HttpTransport::new(config),
+            relevance,
             options.llm_workers,
         ));
     }
@@ -159,6 +188,9 @@ pub fn run(options: &RunOptions) -> Result<(), String> {
         for (agent, why) in collected.failed {
             eprintln!("tick={} model agent={}: {why}", report.tick, agent.0);
             model_failures += 1;
+        }
+        for (agent, warning) in collected.warnings {
+            eprintln!("tick={} model agent={}: {warning}", report.tick, agent.0);
         }
         for suspended in &report.suspended {
             eprintln!(

@@ -27,6 +27,8 @@ usage:
       --llm-url <url>            OpenAI-compatible API for llm and hybrid agents, e.g. http://localhost:11434/v1
       --llm-model <name>         model to ask; required with --llm-url (key, if any, from SAGE_LLM_API_KEY)
       --llm-workers <n>          concurrent model requests (default 2)
+      --embed-url <url>          OpenAI-compatible embeddings API for memory relevance (needs --llm-url)
+      --embed-model <name>       embedding model, e.g. nomic-embed-text; cache in <world>.embeddings.db
   sage inspect <world.db>
   sage check <fragment-dir>       validate fragment.yaml and, for plugins, plugin.wasm";
 

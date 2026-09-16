@@ -9,6 +9,7 @@
 //! Without a configured model, `@think` rules are skipped and `llm` agents stay idle, so every
 //! world still runs with no AI.
 
+pub mod embeddings;
 pub mod llm;
 mod memory;
 mod mind;
@@ -60,6 +61,8 @@ pub struct Collected {
     pub thoughts: Vec<Thought>,
     /// Answers that produced nothing: refused, unreachable, or too late.
     pub failed: Vec<(EntityId, String)>,
+    /// Problems that did not stop thinking, such as embeddings falling back to word overlap.
+    pub warnings: Vec<(EntityId, String)>,
 }
 
 /// Runs every agent's mind.
@@ -211,6 +214,9 @@ impl Agents {
         };
         for answer in thinker.collect(tick) {
             let agent = answer.agent;
+            if let Some(warning) = answer.warning {
+                collected.warnings.push((agent, warning));
+            }
             let command = match answer.result {
                 Err(ThinkError::Unreachable(reason)) => {
                     collected

@@ -5,7 +5,7 @@ use std::path::PathBuf;
 pub enum Command {
     Version,
     Help,
-    Run(RunOptions),
+    Run(Box<RunOptions>),
     Inspect { world: PathBuf },
     Check { fragment: PathBuf },
 }
@@ -23,6 +23,8 @@ pub struct RunOptions {
     pub llm_url: Option<String>,
     pub llm_model: Option<String>,
     pub llm_workers: usize,
+    pub embed_url: Option<String>,
+    pub embed_model: Option<String>,
 }
 
 pub struct Args {
@@ -52,7 +54,7 @@ impl Args {
                     fragment: fragment.into(),
                 }
             }
-            Some("run") => Command::Run(parse_run(args)?),
+            Some("run") => Command::Run(Box::new(parse_run(args)?)),
             Some(other) => return Err(format!("unknown command `{other}`")),
         };
         Ok(Args { command })
@@ -73,6 +75,8 @@ fn parse_run(mut args: impl Iterator<Item = String>) -> Result<RunOptions, Strin
         llm_url: None,
         llm_model: None,
         llm_workers: 2,
+        embed_url: None,
+        embed_model: None,
     };
     while let Some(arg) = args.next() {
         if !arg.starts_with("--") {
@@ -92,6 +96,8 @@ fn parse_run(mut args: impl Iterator<Item = String>) -> Result<RunOptions, Strin
             "--report-every" => options.report_every = positive(&arg, &value()?)?,
             "--llm-url" => options.llm_url = Some(value()?),
             "--llm-model" => options.llm_model = Some(value()?),
+            "--embed-url" => options.embed_url = Some(value()?),
+            "--embed-model" => options.embed_model = Some(value()?),
             "--llm-workers" => {
                 options.llm_workers = usize::try_from(positive(&arg, &value()?)?)
                     .map_err(|_| format!("{arg} is too large"))?
@@ -102,6 +108,14 @@ fn parse_run(mut args: impl Iterator<Item = String>) -> Result<RunOptions, Strin
     options.world = world.ok_or("run needs a world file")?;
     if options.llm_url.is_some() != options.llm_model.is_some() {
         return Err("--llm-url and --llm-model go together".into());
+    }
+    if options.embed_url.is_some() != options.embed_model.is_some() {
+        return Err("--embed-url and --embed-model go together".into());
+    }
+    if options.embed_url.is_some() && options.llm_url.is_none() {
+        return Err(
+            "--embed-url only matters with --llm-url: embeddings choose what a model sees".into(),
+        );
     }
     Ok(options)
 }
@@ -125,7 +139,7 @@ mod tests {
 
     fn run(args: &[&str]) -> Result<RunOptions, String> {
         match Args::parse(args.iter().map(|s| s.to_string()))?.command {
-            Command::Run(options) => Ok(options),
+            Command::Run(options) => Ok(*options),
             _ => Err("not a run command".into()),
         }
     }
@@ -159,6 +173,34 @@ mod tests {
         assert_eq!(options.llm_workers, 2);
         assert!(run(&["run", "w.db", "--llm-url", "http://x/v1"]).is_err());
         assert!(run(&["run", "w.db", "--llm-model", "m"]).is_err());
+        assert!(run(&["run", "w.db", "--embed-url", "u", "--embed-model", "e"]).is_err());
+        assert!(
+            run(&[
+                "run",
+                "w.db",
+                "--llm-url",
+                "u",
+                "--llm-model",
+                "m",
+                "--embed-url",
+                "u"
+            ])
+            .is_err()
+        );
+        let both = run(&[
+            "run",
+            "w.db",
+            "--llm-url",
+            "u",
+            "--llm-model",
+            "m",
+            "--embed-url",
+            "u",
+            "--embed-model",
+            "e",
+        ])
+        .unwrap();
+        assert_eq!(both.embed_model.as_deref(), Some("e"));
         assert!(
             run(&[
                 "run",

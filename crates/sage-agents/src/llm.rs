@@ -14,6 +14,7 @@ use std::time::Duration;
 use sage_core::{Actor, EntityId, Lexicon, Located, World};
 use serde_json::{Value, json};
 
+use crate::embeddings::Relevance;
 use crate::memory::Memory;
 use crate::mind::Mind;
 use crate::retrieval::{Candidate, importance, lexical_relevance, select};
@@ -360,6 +361,8 @@ pub(crate) struct Answer {
     pub(crate) agent: EntityId,
     pub(crate) tick: u64,
     pub(crate) result: Result<Option<String>, ThinkError>,
+    /// Something went wrong that did not stop thinking, e.g. embeddings fell back.
+    pub(crate) warning: Option<String>,
 }
 
 /// Worker threads that ask the model.
@@ -371,14 +374,21 @@ pub struct Thinker {
 }
 
 impl Thinker {
-    /// Starts `workers` threads calling `transport`.
+    /// Starts `workers` threads calling `transport`, with word-overlap relevance.
     pub fn start(transport: impl Transport, workers: usize) -> Thinker {
+        Self::start_with(transport, Relevance::Lexical, workers)
+    }
+
+    /// Starts `workers` threads calling `transport`, measuring relevance with `relevance`.
+    pub fn start_with(transport: impl Transport, relevance: Relevance, workers: usize) -> Thinker {
         let transport = Arc::new(transport);
+        let relevance = Arc::new(relevance);
         let (jobs, job_queue) = channel::<Job>();
         let job_queue = Arc::new(Mutex::new(job_queue));
         let (answer_tx, answers) = channel();
         for _ in 0..workers.max(1) {
             let transport = Arc::clone(&transport);
+            let relevance = Arc::clone(&relevance);
             let job_queue = Arc::clone(&job_queue);
             let answer_tx = answer_tx.clone();
             std::thread::spawn(move || {
@@ -387,7 +397,8 @@ impl Thinker {
                         Ok(job) => job,
                         Err(_) => return,
                     };
-                    let messages = job.parts.assemble(&job.parts.lexical_relevance());
+                    let (scores, warning) = relevance.score(&job.parts);
+                    let messages = job.parts.assemble(&scores);
                     let result = transport
                         .complete(&messages)
                         .map_err(ThinkError::Unreachable)
@@ -398,6 +409,7 @@ impl Thinker {
                         agent: job.agent,
                         tick: job.tick,
                         result,
+                        warning,
                     };
                     if answer_tx.send(answer).is_err() {
                         return;

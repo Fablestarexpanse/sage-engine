@@ -1446,6 +1446,7 @@ name = "sage-agents"
 version = "0.0.1"
 dependencies = [
  "bevy_ecs",
+ "rusqlite",
  "sage-core",
  "sage-store",
  "serde",
