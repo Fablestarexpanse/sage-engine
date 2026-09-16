@@ -199,7 +199,7 @@ fn refused_batch_writes_nothing() {
         .unwrap_err();
     assert!(matches!(err, JournalError::Refused { index: 1, .. }));
     assert_eq!(journal.world().snapshot().to_bytes(), before);
-    assert_eq!(journal.log().read_from(1).unwrap().len(), 1);
+    assert_eq!(journal.log().read_page(1, 100).unwrap().len(), 1);
 }
 
 #[test]
@@ -239,7 +239,7 @@ fn database_refuses_unversioned_event() {
     };
     let err = log.append(1, 0, &[record]).unwrap_err();
     assert!(err.to_string().contains("CHECK constraint failed"), "{err}");
-    assert!(log.read_from(1).unwrap().is_empty());
+    assert!(log.read_page(1, 100).unwrap().is_empty());
 }
 
 #[test]

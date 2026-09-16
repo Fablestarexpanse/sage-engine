@@ -21,7 +21,7 @@ pub use event::{
     ClockAdvanced, ComponentRemoved, ComponentSet, DecodeError, EntityCreated, EntityDestroyed,
     Event, EventPayload, EventRecord,
 };
-pub use journal::{EventLog, Journal, JournalError, StoredEvent, StoredSnapshot};
+pub use journal::{EventLog, Journal, JournalError, REPLAY_PAGE, StoredEvent, StoredSnapshot};
 pub use scheduler::{Scheduler, StepReport, System, SystemRefused};
 pub use upcast::{UpcastError, Upcasters};
 pub use world::{

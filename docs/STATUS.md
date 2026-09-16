@@ -1,4 +1,4 @@
-NEXT: M1 slice 3 (`sage run`, `sage inspect`, demo seed, kill -9 restart test; ADR 0007) is committed and waiting for owner review. The last open M1 gate is the 24 h run. Start it with the command under "24 h gate run" below, then run `sage inspect` on the file and record the result in DECISIONS.md. After that, M1 closes and M2 (plugin seal) can begin.
+NEXT: The 24 h gate run is running: PID 30948, started 2026-09-16 11:29:34 local, due around 2026-09-17 11:30. Binary `sage-f27e95e.exe` (commit f27e95e). Its files are in `F:\Cursor Projects\SAGE-runs\m1-24h\` (db, stdout.log, stderr.log). When it exits, run `sage inspect` on `m1-24h.db`, check the pass criteria below, and record the result in DECISIONS.md. M2 must not start before then. Paged replay is done (commit after f27e95e). The running binary predates it, which doesn't matter: inspect the result with a current build.
 
 # Status
 

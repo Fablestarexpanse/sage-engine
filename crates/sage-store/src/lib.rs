@@ -146,12 +146,13 @@ impl EventLog for SqliteLog {
         Ok(())
     }
 
-    fn read_from(&self, from: u64) -> Result<Vec<StoredEvent>, StoreError> {
+    fn read_page(&self, from: u64, limit: usize) -> Result<Vec<StoredEvent>, StoreError> {
         let mut stmt = self.conn.prepare_cached(
             "SELECT seq, tick, event_type, schema_version, payload
-             FROM events WHERE seq >= ?1 ORDER BY seq",
+             FROM events WHERE seq >= ?1 ORDER BY seq LIMIT ?2",
         )?;
-        let rows = stmt.query_map([to_i64(from)], |row| {
+        let limit = i64::try_from(limit).unwrap_or(i64::MAX);
+        let rows = stmt.query_map(params![to_i64(from), limit], |row| {
             Ok((
                 row.get::<_, i64>(0)? as u64,
                 row.get::<_, i64>(1)? as u64,

@@ -8,6 +8,9 @@ use crate::event::{DecodeError, Event, EventRecord};
 use crate::upcast::Upcasters;
 use crate::world::{ApplyError, SNAPSHOT_SCHEMA_VERSION, Snapshot, SnapshotError, World};
 
+/// How many events replay reads from the log at a time.
+pub const REPLAY_PAGE: usize = 4096;
+
 /// An event as read back from a log.
 #[derive(Clone, Debug, PartialEq)]
 pub struct StoredEvent {
@@ -44,8 +47,9 @@ pub trait EventLog {
         events: &[EventRecord],
     ) -> Result<(), Self::Error>;
 
-    /// Every event with `seq >= from`, in order.
-    fn read_from(&self, from: u64) -> Result<Vec<StoredEvent>, Self::Error>;
+    /// Up to `limit` events with `seq >= from`, in order. Replay reads the log in pages of
+    /// [`REPLAY_PAGE`] so memory stays bounded however long the log is.
+    fn read_page(&self, from: u64, limit: usize) -> Result<Vec<StoredEvent>, Self::Error>;
 
     /// Stores a snapshot.
     fn save_snapshot(&mut self, snapshot: &StoredSnapshot) -> Result<(), Self::Error>;
@@ -145,26 +149,35 @@ impl<L: EventLog> Journal<L> {
     }
 
     fn replay(log: L, mut world: World, upcasters: Upcasters) -> Result<Self, JournalError> {
-        for stored in log.read_from(world.last_seq() + 1).map_err(log_error)? {
-            let expected = world.last_seq() + 1;
-            if stored.seq != expected {
-                return Err(JournalError::Gap {
-                    expected,
-                    found: stored.seq,
-                });
-            }
-            let event = Event::from_record(&stored.record, &upcasters).map_err(|error| {
-                JournalError::Decode {
-                    seq: stored.seq,
-                    error,
+        loop {
+            let page = log
+                .read_page(world.last_seq() + 1, REPLAY_PAGE)
+                .map_err(log_error)?;
+            let full = page.len() == REPLAY_PAGE;
+            for stored in page {
+                let expected = world.last_seq() + 1;
+                if stored.seq != expected {
+                    return Err(JournalError::Gap {
+                        expected,
+                        found: stored.seq,
+                    });
                 }
-            })?;
-            world
-                .apply_batch(stored.seq, stored.tick, std::slice::from_ref(&event))
-                .map_err(|(_, error)| JournalError::Corrupt {
-                    seq: stored.seq,
-                    error,
+                let event = Event::from_record(&stored.record, &upcasters).map_err(|error| {
+                    JournalError::Decode {
+                        seq: stored.seq,
+                        error,
+                    }
                 })?;
+                world
+                    .apply_batch(stored.seq, stored.tick, std::slice::from_ref(&event))
+                    .map_err(|(_, error)| JournalError::Corrupt {
+                        seq: stored.seq,
+                        error,
+                    })?;
+            }
+            if !full {
+                break;
+            }
         }
         Ok(Journal {
             log,
@@ -275,11 +288,12 @@ pub(crate) mod test_log {
             Ok(())
         }
 
-        fn read_from(&self, from: u64) -> Result<Vec<StoredEvent>, Refused> {
+        fn read_page(&self, from: u64, limit: usize) -> Result<Vec<StoredEvent>, Refused> {
             Ok(self
                 .events
                 .iter()
                 .filter(|e| e.seq >= from)
+                .take(limit)
                 .cloned()
                 .collect())
         }
@@ -339,6 +353,61 @@ mod tests {
         assert_eq!(journal.world().snapshot().to_bytes(), before);
         assert_eq!(journal.world().tick(), 1);
         assert_eq!(journal.log.events.len(), 1);
+    }
+
+    #[test]
+    fn replay_crosses_page_boundaries() {
+        let mut journal = Journal::open(
+            MemoryLog::default(),
+            ComponentRegistry::with_core(),
+            Upcasters::new(),
+        )
+        .unwrap();
+        // Exactly two full pages plus one event, committed in uneven batches.
+        let total = REPLAY_PAGE * 2 + 1;
+        let mut next = 1u64;
+        while (next as usize) <= total {
+            let batch: Vec<Event> = (next..next + 1000)
+                .take(total + 1 - next as usize)
+                .map(|id| Event::EntityCreated(EntityCreated { id: EntityId(id) }))
+                .collect();
+            next += batch.len() as u64;
+            journal.commit(next, &batch).unwrap();
+        }
+        let live = journal.world().snapshot().to_bytes();
+        let replayed = Journal::open_from_genesis(
+            journal.into_log(),
+            ComponentRegistry::with_core(),
+            Upcasters::new(),
+        )
+        .unwrap();
+        assert_eq!(replayed.world().last_seq(), total as u64);
+        assert_eq!(replayed.world().snapshot().to_bytes(), live);
+    }
+
+    #[test]
+    fn replay_refuses_a_gap_in_the_log() {
+        let mut log = MemoryLog::default();
+        for seq in [1, 3] {
+            log.events.push(StoredEvent {
+                seq,
+                tick: 0,
+                record: Event::EntityCreated(EntityCreated { id: EntityId(seq) }).to_record(),
+            });
+        }
+        let err = Journal::open(log, ComponentRegistry::with_core(), Upcasters::new())
+            .err()
+            .unwrap();
+        assert!(
+            matches!(
+                err,
+                JournalError::Gap {
+                    expected: 2,
+                    found: 3
+                }
+            ),
+            "{err}"
+        );
     }
 
     #[test]
