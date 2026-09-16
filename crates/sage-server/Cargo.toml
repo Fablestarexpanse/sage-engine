@@ -1,0 +1,17 @@
+[package]
+name = "sage-server"
+description = "SAGE server binary and CLI."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "sage"
+path = "src/main.rs"
+
+[lints]
+workspace = true
+
+[dependencies]

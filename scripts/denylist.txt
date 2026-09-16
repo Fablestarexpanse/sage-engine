@@ -1,0 +1,37 @@
+# Setting terms that must never appear in engine code (crates/, wit/, plugins/).
+# Seeded from SAGE v1's scripts/sage_denylist.toml and v1's reference worlds.
+# Format: one term per line.
+#   i:term  case-insensitive, whole word (snake_case parts count as words)
+#   c:term  exact case, whole word
+# A real engine concept that collides with a term gets an ADR, not a quiet deletion here.
+
+# v1 proprietary world (lives in a private repo, never here)
+i:fablestar
+i:conduit
+i:glyph
+i:glyphstream
+i:resonance
+i:digi
+i:fortitude
+i:acuity
+i:tidegate
+i:aipub
+i:echo_credits
+c:Resolve
+c:Presence
+c:Reflex
+c:FRT
+c:RFX
+c:ACU
+c:RSV
+c:PRS
+
+# v1 reference world
+i:rivermoot
+c:mgt
+c:wts
+c:nrv
+
+# v1 scaffolding names
+i:test_isle
+i:starter_zone
