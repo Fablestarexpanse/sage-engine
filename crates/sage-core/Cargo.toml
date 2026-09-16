@@ -11,3 +11,7 @@ repository.workspace = true
 workspace = true
 
 [dependencies]
+bevy_ecs.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true

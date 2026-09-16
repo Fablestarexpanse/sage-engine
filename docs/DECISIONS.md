@@ -9,3 +9,4 @@ Owner rulings and measured facts, dated, newest last. Anything hard to reverse a
 - **License:** Apache-2.0 + CLA. The CLA stays a placeholder until a lawyer reviews it. See ADR 0003.
 - **Build order:** bottom-up with milestone gates, as in blueprint §I. See ADR 0004.
 - **Denylist:** seeded from v1 `scripts/sage_denylist.toml` plus the reference world's name and stat keys. The negative test works: a comment containing `Rivermoot` or `conduit_power` in a crate fails the check, while `resolve_path` passes.
+- **M1 slice 1:** the owner said "continue", which approved starting M1. Built `Journal`, `SqliteLog` and canonical snapshots. See ADR 0005. Dependencies: `bevy_ecs` 0.19 (default features off, `std` only), `rusqlite` 0.40 (bundled SQLite), `serde`/`serde_json`, `thiserror`. Result: 27 tests passing. Mutation check: reversing the log read order, or corrupting stored ticks, fails both replay tests.
