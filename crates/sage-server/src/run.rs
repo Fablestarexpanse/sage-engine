@@ -91,6 +91,12 @@ pub fn run(options: &RunOptions) -> Result<(), String> {
             );
         }
         refused_total += report.refused.len();
+        for suspended in &report.suspended {
+            eprintln!(
+                "tick={} suspended system={}: {}",
+                report.tick, suspended.system, suspended.reason
+            );
+        }
 
         if report.tick.is_multiple_of(options.snapshot_every) {
             journal.save_snapshot().map_err(|e| e.to_string())?;

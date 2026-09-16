@@ -1,6 +1,8 @@
 //! The journal: the only path that changes a world. Apply, append, and undo if the append
 //! fails.
 
+use std::sync::Arc;
+
 use thiserror::Error;
 
 use crate::component::ComponentRegistry;
@@ -109,7 +111,7 @@ pub enum JournalError {
 /// Owns a world and its log. Every change goes through [`Journal::commit`].
 pub struct Journal<L: EventLog> {
     log: L,
-    world: World,
+    world: Arc<World>,
     upcasters: Upcasters,
 }
 
@@ -181,7 +183,7 @@ impl<L: EventLog> Journal<L> {
         }
         Ok(Journal {
             log,
-            world,
+            world: Arc::new(world),
             upcasters,
         })
     }
@@ -189,6 +191,18 @@ impl<L: EventLog> Journal<L> {
     /// The current world.
     pub fn world(&self) -> &World {
         &self.world
+    }
+
+    /// A shared handle to the current world, for systems that must hold the world for the
+    /// length of their run (a plugin's store cannot hold a borrow). Every clone must be
+    /// dropped before the next [`Journal::commit`], which panics otherwise.
+    pub fn world_handle(&self) -> &Arc<World> {
+        &self.world
+    }
+
+    fn world_mut(&mut self) -> &mut World {
+        Arc::get_mut(&mut self.world)
+            .expect("a world handle outlived the system run that borrowed it")
     }
 
     /// The upcasters used when reading the log.
@@ -210,12 +224,12 @@ impl<L: EventLog> Journal<L> {
         }
         let first_seq = self.world.last_seq() + 1;
         let undo = self
-            .world
+            .world_mut()
             .apply_batch(first_seq, tick, events)
             .map_err(|(index, error)| JournalError::Refused { index, error })?;
         let records: Vec<EventRecord> = events.iter().map(Event::to_record).collect();
         if let Err(error) = self.log.append(first_seq, tick, &records) {
-            self.world.undo(undo);
+            self.world_mut().undo(undo);
             return Err(log_error(error));
         }
         Ok(self.world.last_seq())

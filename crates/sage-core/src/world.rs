@@ -248,6 +248,26 @@ impl World {
         self.ecs.get::<C>(entity)
     }
 
+    /// Reads a component by registered name, as the JSON stored in events. For callers that
+    /// do not have the Rust type, such as plugins.
+    pub fn component_json(&self, id: EntityId, component: &str) -> Option<Value> {
+        let entity = *self.index.get(&id)?;
+        let (_, entry) = self.registry.get(component)?;
+        (entry.read)(&self.ecs.entity(entity))
+    }
+
+    /// Live entities carrying the named component, by id. Empty for an unregistered name.
+    pub fn entities_with(&self, component: &str) -> Vec<EntityId> {
+        let Some((_, entry)) = self.registry.get(component) else {
+            return Vec::new();
+        };
+        self.index
+            .iter()
+            .filter(|(_, entity)| (entry.read)(&self.ecs.entity(**entity)).is_some())
+            .map(|(id, _)| *id)
+            .collect()
+    }
+
     /// Applies `events` as `first_seq..` at `tick`. On refusal the world is exactly as before
     /// and the error names the refused event's position.
     pub(crate) fn apply_batch(
@@ -767,6 +787,29 @@ mod tests {
         assert_eq!(w.get::<Describable>(EntityId(1)), Some(&hall));
         assert_eq!(w.get::<Located>(EntityId(2)), Some(&within(1)));
         assert!(!w.contains(EntityId(3)));
+    }
+
+    #[test]
+    fn reads_components_by_name() {
+        let mut w = world();
+        apply(
+            &mut w,
+            &[
+                created(1),
+                set(1, &Place {}),
+                created(2),
+                set(2, &within(1)),
+            ],
+        )
+        .unwrap();
+        assert_eq!(
+            w.component_json(EntityId(2), Located::NAME),
+            Some(json!({"within": 1}))
+        );
+        assert_eq!(w.component_json(EntityId(2), Place::NAME), None);
+        assert_eq!(w.component_json(EntityId(2), "no.such"), None);
+        assert_eq!(w.entities_with(Place::NAME), [EntityId(1)]);
+        assert!(w.entities_with("no.such").is_empty());
     }
 
     #[test]

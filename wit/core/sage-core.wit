@@ -1,0 +1,73 @@
+/// The SAGE core API for code fragments.
+///
+/// A plugin may import only the interfaces its manifest grants. A plugin that imports anything
+/// else fails at boot. That check is the seal.
+///
+/// Data crosses the boundary as JSON strings in the same shapes the event log stores, so a
+/// plugin sees exactly what persistence sees, and the host decodes plugin output with the same
+/// code that reads the log.
+package sage:core@0.1.0;
+
+interface types {
+    /// Stable entity id, never reused.
+    type entity-id = u64;
+
+    /// An event a plugin proposes: type name, schema version and JSON payload, exactly as
+    /// stored in the log. The world validates it like any other event.
+    record event-record {
+        event-type: string,
+        schema-version: u32,
+        payload: string,
+    }
+}
+
+/// Read-only access to entities and their components.
+interface entities {
+    use types.{entity-id};
+
+    /// The id the next created entity should use.
+    next-entity-id: func() -> entity-id;
+
+    /// A component of a live entity as JSON, or none if the entity or component is absent.
+    get-component: func(id: entity-id, component: string) -> option<string>;
+
+    /// Live entities carrying the named component, in id order.
+    entities-with: func(component: string) -> list<entity-id>;
+}
+
+/// Read-only access to the space graph.
+interface space {
+    use types.{entity-id};
+
+    record link {
+        /// The entity carrying the link.
+        id: entity-id,
+        %from: entity-id,
+        to: entity-id,
+        label: string,
+    }
+
+    /// Links leaving a place, sorted by label then link id.
+    links-from: func(place: entity-id) -> list<link>;
+
+    /// Entities directly inside a container, in id order.
+    contents: func(container: entity-id) -> list<entity-id>;
+}
+
+/// What a plugin exports to run once per tick.
+interface system {
+    use types.{event-record};
+
+    /// Stable name, used in reports.
+    name: func() -> string;
+
+    /// Events to commit at `tick`, all or nothing. An error suspends the plugin.
+    run: func(tick: u64) -> result<list<event-record>, string>;
+}
+
+/// A plugin that runs as a system. It may import any subset of these interfaces.
+world plugin {
+    import entities;
+    import space;
+    export system;
+}

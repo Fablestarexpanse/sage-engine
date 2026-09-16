@@ -1,6 +1,8 @@
 [workspace]
 resolver = "3"
 members = ["crates/*"]
+# Test plugins, built to wasm by sage-host tests with their own workspace.
+exclude = ["crates/sage-host/fixtures"]
 
 [workspace.package]
 version = "0.0.1"

@@ -11,3 +11,11 @@ repository.workspace = true
 workspace = true
 
 [dependencies]
+sage-core.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+wasmtime = { version = "48", default-features = false, features = ["component-model", "cranelift", "runtime", "std"] }
+
+[dev-dependencies]
+sage-store.workspace = true
+wit-component = "0.259"

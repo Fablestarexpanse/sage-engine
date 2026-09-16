@@ -1,5 +1,7 @@
 //! M1 gate tests for the event log: replay determinism, restart, and what the store refuses.
 
+use std::sync::Arc;
+
 use sage_core::{
     Component, ComponentRegistry, ComponentSet, Describable, EntityCreated, EntityDestroyed,
     EntityId, Event, EventLog, EventRecord, Journal, JournalError, Link, Located, Place, Scheduler,
@@ -314,18 +316,18 @@ impl System for Wander {
         "wander"
     }
 
-    fn run(&mut self, world: &World, tick: u64) -> Vec<Event> {
+    fn run(&mut self, world: &Arc<World>, tick: u64) -> Result<Vec<Event>, String> {
         if !tick.is_multiple_of(self.every) {
-            return Vec::new();
+            return Ok(Vec::new());
         }
-        (1..world.next_entity_id().0)
+        Ok((1..world.next_entity_id().0)
             .map(EntityId)
             .filter_map(|id| {
                 let here = world.get::<Located>(id)?.within;
                 let (_, link) = world.link_named(here, "onward")?;
                 Some(set(id, &Located { within: link.to }))
             })
-            .collect()
+            .collect())
     }
 }
 

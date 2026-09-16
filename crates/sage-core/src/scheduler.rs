@@ -1,5 +1,8 @@
 //! World time. Each step advances the clock one tick and runs every system in registration
-//! order. Each system sees the world after the systems before it in the same tick.
+//! order. Each system sees the world after the systems before it in the same tick. A system
+//! that fails is suspended for the rest of the scheduler's life; the world keeps running.
+
+use std::sync::Arc;
 
 use crate::event::{ClockAdvanced, Event};
 use crate::journal::{EventLog, Journal, JournalError};
@@ -11,8 +14,10 @@ pub trait System {
     /// Stable name, used in reports.
     fn name(&self) -> &'static str;
 
-    /// Events this system wants committed at `tick`. The batch commits all or nothing.
-    fn run(&mut self, world: &World, tick: u64) -> Vec<Event>;
+    /// Events this system wants committed at `tick`. The batch commits all or nothing. An
+    /// error suspends the system: it is not run again by this scheduler. Any clone of `world`
+    /// must be dropped before returning.
+    fn run(&mut self, world: &Arc<World>, tick: u64) -> Result<Vec<Event>, String>;
 }
 
 /// A system's batch that the world refused. The world keeps running.
@@ -26,6 +31,15 @@ pub struct SystemRefused {
     pub error: ApplyError,
 }
 
+/// A system that failed and will not run again.
+#[derive(Debug, PartialEq)]
+pub struct SystemSuspended {
+    /// System name.
+    pub system: &'static str,
+    /// The system's error.
+    pub reason: String,
+}
+
 /// What happened in one step.
 #[derive(Debug, Default, PartialEq)]
 pub struct StepReport {
@@ -35,13 +49,15 @@ pub struct StepReport {
     pub committed: Vec<&'static str>,
     /// Systems whose batches were refused.
     pub refused: Vec<SystemRefused>,
+    /// Systems that failed this tick and are now suspended.
+    pub suspended: Vec<SystemSuspended>,
     /// Whether an idle-clock checkpoint was recorded.
     pub checkpoint: bool,
 }
 
 /// Runs systems tick by tick.
 pub struct Scheduler {
-    systems: Vec<Box<dyn System>>,
+    systems: Vec<(Box<dyn System>, bool)>,
     tick: u64,
     checkpoint_every: u64,
 }
@@ -61,8 +77,17 @@ impl Scheduler {
 
     /// Adds a system after the ones already added.
     pub fn add(&mut self, system: impl System + 'static) -> &mut Self {
-        self.systems.push(Box::new(system));
+        self.systems.push((Box::new(system), false));
         self
+    }
+
+    /// Names of systems that are suspended, in registration order.
+    pub fn suspended(&self) -> Vec<&'static str> {
+        self.systems
+            .iter()
+            .filter(|(_, suspended)| *suspended)
+            .map(|(system, _)| system.name())
+            .collect()
     }
 
     /// The last tick that ran.
@@ -82,8 +107,21 @@ impl Scheduler {
             tick,
             ..StepReport::default()
         };
-        for system in &mut self.systems {
-            let events = system.run(journal.world(), tick);
+        for (system, suspended) in &mut self.systems {
+            if *suspended {
+                continue;
+            }
+            let events = match system.run(journal.world_handle(), tick) {
+                Ok(events) => events,
+                Err(reason) => {
+                    *suspended = true;
+                    report.suspended.push(SystemSuspended {
+                        system: system.name(),
+                        reason,
+                    });
+                    continue;
+                }
+            };
             if events.is_empty() {
                 continue;
             }
@@ -140,13 +178,13 @@ mod tests {
             "spawner"
         }
 
-        fn run(&mut self, world: &World, tick: u64) -> Vec<Event> {
+        fn run(&mut self, world: &Arc<World>, tick: u64) -> Result<Vec<Event>, String> {
             if !tick.is_multiple_of(self.every) {
-                return Vec::new();
+                return Ok(Vec::new());
             }
-            vec![Event::EntityCreated(EntityCreated {
+            Ok(vec![Event::EntityCreated(EntityCreated {
                 id: world.next_entity_id(),
-            })]
+            })])
         }
     }
 
@@ -158,12 +196,12 @@ mod tests {
             "namer"
         }
 
-        fn run(&mut self, world: &World, tick: u64) -> Vec<Event> {
+        fn run(&mut self, world: &Arc<World>, tick: u64) -> Result<Vec<Event>, String> {
             let newest = EntityId(world.next_entity_id().0 - 1);
             if !world.contains(newest) || world.get::<Describable>(newest).is_some() {
-                return Vec::new();
+                return Ok(Vec::new());
             }
-            vec![Event::ComponentSet(ComponentSet {
+            Ok(vec![Event::ComponentSet(ComponentSet {
                 id: newest,
                 component: Describable::NAME.into(),
                 component_version: Describable::VERSION,
@@ -172,7 +210,7 @@ mod tests {
                     description: String::new(),
                 })
                 .unwrap(),
-            })]
+            })])
         }
     }
 
@@ -184,11 +222,58 @@ mod tests {
             "broken"
         }
 
-        fn run(&mut self, _: &World, _: u64) -> Vec<Event> {
-            vec![Event::EntityDestroyed(crate::EntityDestroyed {
+        fn run(&mut self, _: &Arc<World>, _: u64) -> Result<Vec<Event>, String> {
+            Ok(vec![Event::EntityDestroyed(crate::EntityDestroyed {
                 id: EntityId(999),
-            })]
+            })])
         }
+    }
+
+    /// Fails on its second run; counts how often it ran.
+    struct Flaky {
+        runs: Arc<std::sync::atomic::AtomicU32>,
+    }
+
+    impl System for Flaky {
+        fn name(&self) -> &'static str {
+            "flaky"
+        }
+
+        fn run(&mut self, _: &Arc<World>, _: u64) -> Result<Vec<Event>, String> {
+            let n = self.runs.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
+            if n == 2 {
+                Err("gave up".into())
+            } else {
+                Ok(Vec::new())
+            }
+        }
+    }
+
+    #[test]
+    fn failed_system_is_suspended_and_the_world_keeps_ticking() {
+        let mut journal = open(MemoryLog::default());
+        let mut scheduler = Scheduler::new(&journal, 100);
+        let runs = Arc::new(std::sync::atomic::AtomicU32::new(0));
+        scheduler
+            .add(Flaky {
+                runs: Arc::clone(&runs),
+            })
+            .add(Spawner { every: 1 });
+        let reports: Vec<StepReport> = (0..4)
+            .map(|_| scheduler.step(&mut journal).unwrap())
+            .collect();
+        assert!(reports[0].suspended.is_empty());
+        assert_eq!(
+            reports[1].suspended,
+            [SystemSuspended {
+                system: "flaky",
+                reason: "gave up".into()
+            }]
+        );
+        assert!(reports[2].suspended.is_empty());
+        assert_eq!(runs.load(std::sync::atomic::Ordering::SeqCst), 2);
+        assert_eq!(scheduler.suspended(), ["flaky"]);
+        assert_eq!(journal.world().len(), 4, "spawner kept running every tick");
     }
 
     #[test]

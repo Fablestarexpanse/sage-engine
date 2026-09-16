@@ -1,4 +1,4 @@
-NEXT: M1 is closed (ADR 0008). Next is M2, the plugin seal. Its plan is not written or agreed yet. Start by agreeing the slice order with the owner.
+NEXT: M2 slice 1 (seal) is committed and waiting for owner review. Slice 2: `fragment.yaml` manifest types in `sage-schema`, validation identical native and in WASM, and `sage check <fragment>` (manifest, WIT imports against grants, dry boot with fuel). Slice 3: `sage run --plugin`, port `harness.wander` to a plugin and delete the harness, then `sage.dialogue`.
 
 # Status
 
@@ -6,7 +6,7 @@ NEXT: M1 is closed (ADR 0008). Next is M2, the plugin seal. Its plan is not writ
 |---|---|
 | M0 Scaffold | done: workspace, CI (fmt, clippy, test, denylist), ADRs 0001–0004 |
 | M1 World model | **closed** 2026-09-16 (ADR 0005-0008; 24 h wall-clock run waived, fast-mode equivalent passed) |
-| M2 Plugin seal | next |
+| M2 Plugin seal | in progress: slice 1 done (Wasmtime component host, seal, fuel and memory limits; ADR 0009) |
 | M3 Agents | blocked on M2 |
 | M4 Client + Foundry MVP | blocked on M3 |
 | M5 Workshop + social | blocked on M4 |
@@ -15,8 +15,8 @@ NEXT: M1 is closed (ADR 0008). Next is M2, the plugin seal. Its plan is not writ
 ## Gate tests not yet written (they arrive with the code they test)
 
 - An event log from before a *real* schema change replays through its upcaster (M1). The mechanism is tested; this test ships with the first real change.
-- A plugin importing an undeclared WIT interface fails at boot (M2)
-- Manifest round-trip gives identical results native and in WASM (M2)
+- Manifest round-trip gives identical results native and in WASM (M2 slice 2)
+- A plugin built against WIT N-1 boots through an adapter (M2; deferred to the first real `sage:core` major bump, owner ruling)
 - The PNG chunk parser is fuzzed (whenever the parser exists)
 - The demo world plays with every AI driver disabled (M3)
 
@@ -34,6 +34,10 @@ NEXT: M1 is closed (ADR 0008). Next is M2, the plugin seal. Its plan is not writ
 - A demo world hard-killed mid-run and resumed ends byte-identical to an uninterrupted run (`crates/sage-server/tests/restart.rs`)
 - `--seed` is refused on a world that already has a history
 - 24 h of world time (345,600 ticks, 864,324 events) in fast mode: `refused=0`, snapshot matches replay, 16 MB peak during replay (ADR 0008)
+
+- A plugin importing an ungranted interface is refused at load, naming the interface; the linker alone also refuses it (`crates/sage-host/tests/seal.rs`)
+- Fuel exhaustion and the memory cap each suspend a plugin while the world keeps ticking
+- Plugin events are validated like any others (refused, or the plugin is suspended if undecodable), and replay without the plugin
 
 ## Open questions for the owner (not blocking M1)
 

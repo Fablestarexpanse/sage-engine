@@ -22,7 +22,7 @@ pub use event::{
     Event, EventPayload, EventRecord,
 };
 pub use journal::{EventLog, Journal, JournalError, REPLAY_PAGE, StoredEvent, StoredSnapshot};
-pub use scheduler::{Scheduler, StepReport, System, SystemRefused};
+pub use scheduler::{Scheduler, StepReport, System, SystemRefused, SystemSuspended};
 pub use upcast::{UpcastError, Upcasters};
 pub use world::{
     ApplyError, EntityId, SNAPSHOT_SCHEMA_VERSION, Snapshot, SnapshotComponent, SnapshotEntity,
