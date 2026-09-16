@@ -20,6 +20,9 @@ pub struct RunOptions {
     pub checkpoint_every: u64,
     pub plugins: Vec<PathBuf>,
     pub report_every: u64,
+    pub llm_url: Option<String>,
+    pub llm_model: Option<String>,
+    pub llm_workers: usize,
 }
 
 pub struct Args {
@@ -67,6 +70,9 @@ fn parse_run(mut args: impl Iterator<Item = String>) -> Result<RunOptions, Strin
         checkpoint_every: 240,
         plugins: Vec::new(),
         report_every: 240,
+        llm_url: None,
+        llm_model: None,
+        llm_workers: 2,
     };
     while let Some(arg) = args.next() {
         if !arg.starts_with("--") {
@@ -84,10 +90,19 @@ fn parse_run(mut args: impl Iterator<Item = String>) -> Result<RunOptions, Strin
             "--checkpoint-every" => options.checkpoint_every = positive(&arg, &value()?)?,
             "--plugin" => options.plugins.push(value()?.into()),
             "--report-every" => options.report_every = positive(&arg, &value()?)?,
+            "--llm-url" => options.llm_url = Some(value()?),
+            "--llm-model" => options.llm_model = Some(value()?),
+            "--llm-workers" => {
+                options.llm_workers = usize::try_from(positive(&arg, &value()?)?)
+                    .map_err(|_| format!("{arg} is too large"))?
+            }
             _ => return Err(format!("unknown option `{arg}`")),
         }
     }
     options.world = world.ok_or("run needs a world file")?;
+    if options.llm_url.is_some() != options.llm_model.is_some() {
+        return Err("--llm-url and --llm-model go together".into());
+    }
     Ok(options)
 }
 
@@ -127,6 +142,36 @@ mod tests {
     fn run_flags_in_any_order() {
         let options = run(&["run", "--hz", "0", "w.db", "--until-tick", "50"]).unwrap();
         assert_eq!((options.hz, options.until_tick), (0, Some(50)));
+    }
+
+    #[test]
+    fn llm_options_come_as_a_pair() {
+        let options = run(&[
+            "run",
+            "w.db",
+            "--llm-url",
+            "http://localhost:11434/v1",
+            "--llm-model",
+            "llama3.2",
+        ])
+        .unwrap();
+        assert_eq!(options.llm_model.as_deref(), Some("llama3.2"));
+        assert_eq!(options.llm_workers, 2);
+        assert!(run(&["run", "w.db", "--llm-url", "http://x/v1"]).is_err());
+        assert!(run(&["run", "w.db", "--llm-model", "m"]).is_err());
+        assert!(
+            run(&[
+                "run",
+                "w.db",
+                "--llm-model",
+                "m",
+                "--llm-url",
+                "u",
+                "--llm-workers",
+                "0"
+            ])
+            .is_err()
+        );
     }
 
     #[test]

@@ -2,8 +2,12 @@
 
 use serde::{Deserialize, Serialize};
 
-/// Drivers this engine can run.
-pub const DRIVERS: [&str; 1] = ["scripted"];
+/// Drivers this engine can run: `scripted` (rules only), `hybrid` (rules, where a rule may
+/// `@think`), `llm` (the model decides every think).
+pub const DRIVERS: [&str; 3] = ["scripted", "hybrid", "llm"];
+
+/// The rule action that asks the model instead of submitting a command. Hybrid minds only.
+pub const THINK: &str = "@think";
 
 /// Template variables a rule's command may use.
 pub const VARIABLES: [&str; 5] = ["speaker", "text", "any_exit", "any_actor", "self"];
@@ -12,7 +16,7 @@ pub const VARIABLES: [&str; 5] = ["speaker", "text", "any_exit", "any_actor", "s
 #[derive(bevy_ecs::component::Component, Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct Mind {
-    /// Which driver decides: `scripted`.
+    /// Which driver decides: `scripted`, `hybrid` or `llm`.
     pub driver: String,
     /// Think once every this many ticks.
     pub think_every: u64,
@@ -94,6 +98,18 @@ impl sage_core::Component for Mind {
             }
             if rule.command.trim().is_empty() {
                 return fail("do must not be empty".into());
+            }
+            if rule.command.trim().starts_with('@') {
+                if rule.command.trim() != THINK {
+                    return fail(format!(
+                        "`{}` is not an action; did you mean `{THINK}`?",
+                        rule.command.trim()
+                    ));
+                }
+                if self.driver != "hybrid" {
+                    return fail(format!("`{THINK}` needs driver `hybrid`"));
+                }
+                continue;
             }
             for variable in variables(&rule.command)? {
                 if !VARIABLES.contains(&variable) {

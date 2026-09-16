@@ -24,6 +24,9 @@ usage:
       --checkpoint-every <ticks> record idle clock time this often (default 240)
       --plugin <fragment-dir>    load a plugin after `sage check` passes; repeatable, runs in order
       --report-every <ticks>     print a status line this often (default 240)
+      --llm-url <url>            OpenAI-compatible API for llm and hybrid agents, e.g. http://localhost:11434/v1
+      --llm-model <name>         model to ask; required with --llm-url (key, if any, from SAGE_LLM_API_KEY)
+      --llm-workers <n>          concurrent model requests (default 2)
   sage inspect <world.db>
   sage check <fragment-dir>       validate fragment.yaml and, for plugins, plugin.wasm";
 

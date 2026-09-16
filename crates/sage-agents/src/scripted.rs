@@ -6,7 +6,16 @@ use std::collections::BTreeMap;
 use sage_core::{Actor, EntityId, Located, World};
 
 use crate::memory::Memory;
-use crate::mind::{Mind, variables};
+use crate::mind::{Mind, THINK, variables};
+
+/// What a rule decided.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum Action {
+    /// Submit this command.
+    Command(String),
+    /// Ask the model.
+    Think,
+}
 
 /// Deterministic roll in `[0, 1)` from agent, tick and a salt. splitmix64, spelled out so the
 /// result never changes with the Rust version.
@@ -52,14 +61,16 @@ fn fill(template: &str, values: &BTreeMap<&str, String>) -> String {
     out
 }
 
-/// The first rule that fires, and its command.
+/// The first rule that fires, and what it does. A `@think` rule is skipped when the model
+/// cannot be asked (`can_think` is false), so the next rule gets its chance.
 pub(crate) fn decide(
     world: &World,
     agent: EntityId,
     mind: &Mind,
     recent: &[&Memory],
     tick: u64,
-) -> Option<(usize, String)> {
+    can_think: bool,
+) -> Option<(usize, Action)> {
     let here = world.get::<Located>(agent).map(|l| l.within);
     let others: Vec<EntityId> = here
         .map(|place| {
@@ -109,6 +120,12 @@ pub(crate) fn decide(
         {
             continue;
         }
+        if rule.command.trim() == THINK {
+            if can_think {
+                return Some((index, Action::Think));
+            }
+            continue;
+        }
 
         let Ok(wanted) = variables(&rule.command) else {
             continue;
@@ -142,7 +159,7 @@ pub(crate) fn decide(
             }
         }
 
-        return Some((index, fill(&rule.command, &values)));
+        return Some((index, Action::Command(fill(&rule.command, &values))));
     }
     None
 }

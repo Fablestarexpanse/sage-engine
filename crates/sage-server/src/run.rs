@@ -6,6 +6,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
 use sage_agents::Agents;
+use sage_agents::llm::{HttpTransport, LlmConfig, Thinker};
 use sage_core::{Journal, Scheduler, SnapshotEntity, Upcasters, entities_to_events};
 use sage_host::{Limits, PluginHost, PluginSystem};
 use sage_store::SqliteLog;
@@ -41,10 +42,15 @@ pub fn run(options: &RunOptions) -> Result<(), String> {
     // Plugins are checked and loaded before the world file is touched, so a refused plugin
     // leaves no trace.
     let mut plugins = Vec::new();
+    let mut lexicon = sage_core::Lexicon::core_english();
     if !options.plugins.is_empty() {
         let host = PluginHost::new().map_err(|e| e.to_string())?;
         for dir in &options.plugins {
-            plugins.push(load_checked_plugin(&host, dir)?);
+            let plugin = load_checked_plugin(&host, dir)?;
+            for (key, template) in plugin.lexicon() {
+                lexicon.set(key, template);
+            }
+            plugins.push(plugin);
         }
     }
 
@@ -84,8 +90,30 @@ pub fn run(options: &RunOptions) -> Result<(), String> {
 
     // Memory is rebuilt from the log, so a restarted world's agents remember exactly what an
     // uninterrupted world's would. Agents then think for the first tick this run will step.
-    let mut agents = Agents::rebuild(journal.log(), &Upcasters::core())?;
+    let mut agents = Agents::rebuild(journal.log(), &Upcasters::core())?
+        .with_verbs(scheduler.commands_mut().verbs())
+        .with_lexicon(lexicon);
+    if let (Some(url), Some(model)) = (&options.llm_url, &options.llm_model) {
+        let config = LlmConfig {
+            url: url.clone(),
+            model: model.clone(),
+            api_key: std::env::var("SAGE_LLM_API_KEY")
+                .ok()
+                .filter(|k| !k.is_empty()),
+            timeout: Duration::from_secs(60),
+            workers: options.llm_workers,
+        };
+        println!(
+            "llm url={url} model={model} workers={}",
+            options.llm_workers
+        );
+        agents = agents.with_thinker(Thinker::start(
+            HttpTransport::new(config),
+            options.llm_workers,
+        ));
+    }
     let mut agent_commands = 0usize;
+    let mut model_failures = 0usize;
     for thought in agents.think(journal.world(), scheduler.tick() + 1) {
         scheduler.submit(thought.agent, thought.command);
         agent_commands += 1;
@@ -123,6 +151,15 @@ pub fn run(options: &RunOptions) -> Result<(), String> {
             scheduler.submit(thought.agent, thought.command);
             agent_commands += 1;
         }
+        let collected = agents.collect(journal.world(), report.tick + 1);
+        for thought in collected.thoughts {
+            scheduler.submit(thought.agent, thought.command);
+            agent_commands += 1;
+        }
+        for (agent, why) in collected.failed {
+            eprintln!("tick={} model agent={}: {why}", report.tick, agent.0);
+            model_failures += 1;
+        }
         for suspended in &report.suspended {
             eprintln!(
                 "tick={} suspended system={}: {}",
@@ -135,7 +172,7 @@ pub fn run(options: &RunOptions) -> Result<(), String> {
         }
         if report.tick.is_multiple_of(options.report_every) {
             println!(
-                "tick={} seq={} entities={} refused={} agent_commands={agent_commands}",
+                "tick={} seq={} entities={} refused={} agent_commands={agent_commands} model_failures={model_failures}",
                 report.tick,
                 journal.world().last_seq(),
                 journal.world().len(),
@@ -160,7 +197,7 @@ pub fn run(options: &RunOptions) -> Result<(), String> {
         .map_err(|e| e.to_string())?;
     journal.save_snapshot().map_err(|e| e.to_string())?;
     println!(
-        "stop tick={} seq={} entities={} refused={} agent_commands={agent_commands}",
+        "stop tick={} seq={} entities={} refused={} agent_commands={agent_commands} model_failures={model_failures}",
         scheduler.tick(),
         journal.world().last_seq(),
         journal.world().len(),

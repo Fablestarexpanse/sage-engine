@@ -1,4 +1,4 @@
-NEXT: M3 S3a part 1 is done (ADR 0015). Part 2 is the LLM driver: `driver: llm` and a hybrid `@think` rule action; an OpenAI-compatible client (`--llm-url`, `--llm-model`, key from `SAGE_LLM_API_KEY`) on worker threads so thinking never blocks the tick, with stale results dropped; a prompt of persona, goals, surroundings, allowed verbs and recent memories, with perceived text wrapped and labelled as data; JSON-schema output of one command; the command must use an allowed verb or an exit label; if the LLM is unavailable, `@think` falls through to the next rule. Tests run against a stub HTTP server. S3b follows: retrieval, embeddings, reflection.
+NEXT: M3 S3a is done (ADR 0016). Remaining M3 work is S3b: memory retrieval (recency, importance, relevance), a rebuildable embedding cache (OpenAI-compatible /embeddings), and reflection and planning stored as agent events. Agree S3b's design with the owner first. Not yet done: a run against a real model (no local Ollama was available). With Ollama running: `sage run w.db --seed worlds/demo-agents/seed.json --llm-url http://localhost:11434/v1 --llm-model <model>` on a world with hybrid agents.
 
 # Status
 
@@ -7,7 +7,7 @@ NEXT: M3 S3a part 1 is done (ADR 0015). Part 2 is the LLM driver: `driver: llm` 
 | M0 Scaffold | done: workspace, CI (fmt, clippy, test, denylist), ADRs 0001–0004 |
 | M1 World model | **closed** 2026-09-16 (ADR 0005-0008; 24 h wall-clock run waived, fast-mode equivalent passed) |
 | M2 Plugin seal | **closed** 2026-09-16 (ADR 0009-0011; N-1 WIT adapter test deferred by owner ruling) |
-| M3 Agents | in progress: S1-S2 done; S3a part 1 done (Occurred v2 audience, memory as a log projection; ADR 0015) |
+| M3 Agents | in progress: S1-S3a done (commands, scripted and LLM agents, memory from the log; ADR 0012-0016); S3b next |
 | M4 Client + Foundry MVP | blocked on M3 |
 | M5 Workshop + social | blocked on M4 |
 | M6 Marketplace | blocked on M5 |
@@ -16,7 +16,6 @@ NEXT: M3 S3a part 1 is done (ADR 0015). Part 2 is the LLM driver: `driver: llm` 
 
 - A plugin built against WIT N-1 boots through an adapter (M2; deferred to the first real `sage:core` major bump, owner ruling)
 - The PNG chunk parser is fuzzed (whenever the parser exists)
-- The demo world plays with every AI driver disabled (M3)
 
 ## Gate tests passing
 
@@ -51,6 +50,10 @@ NEXT: M3 S3a part 1 is done (ADR 0015). Part 2 is the LLM driver: `driver: llm` 
 
 - A log recorded by old build 2a715f3 (378 `Occurred` v1) replays through the upcaster, is refused without it, and the new engine runs on top of it (`crates/sage-agents/tests/old_logs.rs`), closing the M1 upcaster gate
 - Memory rebuilt from the log equals live memory, and a world restarted every 37 ticks matches an uninterrupted one (`crates/sage-agents/tests/memory.rs`)
+
+- A crash on any append mid-tick loses the whole tick, never half of it (`crates/sage-store/tests/replay.rs`)
+- LLM agents act only through the player command path; injected text stays data; unreachable or slow models never block ticks and scripted rules take over (`crates/sage-agents/tests/llm.rs`, `crates/sage-server/tests/llm.rs`), all against stub servers
+- The demo worlds play with no AI in CI (`crates/sage-server/tests/agents.rs`)
 
 ## Open questions for the owner (not blocking M1)
 

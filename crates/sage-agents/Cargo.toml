@@ -15,6 +15,7 @@ bevy_ecs.workspace = true
 sage-core.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+ureq = "3.4"
 
 [dev-dependencies]
 sage-store.workspace = true

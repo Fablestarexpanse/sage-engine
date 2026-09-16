@@ -8,7 +8,7 @@ Fragments are shared through [Fragment Foundry](https://fragmentfoundry.com), wh
 
 ## Status
 
-M1 (world model) and M2 (plugin seal) are done. The event log, space graph, world clock and run loop exist, along with sandboxed WebAssembly plugins, fragment manifests and `sage check`. Next is M3, synthetic agents. See [docs/STATUS.md](docs/STATUS.md).
+M1 (world model) and M2 (plugin seal) are done, and M3 (synthetic agents) is well along. The event log, space graph, world clock and run loop exist, along with sandboxed WebAssembly plugins, fragment manifests, `sage check`, commands, and scripted and LLM-driven agents whose memory is rebuilt from the log. See [docs/STATUS.md](docs/STATUS.md).
 
 | Milestone | Scope |
 |---|---|
@@ -43,6 +43,14 @@ cargo run --release -p sage-server -- check target/plugins/sage.wander
 cargo run --release -p sage-server -- run demo.db --seed worlds/demo/seed.json --plugin target/plugins/sage.wander
 cargo run --release -p sage-server -- inspect demo.db
 ```
+
+Agents run with no AI by default. To let `hybrid` and `llm` agents ask a model, point `sage run` at any OpenAI-compatible API, such as local Ollama:
+
+```bash
+cargo run --release -p sage-server -- run agents.db --seed worlds/demo-agents/seed.json --llm-url http://localhost:11434/v1 --llm-model llama3.2
+```
+
+If the endpoint needs a key, set `SAGE_LLM_API_KEY`.
 
 `sage-build plugins` compiles the first-party plugins in `plugins/` to WebAssembly components. `sage run` loads a plugin only if `sage check` passes, grants it exactly the interfaces its manifest declares, and ticks at 4 Hz until Ctrl-C. There is no network client yet; that arrives at M4.
 

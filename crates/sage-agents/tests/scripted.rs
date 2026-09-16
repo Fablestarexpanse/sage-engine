@@ -331,6 +331,11 @@ fn the_world_refuses_nonsense_minds() {
         mind(1, vec![rule(When::default(), "go {somewhere}")]),
         mind(1, vec![rule(When::default(), "say {unclosed")]),
         mind(1, vec![rule(When::default(), "   ")]),
+        mind(1, vec![rule(When::default(), "@think")]),
+        Mind {
+            driver: "hybrid".into(),
+            ..mind(1, vec![rule(When::default(), "@thinkhard")])
+        },
     ];
     for bad in bad_minds {
         let err = j.commit(1, &[set(AGENT, &bad)]).unwrap_err();

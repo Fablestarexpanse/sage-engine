@@ -139,6 +139,11 @@ impl Commands {
         Ok(())
     }
 
+    /// Every registered verb, sorted.
+    pub fn verbs(&self) -> Vec<String> {
+        self.verbs.keys().cloned().collect()
+    }
+
     /// Queues a command for the next tick.
     pub fn submit(&mut self, actor: EntityId, text: impl Into<String>) {
         self.queue.push((actor, text.into()));
