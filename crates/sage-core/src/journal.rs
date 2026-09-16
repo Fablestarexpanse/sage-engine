@@ -58,6 +58,23 @@ pub trait EventLog {
 
     /// The snapshot with the highest `seq`, if any.
     fn latest_snapshot(&self) -> Result<Option<StoredSnapshot>, Self::Error>;
+
+    /// Starts a group of appends that become durable together at [`EventLog::end_group`]. If
+    /// the process dies before then, none of them are. A log without transactions may ignore
+    /// this.
+    fn begin_group(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
+
+    /// Makes every append since [`EventLog::begin_group`] durable.
+    fn end_group(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
+
+    /// Discards every append since [`EventLog::begin_group`].
+    fn abort_group(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
 }
 
 /// Why a journal operation failed.
@@ -113,6 +130,8 @@ pub struct Journal<L: EventLog> {
     log: L,
     world: Arc<World>,
     upcasters: Upcasters,
+    /// Undo records for every batch committed since `begin_group`, oldest first.
+    group: Option<Vec<crate::world::Undo>>,
 }
 
 impl<L: EventLog> Journal<L> {
@@ -185,6 +204,7 @@ impl<L: EventLog> Journal<L> {
             log,
             world: Arc::new(world),
             upcasters,
+            group: None,
         })
     }
 
@@ -263,7 +283,47 @@ impl<L: EventLog> Journal<L> {
             self.world_mut().undo(undo);
             return Err(log_error(error));
         }
+        if let Some(group) = &mut self.group {
+            group.push(undo);
+        }
         Ok(stored)
+    }
+
+    /// Starts a group: every commit until [`Journal::end_group`] becomes durable together, or
+    /// not at all. The scheduler makes each tick a group, so a crash can never leave half a
+    /// tick in the log. Panics if a group is already open.
+    pub fn begin_group(&mut self) -> Result<(), JournalError> {
+        assert!(self.group.is_none(), "groups do not nest");
+        self.log.begin_group().map_err(log_error)?;
+        self.group = Some(Vec::new());
+        Ok(())
+    }
+
+    /// Makes the group durable. If the log cannot, the group is discarded from the log and
+    /// the world alike.
+    pub fn end_group(&mut self) -> Result<(), JournalError> {
+        let undos = self.group.take().expect("a group is open");
+        if let Err(error) = self.log.end_group() {
+            self.undo_all(undos);
+            let _ = self.log.abort_group();
+            return Err(log_error(error));
+        }
+        Ok(())
+    }
+
+    /// Discards the open group, if any, from the log and the world.
+    pub fn abort_group(&mut self) -> Result<(), JournalError> {
+        let Some(undos) = self.group.take() else {
+            return Ok(());
+        };
+        self.undo_all(undos);
+        self.log.abort_group().map_err(log_error)
+    }
+
+    fn undo_all(&mut self, undos: Vec<crate::world::Undo>) {
+        for undo in undos.into_iter().rev() {
+            self.world_mut().undo(undo);
+        }
     }
 
     /// Saves a snapshot of the current world to the log.
@@ -298,6 +358,7 @@ pub(crate) mod test_log {
         pub(crate) events: Vec<StoredEvent>,
         pub(crate) snapshots: Vec<StoredSnapshot>,
         pub(crate) fail_appends: bool,
+        pub(crate) group_start: Option<usize>,
     }
 
     #[derive(Debug)]
@@ -350,6 +411,23 @@ pub(crate) mod test_log {
 
         fn latest_snapshot(&self) -> Result<Option<StoredSnapshot>, Refused> {
             Ok(self.snapshots.last().cloned())
+        }
+
+        fn begin_group(&mut self) -> Result<(), Refused> {
+            self.group_start = Some(self.events.len());
+            Ok(())
+        }
+
+        fn end_group(&mut self) -> Result<(), Refused> {
+            self.group_start = None;
+            Ok(())
+        }
+
+        fn abort_group(&mut self) -> Result<(), Refused> {
+            if let Some(start) = self.group_start.take() {
+                self.events.truncate(start);
+            }
+            Ok(())
         }
     }
 }
@@ -453,6 +531,55 @@ mod tests {
             ),
             "{err}"
         );
+    }
+
+    #[test]
+    fn aborting_a_group_discards_every_batch_in_it_from_world_and_log() {
+        let mut journal = Journal::open(
+            MemoryLog::default(),
+            ComponentRegistry::with_core(),
+            Upcasters::core(),
+        )
+        .unwrap();
+        journal
+            .commit(
+                1,
+                &[Event::EntityCreated(EntityCreated { id: EntityId(1) })],
+            )
+            .unwrap();
+        let before = journal.world().snapshot().to_bytes();
+
+        journal.begin_group().unwrap();
+        journal
+            .commit(
+                2,
+                &[Event::EntityCreated(EntityCreated { id: EntityId(2) })],
+            )
+            .unwrap();
+        journal
+            .commit(
+                2,
+                &[Event::EntityDestroyed(crate::EntityDestroyed {
+                    id: EntityId(1),
+                })],
+            )
+            .unwrap();
+        assert_eq!(journal.world().len(), 1);
+        journal.abort_group().unwrap();
+
+        assert_eq!(journal.world().snapshot().to_bytes(), before);
+        assert_eq!(journal.log.events.len(), 1);
+
+        journal.begin_group().unwrap();
+        journal
+            .commit(
+                3,
+                &[Event::EntityCreated(EntityCreated { id: EntityId(2) })],
+            )
+            .unwrap();
+        journal.end_group().unwrap();
+        assert_eq!(journal.world().len(), 2);
+        assert_eq!(journal.log.events.len(), 2);
     }
 
     #[test]

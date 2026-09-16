@@ -1,6 +1,6 @@
 # 0015 — `Occurred` v2 records its audience; memory is a projection of the log
 
-- **Status:** accepted
+- **Status:** accepted; amended the same day with tick atomicity (below)
 - **Date:** 2026-09-16
 - **Supersedes:** the in-memory perception inbox of 0014
 
@@ -33,3 +33,16 @@ This closes the M1 gate item deferred in 0005.
 - A library test restarts a chatty four-agent world every 37 ticks for 1,500 ticks (more than 300 speech lines), and every non-clock event matches an uninterrupted run. With `Memories::rebuild` mutated to return nothing, it fails. The process-level kill -9 test on demo-agents also passes, but that mutation *didn't* fail it: a single kill point rarely lands inside a hearing window. The library test is the real guard. The process test stays as the kill -9 check.
 - The scheduler's idle-checkpoint comparison now uses saturating addition. A huge `checkpoint_every` used to overflow once the tick passed zero; the new tests found it.
 - Rebuilding memory reads the whole log on start. That's fine at current sizes. S3b's retrieval work, or a memory snapshot, can bound it later.
+
+## Amendment: a tick is one transaction
+
+The first CI run of this change failed the demo-agents kill -9 test ("resumed agent world differs, killed at tick 1505"). The cause wasn't memory. A tick was many separate commits (each command, each system, the checkpoint), so a kill between two of them left half a tick in the log. The restart resumed after that tick, and the rest of it was lost for good. This is the edge case ADR 0006 noted for systems; agents make it common.
+
+A deterministic test reproduced it before the fix. `a_crash_mid_tick_loses_the_whole_tick_never_half_of_it` in `crates/sage-store/tests/replay.rs` uses a log wrapper that fails on the Nth append, for N = 1..12, then restarts and finishes the run. It failed at N = 2 (tick 1 kept `first at 1` but never got `second at 1`).
+
+**Fix:**
+- `EventLog` gains `begin_group`, `end_group` and `abort_group`. `SqliteLog` opens one `BEGIN IMMEDIATE` transaction per group and runs each append as a savepoint inside it.
+- `Journal` keeps undo records for the whole group, so a failed `end_group` or an `abort_group` restores the world too (unit-tested).
+- `Scheduler::step` makes every tick a group. A crash loses at most the tick in progress, and resuming redoes it whole.
+
+The crash test now passes for every N, and the process kill test passes locally 3 of 3 times. As a side effect, a tick costs one durable commit instead of one per batch.

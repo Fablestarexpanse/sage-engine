@@ -122,6 +122,27 @@ impl Scheduler {
         &mut self,
         journal: &mut Journal<L>,
     ) -> Result<StepReport, JournalError> {
+        journal.begin_group()?;
+        match self.step_in_group(journal) {
+            Ok(report) => {
+                if let Err(error) = journal.end_group() {
+                    self.tick -= 1;
+                    return Err(error);
+                }
+                Ok(report)
+            }
+            Err(error) => {
+                self.tick -= 1;
+                let _ = journal.abort_group();
+                Err(error)
+            }
+        }
+    }
+
+    fn step_in_group<L: EventLog>(
+        &mut self,
+        journal: &mut Journal<L>,
+    ) -> Result<StepReport, JournalError> {
         self.tick += 1;
         let tick = self.tick;
         let mut report = StepReport {

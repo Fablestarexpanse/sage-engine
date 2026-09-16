@@ -356,3 +356,155 @@ fn scheduled_world_replays_and_resumes_its_clock() {
     assert_eq!(replayed.world().snapshot().to_bytes(), live);
     assert_eq!(Scheduler::new(&replayed, 20).tick(), 120);
 }
+
+/// A log that fails on its `crash_on`th append, the way a process killed mid-write would leave
+/// it. Dropping it closes the connection, so SQLite discards anything uncommitted.
+struct CrashingLog {
+    inner: SqliteLog,
+    appends: usize,
+    crash_on: usize,
+}
+
+#[derive(Debug)]
+struct Crash;
+
+impl std::fmt::Display for Crash {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("simulated crash")
+    }
+}
+
+impl std::error::Error for Crash {}
+
+impl EventLog for CrashingLog {
+    type Error = Crash;
+
+    fn append(&mut self, first_seq: u64, tick: u64, events: &[EventRecord]) -> Result<(), Crash> {
+        self.appends += 1;
+        if self.appends == self.crash_on {
+            return Err(Crash);
+        }
+        self.inner
+            .append(first_seq, tick, events)
+            .map_err(|_| Crash)
+    }
+
+    fn read_page(&self, from: u64, limit: usize) -> Result<Vec<sage_core::StoredEvent>, Crash> {
+        self.inner.read_page(from, limit).map_err(|_| Crash)
+    }
+
+    fn save_snapshot(&mut self, snapshot: &sage_core::StoredSnapshot) -> Result<(), Crash> {
+        self.inner.save_snapshot(snapshot).map_err(|_| Crash)
+    }
+
+    fn latest_snapshot(&self) -> Result<Option<sage_core::StoredSnapshot>, Crash> {
+        self.inner.latest_snapshot().map_err(|_| Crash)
+    }
+
+    fn begin_group(&mut self) -> Result<(), Crash> {
+        self.inner.begin_group().map_err(|_| Crash)
+    }
+
+    fn end_group(&mut self) -> Result<(), Crash> {
+        self.inner.end_group().map_err(|_| Crash)
+    }
+}
+
+/// Renames one entity every tick: two of these make a tick with two separate commits.
+struct Namer {
+    name: &'static str,
+    id: EntityId,
+}
+
+impl System for Namer {
+    fn name(&self) -> &'static str {
+        self.name
+    }
+
+    fn run(&mut self, _: &Arc<World>, tick: u64) -> Result<Vec<Event>, String> {
+        Ok(vec![set(
+            self.id,
+            &describe(&format!("{} at {tick}", self.name)),
+        )])
+    }
+}
+
+fn namers(journal: &Journal<impl EventLog>) -> Scheduler {
+    let mut scheduler = Scheduler::new(journal, u64::MAX);
+    scheduler
+        .add(Namer {
+            name: "first",
+            id: EntityId(1),
+        })
+        .add(Namer {
+            name: "second",
+            id: EntityId(2),
+        });
+    scheduler
+}
+
+fn stored_events(path: &std::path::Path) -> Vec<(u64, String)> {
+    SqliteLog::open(path)
+        .unwrap()
+        .read_page(1, 100_000)
+        .unwrap()
+        .into_iter()
+        .filter(|e| e.record.event_type != "ClockAdvanced")
+        .map(|e| (e.tick, e.record.payload.to_string()))
+        .collect()
+}
+
+#[test]
+fn a_crash_mid_tick_loses_the_whole_tick_never_half_of_it() {
+    let dir = tempfile::tempdir().unwrap();
+    let seed_world = |path: &std::path::Path| {
+        let mut journal = open(SqliteLog::open(path).unwrap());
+        journal
+            .commit(
+                0,
+                &[
+                    Event::EntityCreated(EntityCreated { id: EntityId(1) }),
+                    Event::EntityCreated(EntityCreated { id: EntityId(2) }),
+                ],
+            )
+            .unwrap();
+    };
+
+    let calm = dir.path().join("calm.db");
+    seed_world(&calm);
+    let mut journal = open(SqliteLog::open(&calm).unwrap());
+    let mut scheduler = namers(&journal);
+    for _ in 0..20 {
+        scheduler.step(&mut journal).unwrap();
+    }
+    drop(journal);
+
+    // Crash on every possible append in turn, restart, and finish the run.
+    for crash_on in 1..=12 {
+        let path = dir.path().join(format!("crash-{crash_on}.db"));
+        seed_world(&path);
+        let log = CrashingLog {
+            inner: SqliteLog::open(&path).unwrap(),
+            appends: 0,
+            crash_on,
+        };
+        let mut journal =
+            Journal::open(log, ComponentRegistry::with_core(), Upcasters::core()).unwrap();
+        let mut scheduler = namers(&journal);
+        while scheduler.step(&mut journal).is_ok() {}
+        drop(scheduler);
+        drop(journal);
+
+        let mut journal = open(SqliteLog::open(&path).unwrap());
+        let mut scheduler = namers(&journal);
+        while scheduler.tick() < 20 {
+            scheduler.step(&mut journal).unwrap();
+        }
+        drop(journal);
+        assert_eq!(
+            stored_events(&path),
+            stored_events(&calm),
+            "crash on append {crash_on}"
+        );
+    }
+}

@@ -69,6 +69,7 @@ pub enum StoreError {
 /// A world's event log in one SQLite file.
 pub struct SqliteLog {
     conn: Connection,
+    in_group: bool,
 }
 
 impl SqliteLog {
@@ -92,7 +93,10 @@ impl SqliteLog {
             STORE_SCHEMA_VERSION => {}
             found => return Err(StoreError::NewerSchema { found }),
         }
-        Ok(SqliteLog { conn })
+        Ok(SqliteLog {
+            conn,
+            in_group: false,
+        })
     }
 
     /// Direct access for tests that need to prove what the database itself refuses.
@@ -106,6 +110,39 @@ fn to_i64(n: u64) -> i64 {
     i64::try_from(n).expect("sequence numbers and ticks fit in i64")
 }
 
+/// Checks the log ends at `first_seq - 1` and inserts `events` from there.
+fn insert_batch(
+    conn: &Connection,
+    first_seq: u64,
+    tick: u64,
+    events: &[EventRecord],
+) -> Result<(), StoreError> {
+    let last: i64 = conn.query_row("SELECT COALESCE(MAX(seq), 0) FROM events", [], |r| r.get(0))?;
+    let last = last as u64;
+    if last + 1 != first_seq {
+        return Err(StoreError::SeqConflict {
+            expected: first_seq - 1,
+            found: last,
+        });
+    }
+    {
+        let mut insert = conn.prepare_cached(
+            "INSERT INTO events (seq, tick, event_type, schema_version, payload)
+                 VALUES (?1, ?2, ?3, ?4, ?5)",
+        )?;
+        for (offset, record) in events.iter().enumerate() {
+            insert.execute(params![
+                to_i64(first_seq + offset as u64),
+                to_i64(tick),
+                record.event_type,
+                record.schema_version,
+                record.payload.to_string(),
+            ])?;
+        }
+    }
+    Ok(())
+}
+
 impl EventLog for SqliteLog {
     type Error = StoreError;
 
@@ -115,34 +152,40 @@ impl EventLog for SqliteLog {
         tick: u64,
         events: &[EventRecord],
     ) -> Result<(), StoreError> {
-        let tx = self
-            .conn
-            .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
-        let last: i64 =
-            tx.query_row("SELECT COALESCE(MAX(seq), 0) FROM events", [], |r| r.get(0))?;
-        let last = last as u64;
-        if last + 1 != first_seq {
-            return Err(StoreError::SeqConflict {
-                expected: first_seq - 1,
-                found: last,
-            });
+        // Inside a group the append is a savepoint of the group's transaction; otherwise it is
+        // its own transaction. Either way it is all or nothing.
+        if self.in_group {
+            let savepoint = self.conn.savepoint()?;
+            insert_batch(&savepoint, first_seq, tick, events)?;
+            savepoint.commit()?;
+        } else {
+            let tx = self
+                .conn
+                .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+            insert_batch(&tx, first_seq, tick, events)?;
+            tx.commit()?;
         }
-        {
-            let mut insert = tx.prepare_cached(
-                "INSERT INTO events (seq, tick, event_type, schema_version, payload)
-                 VALUES (?1, ?2, ?3, ?4, ?5)",
-            )?;
-            for (offset, record) in events.iter().enumerate() {
-                insert.execute(params![
-                    to_i64(first_seq + offset as u64),
-                    to_i64(tick),
-                    record.event_type,
-                    record.schema_version,
-                    record.payload.to_string(),
-                ])?;
-            }
+        Ok(())
+    }
+
+    fn begin_group(&mut self) -> Result<(), StoreError> {
+        assert!(!self.in_group, "groups do not nest");
+        self.conn.execute_batch("BEGIN IMMEDIATE")?;
+        self.in_group = true;
+        Ok(())
+    }
+
+    fn end_group(&mut self) -> Result<(), StoreError> {
+        self.conn.execute_batch("COMMIT")?;
+        self.in_group = false;
+        Ok(())
+    }
+
+    fn abort_group(&mut self) -> Result<(), StoreError> {
+        self.in_group = false;
+        if !self.conn.is_autocommit() {
+            self.conn.execute_batch("ROLLBACK")?;
         }
-        tx.commit()?;
         Ok(())
     }
 
