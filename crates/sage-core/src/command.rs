@@ -193,6 +193,7 @@ pub fn occurrence(
         places,
         targets,
         data,
+        audience: Vec::new(),
     })
 }
 
@@ -343,7 +344,7 @@ mod tests {
         let mut journal = Journal::open(
             MemoryLog::default(),
             ComponentRegistry::with_core(),
-            Upcasters::new(),
+            Upcasters::core(),
         )
         .unwrap();
         let mut events: Vec<Event> = (1..=8)
@@ -434,6 +435,46 @@ mod tests {
                 handler: "sage.core"
             }
         );
+    }
+
+    #[test]
+    fn stored_occurrences_record_exactly_who_perceived_them() {
+        let (mut j, mut s) = world();
+        let report = step(&mut j, &mut s, &[(ADA, "go out"), (BO, "say hi")]);
+        let stored: Vec<Occurred> = j
+            .log()
+            .events
+            .iter()
+            .filter(|e| e.record.event_type == "Occurred")
+            .map(
+                |e| match Event::from_record(&e.record, &Upcasters::core()).unwrap() {
+                    Event::Occurred(o) => o,
+                    _ => unreachable!(),
+                },
+            )
+            .collect();
+        let audiences: Vec<(&str, Vec<EntityId>)> = stored
+            .iter()
+            .map(|o| (o.kind.as_str(), o.audience.clone()))
+            .collect();
+        assert_eq!(
+            audiences,
+            [
+                ("sage.command", vec![ADA]),
+                ("sage.travelled", vec![ADA, BO, CY]),
+                ("sage.command", vec![BO]),
+                ("sage.said", vec![BO]),
+            ]
+        );
+        for o in &stored {
+            let delivered: Vec<EntityId> = report
+                .deliveries
+                .iter()
+                .filter(|d| d.occurred.as_ref() == Some(o))
+                .map(|d| d.to)
+                .collect();
+            assert_eq!(delivered, o.audience, "{}", o.kind);
+        }
     }
 
     #[test]
@@ -634,7 +675,7 @@ mod tests {
         let replayed = Journal::open_from_genesis(
             j.into_log(),
             ComponentRegistry::with_core(),
-            Upcasters::new(),
+            Upcasters::core(),
         )
         .unwrap();
         assert_eq!(replayed.world().snapshot().to_bytes(), live);
@@ -652,12 +693,18 @@ mod tests {
                 places,
                 targets: vec![],
                 data: json!({}),
+                audience: vec![],
             })
         };
+        let mut forged_audience = bad("sage.said", vec![HALL]);
+        if let Event::Occurred(o) = &mut forged_audience {
+            o.audience = vec![ADA];
+        }
         for event in [
             bad("said", vec![HALL]),
             bad("Sage.Said", vec![HALL]),
             bad("sage.said", vec![EntityId(99)]),
+            forged_audience,
         ] {
             let err = j.commit(1, &[event]).unwrap_err();
             assert!(

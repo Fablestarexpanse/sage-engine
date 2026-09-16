@@ -3,8 +3,9 @@
 
 use std::collections::BTreeMap;
 
-use sage_core::{Actor, Delivery, EntityId, Located, World};
+use sage_core::{Actor, EntityId, Located, World};
 
+use crate::memory::Memory;
 use crate::mind::{Mind, variables};
 
 /// Deterministic roll in `[0, 1)` from agent, tick and a salt. splitmix64, spelled out so the
@@ -56,7 +57,7 @@ pub(crate) fn decide(
     world: &World,
     agent: EntityId,
     mind: &Mind,
-    inbox: &[Delivery],
+    recent: &[&Memory],
     tick: u64,
 ) -> Option<(usize, String)> {
     let here = world.get::<Located>(agent).map(|l| l.within);
@@ -83,8 +84,8 @@ pub(crate) fn decide(
         }
         if let Some(kind) = &when.heard {
             let needle = when.text_contains.as_deref().map(str::to_lowercase);
-            let heard = inbox.iter().rev().find_map(|delivery| {
-                let occurred = delivery.occurred.as_ref()?;
+            let heard = recent.iter().rev().find_map(|memory| {
+                let occurred = &memory.occurred;
                 let text = occurred.data.get("text").and_then(|t| t.as_str());
                 let matches = occurred.kind == *kind
                     && occurred.actor.is_some_and(|a| a != agent)

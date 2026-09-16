@@ -46,7 +46,7 @@ fn world(agent_mind: Mind) -> (Journal<SqliteLog>, Scheduler) {
     let mut journal = Journal::open(
         SqliteLog::open_in_memory().unwrap(),
         sage_agents::registry(),
-        Upcasters::new(),
+        Upcasters::core(),
     )
     .unwrap();
     let named = |name: &str| Describable {
@@ -108,7 +108,7 @@ fn run(
             }
         }
         let report = scheduler.step(journal).unwrap();
-        agents.observe(journal.world(), &report);
+        agents.observe(&report);
         for thought in agents.think(journal.world(), scheduler.tick() + 1) {
             scheduler.submit(thought.agent, thought.command);
         }

@@ -1,4 +1,4 @@
-NEXT: M3 S2 is done (ADR 0014). S3: memory as a projection of the log (an agent's perceived occurrences rebuilt by replay, fixing the inbox-lost-on-restart gap), an LLM driver (OpenAI-compatible HTTP, local Ollama by default; persona, goals and memory in; one command out, as structured JSON), hybrid escalation from scripted rules, a guard against prompt injection (player text is labelled data and output is only a command the world validates), and thinking that never blocks the tick. Gate: the LLM agent passes the same-command-interface test against a stub LLM server in CI, and the zero-AI demo stays green. Agree the design with the owner first.
+NEXT: M3 S3a part 1 is done (ADR 0015). Part 2 is the LLM driver: `driver: llm` and a hybrid `@think` rule action; an OpenAI-compatible client (`--llm-url`, `--llm-model`, key from `SAGE_LLM_API_KEY`) on worker threads so thinking never blocks the tick, with stale results dropped; a prompt of persona, goals, surroundings, allowed verbs and recent memories, with perceived text wrapped and labelled as data; JSON-schema output of one command; the command must use an allowed verb or an exit label; if the LLM is unavailable, `@think` falls through to the next rule. Tests run against a stub HTTP server. S3b follows: retrieval, embeddings, reflection.
 
 # Status
 
@@ -7,14 +7,13 @@ NEXT: M3 S2 is done (ADR 0014). S3: memory as a projection of the log (an agent'
 | M0 Scaffold | done: workspace, CI (fmt, clippy, test, denylist), ADRs 0001–0004 |
 | M1 World model | **closed** 2026-09-16 (ADR 0005-0008; 24 h wall-clock run waived, fast-mode equivalent passed) |
 | M2 Plugin seal | **closed** 2026-09-16 (ADR 0009-0011; N-1 WIT adapter test deferred by owner ruling) |
-| M3 Agents | in progress: S1-S2 done (commands, perception, plugin commands, Mind, scripted agents; ADR 0012-0014) |
+| M3 Agents | in progress: S1-S2 done; S3a part 1 done (Occurred v2 audience, memory as a log projection; ADR 0015) |
 | M4 Client + Foundry MVP | blocked on M3 |
 | M5 Workshop + social | blocked on M4 |
 | M6 Marketplace | blocked on M5 |
 
 ## Gate tests not yet written (they arrive with the code they test)
 
-- An event log from before a *real* schema change replays through its upcaster (M1). The mechanism is tested; this test ships with the first real change.
 - A plugin built against WIT N-1 boots through an adapter (M2; deferred to the first real `sage:core` major bump, owner ruling)
 - The PNG chunk parser is fuzzed (whenever the parser exists)
 - The demo world plays with every AI driver disabled (M3)
@@ -49,6 +48,9 @@ NEXT: M3 S2 is done (ADR 0014). S3: memory as a projection of the log (an agent'
 - Plugin commands: `sage.dialogue` `tell` reaches only the teller and the target; plugins cannot emit other names' occurrences; `sage check` enforces `provides.commands` (`crates/sage-host/tests/dialogue.rs`, `crates/sage-server/tests/check.rs`)
 
 - Ten scripted agents run one hour of world time (14,400 ticks) in fast mode: `refused=0`, snapshot matches replay, and every action is a logged `sage.command` (`crates/sage-server/tests/agents.rs`)
+
+- A log recorded by old build 2a715f3 (378 `Occurred` v1) replays through the upcaster, is refused without it, and the new engine runs on top of it (`crates/sage-agents/tests/old_logs.rs`), closing the M1 upcaster gate
+- Memory rebuilt from the log equals live memory, and a world restarted every 37 ticks matches an uninterrupted one (`crates/sage-agents/tests/memory.rs`)
 
 ## Open questions for the owner (not blocking M1)
 

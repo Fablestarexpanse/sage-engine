@@ -149,12 +149,12 @@ impl Scheduler {
             if events.is_empty() {
                 continue;
             }
-            match journal.commit(tick, &events) {
-                Ok(_) => {
+            match journal.commit_events(tick, &events) {
+                Ok(stored) => {
                     report.committed.push(system.name());
                     report
                         .deliveries
-                        .extend(journal.world().deliveries_for(tick, &events));
+                        .extend(journal.world().deliveries_for(tick, &stored));
                 }
                 Err(JournalError::Refused { index, error }) => report.refused.push(SystemRefused {
                     system: system.name(),
@@ -164,7 +164,7 @@ impl Scheduler {
                 Err(other) => return Err(other),
             }
         }
-        if journal.world().tick() + self.checkpoint_every <= tick {
+        if journal.world().tick().saturating_add(self.checkpoint_every) <= tick {
             journal.commit(tick, &[Event::ClockAdvanced(ClockAdvanced {})])?;
             report.checkpoint = true;
         }
@@ -205,8 +205,7 @@ impl Scheduler {
             serde_json::json!({ "text": text }),
         );
         let failed = || vec![Line::new("sage.command.failed")];
-        let (mut result, mut events, mut output) = match self.commands.resolve(world, actor, &text)
-        {
+        let (mut result, events, mut output) = match self.commands.resolve(world, actor, &text) {
             None => {
                 let verb = text.split_whitespace().next().unwrap_or_default();
                 (
@@ -254,24 +253,23 @@ impl Scheduler {
             }
         };
 
-        match journal.commit(tick, &events) {
-            Ok(_) => {}
+        let stored = match journal.commit_events(tick, &events) {
+            Ok(stored) => stored,
             Err(JournalError::Refused { error, .. }) if events.len() > 1 => {
                 let handler = match result {
                     CommandResult::Handled { handler } => handler,
                     _ => unreachable!("only handled commands carry extra events"),
                 };
-                events = vec![logged];
-                journal.commit(tick, &events)?;
                 result = CommandResult::Refused { handler, error };
                 output = failed();
+                journal.commit_events(tick, &[logged])?
             }
             Err(other) => return Err(other),
-        }
+        };
 
         report
             .deliveries
-            .extend(journal.world().deliveries_for(tick, &events));
+            .extend(journal.world().deliveries_for(tick, &stored));
         report
             .deliveries
             .extend(output.into_iter().map(|line| Delivery {
@@ -311,7 +309,7 @@ mod tests {
     };
 
     fn open(log: MemoryLog) -> Journal<MemoryLog> {
-        Journal::open(log, ComponentRegistry::with_core(), Upcasters::new()).unwrap()
+        Journal::open(log, ComponentRegistry::with_core(), Upcasters::core()).unwrap()
     }
 
     /// Creates one entity on every tick divisible by `every`.

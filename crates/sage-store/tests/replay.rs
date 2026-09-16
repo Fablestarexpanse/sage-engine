@@ -27,11 +27,11 @@ fn describe(name: &str) -> Describable {
 }
 
 fn open(log: SqliteLog) -> Journal<SqliteLog> {
-    Journal::open(log, ComponentRegistry::with_core(), Upcasters::new()).unwrap()
+    Journal::open(log, ComponentRegistry::with_core(), Upcasters::core()).unwrap()
 }
 
 fn open_from_genesis(log: SqliteLog) -> Journal<SqliteLog> {
-    Journal::open_from_genesis(log, ComponentRegistry::with_core(), Upcasters::new()).unwrap()
+    Journal::open_from_genesis(log, ComponentRegistry::with_core(), Upcasters::core()).unwrap()
 }
 
 /// Small deterministic generator so the scenario is identical on every run.
@@ -285,7 +285,7 @@ fn replay_refuses_event_from_newer_engine() {
         payload: json!({"id": 1}),
     };
     log.append(1, 0, &[record]).unwrap();
-    let err = Journal::open(log, ComponentRegistry::with_core(), Upcasters::new())
+    let err = Journal::open(log, ComponentRegistry::with_core(), Upcasters::core())
         .err()
         .unwrap();
     assert!(matches!(err, JournalError::Decode { seq: 1, .. }), "{err}");
@@ -300,7 +300,7 @@ fn replay_refuses_log_that_does_not_apply() {
         payload: json!({"id": 1}),
     };
     log.append(1, 0, &[record]).unwrap();
-    let err = Journal::open(log, ComponentRegistry::with_core(), Upcasters::new())
+    let err = Journal::open(log, ComponentRegistry::with_core(), Upcasters::core())
         .err()
         .unwrap();
     assert!(matches!(err, JournalError::Corrupt { seq: 1, .. }), "{err}");

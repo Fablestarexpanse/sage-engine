@@ -6,7 +6,7 @@ use std::process::{Command, Output, Stdio};
 use std::time::{Duration, Instant};
 
 use rusqlite::{Connection, OpenFlags};
-use sage_core::{ComponentRegistry, Journal, Upcasters};
+use sage_core::{Journal, Upcasters};
 use sage_store::SqliteLog;
 
 const UNTIL: &str = "20000";
@@ -55,8 +55,8 @@ fn succeed(output: Output) -> String {
 fn replayed_bytes(world: &Path) -> (u64, Vec<u8>) {
     let journal = Journal::open_from_genesis(
         SqliteLog::open(world).unwrap(),
-        ComponentRegistry::with_core(),
-        Upcasters::new(),
+        sage_agents::registry(),
+        Upcasters::core(),
     )
     .unwrap();
     (
@@ -135,6 +135,93 @@ fn killed_and_resumed_world_matches_uninterrupted_world() {
         "{report}"
     );
     assert!(report.contains("\"entities\":108"), "{report}");
+}
+
+/// The same gate for a world of scripted agents: their memories are rebuilt from the log on
+/// restart, so what they hear and do after a hard kill matches an uninterrupted run exactly.
+#[test]
+fn killed_and_resumed_agent_world_matches_uninterrupted_world() {
+    let dir = tempfile::tempdir().unwrap();
+    let seed = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../worlds/demo-agents/seed.json");
+    let dialogue = sage_build::first_party_plugin("sage.dialogue");
+    let args = |world: &Path| {
+        vec![
+            "run".to_owned(),
+            world.to_str().unwrap().to_owned(),
+            "--hz".into(),
+            "0".into(),
+            "--until-tick".into(),
+            "6000".into(),
+            "--checkpoint-every".into(),
+            "100".into(),
+            "--report-every".into(),
+            "1000000".into(),
+            "--plugin".into(),
+            dialogue.to_str().unwrap().to_owned(),
+        ]
+    };
+    let seeded = |world: &Path| {
+        let mut a = args(world);
+        a.extend(["--seed".to_owned(), seed.to_str().unwrap().to_owned()]);
+        a
+    };
+
+    let calm = dir.path().join("calm.db");
+    succeed(sage().args(seeded(&calm)).output().unwrap());
+
+    let killed = dir.path().join("killed.db");
+    let mut child = sage()
+        .args(seeded(&killed))
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .unwrap();
+    let started = Instant::now();
+    while logged_tick(&killed).is_none_or(|t| t < 1500) {
+        assert!(
+            child.try_wait().unwrap().is_none(),
+            "run finished before it could be killed"
+        );
+        assert!(started.elapsed() < Duration::from_secs(120), "run too slow");
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    child.kill().unwrap();
+    child.wait().unwrap();
+    let (tick_at_kill, _) = replayed_bytes(&killed);
+    assert!(tick_at_kill < 6000);
+
+    succeed(sage().args(args(&killed)).output().unwrap());
+
+    let (calm_tick, calm_bytes) = replayed_bytes(&calm);
+    let (killed_tick, killed_bytes) = replayed_bytes(&killed);
+    assert_eq!((calm_tick, killed_tick), (6000, 6000));
+    assert!(
+        calm_bytes == killed_bytes,
+        "resumed agent world differs (killed at tick {tick_at_kill})"
+    );
+    let events = |world: &Path| {
+        let conn = Connection::open(world).unwrap();
+        let mut stmt = conn
+            .prepare("SELECT tick, event_type, payload FROM events ORDER BY seq")
+            .unwrap();
+        stmt.query_map([], |r| {
+            Ok((
+                r.get::<_, i64>(0)?,
+                r.get::<_, String>(1)?,
+                r.get::<_, String>(2)?,
+            ))
+        })
+        .unwrap()
+        .map(Result::unwrap)
+        .filter(|(_, kind, _)| kind != "ClockAdvanced")
+        .collect::<Vec<_>>()
+    };
+    let (calm_events, killed_events) = (events(&calm), events(&killed));
+    assert!(calm_events.len() > 1000, "agents should have been busy");
+    assert!(
+        calm_events == killed_events,
+        "every non-clock event, agent speech and movement included, matches"
+    );
 }
 
 #[test]

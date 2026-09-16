@@ -99,11 +99,15 @@ pub struct Occurred {
     pub targets: Vec<EntityId>,
     /// Kind-specific details.
     pub data: Value,
+    /// Every actor that perceived it, in id order. Proposals leave this empty; the journal
+    /// fills it in when the occurrence commits, so memory is an exact projection of the log.
+    /// Empty for occurrences stored before v2.
+    pub audience: Vec<EntityId>,
 }
 
 impl EventPayload for Occurred {
     const TYPE: &'static str = "Occurred";
-    const VERSION: u32 = 1;
+    const VERSION: u32 = 2;
 }
 
 /// Every core event.
@@ -253,6 +257,7 @@ mod tests {
                 places: vec![EntityId(1)],
                 targets: vec![],
                 data: json!({"text": "hi"}),
+                audience: vec![id],
             }),
         ]
     }

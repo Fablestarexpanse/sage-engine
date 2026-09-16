@@ -247,8 +247,8 @@ fn check_plugin(report: &mut Report, dir: &Path, manifest: &Manifest) -> bool {
 /// One tick on an empty, in-memory world.
 fn dry_run(plugin: sage_host::PluginSystem) -> Result<(), String> {
     let log = SqliteLog::open_in_memory().map_err(|e| e.to_string())?;
-    let mut journal =
-        Journal::open(log, sage_agents::registry(), Upcasters::new()).map_err(|e| e.to_string())?;
+    let mut journal = Journal::open(log, sage_agents::registry(), Upcasters::core())
+        .map_err(|e| e.to_string())?;
     let mut scheduler = Scheduler::new(&journal, u64::MAX);
     scheduler.add(plugin);
     let step = scheduler.step(&mut journal).map_err(|e| e.to_string())?;

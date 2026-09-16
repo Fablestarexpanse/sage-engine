@@ -7,17 +7,14 @@
 //!
 //! Drivers: `scripted` (zero-AI, rules as data). LLM and hybrid drivers arrive in M3 S3.
 
+mod memory;
 mod mind;
 mod scripted;
 
-use std::collections::BTreeMap;
+use sage_core::{Actor, ComponentRegistry, EntityId, EventLog, StepReport, Upcasters, World};
 
-use sage_core::{Actor, ComponentRegistry, Delivery, EntityId, StepReport, World};
-
+pub use memory::{MEMORY_LIMIT, Memories, Memory};
 pub use mind::{Mind, Rule, When};
-
-/// Most perceptions kept per agent between thinks; older ones are dropped first.
-pub const INBOX_LIMIT: usize = 64;
 
 /// The core components plus `sage.mind`: the registry every SAGE world with agents uses.
 pub fn registry() -> ComponentRegistry {
@@ -40,40 +37,37 @@ pub struct Thought {
 /// Runs every agent's mind.
 #[derive(Default)]
 pub struct Agents {
-    inboxes: BTreeMap<EntityId, Vec<Delivery>>,
+    memories: Memories,
 }
 
 impl Agents {
-    /// No perceptions yet.
+    /// No memories yet: for a new world.
     pub fn new() -> Agents {
         Agents::default()
     }
 
-    /// Keeps each delivery addressed to an agent until that agent next thinks.
-    pub fn observe(&mut self, world: &World, report: &StepReport) {
-        for delivery in &report.deliveries {
-            if world.get::<Mind>(delivery.to).is_none() {
-                continue;
-            }
-            let inbox = self.inboxes.entry(delivery.to).or_default();
-            inbox.push(delivery.clone());
-            if inbox.len() > INBOX_LIMIT {
-                inbox.remove(0);
-            }
-        }
+    /// Agents whose memories are rebuilt from `log`: for an existing world.
+    pub fn rebuild<L: EventLog>(log: &L, upcasters: &Upcasters) -> Result<Agents, String> {
+        Ok(Agents {
+            memories: Memories::rebuild(log, upcasters)?,
+        })
     }
 
-    /// Perceptions waiting for `agent`.
-    pub fn inbox(&self, agent: EntityId) -> &[Delivery] {
-        self.inboxes
-            .get(&agent)
-            .map(Vec::as_slice)
-            .unwrap_or_default()
+    /// Records a step's occurrences in the memory of everyone who perceived them.
+    pub fn observe(&mut self, report: &StepReport) {
+        self.memories.observe(report);
+    }
+
+    /// Every actor's memories.
+    pub fn memories(&self) -> &Memories {
+        &self.memories
     }
 
     /// Lets every agent due at `tick` think, in id order, and returns their commands for that
     /// tick. An agent is due when `(tick + id) % think_every == 0`, which staggers agents with
-    /// the same interval. A thinking agent's inbox is emptied whether or not it acts.
+    /// the same interval. It considers what it perceived since its previous scheduled think:
+    /// ticks `tick - think_every` to `tick - 1`. That window depends only on the log and the
+    /// tick, so a restarted world thinks exactly as an uninterrupted one.
     pub fn think(&mut self, world: &World, tick: u64) -> Vec<Thought> {
         let mut thoughts = Vec::new();
         for agent in world.entities_with(<Mind as sage_core::Component>::NAME) {
@@ -81,12 +75,14 @@ impl Agents {
                 continue;
             }
             let mind = world.get::<Mind>(agent).expect("listed by entities_with");
-            if !(tick + agent.0).is_multiple_of(mind.think_every) {
+            if !(tick + agent.0).is_multiple_of(mind.think_every) || tick == 0 {
                 continue;
             }
-            let inbox = self.inboxes.remove(&agent).unwrap_or_default();
+            let recent =
+                self.memories
+                    .between(agent, tick.saturating_sub(mind.think_every), tick - 1);
             let decision = match mind.driver.as_str() {
-                "scripted" => scripted::decide(world, agent, mind, &inbox, tick),
+                "scripted" => scripted::decide(world, agent, mind, &recent, tick),
                 _ => None,
             };
             if let Some((rule, command)) = decision {

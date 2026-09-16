@@ -219,20 +219,51 @@ impl<L: EventLog> Journal<L> {
     /// the world change if the append fails. Either both change or neither does. Returns the
     /// sequence number of the last event; an empty batch changes nothing.
     pub fn commit(&mut self, tick: u64, events: &[Event]) -> Result<u64, JournalError> {
+        self.commit_events(tick, events)?;
+        Ok(self.world.last_seq())
+    }
+
+    /// [`Journal::commit`], returning the events as stored: every occurrence carries the
+    /// audience that perceived it, computed from the world after the whole batch applied.
+    /// A proposed occurrence that already names an audience is refused.
+    pub fn commit_events(
+        &mut self,
+        tick: u64,
+        events: &[Event],
+    ) -> Result<Vec<Event>, JournalError> {
         if events.is_empty() {
-            return Ok(self.world.last_seq());
+            return Ok(Vec::new());
+        }
+        for (index, event) in events.iter().enumerate() {
+            if let Event::Occurred(occurred) = event
+                && !occurred.audience.is_empty()
+            {
+                return Err(JournalError::Refused {
+                    index,
+                    error: ApplyError::BadOccurrence {
+                        kind: occurred.kind.clone(),
+                        reason: "audience is filled in by the journal; propose it empty".into(),
+                    },
+                });
+            }
         }
         let first_seq = self.world.last_seq() + 1;
         let undo = self
             .world_mut()
             .apply_batch(first_seq, tick, events)
             .map_err(|(index, error)| JournalError::Refused { index, error })?;
-        let records: Vec<EventRecord> = events.iter().map(Event::to_record).collect();
+        let mut stored = events.to_vec();
+        for event in &mut stored {
+            if let Event::Occurred(occurred) = event {
+                occurred.audience = self.world.audience(occurred);
+            }
+        }
+        let records: Vec<EventRecord> = stored.iter().map(Event::to_record).collect();
         if let Err(error) = self.log.append(first_seq, tick, &records) {
             self.world_mut().undo(undo);
             return Err(log_error(error));
         }
-        Ok(self.world.last_seq())
+        Ok(stored)
     }
 
     /// Saves a snapshot of the current world to the log.
@@ -334,7 +365,7 @@ mod tests {
         let mut journal = Journal::open(
             MemoryLog::default(),
             ComponentRegistry::with_core(),
-            Upcasters::new(),
+            Upcasters::core(),
         )
         .unwrap();
         let id = journal.world().next_entity_id();
@@ -374,7 +405,7 @@ mod tests {
         let mut journal = Journal::open(
             MemoryLog::default(),
             ComponentRegistry::with_core(),
-            Upcasters::new(),
+            Upcasters::core(),
         )
         .unwrap();
         // Exactly two full pages plus one event, committed in uneven batches.
@@ -392,7 +423,7 @@ mod tests {
         let replayed = Journal::open_from_genesis(
             journal.into_log(),
             ComponentRegistry::with_core(),
-            Upcasters::new(),
+            Upcasters::core(),
         )
         .unwrap();
         assert_eq!(replayed.world().last_seq(), total as u64);
@@ -409,7 +440,7 @@ mod tests {
                 record: Event::EntityCreated(EntityCreated { id: EntityId(seq) }).to_record(),
             });
         }
-        let err = Journal::open(log, ComponentRegistry::with_core(), Upcasters::new())
+        let err = Journal::open(log, ComponentRegistry::with_core(), Upcasters::core())
             .err()
             .unwrap();
         assert!(
@@ -429,7 +460,7 @@ mod tests {
         let mut journal = Journal::open(
             MemoryLog::default(),
             ComponentRegistry::with_core(),
-            Upcasters::new(),
+            Upcasters::core(),
         )
         .unwrap();
         assert_eq!(journal.commit(5, &[]).unwrap(), 0);

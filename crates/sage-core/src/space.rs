@@ -97,7 +97,7 @@ mod tests {
         let mut j = Journal::open(
             MemoryLog::default(),
             ComponentRegistry::with_core(),
-            Upcasters::new(),
+            Upcasters::core(),
         )
         .unwrap();
         let mut events: Vec<Event> = (1..=7).map(created).collect();

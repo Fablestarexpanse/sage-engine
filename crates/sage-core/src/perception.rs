@@ -96,7 +96,8 @@ impl World {
         line
     }
 
-    /// Deliveries for every occurrence in `events`, in event order then audience order.
+    /// Deliveries for every occurrence in `events` (as stored, with audiences filled in), in
+    /// event order then audience order.
     pub fn deliveries_for(&self, tick: u64, events: &[crate::Event]) -> Vec<Delivery> {
         events
             .iter()
@@ -105,7 +106,7 @@ impl World {
                 _ => None,
             })
             .flat_map(|occurred| {
-                self.audience(occurred).into_iter().map(move |to| Delivery {
+                occurred.audience.iter().copied().map(move |to| Delivery {
                     to,
                     tick,
                     line: self.describe(to, occurred),

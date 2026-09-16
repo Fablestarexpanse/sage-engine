@@ -16,7 +16,7 @@ const SEED_SCHEMA: &str = "sage.seed/1";
 
 fn open(path: &Path) -> Result<Journal<SqliteLog>, String> {
     let log = SqliteLog::open(path).map_err(|e| format!("{}: {e}", path.display()))?;
-    Journal::open(log, sage_agents::registry(), Upcasters::new())
+    Journal::open(log, sage_agents::registry(), Upcasters::core())
         .map_err(|e| format!("{}: {e}", path.display()))
 }
 
@@ -82,8 +82,14 @@ pub fn run(options: &RunOptions) -> Result<(), String> {
             .map_err(|e| format!("cannot install shutdown handler: {e}"))?;
     }
 
-    let mut agents = Agents::new();
+    // Memory is rebuilt from the log, so a restarted world's agents remember exactly what an
+    // uninterrupted world's would. Agents then think for the first tick this run will step.
+    let mut agents = Agents::rebuild(journal.log(), &Upcasters::core())?;
     let mut agent_commands = 0usize;
+    for thought in agents.think(journal.world(), scheduler.tick() + 1) {
+        scheduler.submit(thought.agent, thought.command);
+        agent_commands += 1;
+    }
     let agent_count = journal
         .world()
         .entities_with(<sage_agents::Mind as sage_core::Component>::NAME)
@@ -112,7 +118,7 @@ pub fn run(options: &RunOptions) -> Result<(), String> {
             );
         }
         refused_total += report.refused.len();
-        agents.observe(journal.world(), &report);
+        agents.observe(&report);
         for thought in agents.think(journal.world(), report.tick + 1) {
             scheduler.submit(thought.agent, thought.command);
             agent_commands += 1;
@@ -210,7 +216,7 @@ pub fn inspect(path: &Path) -> Result<(), String> {
         .map_err(|e| e.to_string())?
         .map(|s| s.seq);
     let log = SqliteLog::open(path).map_err(|e| e.to_string())?;
-    let from_genesis = Journal::open_from_genesis(log, sage_agents::registry(), Upcasters::new())
+    let from_genesis = Journal::open_from_genesis(log, sage_agents::registry(), Upcasters::core())
         .map_err(|e| e.to_string())?;
     let agree =
         from_snapshot.world().snapshot().to_bytes() == from_genesis.world().snapshot().to_bytes();

@@ -4,3 +4,9 @@
 *.db-wal
 *.db-shm
 .env
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+/graft/
+
+# Log fixtures recorded by older engine builds; see the test that reads each one.
+!crates/sage-agents/tests/fixtures/*.db

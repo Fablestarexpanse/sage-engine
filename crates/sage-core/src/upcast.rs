@@ -56,6 +56,15 @@ impl Upcasters {
         Self::default()
     }
 
+    /// The engine's own upcasters, for every core event schema change so far:
+    /// - `Occurred` v1 -> v2 adds an empty `audience` (who perceived a v1 occurrence was never
+    ///   recorded).
+    pub fn core() -> Self {
+        let mut upcasters = Self::new();
+        upcasters.register("Occurred", 1, occurred_v1_to_v2);
+        upcasters
+    }
+
     /// Registers the step `from` -> `from + 1` for `event_type`.
     pub fn register(&mut self, event_type: &str, from: u32, step: UpcastFn) {
         self.steps.insert((event_type.to_owned(), from), step);
@@ -92,6 +101,17 @@ impl Upcasters {
         }
         Ok(payload)
     }
+}
+
+fn occurred_v1_to_v2(mut payload: Value) -> Result<Value, String> {
+    let fields = payload
+        .as_object_mut()
+        .ok_or("Occurred v1 payload is not an object")?;
+    if fields.contains_key("audience") {
+        return Err("Occurred v1 payload already has an audience".into());
+    }
+    fields.insert("audience".into(), Value::Array(Vec::new()));
+    Ok(payload)
 }
 
 #[cfg(test)]

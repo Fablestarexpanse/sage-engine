@@ -206,7 +206,7 @@ impl PluginHost {
             plugin,
             commands,
             limits,
-            upcasters: Upcasters::new(),
+            upcasters: Upcasters::core(),
             last_fuel_used: 0,
             poisoned: None,
         };

@@ -31,7 +31,7 @@ fn journal() -> Journal<SqliteLog> {
     let mut journal = Journal::open(
         SqliteLog::open_in_memory().unwrap(),
         ComponentRegistry::with_core(),
-        Upcasters::new(),
+        Upcasters::core(),
     )
     .unwrap();
     let mut events: Vec<Event> = (1..=7)
@@ -110,7 +110,7 @@ fn granted_plugin_reads_the_world_and_its_events_replay_without_it() {
     let replayed = Journal::open_from_genesis(
         journal.into_log(),
         ComponentRegistry::with_core(),
-        Upcasters::new(),
+        Upcasters::core(),
     )
     .unwrap();
     assert_eq!(replayed.world().snapshot().to_bytes(), live);

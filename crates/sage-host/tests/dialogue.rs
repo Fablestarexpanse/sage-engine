@@ -32,7 +32,7 @@ fn journal() -> Journal<SqliteLog> {
     let mut journal = Journal::open(
         SqliteLog::open_in_memory().unwrap(),
         ComponentRegistry::with_core(),
-        Upcasters::new(),
+        Upcasters::core(),
     )
     .unwrap();
     let mut events: Vec<Event> = (1..=8)
@@ -149,7 +149,7 @@ fn tell_reaches_only_the_teller_and_the_named_actor() {
     let replayed = Journal::open_from_genesis(
         journal.into_log(),
         ComponentRegistry::with_core(),
-        Upcasters::new(),
+        Upcasters::core(),
     )
     .unwrap();
     assert_eq!(replayed.world().snapshot().to_bytes(), live);
