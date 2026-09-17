@@ -69,6 +69,13 @@ cargo run --release -p sage-server -- install agents.db my-character.png --licen
 cargo run --release -p sage-server -- place agents.db local.my-character
 ```
 
+To share it, export it as a SAGE card, a PNG that Tavern tools still read, carrying its manifest. Or pack any fragment, plugins included, as one file:
+
+```bash
+cargo run --release -p sage-server -- export agents.db local.my-character my-character-sage.png
+cargo run --release -p sage-server -- pack path/to/fragment my-fragment.sagepkg
+```
+
 ## Play in a browser
 
 ```bash

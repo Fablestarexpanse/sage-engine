@@ -25,6 +25,15 @@ pub enum Command {
         fragment: String,
         options: crate::place::PlaceOptions,
     },
+    Pack {
+        fragment: PathBuf,
+        out: PathBuf,
+    },
+    Export {
+        world: PathBuf,
+        fragment: String,
+        out: PathBuf,
+    },
 }
 
 #[derive(Debug, PartialEq)]
@@ -102,6 +111,33 @@ impl Args {
                     world: world.into(),
                     source: source.into(),
                     options,
+                }
+            }
+            Some("pack") => {
+                let (Some(fragment), Some(out), None) = (args.next(), args.next(), args.next())
+                else {
+                    return Err(
+                        "pack needs a fragment directory and an output .sagepkg file".into(),
+                    );
+                };
+                Command::Pack {
+                    fragment: fragment.into(),
+                    out: out.into(),
+                }
+            }
+            Some("export") => {
+                let (Some(world), Some(fragment), Some(out), None) =
+                    (args.next(), args.next(), args.next(), args.next())
+                else {
+                    return Err(
+                        "export needs a world file, an installed fragment id and an output .png file"
+                            .into(),
+                    );
+                };
+                Command::Export {
+                    world: world.into(),
+                    fragment,
+                    out: out.into(),
                 }
             }
             Some("place") => {

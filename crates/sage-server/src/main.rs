@@ -4,14 +4,17 @@
 //! reports on a world file and checks that its newest snapshot agrees with a full replay.
 //! `sage check` reports whether this engine can use a fragment. `sage card` reads a Tavern
 //! character card and shows the agent it becomes. `sage install` adds a verified fragment to
-//! a world's library, and `sage place` puts an installed agent into a stopped world.
+//! a world's library, and `sage place` puts an installed agent into a stopped world. `sage pack`
+//! writes a fragment as a `.sagepkg`, and `sage export` writes an installed agent as a SAGE card.
 
 mod accounts;
 mod args;
 mod card;
 mod check;
+mod export;
 mod library;
 mod net;
+mod package;
 mod place;
 mod players;
 mod protocol;
@@ -43,13 +46,17 @@ usage:
   sage inspect <world.db>
   sage check <fragment-dir>       validate fragment.yaml and, for plugins, plugin.wasm
   sage card <card.png|card.json>  read a Tavern character card and show the agent it becomes
-  sage install <world.db> <fragment-dir|card.png|card.json> [options]
+  sage pack <fragment-dir> <out.sagepkg>
+                                  check a fragment and write it as one .sagepkg file
+  sage install <world.db> <fragment-dir|package.sagepkg|card.png|card.json> [options]
                                   verify a fragment and add it to <world.db>.fragments/
       --id <creator.slug>        card files: fragment id (default local.<name>)
       --version <semver>         card files: version (default the card's, else 0.1.0)
       --license <spdx>           card files: license (default LicenseRef-Unspecified)
   sage place <world.db> <id>[@version] [--at <place-id>] [--name <name>]
-                                  put an installed agent into a stopped world";
+                                  put an installed agent into a stopped world
+  sage export <world.db> <id>[@version] <out.png>
+                                  write an installed agent as a SAGE card (Tavern-readable)";
 
 fn main() -> ExitCode {
     let args = match Args::parse(std::env::args().skip(1)) {
@@ -82,6 +89,12 @@ fn main() -> ExitCode {
             fragment,
             options,
         } => place::run(&world, &fragment, &options),
+        Command::Pack { fragment, out } => package::run(&fragment, &out),
+        Command::Export {
+            world,
+            fragment,
+            out,
+        } => export::run(&world, &fragment, &out),
     };
     match result {
         Ok(()) => ExitCode::SUCCESS,

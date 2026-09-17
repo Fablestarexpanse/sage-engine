@@ -184,7 +184,7 @@ fn fragment_directories_are_checked_against_their_digest() {
     assert_eq!(report["digest"], right.as_str());
     assert_eq!(
         report["warnings"],
-        json!(["unsigned: installed on its content digest alone"])
+        json!(["unsigned: accepted on its content digest alone"])
     );
 
     // Card options make no sense for a directory, which has its own manifest.

@@ -36,7 +36,7 @@ pub fn library_path(world: &Path) -> PathBuf {
 pub struct Files(pub Vec<(String, Vec<u8>)>);
 
 impl Files {
-    fn get(&self, path: &str) -> Option<&[u8]> {
+    pub(crate) fn get(&self, path: &str) -> Option<&[u8]> {
         self.0
             .iter()
             .find(|(p, _)| p == path)
@@ -104,7 +104,7 @@ impl Files {
         Ok(Files(files))
     }
 
-    fn write_to(&self, dir: &Path) -> Result<(), String> {
+    pub(crate) fn write_to(&self, dir: &Path) -> Result<(), String> {
         for (path, bytes) in &self.0 {
             let target = dir.join(path);
             if let Some(parent) = target.parent() {
@@ -117,7 +117,7 @@ impl Files {
     }
 }
 
-fn safe_name(name: &str) -> bool {
+pub(crate) fn safe_name(name: &str) -> bool {
     !name.is_empty()
         && name != "."
         && name != ".."
@@ -156,79 +156,91 @@ pub struct CardOptions {
     pub license: Option<String>,
 }
 
-/// Installs `source` (a fragment directory, or a character card file) into `world`'s library.
-pub fn install(world: &Path, source: &Path, options: &CardOptions) -> InstallReport {
-    let mut report = InstallReport::default();
-    let prepared = if source.is_dir() {
+/// A fragment that passed every check, ready to install or pack.
+pub struct Verified {
+    /// Its manifest.
+    pub manifest: Manifest,
+    /// Its content digest, equal to the one in the stored manifest.
+    pub digest: String,
+    /// Every file, with `fragment.yaml` as it is stored: always stating the digest.
+    pub files: Files,
+    /// Accepted, but worth knowing.
+    pub warnings: Vec<String>,
+}
+
+/// Whether `source` is a `.sagepkg` package: by extension, or by the zstd frame magic.
+fn is_package(source: &Path, bytes: &[u8]) -> bool {
+    source
+        .extension()
+        .is_some_and(|e| e.eq_ignore_ascii_case("sagepkg"))
+        || bytes.starts_with(&crate::package::ZSTD_MAGIC)
+}
+
+fn manifest_text(files: &Files) -> Result<String, String> {
+    let text = files
+        .get(MANIFEST_FILE)
+        .ok_or_else(|| format!("no {MANIFEST_FILE}"))?;
+    String::from_utf8(text.to_vec()).map_err(|_| format!("{MANIFEST_FILE} is not UTF-8"))
+}
+
+/// Reads and checks a fragment directory, a `.sagepkg` package, or a card file. `engine`
+/// also requires the manifest's engine range to accept this engine (install does; packing
+/// for another engine is allowed).
+pub fn verify(source: &Path, options: &CardOptions, engine: bool) -> Result<Verified, Vec<String>> {
+    let mut warnings = Vec::new();
+    let only_cards = |what: &str| {
         if *options != CardOptions::default() {
-            report
-                .problems
-                .push("--id, --version and --license apply only to card files".into());
-            return report;
+            Err(vec![format!(
+                "--id, --version and --license apply only to plain card files, not {what}"
+            )])
+        } else {
+            Ok(())
         }
-        Files::read_dir(source).and_then(|files| {
-            let text = files
-                .get(MANIFEST_FILE)
-                .ok_or_else(|| format!("{}: no {MANIFEST_FILE}", source.display()))?;
-            let text = String::from_utf8(text.to_vec())
-                .map_err(|_| format!("{MANIFEST_FILE} is not UTF-8"))?;
-            Ok((files, text))
-        })
+    };
+    let (mut files, mut text) = if source.is_dir() {
+        only_cards("fragment directories")?;
+        let files = Files::read_dir(source).map_err(|e| vec![e])?;
+        let text = manifest_text(&files).map_err(|e| vec![format!("{}: {e}", source.display())])?;
+        (files, text)
     } else {
-        card_fragment(source, options, &mut report.warnings)
-    };
-    let (mut files, mut text) = match prepared {
-        Ok(prepared) => prepared,
-        Err(problem) => {
-            report.problems.push(problem);
-            return report;
+        let bytes = read_limited(source).map_err(|e| vec![e])?;
+        if is_package(source, &bytes) {
+            only_cards("packages")?;
+            let files = crate::package::unpack(&bytes)
+                .map_err(|e| vec![format!("{}: {e}", source.display())])?;
+            let text =
+                manifest_text(&files).map_err(|e| vec![format!("{}: {e}", source.display())])?;
+            (files, text)
+        } else {
+            card_fragment(source, &bytes, options, &mut warnings).map_err(|e| vec![e])?
         }
     };
 
-    let manifest = match valid_manifest(&text) {
-        Ok(manifest) => manifest,
-        Err(problems) => {
-            report.problems = problems;
-            return report;
+    let manifest = valid_manifest(&text)?;
+    if engine {
+        let this = semver::Version::parse(ENGINE_VERSION).expect("engine version is semver");
+        if !manifest.engine_requirement().matches(&this) {
+            return Err(vec![format!(
+                "needs engine `{}`; this is {ENGINE_VERSION}",
+                manifest.engine
+            )]);
         }
-    };
-    report.fragment = Some(manifest.id.as_str().to_owned());
-    report.version = Some(manifest.version.clone());
-    report.kind = Some(manifest.kind);
-
-    let engine = semver::Version::parse(ENGINE_VERSION).expect("engine version is semver");
-    if !manifest.engine_requirement().matches(&engine) {
-        report.problems.push(format!(
-            "needs engine `{}`; this is {ENGINE_VERSION}",
-            manifest.engine
-        ));
-        return report;
     }
 
-    let digest = match files.digest() {
-        Ok(digest) => digest,
-        Err(problem) => {
-            report.problems.push(problem);
-            return report;
-        }
-    };
-    report.digest = Some(digest.clone());
+    let digest = files.digest().map_err(|e| vec![e])?;
     match &manifest.integrity {
         Some(integrity) if integrity.digest != digest => {
-            report.problems.push(format!(
+            return Err(vec![format!(
                 "content does not match its manifest: the manifest says {}, the files are {digest}",
                 integrity.digest
-            ));
-            return report;
+            )]);
         }
-        Some(integrity) if integrity.signature.is_some() => report.warnings.push(
+        Some(integrity) if integrity.signature.is_some() => warnings.push(
             "the signature was not checked: this engine does not verify signatures yet".into(),
         ),
-        Some(_) => report
-            .warnings
-            .push("unsigned: installed on its content digest alone".into()),
+        Some(_) => warnings.push("unsigned: accepted on its content digest alone".into()),
         None => {
-            report.warnings.push(format!(
+            warnings.push(format!(
                 "unsigned, and the manifest stated no digest: recorded {digest}"
             ));
             if !text.ends_with('\n') {
@@ -238,24 +250,74 @@ pub fn install(world: &Path, source: &Path, options: &CardOptions) -> InstallRep
         }
     }
 
-    let problems = match manifest.kind {
-        Kind::Agent => usable_agent(&manifest, &files).map(|(_, warnings)| warnings),
-        Kind::Plugin => plugin_checks(source, &files),
-        other => Err(vec![format!(
-            "`{}` fragments cannot be installed yet",
-            serde_json::to_value(other)
-                .ok()
-                .and_then(|v| v.as_str().map(str::to_owned))
-                .unwrap_or_default()
-        )]),
-    };
-    match problems {
-        Ok(warnings) => report.warnings.extend(warnings),
+    match manifest.kind {
+        Kind::Agent => {
+            let (_, card_warnings) = usable_agent(&manifest, &files)?;
+            warnings.extend(card_warnings);
+        }
+        Kind::Plugin => plugin_checks(source, &files)?,
+        other => {
+            return Err(vec![format!(
+                "`{}` fragments cannot be installed yet",
+                serde_json::to_value(other)
+                    .ok()
+                    .and_then(|v| v.as_str().map(str::to_owned))
+                    .unwrap_or_default()
+            )]);
+        }
+    }
+
+    files.0.retain(|(path, _)| path != MANIFEST_FILE);
+    files.0.push((MANIFEST_FILE.into(), text.into_bytes()));
+    files.0.sort();
+    Ok(Verified {
+        manifest,
+        digest,
+        files,
+        warnings,
+    })
+}
+
+/// Reads a file of at most [`MAX_FRAGMENT_BYTES`].
+fn read_limited(path: &Path) -> Result<Vec<u8>, String> {
+    use std::io::Read;
+    let file = std::fs::File::open(path).map_err(|e| format!("{}: {e}", path.display()))?;
+    let mut bytes = Vec::new();
+    file.take(MAX_FRAGMENT_BYTES + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|e| format!("{}: {e}", path.display()))?;
+    if bytes.len() as u64 > MAX_FRAGMENT_BYTES {
+        return Err(format!(
+            "{}: over {} MiB",
+            path.display(),
+            MAX_FRAGMENT_BYTES / (1024 * 1024)
+        ));
+    }
+    Ok(bytes)
+}
+
+/// Installs `source` (a fragment directory, a `.sagepkg` package, or a card file) into
+/// `world`'s library.
+pub fn install(world: &Path, source: &Path, options: &CardOptions) -> InstallReport {
+    let mut report = InstallReport::default();
+    let verified = match verify(source, options, true) {
+        Ok(verified) => verified,
         Err(problems) => {
             report.problems = problems;
             return report;
         }
-    }
+    };
+    let Verified {
+        manifest,
+        digest,
+        files,
+        warnings,
+    } = verified;
+    report.fragment = Some(manifest.id.as_str().to_owned());
+    report.version = Some(manifest.version.clone());
+    report.kind = Some(manifest.kind);
+    report.digest = Some(digest.clone());
+    report.warnings = warnings;
 
     let target = library_path(world)
         .join(manifest.id.as_str())
@@ -282,8 +344,6 @@ pub fn install(world: &Path, source: &Path, options: &CardOptions) -> InstallRep
         return report;
     }
 
-    files.0.retain(|(path, _)| path != MANIFEST_FILE);
-    files.0.push((MANIFEST_FILE.into(), text.into_bytes()));
     match write_atomically(&target, &files) {
         Ok(()) => {
             report.ok = true;
@@ -389,14 +449,23 @@ fn usable_agent(
     Ok((agent, warnings))
 }
 
-/// Plugins install only if `sage check` passes on the source directory.
-fn plugin_checks(source: &Path, files: &Files) -> Result<Vec<String>, Vec<String>> {
+/// Plugins are accepted only if `sage check` passes. A package is unpacked to a temporary
+/// directory first, so it is checked exactly as a directory would be.
+fn plugin_checks(source: &Path, files: &Files) -> Result<(), Vec<String>> {
     if files.get("plugin.wasm").is_none() {
         return Err(vec!["a plugin fragment needs plugin.wasm".into()]);
     }
-    let report = crate::check::check(source);
+    let unpacked;
+    let dir = if source.is_dir() {
+        source
+    } else {
+        unpacked = tempfile::tempdir().map_err(|e| vec![e.to_string()])?;
+        files.write_to(unpacked.path()).map_err(|e| vec![e])?;
+        unpacked.path()
+    };
+    let report = crate::check::check(dir);
     if report.ok {
-        return Ok(Vec::new());
+        return Ok(());
     }
     let value = serde_json::to_value(&report).expect("reports serialize");
     Err(value["checks"]
@@ -416,28 +485,26 @@ fn plugin_checks(source: &Path, files: &Files) -> Result<Vec<String>, Vec<String
         .collect())
 }
 
-/// A card file as a fragment: the card unchanged, and a manifest written for it.
+/// A card file as a fragment.
+///
+/// A SAGE card carries its manifest in a `sage` chunk: the content is the PNG without that
+/// chunk, and the manifest's digest must match it. Any other card gets a manifest written for
+/// it. PNG cards are kept in canonical form (chunks re-written with correct CRCs, nothing after
+/// `IEND`), so exporting and re-importing gives the same digest.
 fn card_fragment(
     source: &Path,
+    bytes: &[u8],
     options: &CardOptions,
     warnings: &mut Vec<String>,
 ) -> Result<(Files, String), String> {
-    let bytes = std::fs::read(source).map_err(|e| format!("{}: {e}", source.display()))?;
-    if bytes.len() as u64 > MAX_FRAGMENT_BYTES {
-        return Err(format!(
-            "{}: over {} MiB",
-            source.display(),
-            MAX_FRAGMENT_BYTES / (1024 * 1024)
-        ));
-    }
     let png = bytes.starts_with(&sage_schema::png::SIGNATURE)
         || source
             .extension()
             .is_some_and(|e| e.eq_ignore_ascii_case("png"));
     let read = if png {
-        card::read_png(&bytes)
+        card::read_png(bytes)
     } else {
-        card::read_json(&bytes)
+        card::read_json(bytes)
     };
     let Some(card) = read.card.filter(|_| read.ok) else {
         let why: Vec<String> = read
@@ -452,6 +519,45 @@ fn card_fragment(
             why.join("; ")
         ));
     };
+    if png {
+        let canonical = sage_schema::png::with_text_chunks(bytes, &[card::SAGE_KEYWORD], &[])
+            .map_err(|e| {
+                format!(
+                    "{}: the PNG is damaged ({e}); open and save it again first",
+                    source.display()
+                )
+            })?;
+        if let Some(embedded) = card::sage_manifest(bytes) {
+            if *options != CardOptions::default() {
+                return Err(
+                    "this SAGE card carries its own manifest; --id, --version and --license \
+                     apply only to plain card files"
+                        .into(),
+                );
+            }
+            let text = embedded.map_err(|e| format!("{}: {e}", source.display()))?;
+            return Ok((Files(vec![("card.png".into(), canonical)]), text));
+        }
+        if canonical != bytes {
+            warnings.push(
+                "card.png was stored in canonical form (CRCs rewritten, bytes after IEND dropped)"
+                    .into(),
+            );
+        }
+        let manifest = written_manifest(&card, "png-card", options, warnings);
+        return Ok((Files(vec![("card.png".into(), canonical)]), manifest));
+    }
+    let manifest = written_manifest(&card, "json", options, warnings);
+    Ok((Files(vec![("card.json".into(), bytes.to_vec())]), manifest))
+}
+
+/// A manifest for a plain card, with each default reported.
+fn written_manifest(
+    card: &sage_schema::card::Card,
+    format: &str,
+    options: &CardOptions,
+    warnings: &mut Vec<String>,
+) -> String {
     let name = card.name.split_whitespace().collect::<Vec<_>>().join(" ");
     let id = options
         .id
@@ -480,12 +586,7 @@ fn card_fragment(
     let title: String = name.chars().take(120).collect();
     let creator = id.split_once('.').map(|(c, _)| c).unwrap_or_default();
     let quote = |s: &str| serde_json::to_string(s).expect("strings serialize");
-    let (format, file) = if png {
-        ("png-card", "card.png")
-    } else {
-        ("json", "card.json")
-    };
-    let manifest = format!(
+    format!(
         "schema: sage.fragment/1\nid: {}\nkind: agent\nversion: {}\nengine: {}\ntitle: {}\n\
          creator:\n  handle: {}\nlicense: {}\ncontent:\n  format: {format}\n  tavern_compatible: true\n",
         quote(&id),
@@ -494,8 +595,7 @@ fn card_fragment(
         quote(&title),
         quote(creator),
         quote(&license),
-    );
-    Ok((Files(vec![(file.into(), bytes)]), manifest))
+    )
 }
 
 /// Lowercase letters and digits joined by single hyphens, at most 64 characters.
@@ -582,6 +682,11 @@ impl Installed {
             return Err(format!("{id}@{chosen} is not installed"));
         }
         Installed::open(&path).map_err(|e| format!("{id}@{chosen}: {e}"))
+    }
+
+    /// One of its files.
+    pub fn file(&self, path: &str) -> Option<&[u8]> {
+        self.files.get(path)
     }
 
     /// The agent an installed agent fragment holds.

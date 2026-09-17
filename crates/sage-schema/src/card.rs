@@ -207,11 +207,11 @@ pub fn read_png(bytes: &[u8]) -> CardReport {
                     format!("chunk:{keyword}"),
                     "keyword differs from a card keyword only in case; not read",
                 );
-            } else if keyword == "sage" {
+            } else if keyword == SAGE_KEYWORD {
                 findings.push(
                     Severity::Note,
                     "chunk:sage",
-                    "a SAGE fragment chunk is present; this reader does not use it yet",
+                    "this is a SAGE card: it carries its fragment manifest, which `sage install` uses",
                 );
             }
             continue;
@@ -642,4 +642,51 @@ fn strings(value: Option<&Value>, path: &str, findings: &mut Findings) -> Vec<St
             Vec::new()
         }
     }
+}
+
+/// Keyword of the chunk that makes a PNG card a SAGE card: it holds the fragment manifest.
+pub const SAGE_KEYWORD: &str = "sage";
+
+/// Format of the `sage` chunk's payload.
+pub const SAGE_CARD_SCHEMA: &str = "sage.card/1";
+
+/// Most bytes of card data (the `chara`, `ccv3` and `sage` chunks together) a SAGE card may
+/// carry. Anything larger is a package, not a card.
+pub const MAX_SAGE_CARD_BYTES: usize = 1024 * 1024;
+
+/// The text of a `sage` chunk carrying `manifest`: Base64 of
+/// `{"schema": "sage.card/1", "manifest": "<fragment.yaml text>"}`, since `tEXt` is Latin-1.
+pub fn sage_chunk(manifest: &str) -> String {
+    let payload = serde_json::json!({"schema": SAGE_CARD_SCHEMA, "manifest": manifest});
+    base64::engine::general_purpose::STANDARD.encode(payload.to_string())
+}
+
+/// The manifest text a PNG's `sage` chunk carries: `None` when there is no such chunk, and an
+/// error when there is one that cannot be read or there is more than one.
+pub fn sage_manifest(png_bytes: &[u8]) -> Option<Result<String, String>> {
+    let (texts, _) = png::text_chunks(png_bytes).ok()?;
+    let mut found = texts.iter().filter(|t| t.keyword == SAGE_KEYWORD);
+    let chunk = found.next()?;
+    if found.next().is_some() {
+        return Some(Err("the card has more than one `sage` chunk".into()));
+    }
+    Some((|| {
+        let raw = chunk.text.ok_or("the `sage` chunk is compressed")?;
+        if raw.len() > MAX_SAGE_CARD_BYTES {
+            return Err("the `sage` chunk is over 1 MiB".to_owned());
+        }
+        let json = base64::engine::general_purpose::STANDARD
+            .decode(raw.trim_ascii())
+            .map_err(|e| format!("the `sage` chunk is not Base64: {e}"))?;
+        let value: Value = serde_json::from_slice(&json)
+            .map_err(|e| format!("the `sage` chunk is not JSON: {e}"))?;
+        if value.get("schema").and_then(Value::as_str) != Some(SAGE_CARD_SCHEMA) {
+            return Err(format!("the `sage` chunk is not `{SAGE_CARD_SCHEMA}`"));
+        }
+        value
+            .get("manifest")
+            .and_then(Value::as_str)
+            .map(str::to_owned)
+            .ok_or_else(|| "the `sage` chunk has no manifest".to_owned())
+    })())
 }
