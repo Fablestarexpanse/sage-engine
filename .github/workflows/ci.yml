@@ -53,6 +53,9 @@ jobs:
 
   fuzz:
     runs-on: ubuntu-latest
+    # rust-toolchain.toml pins stable for the engine; the fuzzer needs nightly, and its own flags.
+    env:
+      RUSTFLAGS: ""
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@nightly
@@ -63,7 +66,7 @@ jobs:
       - name: Fuzz the card reader for 3 minutes
         run: >
           mkdir -p crates/sage-schema/fuzz/corpus &&
-          cargo fuzz run --fuzz-dir crates/sage-schema/fuzz read_card
+          cargo +nightly fuzz run --fuzz-dir crates/sage-schema/fuzz read_card
           crates/sage-schema/fuzz/corpus crates/sage-schema/fuzz/seeds --
           -dict=crates/sage-schema/fuzz/card.dict -max_total_time=180
           -timeout=5 -rss_limit_mb=2048 -max_len=65536
