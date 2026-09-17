@@ -1,4 +1,4 @@
-NEXT: M3 S3b is done (ADR 0019). All of M3's ADR 0004 gate items pass (10 scripted agents for one world-hour in fast mode; LLM agents use the player command path, against stubs; zero-AI demo in CI). S4, Tavern Card v2 import to agent fragments, is still open from the M3 plan. Ask the owner whether to build S4 now or move it to M4 with the other content fragments and PNG cards, then close M3. Not yet done: runs against a real chat model and a real embedding model.
+NEXT: M3 is closed (ADR 0020). M4, client and Foundry MVP, is next: its plan is not written or agreed yet, so agree the slice order with the owner first. The ADR 0004 gate is a stranger installing the engine, downloading a fragment and playing within 15 minutes. M4 now also includes Tavern Card v2/v3 PNG import and the content-fragment package format. Still owed: runs against a real chat model and a real embedding model.
 
 # Status
 
@@ -7,8 +7,8 @@ NEXT: M3 S3b is done (ADR 0019). All of M3's ADR 0004 gate items pass (10 script
 | M0 Scaffold | done: workspace, CI (fmt, clippy, test, denylist), ADRs 0001–0004 |
 | M1 World model | **closed** 2026-09-16 (ADR 0005-0008; 24 h wall-clock run waived, fast-mode equivalent passed) |
 | M2 Plugin seal | **closed** 2026-09-16 (ADR 0009-0011; N-1 WIT adapter test deferred by owner ruling) |
-| M3 Agents | in progress: S1-S3b done (commands, scripted/hybrid/LLM agents, memory, retrieval, embeddings, reflection; ADR 0012-0019); S4 (Tavern Card import) not started |
-| M4 Client + Foundry MVP | blocked on M3 |
+| M3 Agents | **closed** 2026-09-16 (ADR 0012-0020; Tavern Card import moved to M4) |
+| M4 Client + Foundry MVP | next |
 | M5 Workshop + social | blocked on M4 |
 | M6 Marketplace | blocked on M5 |
 

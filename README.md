@@ -8,7 +8,7 @@ Fragments are shared through [Fragment Foundry](https://fragmentfoundry.com), wh
 
 ## Status
 
-M1 (world model) and M2 (plugin seal) are done, and M3 (synthetic agents) is well along. The event log, space graph, world clock and run loop exist, along with sandboxed WebAssembly plugins, fragment manifests, `sage check`, commands, and scripted and LLM-driven agents whose memory is rebuilt from the log. See [docs/STATUS.md](docs/STATUS.md).
+M1 (world model), M2 (plugin seal) and M3 (synthetic agents) are done. M4, the player client and Fragment Foundry MVP, is next. The event log, space graph, world clock and run loop exist, along with sandboxed WebAssembly plugins, fragment manifests, `sage check`, commands, and scripted and LLM-driven agents whose memory is rebuilt from the log. See [docs/STATUS.md](docs/STATUS.md).
 
 | Milestone | Scope |
 |---|---|
