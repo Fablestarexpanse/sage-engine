@@ -1,5 +1,7 @@
 //! `sage.dialogue`: directed conversation. `tell <name> <text>` reaches the teller and the
-//! named actor, if that actor is in the same place.
+//! named actor, if that actor is in the same place. `<name>` is the actor's full name when it
+//! is one word, or the first word of it ("Tamsin" for "Tamsin Reed") when only one actor here
+//! answers to that.
 
 wit_bindgen::generate!({
     path: "../../wit/core",
@@ -59,6 +61,7 @@ impl commands::Guest for Plugin {
             ("told.target", "{actor} tells you, \"{text}\""),
             ("tell.usage", "Tell whom what?"),
             ("tell.nobody", "Nobody here answers to \"{name}\"."),
+            ("tell.ambiguous", "More than one here answers to \"{name}\"."),
         ]
         .iter()
         .map(|(key, template)| (format!("{ID}.{key}"), (*template).to_owned()))
@@ -76,15 +79,34 @@ impl commands::Guest for Plugin {
         let here = entities::get_component(actor, "sage.located")
             .and_then(|json| serde_json::from_str::<serde_json::Value>(&json).ok())
             .and_then(|value| value["within"].as_u64());
-        let target = here.and_then(|place| {
-            space::contents(place).into_iter().find(|id| {
-                *id != actor
-                    && entities::get_component(*id, "sage.actor").is_some()
-                    && name_of(*id).is_some_and(|n| n.eq_ignore_ascii_case(name))
+        let others: Vec<(u64, String)> = here
+            .map(|place| {
+                space::contents(place)
+                    .into_iter()
+                    .filter(|id| *id != actor && entities::get_component(*id, "sage.actor").is_some())
+                    .filter_map(|id| name_of(id).map(|n| (id, n)))
+                    .collect()
             })
-        });
-        let Some(target) = target else {
-            return Ok(say_only(line("tell.nobody", &[("name", name)])));
+            .unwrap_or_default();
+        let exact: Vec<u64> = others
+            .iter()
+            .filter(|(_, n)| n.eq_ignore_ascii_case(name))
+            .map(|(id, _)| *id)
+            .collect();
+        let by_first_word: Vec<u64> = others
+            .iter()
+            .filter(|(_, n)| {
+                n.split_whitespace()
+                    .next()
+                    .is_some_and(|first| first.eq_ignore_ascii_case(name))
+            })
+            .map(|(id, _)| *id)
+            .collect();
+        let target = match (exact.as_slice(), by_first_word.as_slice()) {
+            ([id], _) => *id,
+            ([], [id]) => *id,
+            ([], []) => return Ok(say_only(line("tell.nobody", &[("name", name)]))),
+            _ => return Ok(say_only(line("tell.ambiguous", &[("name", name)]))),
         };
         let occurred = serde_json::json!({
             "kind": format!("{ID}.told"),

@@ -198,3 +198,72 @@ fn a_plugin_cannot_emit_another_names_occurrences() {
         "{err}"
     );
 }
+
+#[test]
+fn tell_finds_a_two_word_name_by_its_first_word_unless_that_is_ambiguous() {
+    let host = PluginHost::new().unwrap();
+    let mut journal = journal();
+    let mut events = Vec::new();
+    for (id, name) in [
+        (9, "Tamsin Reed"),
+        (10, "Tamsin Hale"),
+        (11, "Wren Moss"),
+        (12, "Bo Stone"),
+    ] {
+        events.extend([
+            Event::EntityCreated(EntityCreated { id: EntityId(id) }),
+            set(
+                id,
+                &Describable {
+                    name: name.into(),
+                    description: String::new(),
+                },
+            ),
+            set(id, &Actor {}),
+            set(
+                id,
+                &Located {
+                    within: EntityId(1),
+                },
+            ),
+        ]);
+    }
+    journal.commit(0, &events).unwrap();
+
+    let plugin = dialogue(&host);
+    let mut lexicon = Lexicon::core_english();
+    for (key, template) in plugin.lexicon() {
+        lexicon.set(key, template);
+    }
+    let mut scheduler = Scheduler::new(&journal, 1000);
+    scheduler
+        .commands_mut()
+        .register(plugin.command_handler().unwrap())
+        .unwrap();
+    scheduler.add(plugin);
+
+    scheduler.submit(ADA, "tell wren the fog is lifting");
+    scheduler.submit(ADA, "tell Tamsin hello");
+    scheduler.submit(ADA, "tell bo only you");
+    let report = scheduler.step(&mut journal).unwrap();
+
+    assert_eq!(
+        heard(&lexicon, &report, ADA),
+        [
+            "You tell Wren Moss, \"the fog is lifting\"",
+            "More than one here answers to \"Tamsin\".",
+            "You tell Bo, \"only you\""
+        ]
+    );
+    assert_eq!(
+        heard(&lexicon, &report, EntityId(11)),
+        ["Ada tells you, \"the fog is lifting\""]
+    );
+    // An exact name wins over a first word: "Bo", not "Bo Stone".
+    assert!(heard(&lexicon, &report, EntityId(12)).is_empty());
+    assert_eq!(
+        heard(&lexicon, &report, BO),
+        ["Ada tells you, \"only you\""]
+    );
+    assert!(heard(&lexicon, &report, EntityId(9)).is_empty());
+}
