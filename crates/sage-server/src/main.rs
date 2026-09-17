@@ -19,6 +19,7 @@ mod package;
 mod place;
 mod players;
 mod protocol;
+mod registry;
 mod run;
 mod web;
 
@@ -52,6 +53,10 @@ usage:
   sage install <world.db> <fragment-dir|package.sagepkg|card.png|card.json|https-url> [options]
                                   verify a fragment and add it to <world.db>.fragments/
       --digest <sha256:...>      refuse unless the content has exactly this digest
+      --registry <url>           install <id>[@<version requirement>] from a registry, e.g. a Foundry
+  sage registry build <inputs-dir> <out-dir>
+                                  verify .sagepkg files, SAGE cards and fragment directories and
+                                  write a static registry (index.json, api/v1, blobs by digest)
       --id <creator.slug>        card files: fragment id (default local.<name>)
       --version <semver>         card files: version (default the card's, else 0.1.0)
       --license <spdx>           card files: license (default LicenseRef-Unspecified)
@@ -86,7 +91,15 @@ fn main() -> ExitCode {
             source,
             options,
             digest,
-        } => library::run(&world, &source, &options, digest.as_deref()),
+            registry,
+        } => library::run(
+            &world,
+            &source,
+            &options,
+            digest.as_deref(),
+            registry.as_deref(),
+        ),
+        Command::RegistryBuild { inputs, out } => registry::build(&inputs, &out),
         Command::Place {
             world,
             fragment,

@@ -310,6 +310,13 @@ fn read_limited(path: &Path) -> Result<Vec<u8>, String> {
     Ok(bytes)
 }
 
+impl InstallReport {
+    /// Records what was installed from, as the user named it.
+    pub fn set_source(&mut self, source: String) {
+        self.source = Some(source);
+    }
+}
+
 /// Installs what [`verify`] accepted, or reports why not.
 pub fn install_verified(world: &Path, verified: Result<Verified, Vec<String>>) -> InstallReport {
     let mut report = InstallReport::default();
@@ -417,6 +424,11 @@ fn card_file(manifest: &Manifest) -> Result<&'static str, String> {
 }
 
 /// The agent an agent fragment holds, and warnings from reading and converting its card.
+/// The agent an agent fragment's files hold.
+pub(crate) fn agent_of(manifest: &Manifest, files: &Files) -> Result<ImportedAgent, Vec<String>> {
+    usable_agent(manifest, files).map(|(agent, _)| agent)
+}
+
 fn usable_agent(
     manifest: &Manifest,
     files: &Files,
@@ -722,7 +734,22 @@ pub fn run(
     source: &str,
     options: &CardOptions,
     digest: Option<&str>,
+    registry: Option<&str>,
 ) -> Result<(), String> {
+    if let Some(base) = registry {
+        let report = if *options != CardOptions::default() || digest.is_some() {
+            install_verified(
+                world,
+                Err(vec![
+                    "--registry installs by id; the registry supplies the manifest and digest"
+                        .into(),
+                ]),
+            )
+        } else {
+            crate::registry::install(world, source, base)
+        };
+        return print_report(report, source);
+    }
     let verified = if crate::download::is_url(source) {
         crate::download::fetch(source)
             .map_err(|e| vec![e])
@@ -747,7 +774,11 @@ pub fn run(
         Ok(verified)
     });
     let mut report = install_verified(world, verified);
-    report.source = Some(source.to_owned());
+    report.set_source(source.to_owned());
+    print_report(report, source)
+}
+
+fn print_report(report: InstallReport, source: &str) -> Result<(), String> {
     println!(
         "{}",
         serde_json::to_string(&report).expect("reports serialize")

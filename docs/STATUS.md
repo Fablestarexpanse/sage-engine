@@ -1,4 +1,4 @@
-NEXT: M4 S4a is done (ADR 0026): `sage install` from https URLs with `--digest`, a release workflow (manual run 35237623204 built and smoke-tested all four targets), docs/QUICKSTART.md, and version 0.1.0. Waiting on the owner to approve pushing tag v0.1.0, which publishes the release. Then S4b: the Foundry static read path in Fragment-Foundary-Web-Site (Next.js on Vercel; registry folder, generated index.json, fragment pages from manifests, validation by the sage-schema WASM build). Then S4c, the 15-minute stranger test. Open for the owner: `--no-tavern` (ADR 0025). Still owed: runs against real models.
+NEXT: M4 S4b part 1 is done (ADR 0027): `sage registry build` writes the static registry (index.json, api/v1/fragments/<id>.json, blobs) and `sage install <id>@<req> --registry <url>` installs by id pinned to the listed digest. S4b part 2 is the Next.js site in the private Fragment-Foundary-Web-Site repo: a registry/ inputs folder, a build that runs `sage registry build` and renders fragment pages from its output, deployed on Vercel (the owner connects the repo). The v0.1.0 tag waits for the Foundry (owner ruling). Then S4c, the 15-minute stranger test. Open for the owner: `--no-tavern` (ADR 0025). Still owed: runs against real models.
 
 # Status
 
@@ -8,7 +8,7 @@ NEXT: M4 S4a is done (ADR 0026): `sage install` from https URLs with `--digest`,
 | M1 World model | **closed** 2026-09-16 (ADR 0005-0008; 24 h wall-clock run waived, fast-mode equivalent passed) |
 | M2 Plugin seal | **closed** 2026-09-16 (ADR 0009-0011; N-1 WIT adapter test deferred by owner ruling) |
 | M3 Agents | **closed** 2026-09-16 (ADR 0012-0020; Tavern Card import moved to M4) |
-| M4 Client + Foundry MVP | in progress: S1 done (WebSocket protocol, accounts; ADR 0021), S2 done (browser client; ADR 0022), S3a done (character card import; ADR 0023), S3 done (card import, install and place, packages and SAGE cards; ADR 0023-0025), S4a done (releases, URL install, quickstart; ADR 0026) |
+| M4 Client + Foundry MVP | in progress: S1 done (WebSocket protocol, accounts; ADR 0021), S2 done (browser client; ADR 0022), S3a done (character card import; ADR 0023), S3 done (card import, install and place, packages and SAGE cards; ADR 0023-0025), S4a done (releases, URL install, quickstart; ADR 0026), S4b part 1 done (static registry; ADR 0027) |
 | M5 Workshop + social | blocked on M4 |
 | M6 Marketplace | blocked on M5 |
 

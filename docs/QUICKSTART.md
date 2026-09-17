@@ -56,7 +56,15 @@ Any Tavern character card (a PNG from a character card site or card editor, or i
 2. `sage install` adds the card to the world's library.
 3. `sage place` puts the character in the first place. The id is `local.` plus the name in lowercase with hyphens, as `sage install` prints it.
 
-Start the world again and say the character's name. Fragments can also be installed from a web address, pinned to their exact content:
+Start the world again and say the character's name.
+
+Fragments listed in a registry, such as the Foundry, install by id: the newest version your engine can run, checked against the registry's digest.
+
+```bash
+./sage install my-world.db creator.fragment-name --registry https://…
+```
+
+Fragments can also be installed from a web address, pinned to their exact content:
 
 ```bash
 ./sage install my-world.db https://example.com/some.sagepkg --digest sha256:…

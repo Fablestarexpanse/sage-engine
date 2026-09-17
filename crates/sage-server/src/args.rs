@@ -21,6 +21,11 @@ pub enum Command {
         source: String,
         options: crate::library::CardOptions,
         digest: Option<String>,
+        registry: Option<String>,
+    },
+    RegistryBuild {
+        inputs: PathBuf,
+        out: PathBuf,
     },
     Place {
         world: PathBuf,
@@ -95,6 +100,7 @@ impl Args {
                 let mut positional = Vec::new();
                 let mut options = crate::library::CardOptions::default();
                 let mut digest = None;
+                let mut registry = None;
                 while let Some(arg) = args.next() {
                     let mut value = || args.next().ok_or_else(|| format!("{arg} needs a value"));
                     match arg.as_str() {
@@ -102,6 +108,7 @@ impl Args {
                         "--version" => options.version = Some(value()?),
                         "--license" => options.license = Some(value()?),
                         "--digest" => digest = Some(value()?),
+                        "--registry" => registry = Some(value()?),
                         _ if arg.starts_with("--") => {
                             return Err(format!("unknown option `{arg}`"));
                         }
@@ -116,6 +123,23 @@ impl Args {
                     source,
                     options,
                     digest,
+                    registry,
+                }
+            }
+            Some("registry") => {
+                let (Some(action), Some(inputs), Some(out), None) =
+                    (args.next(), args.next(), args.next(), args.next())
+                else {
+                    return Err(
+                        "registry build needs an inputs directory and an output directory".into(),
+                    );
+                };
+                if action != "build" {
+                    return Err(format!("unknown registry action `{action}`"));
+                }
+                Command::RegistryBuild {
+                    inputs: inputs.into(),
+                    out: out.into(),
                 }
             }
             Some("pack") => {
