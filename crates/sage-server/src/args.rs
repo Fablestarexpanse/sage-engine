@@ -56,6 +56,7 @@ pub struct RunOptions {
     pub llm_url: Option<String>,
     pub llm_model: Option<String>,
     pub llm_workers: usize,
+    pub llm_max_wait: u64,
     pub embed_url: Option<String>,
     pub embed_model: Option<String>,
     pub listen: Option<String>,
@@ -213,6 +214,7 @@ fn parse_run(mut args: impl Iterator<Item = String>) -> Result<RunOptions, Strin
         llm_url: None,
         llm_model: None,
         llm_workers: 2,
+        llm_max_wait: 30,
         embed_url: None,
         embed_model: None,
         listen: None,
@@ -240,6 +242,7 @@ fn parse_run(mut args: impl Iterator<Item = String>) -> Result<RunOptions, Strin
             "--embed-model" => options.embed_model = Some(value()?),
             "--listen" => options.listen = Some(value()?),
             "--start-place" => options.start_place = Some(number(&arg, &value()?)?),
+            "--llm-max-wait" => options.llm_max_wait = positive(&arg, &value()?)?,
             "--llm-workers" => {
                 options.llm_workers = usize::try_from(positive(&arg, &value()?)?)
                     .map_err(|_| format!("{arg} is too large"))?
@@ -313,6 +316,7 @@ mod tests {
         .unwrap();
         assert_eq!(options.llm_model.as_deref(), Some("llama3.2"));
         assert_eq!(options.llm_workers, 2);
+        assert_eq!(options.llm_max_wait, 30);
         assert!(run(&["run", "w.db", "--llm-url", "http://x/v1"]).is_err());
         assert!(run(&["run", "w.db", "--llm-model", "m"]).is_err());
         assert!(run(&["run", "w.db", "--embed-url", "u", "--embed-model", "e"]).is_err());

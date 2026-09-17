@@ -81,6 +81,8 @@ pub struct Agents {
     verbs: Vec<String>,
     /// Agents whose last reflection failed may not try again before this tick.
     reflection_backoff: BTreeMap<EntityId, u64>,
+    /// Model answers to requests older than this many ticks are dropped.
+    max_answer_age: u64,
 }
 
 /// Core English plus the agents' own wording.
@@ -100,6 +102,7 @@ impl Default for Agents {
             lexicon: lexicon_english(),
             verbs: Vec::new(),
             reflection_backoff: BTreeMap::new(),
+            max_answer_age: llm::MAX_ANSWER_AGE,
         }
     }
 }
@@ -121,6 +124,14 @@ impl Agents {
     /// Lets `llm` and `hybrid` agents ask a model through `thinker`.
     pub fn with_thinker(mut self, thinker: Thinker) -> Agents {
         self.thinker = Some(thinker);
+        self
+    }
+
+    /// Drops model answers to requests made more than `ticks` ago, instead of
+    /// [`llm::MAX_ANSWER_AGE`]. A slow local model needs more; a fast world at a high tick rate
+    /// may need less.
+    pub fn with_max_answer_age(mut self, ticks: u64) -> Agents {
+        self.max_answer_age = ticks;
         self
     }
 
@@ -253,8 +264,8 @@ impl Agents {
     }
 
     /// Model answers that have arrived, as commands for `tick`. Answers to requests made more
-    /// than [`llm::MAX_ANSWER_AGE`] ticks ago are dropped, as are answers for agents that are
-    /// no longer actors.
+    /// than the maximum answer age ago (by default [`llm::MAX_ANSWER_AGE`] ticks) are dropped,
+    /// as are answers for agents that are no longer actors.
     pub fn collect(&mut self, world: &World, tick: u64) -> Collected {
         let mut collected = Collected::default();
         let Some(thinker) = self.thinker.as_mut() else {
@@ -294,7 +305,7 @@ impl Agents {
                 }
                 Outcome::Command(None) => {}
                 Outcome::Command(Some(command)) => {
-                    if tick.saturating_sub(answer.tick) > llm::MAX_ANSWER_AGE {
+                    if tick.saturating_sub(answer.tick) > self.max_answer_age {
                         collected.failed.push((
                             agent,
                             format!("answer arrived {} ticks late", tick - answer.tick),

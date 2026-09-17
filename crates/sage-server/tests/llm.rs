@@ -171,8 +171,15 @@ fn a_hybrid_agent_answers_through_a_model_in_a_real_run() {
     );
 
     let seen = seen.lock().unwrap();
+    // One plain-text warm-up request at start, so a local server loads the model early.
+    let (warm_ups, thinking): (Vec<&Value>, Vec<&Value>) = seen
+        .bodies
+        .iter()
+        .partition(|b| b["response_format"]["type"] == "text");
+    assert_eq!(warm_ups.len(), 1, "{warm_ups:?}");
+    assert!(stdout.contains("llm ready in "), "{stdout}");
     // Every answer became a command, except possibly one asked for just before the run stopped.
-    let asked = seen.bodies.len();
+    let asked = thinking.len();
     assert!(
         asked == ferryman_commands.len() || asked == ferryman_commands.len() + 1,
         "{asked} requests, {} commands",
@@ -193,7 +200,7 @@ fn a_hybrid_agent_answers_through_a_model_in_a_real_run() {
         )
         .unwrap();
     assert!(cached > 0, "the embedding cache sits beside the world file");
-    let system = seen.bodies[0]["messages"][0]["content"].as_str().unwrap();
+    let system = thinking[0]["messages"][0]["content"].as_str().unwrap();
     assert!(system.contains("A weary ferryman."), "{system}");
     assert!(
         system.contains("emote") && system.contains("look"),

@@ -50,6 +50,27 @@ pub(crate) fn open_for_writing(path: &Path) -> Result<(Journal<SqliteLog>, Write
     Ok((open(path)?, lock))
 }
 
+/// Asks the model for a one-word reply on a background thread, so a local server loads the
+/// model before the first agent needs it, and reports how long that took or why it failed.
+fn warm_up(config: LlmConfig) {
+    use sage_agents::llm::{HttpTransport, Message, Transport};
+    std::thread::spawn(move || {
+        let started = std::time::Instant::now();
+        let transport = HttpTransport::new(config);
+        let reply = transport.complete(
+            &[Message {
+                role: "user",
+                content: "Reply with the word ready.".into(),
+            }],
+            &serde_json::json!({"type": "text"}),
+        );
+        match reply {
+            Ok(_) => println!("llm ready in {} ms", started.elapsed().as_millis()),
+            Err(e) => eprintln!("llm warm-up failed: {e}"),
+        }
+    });
+}
+
 fn open(path: &Path) -> Result<Journal<SqliteLog>, String> {
     let log = SqliteLog::open(path).map_err(|e| format!("{}: {e}", path.display()))?;
     Journal::open(log, sage_agents::registry(), Upcasters::core())
@@ -139,13 +160,22 @@ pub fn run(options: &RunOptions) -> Result<(), String> {
             api_key: std::env::var("SAGE_LLM_API_KEY")
                 .ok()
                 .filter(|k| !k.is_empty()),
-            timeout: Duration::from_secs(60),
+            // Never give up on a request before its answer would be dropped anyway.
+            timeout: Duration::from_secs(options.llm_max_wait.max(60)),
             workers: options.llm_workers,
         };
+        // The answer limit is set in seconds, because that is how long a model takes; the
+        // agents count ticks. When running as fast as possible there is no clock to go by.
+        let max_answer_age = match options.hz {
+            0 => sage_agents::llm::MAX_ANSWER_AGE,
+            hz => options.llm_max_wait.saturating_mul(u64::from(hz)),
+        };
+        agents = agents.with_max_answer_age(max_answer_age);
         println!(
-            "llm url={url} model={model} workers={}",
-            options.llm_workers
+            "llm url={url} model={model} workers={} max_wait={}s ({max_answer_age} ticks)",
+            options.llm_workers, options.llm_max_wait
         );
+        warm_up(config.clone());
         let relevance = match (&options.embed_url, &options.embed_model) {
             (Some(embed_url), Some(embed_model)) => {
                 let cache_path = {

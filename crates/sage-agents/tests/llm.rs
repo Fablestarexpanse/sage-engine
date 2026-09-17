@@ -532,3 +532,28 @@ fn without_a_model_hybrid_rules_fall_through_and_llm_agents_idle() {
     });
     assert!(agent_commands(&run2.reports).is_empty());
 }
+
+#[test]
+fn a_longer_answer_age_keeps_slow_answers() {
+    let stub = stub(|_| (Duration::from_millis(1500), answer("say Worth the wait.")));
+    let (mut j, mut s) = world(hybrid(vec![heard_ferry("@think")]));
+    let thinker = Thinker::start(HttpTransport::new(config(&stub.url)), 1);
+    let mut agents = agents_for(&mut s, Some(thinker)).with_max_answer_age(5000);
+
+    let mut more = run(
+        &mut j,
+        &mut s,
+        &mut agents,
+        60,
+        Duration::from_millis(5),
+        &[(2, "say ferry?")],
+        |_| false,
+    );
+    while agent_commands(&more.reports).is_empty() && more.reports.len() < 2000 {
+        let next = run_twenty_ticks(&mut j, &mut s, &mut agents);
+        more.reports.extend(next.reports);
+        more.collected.extend(next.collected);
+    }
+    assert_eq!(agent_commands(&more.reports), ["say Worth the wait."]);
+    assert!(failures(&more).is_empty(), "{:?}", failures(&more));
+}

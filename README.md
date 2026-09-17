@@ -89,7 +89,7 @@ sage run my-world.db --llm-url http://localhost:11434/v1 --llm-model llama3.2 \
   --embed-url http://localhost:11434/v1 --embed-model nomic-embed-text
 ```
 
-Any OpenAI-compatible endpoint works. Keys come from `SAGE_LLM_API_KEY` and `SAGE_EMBED_API_KEY`. Without a model, `hybrid` agents fall back to their rules and `llm` agents stay idle. Runs against real models are still owed; the model paths are tested against stub servers.
+Any OpenAI-compatible endpoint works. Keys come from `SAGE_LLM_API_KEY` and `SAGE_EMBED_API_KEY`. Without a model, `hybrid` agents fall back to their rules and `llm` agents stay idle. `sage run` warms the model up at start, and drops answers slower than `--llm-max-wait` (default 30 s). The model paths are tested against stub servers; a first run against local Ollama found the timing issues this setting fixes, and a full real-model conversation is still owed.
 
 ## Repository
 
