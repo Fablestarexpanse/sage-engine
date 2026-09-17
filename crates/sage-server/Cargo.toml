@@ -24,8 +24,16 @@ semver = "1"
 serde.workspace = true
 serde_json.workspace = true
 ctrlc = "3.5"
+argon2 = "0.6"
+axum = { version = "0.8", features = ["ws"] }
+futures-util = "0.3"
+rusqlite.workspace = true
+tokio = { version = "1.53", features = ["rt-multi-thread", "net", "sync", "macros", "time"] }
 
 [dev-dependencies]
+tokio-tungstenite = "0.30"
+futures-util = "0.3"
+tokio = { version = "1.53", features = ["rt-multi-thread", "macros", "time", "net"] }
 sage-build.workspace = true
 rusqlite.workspace = true
 tempfile.workspace = true

@@ -5,8 +5,12 @@
 //! `sage check` reports whether this engine can use a fragment.
 //! Network transport arrives at M4.
 
+mod accounts;
 mod args;
 mod check;
+mod net;
+mod players;
+mod protocol;
 mod run;
 
 use std::process::ExitCode;
@@ -29,6 +33,8 @@ usage:
       --llm-workers <n>          concurrent model requests (default 2)
       --embed-url <url>          OpenAI-compatible embeddings API for memory relevance (needs --llm-url)
       --embed-model <name>       embedding model, e.g. nomic-embed-text; cache in <world>.embeddings.db
+      --listen <addr>            accept players over WebSocket at ws://<addr>/ws, e.g. 127.0.0.1:4700
+      --start-place <id>         where new characters start (default: the lowest-numbered place)
   sage inspect <world.db>
   sage check <fragment-dir>       validate fragment.yaml and, for plugins, plugin.wasm";
 

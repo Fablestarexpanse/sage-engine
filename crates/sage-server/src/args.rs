@@ -25,6 +25,8 @@ pub struct RunOptions {
     pub llm_workers: usize,
     pub embed_url: Option<String>,
     pub embed_model: Option<String>,
+    pub listen: Option<String>,
+    pub start_place: Option<u64>,
 }
 
 pub struct Args {
@@ -77,6 +79,8 @@ fn parse_run(mut args: impl Iterator<Item = String>) -> Result<RunOptions, Strin
         llm_workers: 2,
         embed_url: None,
         embed_model: None,
+        listen: None,
+        start_place: None,
     };
     while let Some(arg) = args.next() {
         if !arg.starts_with("--") {
@@ -98,6 +102,8 @@ fn parse_run(mut args: impl Iterator<Item = String>) -> Result<RunOptions, Strin
             "--llm-model" => options.llm_model = Some(value()?),
             "--embed-url" => options.embed_url = Some(value()?),
             "--embed-model" => options.embed_model = Some(value()?),
+            "--listen" => options.listen = Some(value()?),
+            "--start-place" => options.start_place = Some(number(&arg, &value()?)?),
             "--llm-workers" => {
                 options.llm_workers = usize::try_from(positive(&arg, &value()?)?)
                     .map_err(|_| format!("{arg} is too large"))?

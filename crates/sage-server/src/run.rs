@@ -97,7 +97,7 @@ pub fn run(options: &RunOptions) -> Result<(), String> {
     // uninterrupted world's would. Agents then think for the first tick this run will step.
     let mut agents = Agents::rebuild(journal.log(), &Upcasters::core())?
         .with_verbs(scheduler.commands_mut().verbs())
-        .with_lexicon(lexicon);
+        .with_lexicon(lexicon.clone());
     if let (Some(url), Some(model)) = (&options.llm_url, &options.llm_model) {
         let config = LlmConfig {
             url: url.clone(),
@@ -163,6 +163,29 @@ pub fn run(options: &RunOptions) -> Result<(), String> {
         journal.world().len()
     );
 
+    let mut players = match &options.listen {
+        None => None,
+        Some(listen) => {
+            let accounts_path = {
+                let mut name = options.world.as_os_str().to_owned();
+                name.push(".accounts.db");
+                std::path::PathBuf::from(name)
+            };
+            let (to_engine, inbound) = std::sync::mpsc::channel();
+            let addr = crate::net::start(listen, accounts_path.clone(), to_engine)?;
+            println!(
+                "listening ws://{addr}/ws accounts={}",
+                accounts_path.display()
+            );
+            Some(crate::players::Players::new(
+                inbound,
+                crate::accounts::Accounts::open(&accounts_path)?,
+                options.start_place.map(sage_core::EntityId),
+                lexicon,
+            ))
+        }
+    };
+
     let period = (options.hz > 0).then(|| Duration::from_secs(1) / options.hz);
     let mut deadline = Instant::now();
     let mut refused_total = 0usize;
@@ -171,7 +194,13 @@ pub fn run(options: &RunOptions) -> Result<(), String> {
             .until_tick
             .is_none_or(|until| scheduler.tick() < until)
     {
+        if let Some(players) = &mut players {
+            players.before_step(&mut journal, &mut scheduler)?;
+        }
         let report = scheduler.step(&mut journal).map_err(|e| e.to_string())?;
+        if let Some(players) = &mut players {
+            players.after_step(journal.world(), &report);
+        }
         for refused in &report.refused {
             eprintln!(
                 "tick={} refused system={} index={}: {}",
@@ -211,8 +240,9 @@ pub fn run(options: &RunOptions) -> Result<(), String> {
             journal.save_snapshot().map_err(|e| e.to_string())?;
         }
         if report.tick.is_multiple_of(options.report_every) {
+            let signed_in = players.as_ref().map_or(0, |p| p.signed_in());
             println!(
-                "tick={} seq={} entities={} refused={} agent_commands={agent_commands} model_failures={model_failures} reflections={reflected}",
+                "tick={} seq={} entities={} refused={} agent_commands={agent_commands} model_failures={model_failures} reflections={reflected} players={signed_in}",
                 report.tick,
                 journal.world().last_seq(),
                 journal.world().len(),

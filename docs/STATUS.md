@@ -1,4 +1,4 @@
-NEXT: M3 is closed (ADR 0020). M4, client and Foundry MVP, is next: its plan is not written or agreed yet, so agree the slice order with the owner first. The ADR 0004 gate is a stranger installing the engine, downloading a fragment and playing within 15 minutes. M4 now also includes Tavern Card v2/v3 PNG import and the content-fragment package format. Still owed: runs against a real chat model and a real embedding model.
+NEXT: M4 S1 is done (ADR 0021). S2 is the browser client: React + TypeScript + Vite under `client/`, built into assets that `sage run` serves on the same port as `/ws`. It needs a text log, command input with history, register and login forms, and a place/exits/who's-here panel from `state` frames. Keyboard first, and every panel must have a text equivalent. Then S3 (fragment packages, `sage install`, Tavern Card import) and S4 (Foundry read path, release binaries, the 15-minute test). Still owed: runs against real models.
 
 # Status
 
@@ -8,7 +8,7 @@ NEXT: M3 is closed (ADR 0020). M4, client and Foundry MVP, is next: its plan is 
 | M1 World model | **closed** 2026-09-16 (ADR 0005-0008; 24 h wall-clock run waived, fast-mode equivalent passed) |
 | M2 Plugin seal | **closed** 2026-09-16 (ADR 0009-0011; N-1 WIT adapter test deferred by owner ruling) |
 | M3 Agents | **closed** 2026-09-16 (ADR 0012-0020; Tavern Card import moved to M4) |
-| M4 Client + Foundry MVP | next |
+| M4 Client + Foundry MVP | in progress: S1 done (WebSocket protocol, accounts; ADR 0021) |
 | M5 Workshop + social | blocked on M4 |
 | M6 Marketplace | blocked on M5 |
 
@@ -61,6 +61,8 @@ NEXT: M3 is closed (ADR 0020). M4, client and Foundry MVP, is next: its plan is 
 - Embeddings find meaning word overlap misses; the cache is reused, rebuildable and never canonical; a failing endpoint falls back to word overlap (`crates/sage-agents/tests/embeddings.rs`)
 
 - Reflections trigger on an importance budget, are logged privately, reach later prompts, and are not redone after a restart (`crates/sage-agents/tests/reflection.rs`)
+
+- Players register, log in and play over WebSocket against the real binary; limits hold; accounts survive restarts; no password material in the log (`crates/sage-server/tests/play.rs`)
 
 ## Open questions for the owner (not blocking M1)
 
