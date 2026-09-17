@@ -1,4 +1,4 @@
-NEXT: M4 S1 is done (ADR 0021). S2 is the browser client: React + TypeScript + Vite under `client/`, built into assets that `sage run` serves on the same port as `/ws`. It needs a text log, command input with history, register and login forms, and a place/exits/who's-here panel from `state` frames. Keyboard first, and every panel must have a text equivalent. Then S3 (fragment packages, `sage install`, Tavern Card import) and S4 (Foundry read path, release binaries, the 15-minute test). Still owed: runs against real models.
+NEXT: M4 S2 is done (ADR 0022): the browser client is embedded in `sage` and served beside `/ws`. S3 is fragment packages (`.sagepkg`), content fragments, `sage install`, and Tavern Card v2/v3 PNG import with a fuzzed chunk parser. Then S4 (Foundry read path, release binaries, the 15-minute test). Still owed: runs against real models.
 
 # Status
 
@@ -8,7 +8,7 @@ NEXT: M4 S1 is done (ADR 0021). S2 is the browser client: React + TypeScript + V
 | M1 World model | **closed** 2026-09-16 (ADR 0005-0008; 24 h wall-clock run waived, fast-mode equivalent passed) |
 | M2 Plugin seal | **closed** 2026-09-16 (ADR 0009-0011; N-1 WIT adapter test deferred by owner ruling) |
 | M3 Agents | **closed** 2026-09-16 (ADR 0012-0020; Tavern Card import moved to M4) |
-| M4 Client + Foundry MVP | in progress: S1 done (WebSocket protocol, accounts; ADR 0021) |
+| M4 Client + Foundry MVP | in progress: S1 done (WebSocket protocol, accounts; ADR 0021), S2 done (browser client; ADR 0022) |
 | M5 Workshop + social | blocked on M4 |
 | M6 Marketplace | blocked on M5 |
 

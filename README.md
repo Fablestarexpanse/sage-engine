@@ -8,7 +8,7 @@ Fragments are shared through [Fragment Foundry](https://fragmentfoundry.com), wh
 
 ## Status
 
-M1 (world model), M2 (plugin seal) and M3 (synthetic agents) are done. M4, the player client and Fragment Foundry MVP, is next. The event log, space graph, world clock and run loop exist, along with sandboxed WebAssembly plugins, fragment manifests, `sage check`, commands, and scripted and LLM-driven agents whose memory is rebuilt from the log. See [docs/STATUS.md](docs/STATUS.md).
+M1 (world model), M2 (plugin seal) and M3 (synthetic agents) are done. M4, the player client and Fragment Foundry MVP, is in progress: players can sign in and play from a browser. The event log, space graph, world clock and run loop exist, along with sandboxed WebAssembly plugins, fragment manifests, `sage check`, commands, and scripted and LLM-driven agents whose memory is rebuilt from the log. See [docs/STATUS.md](docs/STATUS.md).
 
 | Milestone | Scope |
 |---|---|
@@ -52,7 +52,17 @@ cargo run --release -p sage-server -- run agents.db --seed worlds/demo-agents/se
 
 If the endpoint needs a key, set `SAGE_LLM_API_KEY`.
 
-`sage-build plugins` compiles the first-party plugins in `plugins/` to WebAssembly components. `sage run` loads a plugin only if `sage check` passes, grants it exactly the interfaces its manifest declares, and ticks at 4 Hz until Ctrl-C. There is no network client yet; that arrives at M4.
+`sage-build plugins` compiles the first-party plugins in `plugins/` to WebAssembly components. `sage run` loads a plugin only if `sage check` passes, grants it exactly the interfaces its manifest declares, and ticks at 4 Hz until Ctrl-C.
+
+## Play in a browser
+
+```bash
+pnpm --dir client install
+pnpm --dir client build
+cargo run --release -p sage-server -- run agents.db --seed worlds/demo-agents/seed.json --listen 127.0.0.1:4700
+```
+
+Open `http://127.0.0.1:4700/`, create a character, and type commands (`look`, `say hello`, `go onward`). The client is built into the binary; without Node the engine still builds, and any WebSocket client can play at `/ws` ([ADR 0021](docs/adr/0021-player-protocol-and-accounts.md)). Bind to `127.0.0.1` unless a TLS reverse proxy sits in front.
 
 ## Previous version
 

@@ -10,3 +10,7 @@
 
 # Log fixtures recorded by older engine builds; see the test that reads each one.
 !crates/sage-agents/tests/fixtures/*.db
+
+# Browser client: dependencies and build output (embedded into `sage` at build time).
+/client/node_modules/
+/client/dist/

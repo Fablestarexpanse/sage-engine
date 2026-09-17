@@ -174,8 +174,13 @@ pub fn run(options: &RunOptions) -> Result<(), String> {
             let (to_engine, inbound) = std::sync::mpsc::channel();
             let addr = crate::net::start(listen, accounts_path.clone(), to_engine)?;
             println!(
-                "listening ws://{addr}/ws accounts={}",
-                accounts_path.display()
+                "listening ws://{addr}/ws accounts={} play=http://{addr}/ client={}",
+                accounts_path.display(),
+                if crate::web::client_built() {
+                    "embedded"
+                } else {
+                    "not-built"
+                }
             );
             Some(crate::players::Players::new(
                 inbound,

@@ -115,7 +115,10 @@ pub fn start(
                     }
                 };
                 let _ = bound_tx.send(listener.local_addr().map_err(|e| e.to_string()));
-                let app = Router::new().route("/ws", get(upgrade)).with_state(shared);
+                let app = Router::new()
+                    .route("/ws", get(upgrade))
+                    .fallback(get(crate::web::serve))
+                    .with_state(shared);
                 if let Err(e) = axum::serve(listener, app).await {
                     eprintln!("network server stopped: {e}");
                 }

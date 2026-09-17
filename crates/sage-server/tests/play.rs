@@ -322,3 +322,88 @@ async fn a_player_cannot_take_an_agents_name() {
     let refused = until(&mut socket, |f| f["type"] == "error").await;
     assert_eq!(refused["code"], "name-taken");
 }
+
+/// A plain HTTP/1.1 GET; returns the status line, headers (lowercased names) and body.
+async fn get(server: &Server, path: &str) -> (String, Vec<(String, String)>, String) {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    let host = server
+        .url
+        .trim_start_matches("ws://")
+        .trim_end_matches("/ws");
+    let mut stream = TcpStream::connect(host).await.unwrap();
+    let request = format!("GET {path} HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n\r\n");
+    stream.write_all(request.as_bytes()).await.unwrap();
+    let mut raw = Vec::new();
+    tokio::time::timeout(Duration::from_secs(10), stream.read_to_end(&mut raw))
+        .await
+        .expect("no response within 10 s")
+        .unwrap();
+    let raw = String::from_utf8_lossy(&raw).into_owned();
+    let (head, body) = raw.split_once("\r\n\r\n").unwrap();
+    let mut lines = head.lines();
+    let status = lines.next().unwrap().to_owned();
+    let headers = lines
+        .filter_map(|l| l.split_once(':'))
+        .map(|(k, v)| (k.trim().to_ascii_lowercase(), v.trim().to_owned()))
+        .collect();
+    (status, headers, body.to_owned())
+}
+
+fn header<'a>(headers: &'a [(String, String)], name: &str) -> Option<&'a str> {
+    headers
+        .iter()
+        .find(|(k, _)| k == name)
+        .map(|(_, v)| v.as_str())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn the_client_is_served_on_the_same_port_under_a_strict_policy() {
+    let dir = tempfile::tempdir().unwrap();
+    let server = serve(&dir.path().join("w.db"), true);
+
+    let (status, headers, page) = get(&server, "/").await;
+    assert!(status.contains(" 200 "), "{status}");
+    assert_eq!(
+        header(&headers, "content-type"),
+        Some("text/html; charset=utf-8")
+    );
+    let policy = header(&headers, "content-security-policy").expect("a policy");
+    assert!(policy.contains("script-src 'self'"), "{policy}");
+    assert!(!policy.contains("unsafe"), "{policy}");
+    assert_eq!(header(&headers, "x-content-type-options"), Some("nosniff"));
+
+    // Whether or not the client was built, nothing outside it is reachable.
+    for path in [
+        "/nope",
+        "/../Cargo.toml",
+        "/%2e%2e/Cargo.toml",
+        "/ws/../index.html.bak",
+    ] {
+        let (status, headers, _) = get(&server, path).await;
+        assert!(status.contains(" 404 "), "{path}: {status}");
+        assert!(header(&headers, "content-security-policy").is_some());
+    }
+
+    if page.contains("/assets/") {
+        let script = page
+            .split('"')
+            .find(|s| s.starts_with("/assets/") && s.ends_with(".js"))
+            .expect("the page loads a script");
+        let (status, headers, _) = get(&server, script).await;
+        assert!(status.contains(" 200 "), "{script}: {status}");
+        assert_eq!(
+            header(&headers, "content-type"),
+            Some("text/javascript; charset=utf-8")
+        );
+        assert!(
+            header(&headers, "cache-control")
+                .unwrap()
+                .contains("immutable")
+        );
+    } else {
+        assert!(page.contains("pnpm --dir client build"), "{page}");
+    }
+
+    // The protocol still answers on the same port.
+    connect(&server).await;
+}

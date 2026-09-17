@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Fails if any setting term from scripts/denylist.txt appears in engine code.
-# Usage: scripts/check-denylist.sh [path ...]   (defaults to crates wit plugins)
+# Usage: scripts/check-denylist.sh [path ...]   (defaults to crates wit plugins client/src)
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
 list="$root/scripts/denylist.txt"
-if [ "$#" -gt 0 ]; then paths=("$@"); else paths=(crates wit plugins); fi
+if [ "$#" -gt 0 ]; then paths=("$@"); else paths=(crates wit plugins client/src); fi
 
 cd "$root"
 existing=()

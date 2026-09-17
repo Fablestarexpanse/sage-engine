@@ -12,6 +12,7 @@ mod net;
 mod players;
 mod protocol;
 mod run;
+mod web;
 
 use std::process::ExitCode;
 
