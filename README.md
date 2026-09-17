@@ -4,7 +4,7 @@
 
 SAGE is an open-source engine for persistent text worlds that players and synthetic agents share. The engine decides what happens: every change is an event in one SQLite log, and the world is rebuilt from that log. Agents act only through the same commands a player types, and they work with no AI at all. A model, local or hosted, is optional.
 
-The core knows no genre. Everything else arrives as a **fragment**: characters, places and rules as data, or plugins as sandboxed WebAssembly. Fragments are shared through **Fragment Foundry**, a static site whose listings the engine itself builds and checks.
+The core knows no genre. Everything else arrives as a **fragment**: characters, places and rules as data, or plugins as sandboxed WebAssembly. Fragments are shared through **[Fragment Foundry](https://fragmentfoundarywebsite.vercel.app)**, a static site whose listings the engine itself builds and checks.
 
 ## Status
 

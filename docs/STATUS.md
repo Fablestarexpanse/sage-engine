@@ -1,4 +1,4 @@
-NEXT: M4 S4b is done (ADRs 0027-0028): the Foundry site is built and pushed to Fragment-Foundary-Web-Site (5e01767), its registry built by `sage registry build`, and `tell` accepts first names. Waiting on the owner: import the site repo in Vercel, then approve the v0.1.0 tag. Then S4c: the 15-minute stranger test against the deployed site and release. Open for the owner: `--no-tavern` (ADR 0025), artwork for the site's placeholder scenes. Still owed: a real-model conversation with the GPU free (a first attempt on 2026-09-17 was starved by another GPU job; see DECISIONS).
+NEXT: the Foundry is live at https://fragmentfoundarywebsite.vercel.app (Vercel, project fragmentfoundarywebsite), and `sage install <id> --registry https://fragmentfoundarywebsite.vercel.app/registry` installs from it over HTTPS. Waiting on the owner: approve the v0.1.0 tag, which publishes the release the quickstart links to; then S4c, the 15-minute stranger test (docs/STRANGER-TEST.md). Open for the owner: `--no-tavern` (ADR 0025), artwork for the site's placeholder scenes. Still owed: a real-model conversation with the GPU free (see DECISIONS).
 
 # Status
 

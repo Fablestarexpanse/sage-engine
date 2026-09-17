@@ -61,8 +61,11 @@ Start the world again and say the character's name.
 Fragments listed in a registry, such as the Foundry, install by id: the newest version your engine can run, checked against the registry's digest.
 
 ```bash
-./sage install my-world.db creator.fragment-name --registry https://…
+./sage install my-world.db fragmentfoundry.tamsin-reed --registry https://fragmentfoundarywebsite.vercel.app/registry
+./sage place my-world.db fragmentfoundry.tamsin-reed
 ```
+
+Browse what is listed at <https://fragmentfoundarywebsite.vercel.app/fragments>; each page shows the command to copy.
 
 Fragments can also be installed from a web address, pinned to their exact content:
 
