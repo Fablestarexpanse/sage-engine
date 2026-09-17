@@ -8,7 +8,7 @@ The core knows no genre. Everything else arrives as a **fragment**: characters, 
 
 ## Status
 
-**Pre-release, v0.1.0.** Milestones M1 to M3 are done, and M4 (player client and Foundry) is nearly done. You can already:
+**v0.1.0 is out:** [download it](https://github.com/Fablestarexpanse/sage-engine/releases/latest) for Windows, macOS or Linux. Milestones M1 to M3 are done, and M4 (player client and Foundry) is all but finished. You can already:
 
 - run a world that survives crashes and replays exactly
 - play it in a browser
@@ -16,7 +16,7 @@ The core knows no genre. Everything else arrives as a **fragment**: characters, 
 - install fragments from files, URLs or a registry
 - share fragments as packages or SAGE cards
 
-Still to come in M4: publishing the v0.1.0 binaries and deploying the Foundry site, then the 15-minute stranger test. See [docs/STATUS.md](docs/STATUS.md) for detail.
+Still to come in M4: the 15-minute stranger test with someone who has never seen SAGE. See [docs/STATUS.md](docs/STATUS.md) for detail.
 
 | Milestone | Scope | State |
 |---|---|---|

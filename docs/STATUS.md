@@ -1,4 +1,4 @@
-NEXT: the Foundry is live at https://fragmentfoundarywebsite.vercel.app (Vercel, project fragmentfoundarywebsite), and `sage install <id> --registry https://fragmentfoundarywebsite.vercel.app/registry` installs from it over HTTPS. Waiting on the owner: approve the v0.1.0 tag, which publishes the release the quickstart links to; then S4c, the 15-minute stranger test (docs/STRANGER-TEST.md). Open for the owner: `--no-tavern` (ADR 0025), artwork for the site's placeholder scenes. Still owed: a real-model conversation with the GPU free (see DECISIONS).
+NEXT: v0.1.0 is published (https://github.com/Fablestarexpanse/sage-engine/releases/tag/v0.1.0) and the Foundry is live at https://fragmentfoundarywebsite.vercel.app. All that remains for M4 is S4c, the 15-minute stranger test with someone who has never seen SAGE (docs/STRANGER-TEST.md); the rehearsal with the published Windows archive passed. Open for the owner: `--no-tavern` (ADR 0025), artwork for the site's placeholder scenes. Still owed: a real-model conversation with the GPU free (see DECISIONS).
 
 # Status
 
@@ -8,7 +8,7 @@ NEXT: the Foundry is live at https://fragmentfoundarywebsite.vercel.app (Vercel,
 | M1 World model | **closed** 2026-09-16 (ADR 0005-0008; 24 h wall-clock run waived, fast-mode equivalent passed) |
 | M2 Plugin seal | **closed** 2026-09-16 (ADR 0009-0011; N-1 WIT adapter test deferred by owner ruling) |
 | M3 Agents | **closed** 2026-09-16 (ADR 0012-0020; Tavern Card import moved to M4) |
-| M4 Client + Foundry MVP | in progress: protocol and accounts (ADR 0021), browser client (0022), card import (0023), install and place (0024), packages and SAGE cards (0025), releases and URL install (0026), static registry and Foundry site (0027-0028) done; waiting on Vercel import and the v0.1.0 tag, then the 15-minute stranger test |
+| M4 Client + Foundry MVP | in progress: ADRs 0021-0028 done; v0.1.0 published and the Foundry live; only the stranger test (S4c) is left |
 | M5 Workshop + social | blocked on M4 |
 | M6 Marketplace | blocked on M5 |
 
