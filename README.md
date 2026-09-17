@@ -122,7 +122,7 @@ CI also fuzzes the card reader, and the release workflow builds and smoke-tests 
 
 ## Read more
 
-- [Quickstart](docs/QUICKSTART.md)
+- [Quickstart](docs/QUICKSTART.md), and the [stranger test](docs/STRANGER-TEST.md) that gates M4
 - [Status](docs/STATUS.md) and [decision log](docs/DECISIONS.md)
 - [Architecture decision records](docs/adr/)
 - [Founding blueprint](docs/research/03-sage-fragment-foundry-founding-blueprint.md)
