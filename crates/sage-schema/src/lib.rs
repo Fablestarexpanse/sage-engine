@@ -8,6 +8,7 @@
 //! a path such as `requires[1].version`, in a stable order.
 
 pub mod card;
+pub mod digest;
 mod manifest;
 pub mod png;
 mod rules;

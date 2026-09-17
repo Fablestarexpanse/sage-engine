@@ -9,8 +9,13 @@
 //! answers when addressed by name, or told something, with a line from its first message.
 //! Nothing here depends on a model.
 
+use sage_core::{
+    Actor, Component, ComponentSet, Describable, EntityCreated, EntityId, Event, Located, Occurred,
+    Origin,
+};
 use sage_schema::card::{Card, Finding, Severity};
 use serde::Serialize;
+use serde_json::json;
 
 use crate::mind::{MAX_VOICE, MAX_VOICE_CHARS, Mind, Rule, THINK, When};
 
@@ -300,6 +305,48 @@ pub fn agent_from_card(card: &Card) -> (ImportedAgent, Vec<Finding>) {
         },
         findings,
     )
+}
+
+impl ImportedAgent {
+    /// The events that place this agent in a world as entity `id`, inside `at`, marked with
+    /// where it came from: the entity and its components, then one `sage.mind.remembered`
+    /// occurrence per seed memory, perceived only by the agent. Commit them as one batch.
+    pub fn placement(&self, id: EntityId, at: EntityId, origin: &Origin) -> Vec<Event> {
+        fn set<C: Component>(id: EntityId, component: &C) -> Event {
+            Event::ComponentSet(ComponentSet {
+                id,
+                component: C::NAME.into(),
+                component_version: C::VERSION,
+                data: serde_json::to_value(component).expect("components serialize"),
+            })
+        }
+        let mut events = vec![
+            Event::EntityCreated(EntityCreated { id }),
+            set(
+                id,
+                &Describable {
+                    name: self.name.clone(),
+                    description: self.description.clone(),
+                },
+            ),
+            set(id, &Actor {}),
+            set(id, &Located { within: at }),
+            set(id, &self.mind),
+            set(id, origin),
+        ];
+        events.extend(self.seed_memories.iter().map(|text| {
+            Event::Occurred(Occurred {
+                kind: crate::reflection::REMEMBERED.into(),
+                kind_version: 1,
+                actor: Some(id),
+                places: Vec::new(),
+                targets: Vec::new(),
+                data: json!({ "text": text }),
+                audience: Vec::new(),
+            })
+        }));
+        events
+    }
 }
 
 /// Replaces `{{char}}` and `<BOT>` with the name, and `{{user}}` and `<USER>` with a neutral

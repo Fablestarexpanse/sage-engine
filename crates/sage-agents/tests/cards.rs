@@ -283,3 +283,72 @@ fn minds_stored_before_voice_existed_still_apply() {
         "{err}"
     );
 }
+
+#[test]
+fn placing_an_agent_logs_its_seed_memories_for_it_alone() {
+    use sage_agents::Memories;
+    use sage_agents::reflection::{REMEMBERED, since_last_reflection};
+    use sage_agents::retrieval::importance;
+    use sage_core::{EventLog, Origin};
+
+    let (agent, _) = agent_from_card(&lighthouse_card());
+    let mut journal = Journal::open(
+        SqliteLog::open_in_memory().unwrap(),
+        sage_agents::registry(),
+        Upcasters::core(),
+    )
+    .unwrap();
+    journal
+        .commit(
+            0,
+            &[
+                Event::EntityCreated(EntityCreated { id: HALL }),
+                set(HALL, &Place {}),
+                Event::EntityCreated(EntityCreated { id: BO }),
+                set(BO, &Actor {}),
+                set(BO, &Located { within: HALL }),
+            ],
+        )
+        .unwrap();
+    let origin = Origin {
+        fragment: "local.maren-hale".into(),
+        version: "0.1.0".into(),
+        digest: format!("sha256:{}", "ab".repeat(32)),
+    };
+    let id = journal.world().next_entity_id();
+    journal
+        .commit(0, &agent.placement(id, HALL, &origin))
+        .unwrap();
+
+    let world = journal.world();
+    assert_eq!(world.get::<Origin>(id).unwrap(), &origin);
+    assert_eq!(world.get::<Mind>(id).unwrap(), &agent.mind);
+    assert_eq!(world.name_of(id).as_deref(), Some("Maren Hale"));
+
+    let memories = Memories::rebuild(journal.log(), &Upcasters::core()).unwrap();
+    let mine: Vec<_> = memories.of(id).collect();
+    assert_eq!(mine.len(), 1);
+    assert_eq!(mine[0].occurred.kind, REMEMBERED);
+    assert_eq!(mine[0].occurred.audience, [id]);
+    assert_eq!(memories.of(BO).count(), 0, "nobody else perceives it");
+    assert_eq!(importance(world, id, &agent.mind, &mine[0].occurred), 5.0);
+    let rendered = sage_agents::lexicon_english()
+        .render(&world.describe(id, &mine[0].occurred))
+        .unwrap();
+    assert_eq!(
+        rendered,
+        "You remember: The lamp has not failed in forty years, someone."
+    );
+    // What it already knew does not count towards reflecting.
+    let (since, total) = since_last_reflection(world, id, &agent.mind, &mine);
+    assert!(since.is_empty() && total == 0.0);
+
+    // A bad origin is refused like any other component data.
+    let bad = Origin {
+        digest: "sha256:nothex".into(),
+        ..origin
+    };
+    let err = journal.commit(0, &[set(id, &bad)]).unwrap_err();
+    assert!(matches!(err, JournalError::Refused { .. }), "{err}");
+    assert!(journal.log().read_page(1, 1000).unwrap().len() > 5);
+}

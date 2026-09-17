@@ -34,6 +34,9 @@ pub fn importance(world: &World, agent: EntityId, mind: &Mind, occurred: &Occurr
     if occurred.kind == "sage.mind.reflected" && mine {
         return 7.0;
     }
+    if occurred.kind == "sage.mind.remembered" && mine {
+        return 5.0;
+    }
     if mine {
         return if occurred.kind == "sage.command" {
             1.0

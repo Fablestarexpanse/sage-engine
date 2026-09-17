@@ -23,7 +23,7 @@ pub use command::{
     occurrence,
 };
 pub use component::{Component, ComponentRegistry, ComponentUpcastFn};
-pub use components::{Actor, Describable, Link, Located, Place};
+pub use components::{Actor, Describable, Link, Located, Origin, Place};
 pub use event::{
     ClockAdvanced, ComponentRemoved, ComponentSet, DecodeError, EntityCreated, EntityDestroyed,
     Event, EventPayload, EventRecord, Occurred,

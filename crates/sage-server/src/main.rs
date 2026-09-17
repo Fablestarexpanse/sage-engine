@@ -3,13 +3,16 @@
 //! `sage run` drives a world stored in one SQLite file at a fixed tick rate. `sage inspect`
 //! reports on a world file and checks that its newest snapshot agrees with a full replay.
 //! `sage check` reports whether this engine can use a fragment. `sage card` reads a Tavern
-//! character card and shows the agent it becomes.
+//! character card and shows the agent it becomes. `sage install` adds a verified fragment to
+//! a world's library, and `sage place` puts an installed agent into a stopped world.
 
 mod accounts;
 mod args;
 mod card;
 mod check;
+mod library;
 mod net;
+mod place;
 mod players;
 mod protocol;
 mod run;
@@ -39,7 +42,14 @@ usage:
       --start-place <id>         where new characters start (default: the lowest-numbered place)
   sage inspect <world.db>
   sage check <fragment-dir>       validate fragment.yaml and, for plugins, plugin.wasm
-  sage card <card.png|card.json>  read a Tavern character card and show the agent it becomes";
+  sage card <card.png|card.json>  read a Tavern character card and show the agent it becomes
+  sage install <world.db> <fragment-dir|card.png|card.json> [options]
+                                  verify a fragment and add it to <world.db>.fragments/
+      --id <creator.slug>        card files: fragment id (default local.<name>)
+      --version <semver>         card files: version (default the card's, else 0.1.0)
+      --license <spdx>           card files: license (default LicenseRef-Unspecified)
+  sage place <world.db> <id>[@version] [--at <place-id>] [--name <name>]
+                                  put an installed agent into a stopped world";
 
 fn main() -> ExitCode {
     let args = match Args::parse(std::env::args().skip(1)) {
@@ -62,6 +72,16 @@ fn main() -> ExitCode {
         Command::Inspect { world } => run::inspect(&world),
         Command::Check { fragment } => check::run(&fragment),
         Command::Card { file } => card::run(&file),
+        Command::Install {
+            world,
+            source,
+            options,
+        } => library::run(&world, &source, &options),
+        Command::Place {
+            world,
+            fragment,
+            options,
+        } => place::run(&world, &fragment, &options),
     };
     match result {
         Ok(()) => ExitCode::SUCCESS,

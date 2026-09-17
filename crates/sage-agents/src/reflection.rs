@@ -30,11 +30,18 @@ pub const MAX_REFLECTIONS: usize = 3;
 /// Longest reflection accepted.
 pub const MAX_REFLECTION_CHARS: usize = 200;
 
-/// Default wording for reflections, in English.
-pub const LEXICON_ENGLISH: [(&str, &str); 1] = [("sage.mind.reflected.self", "You think: {text}")];
+/// The occurrence kind of a memory an agent was placed with (from a card's lorebook).
+pub const REMEMBERED: &str = "sage.mind.remembered";
+
+/// Default wording for reflections and placed memories, in English.
+pub const LEXICON_ENGLISH: [(&str, &str); 2] = [
+    ("sage.mind.reflected.self", "You think: {text}"),
+    ("sage.mind.remembered.self", "You remember: {text}"),
+];
 
 /// The memories since `agent`'s last reflection, and the sum of their importance. Earlier
-/// reflections are not counted.
+/// reflections are not counted, and neither are memories the agent was placed with: those are
+/// what it already knew, not new experience to reflect on.
 pub fn since_last_reflection<'a>(
     world: &World,
     agent: EntityId,
@@ -45,7 +52,11 @@ pub fn since_last_reflection<'a>(
         .iter()
         .rposition(|m| m.occurred.kind == REFLECTED && m.occurred.actor == Some(agent))
         .map_or(0, |i| i + 1);
-    let since: Vec<&Memory> = memories[start..].to_vec();
+    let since: Vec<&Memory> = memories[start..]
+        .iter()
+        .filter(|m| m.occurred.kind != REMEMBERED)
+        .copied()
+        .collect();
     let total = since
         .iter()
         .map(|m| importance(world, agent, mind, &m.occurred))

@@ -60,7 +60,14 @@ If the endpoint needs a key, set `SAGE_LLM_API_KEY`.
 cargo run --release -p sage-server -- card my-character.png
 ```
 
-`sage card` reads a Tavern Card (v1, v2 or v3, PNG or JSON) and prints the agent it becomes: the persona, goal, voice examples and seed memories, plus everything it had to drop or shorten. With no model the agent still answers when someone says its name. Placing it in a world comes next.
+`sage card` reads a Tavern Card (v1, v2 or v3, PNG or JSON) and prints the agent it becomes: the persona, goal, voice examples and seed memories, plus everything it had to drop or shorten. With no model the agent still answers when someone says its name.
+
+To put it in a world, install it into the world's fragment library and place it while the world is stopped:
+
+```bash
+cargo run --release -p sage-server -- install agents.db my-character.png --license CC-BY-4.0
+cargo run --release -p sage-server -- place agents.db local.my-character
+```
 
 ## Play in a browser
 

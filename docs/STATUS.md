@@ -1,4 +1,4 @@
-NEXT: M4 S3a is done (ADR 0023): Tavern Card v1/v2/v3 import (`sage card`), a fuzzed PNG chunk reader, `sage.mind` v3 with voice examples. S3b is `.sagepkg` (tar+zstd) and `sage install` into `<world>.fragments/` with sha256 digest checks, plus a placement step that commits an imported agent and its seed memories as events, and SAGE card export (writes `chara` by default). Then S4 (Foundry read path, release binaries, the 15-minute test). Still owed: runs against real models.
+NEXT: M4 S3b part 1 is done (ADR 0024): `sage install` into `<world>.fragments/` with content digests, `sage place` committing an agent and its seed memories, `sage.origin`, and a writer lock on `<world>.lock`. S3b part 2 is `.sagepkg` (tar+zstd, same content digest) installable by `sage install`, and SAGE card export writing `chara` (default) plus a `sage` chunk. Then S4 (Foundry read path, release binaries, the 15-minute test). Still owed: runs against real models.
 
 # Status
 
@@ -8,7 +8,7 @@ NEXT: M4 S3a is done (ADR 0023): Tavern Card v1/v2/v3 import (`sage card`), a fu
 | M1 World model | **closed** 2026-09-16 (ADR 0005-0008; 24 h wall-clock run waived, fast-mode equivalent passed) |
 | M2 Plugin seal | **closed** 2026-09-16 (ADR 0009-0011; N-1 WIT adapter test deferred by owner ruling) |
 | M3 Agents | **closed** 2026-09-16 (ADR 0012-0020; Tavern Card import moved to M4) |
-| M4 Client + Foundry MVP | in progress: S1 done (WebSocket protocol, accounts; ADR 0021), S2 done (browser client; ADR 0022), S3a done (character card import; ADR 0023) |
+| M4 Client + Foundry MVP | in progress: S1 done (WebSocket protocol, accounts; ADR 0021), S2 done (browser client; ADR 0022), S3a done (character card import; ADR 0023), S3b part 1 done (install and place; ADR 0024) |
 | M5 Workshop + social | blocked on M4 |
 | M6 Marketplace | blocked on M5 |
 
@@ -17,6 +17,8 @@ NEXT: M4 S3a is done (ADR 0023): Tavern Card v1/v2/v3 import (`sage card`), a fu
 - A plugin built against WIT N-1 boots through an adapter (M2; deferred to the first real `sage:core` major bump, owner ruling)
 
 ## Gate tests passing
+
+- An installed fragment whose files changed is refused before it reaches a world; a second writer to a running world is refused (`crates/sage-server/tests/library.rs`)
 
 - The PNG card chunk reader never panics or hangs: 20,000 fixed-seed mutations in `cargo test`, plus a coverage-guided cargo-fuzz run in CI (`crates/sage-schema/tests/cards.rs`, `crates/sage-schema/fuzz`)
 

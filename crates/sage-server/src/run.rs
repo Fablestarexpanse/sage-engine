@@ -16,6 +16,40 @@ use crate::args::RunOptions;
 
 const SEED_SCHEMA: &str = "sage.seed/1";
 
+/// Held while a process may write a world: an exclusive OS lock on `<world>.lock`. The
+/// operating system releases it when the process ends, however it ends. The log's own sequence
+/// check would stop a second writer only at its next append, after the running world had
+/// already diverged; this refuses it before anything is read or written.
+pub(crate) struct WriterLock {
+    _file: std::fs::File,
+}
+
+pub(crate) fn lock_for_writing(world: &Path) -> Result<WriterLock, String> {
+    let mut name = world.as_os_str().to_owned();
+    name.push(".lock");
+    let path = std::path::PathBuf::from(name);
+    let file = std::fs::OpenOptions::new()
+        .create(true)
+        .truncate(false)
+        .write(true)
+        .open(&path)
+        .map_err(|e| format!("{}: {e}", path.display()))?;
+    match file.try_lock() {
+        Ok(()) => Ok(WriterLock { _file: file }),
+        Err(std::fs::TryLockError::WouldBlock) => Err(format!(
+            "{} is in use by another sage process; stop the running world first",
+            world.display()
+        )),
+        Err(std::fs::TryLockError::Error(e)) => Err(format!("{}: {e}", path.display())),
+    }
+}
+
+/// Opens a world for writing: takes the writer lock, then the journal.
+pub(crate) fn open_for_writing(path: &Path) -> Result<(Journal<SqliteLog>, WriterLock), String> {
+    let lock = lock_for_writing(path)?;
+    Ok((open(path)?, lock))
+}
+
 fn open(path: &Path) -> Result<Journal<SqliteLog>, String> {
     let log = SqliteLog::open(path).map_err(|e| format!("{}: {e}", path.display()))?;
     Journal::open(log, sage_agents::registry(), Upcasters::core())
@@ -55,7 +89,7 @@ pub fn run(options: &RunOptions) -> Result<(), String> {
         }
     }
 
-    let mut journal = open(&options.world)?;
+    let (mut journal, _lock) = open_for_writing(&options.world)?;
 
     if let Some(seed) = &options.seed {
         if !journal.world().is_empty() || journal.world().last_seq() > 0 {

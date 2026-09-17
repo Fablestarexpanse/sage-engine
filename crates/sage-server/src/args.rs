@@ -6,9 +6,25 @@ pub enum Command {
     Version,
     Help,
     Run(Box<RunOptions>),
-    Inspect { world: PathBuf },
-    Check { fragment: PathBuf },
-    Card { file: PathBuf },
+    Inspect {
+        world: PathBuf,
+    },
+    Check {
+        fragment: PathBuf,
+    },
+    Card {
+        file: PathBuf,
+    },
+    Install {
+        world: PathBuf,
+        source: PathBuf,
+        options: crate::library::CardOptions,
+    },
+    Place {
+        world: PathBuf,
+        fragment: String,
+        options: crate::place::PlaceOptions,
+    },
 }
 
 #[derive(Debug, PartialEq)]
@@ -63,6 +79,53 @@ impl Args {
                     return Err(format!("unexpected argument `{extra}`"));
                 }
                 Command::Card { file: file.into() }
+            }
+            Some("install") => {
+                let mut positional = Vec::new();
+                let mut options = crate::library::CardOptions::default();
+                while let Some(arg) = args.next() {
+                    let mut value = || args.next().ok_or_else(|| format!("{arg} needs a value"));
+                    match arg.as_str() {
+                        "--id" => options.id = Some(value()?),
+                        "--version" => options.version = Some(value()?),
+                        "--license" => options.license = Some(value()?),
+                        _ if arg.starts_with("--") => {
+                            return Err(format!("unknown option `{arg}`"));
+                        }
+                        _ => positional.push(arg),
+                    }
+                }
+                let [world, source]: [String; 2] = positional.try_into().map_err(
+                    |_| "install needs a world file and a fragment directory or card file",
+                )?;
+                Command::Install {
+                    world: world.into(),
+                    source: source.into(),
+                    options,
+                }
+            }
+            Some("place") => {
+                let mut positional = Vec::new();
+                let mut options = crate::place::PlaceOptions::default();
+                while let Some(arg) = args.next() {
+                    let mut value = || args.next().ok_or_else(|| format!("{arg} needs a value"));
+                    match arg.as_str() {
+                        "--at" => options.at = Some(number(&arg, &value()?)?),
+                        "--name" => options.name = Some(value()?),
+                        _ if arg.starts_with("--") => {
+                            return Err(format!("unknown option `{arg}`"));
+                        }
+                        _ => positional.push(arg),
+                    }
+                }
+                let [world, fragment]: [String; 2] = positional
+                    .try_into()
+                    .map_err(|_| "place needs a world file and an installed fragment id")?;
+                Command::Place {
+                    world: world.into(),
+                    fragment,
+                    options,
+                }
             }
             Some("run") => Command::Run(Box::new(parse_run(args)?)),
             Some(other) => return Err(format!("unknown command `{other}`")),

@@ -14,3 +14,5 @@
 # Browser client: dependencies and build output (embedded into `sage` at build time).
 /client/node_modules/
 /client/dist/
+*.db.lock
+*.db.fragments/

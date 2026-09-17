@@ -77,3 +77,39 @@ impl Component for Link {
         vec![self.from, self.to]
     }
 }
+
+/// Where an entity came from: the installed fragment it was placed from. Kept so a world can
+/// say which fragments its entities depend on; removing a fragment never rewrites history.
+#[derive(bevy_ecs::component::Component, Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct Origin {
+    /// Fragment id, `creator.slug`.
+    pub fragment: String,
+    /// Exact fragment version.
+    pub version: String,
+    /// The fragment's content digest, `sha256:` and 64 hex digits.
+    pub digest: String,
+}
+
+impl Component for Origin {
+    const NAME: &'static str = "sage.origin";
+    const VERSION: u32 = 1;
+
+    fn validate(&self) -> Result<(), String> {
+        let hex = self.digest.strip_prefix("sha256:").unwrap_or_default();
+        if hex.len() != 64
+            || !hex
+                .bytes()
+                .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+        {
+            return Err("digest must be `sha256:` and 64 lowercase hex digits".into());
+        }
+        if self.fragment.len() > 104 || !self.fragment.contains('.') {
+            return Err("fragment must be a `creator.slug` id".into());
+        }
+        if self.version.is_empty() || self.version.len() > 64 {
+            return Err("version must be 1 to 64 characters".into());
+        }
+        Ok(())
+    }
+}
