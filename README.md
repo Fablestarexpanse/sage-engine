@@ -1,95 +1,135 @@
-# SAGE — Synthetic Agent Game Engine
+# SAGE: Synthetic Agent Game Engine
 
-Worlds are built, not scripted.
+**Worlds are built, not scripted.**
 
-SAGE is an open-source, self-hosted engine for persistent text worlds. It has a small core that knows no genre: entities and components, an event log as the only source of truth, a space graph, identities and a world clock. Everything else ships as a **fragment**. Content fragments are data, such as agents, places, items and lorebooks, often packed as PNG cards. Code fragments are signed WASM components that must declare every engine interface they use. Synthetic agents are ordinary entities with a mind. They act through the same commands a player types.
+SAGE is an open-source engine for persistent text worlds that players and synthetic agents share. The engine decides what happens: every change is an event in one SQLite log, and the world is rebuilt from that log. Agents act only through the same commands a player types, and they work with no AI at all. A model, local or hosted, is optional.
 
-Fragments are shared through [Fragment Foundry](https://fragmentfoundry.com), which never runs worlds.
+The core knows no genre. Everything else arrives as a **fragment**: characters, places and rules as data, or plugins as sandboxed WebAssembly. Fragments are shared through **Fragment Foundry**, a static site whose listings the engine itself builds and checks.
 
 ## Status
 
-M1 (world model), M2 (plugin seal) and M3 (synthetic agents) are done. M4, the player client and Fragment Foundry MVP, is in progress: players can sign in and play from a browser. The event log, space graph, world clock and run loop exist, along with sandboxed WebAssembly plugins, fragment manifests, `sage check`, commands, and scripted and LLM-driven agents whose memory is rebuilt from the log. See [docs/STATUS.md](docs/STATUS.md). To try it, follow [docs/QUICKSTART.md](docs/QUICKSTART.md).
+**Pre-release, v0.1.0.** Milestones M1 to M3 are done, and M4 (player client and Foundry) is nearly done. You can already:
 
-| Milestone | Scope |
-|---|---|
-| M1 | World model: entities, components, space graph, event log, snapshots, tick |
-| M2 | Plugin seal: WIT API, Wasmtime host, manifest validation, `sage check` |
-| M3 | Synthetic agents: Mind component, scripted then LLM drivers |
-| M4 | Player client and Foundry MVP |
-| M5 | Workshop editors and social layer |
-| M6 | Marketplace |
+- run a world that survives crashes and replays exactly
+- play it in a browser
+- bring in Tavern character cards as agents
+- install fragments from files, URLs or a registry
+- share fragments as packages or SAGE cards
 
-A layer does not start until the previous milestone's gate tests pass ([ADR 0004](docs/adr/0004-build-order-and-milestone-gates.md)).
+Still to come in M4: publishing the v0.1.0 binaries and deploying the Foundry site, then the 15-minute stranger test. See [docs/STATUS.md](docs/STATUS.md) for detail.
 
-## Read first
+| Milestone | Scope | State |
+|---|---|---|
+| M1 | World model: entities, components, space graph, event log, snapshots, clock | done |
+| M2 | Plugin seal: WIT API, Wasmtime host, manifest validation, `sage check` | done |
+| M3 | Synthetic agents: minds, scripted and LLM drivers, memory, reflection | done |
+| M4 | Player client, fragments, releases, Fragment Foundry read path | in progress |
+| M5 | Workshop editors, uploads, social layer | not started |
+| M6 | Marketplace | not started |
 
-- [Founding Blueprint](docs/research/03-sage-fragment-foundry-founding-blueprint.md)
-- [Architecture decision records](docs/adr/)
-- [Decision log](docs/DECISIONS.md)
+A layer doesn't start until the layer below passes its gate tests ([ADR 0004](docs/adr/0004-build-order-and-milestone-gates.md)).
 
-## Build
+## Try it
+
+[docs/QUICKSTART.md](docs/QUICKSTART.md) goes from download to playing in a browser, and ships with every release. Until v0.1.0 is published, build from source:
 
 ```bash
-cargo build --workspace
+pnpm --dir client install && pnpm --dir client build    # the browser client, embedded in sage
+cargo build --release -p sage-server                     # target/release/sage
+cargo run --release -p sage-build -- plugins             # first-party plugins, into target/plugins
+```
+
+Then start the demo world, with ten agents, and open <http://127.0.0.1:4700/>:
+
+```bash
+target/release/sage run my-world.db --seed worlds/demo-agents/seed.json \
+  --plugin target/plugins/sage.dialogue --listen 127.0.0.1:4700
+```
+
+Create a character and type `look`, `say good day` (the agents answer), `emote waves` or `go onward`. Stop with Ctrl-C, and start again without `--seed`: nothing is lost.
+
+Rust builds don't need Node. Without the client build, `sage` serves a page explaining how to add it, and any WebSocket client can play at `/ws`.
+
+## What the engine does
+
+- **One source of truth.** Events carry schema versions, and old ones are upgraded as they are read, never rewritten. Snapshots speed up loading and must match a full replay (`sage inspect` checks). A world has one writer at a time.
+- **Space is a graph.** Places are joined by named ways, and containment never forms a cycle. What an actor perceives follows from where they are.
+- **Agents.** A `sage.mind` is scripted (rules as data), `hybrid` (rules that may ask a model) or `llm`. Agents remember what they perceived, rank memories by recency, importance and relevance (embeddings optional), and reflect. Model replies are checked like player commands, and text from the world is never treated as instructions.
+- **Plugins.** WebAssembly components get only the `sage:core` interfaces their manifest declares, under fuel and memory limits. A failing plugin is suspended, and the world carries on. First-party plugins: `sage.dialogue` (`tell`) and `sage.wander`.
+- **Players.** `--listen` serves the embedded browser client and a WebSocket protocol (`sage.protocol/1`), with local accounts using argon2id hashes, which are kept out of the event log.
+
+## Fragments
+
+| Command | What it does |
+|---|---|
+| `sage check <dir>` | Validates a fragment manifest and, for plugins, boots the plugin under its grants |
+| `sage card <card.png>` | Reads a Tavern Card (v1–v3, PNG or JSON) and shows the agent it becomes |
+| `sage install <world.db> <source>` | Verifies a fragment directory, `.sagepkg`, card file or https URL, and adds it to `<world.db>.fragments/`. `--digest` pins the content. `--registry <url>` installs by id |
+| `sage place <world.db> <id>` | Commits an installed agent and its seed memories to a stopped world |
+| `sage pack <dir> <out.sagepkg>` | Writes a fragment as one deterministic tar+zstd package |
+| `sage export <world.db> <id> <out.png>` | Writes an installed agent as a SAGE card: its Tavern PNG plus a manifest chunk |
+| `sage registry build <inputs> <out>` | Builds a static registry (`index.json`, `api/v1/fragments/<id>.json`, files by digest) |
+
+Every fragment is identified by a content digest (sha256 over its files, leaving out the manifest), and installed versions never change. Cards, packages and downloads are all read as hostile input: size limits, path checks, no links, and a card reader fuzzed in CI.
+
+To bring a character card into a world:
+
+```bash
+sage card my-character.png
+sage install my-world.db my-character.png --license CC-BY-4.0
+sage place my-world.db local.my-character
+```
+
+Signatures and dependency resolution between fragments are not built yet.
+
+## Optional AI
+
+```bash
+sage run my-world.db --llm-url http://localhost:11434/v1 --llm-model llama3.2 \
+  --embed-url http://localhost:11434/v1 --embed-model nomic-embed-text
+```
+
+Any OpenAI-compatible endpoint works. Keys come from `SAGE_LLM_API_KEY` and `SAGE_EMBED_API_KEY`. Without a model, `hybrid` agents fall back to their rules and `llm` agents stay idle. Runs against real models are still owed; the model paths are tested against stub servers.
+
+## Repository
+
+| Path | What |
+|---|---|
+| `crates/sage-core` | World model, events, journal, space, commands, perception, scheduler |
+| `crates/sage-store` | SQLite event log and snapshots |
+| `crates/sage-host` | Wasmtime plugin host |
+| `crates/sage-schema` | Manifests, character cards, PNG chunks, content digests (also builds to WebAssembly) |
+| `crates/sage-agents` | Minds, drivers, memory, retrieval, reflection, card import |
+| `crates/sage-server` | The `sage` binary: run, play, fragments, registry |
+| `crates/sage-build` | Builds plugins and the WebAssembly validator |
+| `wit/core` | The `sage:core` WIT package plugins build against |
+| `plugins/` | First-party plugins |
+| `client/` | Browser client (React, TypeScript, Vite) |
+| `worlds/` | Setting-neutral demo seeds |
+| `docs/` | Status, decisions, ADRs, quickstart, research |
+
+Checks, all run in CI:
+
+```bash
+cargo fmt --all --check
+cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
+pnpm --dir client test
 scripts/check-denylist.sh
 ```
 
-## Run the demo world
+CI also fuzzes the card reader, and the release workflow builds and smoke-tests Windows, macOS and Linux binaries.
 
-```bash
-cargo run -p sage-build -- plugins
-cargo run --release -p sage-server -- check target/plugins/sage.wander
-cargo run --release -p sage-server -- run demo.db --seed worlds/demo/seed.json --plugin target/plugins/sage.wander
-cargo run --release -p sage-server -- inspect demo.db
-```
+## Read more
 
-Agents run with no AI by default. To let `hybrid` and `llm` agents ask a model, point `sage run` at any OpenAI-compatible API, such as local Ollama:
+- [Quickstart](docs/QUICKSTART.md)
+- [Status](docs/STATUS.md) and [decision log](docs/DECISIONS.md)
+- [Architecture decision records](docs/adr/)
+- [Founding blueprint](docs/research/03-sage-fragment-foundry-founding-blueprint.md)
+- [Contributing](CONTRIBUTING.md)
 
-```bash
-cargo run --release -p sage-server -- run agents.db --seed worlds/demo-agents/seed.json --llm-url http://localhost:11434/v1 --llm-model llama3.2
-```
-
-If the endpoint needs a key, set `SAGE_LLM_API_KEY`.
-
-`sage-build plugins` compiles the first-party plugins in `plugins/` to WebAssembly components. `sage run` loads a plugin only if `sage check` passes, grants it exactly the interfaces its manifest declares, and ticks at 4 Hz until Ctrl-C.
-
-## Import a character card
-
-```bash
-cargo run --release -p sage-server -- card my-character.png
-```
-
-`sage card` reads a Tavern Card (v1, v2 or v3, PNG or JSON) and prints the agent it becomes: the persona, goal, voice examples and seed memories, plus everything it had to drop or shorten. With no model the agent still answers when someone says its name.
-
-To put it in a world, install it into the world's fragment library and place it while the world is stopped:
-
-```bash
-cargo run --release -p sage-server -- install agents.db my-character.png --license CC-BY-4.0
-cargo run --release -p sage-server -- place agents.db local.my-character
-```
-
-To share it, export it as a SAGE card, a PNG that Tavern tools still read, carrying its manifest. Or pack any fragment, plugins included, as one file:
-
-```bash
-cargo run --release -p sage-server -- export agents.db local.my-character my-character-sage.png
-cargo run --release -p sage-server -- pack path/to/fragment my-fragment.sagepkg
-```
-
-## Play in a browser
-
-```bash
-pnpm --dir client install
-pnpm --dir client build
-cargo run --release -p sage-server -- run agents.db --seed worlds/demo-agents/seed.json --listen 127.0.0.1:4700
-```
-
-Open `http://127.0.0.1:4700/`, create a character, and type commands (`look`, `say hello`, `go onward`). The client is built into the binary; without Node the engine still builds, and any WebSocket client can play at `/ws` ([ADR 0021](docs/adr/0021-player-protocol-and-accounts.md)). Bind to `127.0.0.1` unless a TLS reverse proxy sits in front.
-
-## Previous version
-
-SAGE v1 (Python/FastAPI) is archived and private. This repository starts with a clean history ([ADR 0001](docs/adr/0001-fresh-start-archive-v1.md)).
+SAGE v1 (Python) is archived; this repository started over with a clean history ([ADR 0001](docs/adr/0001-fresh-start-archive-v1.md)).
 
 ## License
 
-Apache-2.0. See [LICENSE](LICENSE). You can build worlds and fragments on SAGE and sell them under any terms you choose. Contributions require the [CLA](CLA.md).
+Apache-2.0. See [LICENSE](LICENSE). You can build worlds and fragments on SAGE and share or sell them under any terms you choose. Contributions require the [CLA](CLA.md), which is still a placeholder.

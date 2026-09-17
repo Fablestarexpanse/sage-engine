@@ -8,7 +8,7 @@ NEXT: M4 S4b is done (ADRs 0027-0028): the Foundry site is built and pushed to F
 | M1 World model | **closed** 2026-09-16 (ADR 0005-0008; 24 h wall-clock run waived, fast-mode equivalent passed) |
 | M2 Plugin seal | **closed** 2026-09-16 (ADR 0009-0011; N-1 WIT adapter test deferred by owner ruling) |
 | M3 Agents | **closed** 2026-09-16 (ADR 0012-0020; Tavern Card import moved to M4) |
-| M4 Client + Foundry MVP | in progress: S1 done (WebSocket protocol, accounts; ADR 0021), S2 done (browser client; ADR 0022), S3a done (character card import; ADR 0023), S3 done (card import, install and place, packages and SAGE cards; ADR 0023-0025), S4a done (releases, URL install, quickstart; ADR 0026), S4b done (static registry, Foundry site; ADR 0027-0028) |
+| M4 Client + Foundry MVP | in progress: protocol and accounts (ADR 0021), browser client (0022), card import (0023), install and place (0024), packages and SAGE cards (0025), releases and URL install (0026), static registry and Foundry site (0027-0028) done; waiting on Vercel import and the v0.1.0 tag, then the 15-minute stranger test |
 | M5 Workshop + social | blocked on M4 |
 | M6 Marketplace | blocked on M5 |
 
