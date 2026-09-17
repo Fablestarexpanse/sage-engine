@@ -13,6 +13,7 @@ pub mod embeddings;
 pub mod llm;
 mod memory;
 mod mind;
+pub mod reflection;
 pub mod retrieval;
 mod scripted;
 
@@ -20,7 +21,10 @@ use sage_core::{
     Actor, ComponentRegistry, EntityId, EventLog, Lexicon, Located, StepReport, Upcasters, World,
 };
 
-use llm::{Allowed, ThinkError, Thinker};
+use std::collections::BTreeMap;
+
+use llm::{Allowed, Outcome, ThinkError, Thinker};
+use reflection::{DEFAULT_REFLECT_THRESHOLD, REFLECTION_BACKOFF, since_last_reflection};
 use scripted::Action;
 
 pub use memory::{MEMORY_LIMIT, Memories, Memory};
@@ -63,6 +67,8 @@ pub struct Collected {
     pub failed: Vec<(EntityId, String)>,
     /// Problems that did not stop thinking, such as embeddings falling back to word overlap.
     pub warnings: Vec<(EntityId, String)>,
+    /// Reflections to commit, e.g. through [`reflection::Reflections`].
+    pub reflections: Vec<(EntityId, String)>,
 }
 
 /// Runs every agent's mind.
@@ -71,6 +77,17 @@ pub struct Agents {
     thinker: Option<Thinker>,
     lexicon: Lexicon,
     verbs: Vec<String>,
+    /// Agents whose last reflection failed may not try again before this tick.
+    reflection_backoff: BTreeMap<EntityId, u64>,
+}
+
+/// Core English plus the agents' own wording.
+pub fn lexicon_english() -> Lexicon {
+    let mut lexicon = Lexicon::core_english();
+    for (key, template) in reflection::LEXICON_ENGLISH {
+        lexicon.set(key, template);
+    }
+    lexicon
 }
 
 impl Default for Agents {
@@ -78,8 +95,9 @@ impl Default for Agents {
         Agents {
             memories: Memories::new(),
             thinker: None,
-            lexicon: Lexicon::core_english(),
+            lexicon: lexicon_english(),
             verbs: Vec::new(),
+            reflection_backoff: BTreeMap::new(),
         }
     }
 }
@@ -148,6 +166,9 @@ impl Agents {
                 .thinker
                 .as_ref()
                 .is_some_and(|thinker| thinker.available(agent, tick));
+            if can_think && self.reflect_if_due(world, agent, mind, tick) {
+                continue;
+            }
             let decision = match mind.driver.as_str() {
                 "scripted" | "hybrid" => {
                     let recent = self.memories.between(
@@ -178,6 +199,31 @@ impl Agents {
             }
         }
         thoughts
+    }
+
+    /// Sends a reflection request if `agent` is model-driven and has perceived enough since
+    /// its last reflection. Returns whether it did.
+    fn reflect_if_due(&mut self, world: &World, agent: EntityId, mind: &Mind, tick: u64) -> bool {
+        if !matches!(mind.driver.as_str(), "hybrid" | "llm")
+            || self
+                .reflection_backoff
+                .get(&agent)
+                .is_some_and(|until| tick < *until)
+        {
+            return false;
+        }
+        let memories: Vec<&Memory> = self.memories.of(agent).collect();
+        let (since, total) = since_last_reflection(world, agent, mind, &memories);
+        if since.is_empty() || total < mind.reflect_threshold.unwrap_or(DEFAULT_REFLECT_THRESHOLD) {
+            return false;
+        }
+        let parts =
+            llm::PromptParts::gather_reflection(world, agent, mind, &since, &self.lexicon, tick);
+        self.thinker
+            .as_mut()
+            .expect("checked by the caller")
+            .reflect(agent, tick, parts);
+        true
     }
 
     fn ask(&mut self, world: &World, agent: EntityId, mind: &Mind, tick: u64) {
@@ -217,7 +263,11 @@ impl Agents {
             if let Some(warning) = answer.warning {
                 collected.warnings.push((agent, warning));
             }
-            let command = match answer.result {
+            if answer.reflecting && answer.result.is_err() {
+                self.reflection_backoff
+                    .insert(agent, tick + REFLECTION_BACKOFF);
+            }
+            let outcome = match answer.result {
                 Err(ThinkError::Unreachable(reason)) => {
                     collected
                         .failed
@@ -228,25 +278,34 @@ impl Agents {
                     collected.failed.push((agent, format!("refused: {reason}")));
                     continue;
                 }
-                Ok(None) => continue,
-                Ok(Some(command)) => command,
+                Ok(outcome) => outcome,
             };
-            if tick.saturating_sub(answer.tick) > llm::MAX_ANSWER_AGE {
-                collected.failed.push((
-                    agent,
-                    format!("answer arrived {} ticks late", tick - answer.tick),
-                ));
-                continue;
-            }
             if world.get::<Actor>(agent).is_none() {
                 collected.failed.push((agent, "no longer an actor".into()));
                 continue;
             }
-            collected.thoughts.push(Thought {
-                agent,
-                command,
-                source: Source::Model,
-            });
+            match outcome {
+                Outcome::Reflections(texts) => {
+                    collected
+                        .reflections
+                        .extend(texts.into_iter().map(|text| (agent, text)));
+                }
+                Outcome::Command(None) => {}
+                Outcome::Command(Some(command)) => {
+                    if tick.saturating_sub(answer.tick) > llm::MAX_ANSWER_AGE {
+                        collected.failed.push((
+                            agent,
+                            format!("answer arrived {} ticks late", tick - answer.tick),
+                        ));
+                        continue;
+                    }
+                    collected.thoughts.push(Thought {
+                        agent,
+                        command,
+                        source: Source::Model,
+                    });
+                }
+            }
         }
         collected
     }

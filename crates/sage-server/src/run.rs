@@ -43,7 +43,7 @@ pub fn run(options: &RunOptions) -> Result<(), String> {
     // Plugins are checked and loaded before the world file is touched, so a refused plugin
     // leaves no trace.
     let mut plugins = Vec::new();
-    let mut lexicon = sage_core::Lexicon::core_english();
+    let mut lexicon = sage_agents::lexicon_english();
     if !options.plugins.is_empty() {
         let host = PluginHost::new().map_err(|e| e.to_string())?;
         for dir in &options.plugins {
@@ -72,6 +72,10 @@ pub fn run(options: &RunOptions) -> Result<(), String> {
     }
 
     let mut scheduler = Scheduler::new(&journal, options.checkpoint_every);
+    // Reflections from model-driven agents are committed by this system, inside a tick.
+    let reflections = sage_agents::reflection::Reflections::new();
+    scheduler.add(reflections.clone());
+    let mut reflected = 0usize;
     for plugin in plugins {
         if let Some(handler) = plugin.command_handler() {
             scheduler
@@ -189,6 +193,10 @@ pub fn run(options: &RunOptions) -> Result<(), String> {
             eprintln!("tick={} model agent={}: {why}", report.tick, agent.0);
             model_failures += 1;
         }
+        for (agent, text) in collected.reflections {
+            reflections.push(agent, text);
+            reflected += 1;
+        }
         for (agent, warning) in collected.warnings {
             eprintln!("tick={} model agent={}: {warning}", report.tick, agent.0);
         }
@@ -204,7 +212,7 @@ pub fn run(options: &RunOptions) -> Result<(), String> {
         }
         if report.tick.is_multiple_of(options.report_every) {
             println!(
-                "tick={} seq={} entities={} refused={} agent_commands={agent_commands} model_failures={model_failures}",
+                "tick={} seq={} entities={} refused={} agent_commands={agent_commands} model_failures={model_failures} reflections={reflected}",
                 report.tick,
                 journal.world().last_seq(),
                 journal.world().len(),
@@ -229,7 +237,7 @@ pub fn run(options: &RunOptions) -> Result<(), String> {
         .map_err(|e| e.to_string())?;
     journal.save_snapshot().map_err(|e| e.to_string())?;
     println!(
-        "stop tick={} seq={} entities={} refused={} agent_commands={agent_commands} model_failures={model_failures}",
+        "stop tick={} seq={} entities={} refused={} agent_commands={agent_commands} model_failures={model_failures} reflections={reflected}",
         scheduler.tick(),
         journal.world().last_seq(),
         journal.world().len(),

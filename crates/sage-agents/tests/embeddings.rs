@@ -88,6 +88,7 @@ fn parts() -> PromptParts {
         candidates,
         query: "Dock Bo When does the ferry leave?".into(),
         now: 30,
+        ask: "What does Wren do next?".into(),
     }
 }
 

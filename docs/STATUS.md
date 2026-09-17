@@ -1,4 +1,4 @@
-NEXT: M3 S3b part 2 is done (ADR 0018). Part 3 is reflection: once the summed importance of an agent's memories since its last reflection passes `reflect_threshold` (with a default for model-driven minds), the model writes 1-3 reflections, committed as `sage.mind.reflected` occurrences through a native system so they land inside a tick and only the agent perceives them. They then enter memory and retrieval. Nothing happens without a model. After part 3, review the M3 gate and close M3. Not yet done: runs against a real chat model and a real embedding model.
+NEXT: M3 S3b is done (ADR 0019). All of M3's ADR 0004 gate items pass (10 scripted agents for one world-hour in fast mode; LLM agents use the player command path, against stubs; zero-AI demo in CI). S4, Tavern Card v2 import to agent fragments, is still open from the M3 plan. Ask the owner whether to build S4 now or move it to M4 with the other content fragments and PNG cards, then close M3. Not yet done: runs against a real chat model and a real embedding model.
 
 # Status
 
@@ -7,7 +7,7 @@ NEXT: M3 S3b part 2 is done (ADR 0018). Part 3 is reflection: once the summed im
 | M0 Scaffold | done: workspace, CI (fmt, clippy, test, denylist), ADRs 0001–0004 |
 | M1 World model | **closed** 2026-09-16 (ADR 0005-0008; 24 h wall-clock run waived, fast-mode equivalent passed) |
 | M2 Plugin seal | **closed** 2026-09-16 (ADR 0009-0011; N-1 WIT adapter test deferred by owner ruling) |
-| M3 Agents | in progress: S1-S3a done; S3b parts 1-2 done (upcasters, importance, retrieval, embeddings; ADR 0017-0018) |
+| M3 Agents | in progress: S1-S3b done (commands, scripted/hybrid/LLM agents, memory, retrieval, embeddings, reflection; ADR 0012-0019); S4 (Tavern Card import) not started |
 | M4 Client + Foundry MVP | blocked on M3 |
 | M5 Workshop + social | blocked on M4 |
 | M6 Marketplace | blocked on M5 |
@@ -59,6 +59,8 @@ NEXT: M3 S3b part 2 is done (ADR 0018). Part 3 is reflection: once the summed im
 - A prompt keeps an important old message over repetitive recent chatter (`crates/sage-agents/tests/retrieval.rs`)
 
 - Embeddings find meaning word overlap misses; the cache is reused, rebuildable and never canonical; a failing endpoint falls back to word overlap (`crates/sage-agents/tests/embeddings.rs`)
+
+- Reflections trigger on an importance budget, are logged privately, reach later prompts, and are not redone after a restart (`crates/sage-agents/tests/reflection.rs`)
 
 ## Open questions for the owner (not blocking M1)
 
