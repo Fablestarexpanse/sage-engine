@@ -87,7 +87,7 @@ The blueprint asks that importing Tavern cards be a converter, not a new format.
   - A cut-off download was refused although the whole card came before the damage. Now the chunks before the damage are read, with a warning.
 - **Not verified yet:**
   - a card written by SillyTavern or Chub themselves (none available offline)
-  - the fuzz job's first CI run
+- **Fuzzing result:** the first CI fuzz run executed 8,105,184 inputs in 181 s (coverage 1,959 edges, 1,946 corpus entries), with no crash, hang or out-of-memory. The first attempt never fuzzed at all: `rust-toolchain.toml` overrode nightly, and the job now runs `cargo +nightly fuzz`.
 - **Not built yet:**
   - placing an imported agent with its seed memories, and exporting SAGE cards with `chara` and `sage` chunks (S3b)
   - lorebooks as their own fragments

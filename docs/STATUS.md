@@ -1,4 +1,4 @@
-NEXT: M4 S3a is done (ADR 0023): Tavern Card v1/v2/v3 import (`sage card`), a fuzzed PNG chunk reader, `sage.mind` v3 with voice examples. S3b is `.sagepkg` (tar+zstd) and `sage install` into `<world>.fragments/` with sha256 digest checks, plus a placement step that commits an imported agent and its seed memories as events, and SAGE card export (writes `chara` by default). Then S4 (Foundry read path, release binaries, the 15-minute test). Still owed: runs against real models, and checking the first CI fuzz run.
+NEXT: M4 S3a is done (ADR 0023): Tavern Card v1/v2/v3 import (`sage card`), a fuzzed PNG chunk reader, `sage.mind` v3 with voice examples. S3b is `.sagepkg` (tar+zstd) and `sage install` into `<world>.fragments/` with sha256 digest checks, plus a placement step that commits an imported agent and its seed memories as events, and SAGE card export (writes `chara` by default). Then S4 (Foundry read path, release binaries, the 15-minute test). Still owed: runs against real models.
 
 # Status
 
