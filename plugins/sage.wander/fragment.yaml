@@ -2,7 +2,7 @@ schema: sage.fragment/1
 id: sage.wander
 kind: plugin
 version: 0.1.0
-engine: "^0.0.1"
+engine: "^0.1.0"
 title: Wander
 description: |
   Every 20 ticks, moves each entity that is inside a place one step along the first link

@@ -2,7 +2,7 @@ schema: sage.fragment/1
 id: sage.dialogue
 kind: plugin
 version: 0.1.0
-engine: "^0.0.1"
+engine: "^0.1.0"
 title: Dialogue
 description: |
   Directed conversation between actors in the same place. `tell <name> <text>` is heard by

@@ -8,7 +8,7 @@ Fragments are shared through [Fragment Foundry](https://fragmentfoundry.com), wh
 
 ## Status
 
-M1 (world model), M2 (plugin seal) and M3 (synthetic agents) are done. M4, the player client and Fragment Foundry MVP, is in progress: players can sign in and play from a browser. The event log, space graph, world clock and run loop exist, along with sandboxed WebAssembly plugins, fragment manifests, `sage check`, commands, and scripted and LLM-driven agents whose memory is rebuilt from the log. See [docs/STATUS.md](docs/STATUS.md).
+M1 (world model), M2 (plugin seal) and M3 (synthetic agents) are done. M4, the player client and Fragment Foundry MVP, is in progress: players can sign in and play from a browser. The event log, space graph, world clock and run loop exist, along with sandboxed WebAssembly plugins, fragment manifests, `sage check`, commands, and scripted and LLM-driven agents whose memory is rebuilt from the log. See [docs/STATUS.md](docs/STATUS.md). To try it, follow [docs/QUICKSTART.md](docs/QUICKSTART.md).
 
 | Milestone | Scope |
 |---|---|

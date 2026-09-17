@@ -261,7 +261,7 @@ fn run_refuses_a_plugin_that_fails_sage_check_before_touching_the_world() {
     std::fs::write(
         fragment.join("fragment.yaml"),
         "schema: sage.fragment/1\nid: fixture.mover\nkind: plugin\nversion: 0.1.0\n\
-         engine: \"^0.0.1\"\ntitle: Mover\ncreator:\n  handle: fixture\n\
+         engine: \"^0.1.0\"\ntitle: Mover\ncreator:\n  handle: fixture\n\
          license: Apache-2.0\ncapabilities:\n  - sage:core/entities@0.1.0\n",
     )
     .unwrap();

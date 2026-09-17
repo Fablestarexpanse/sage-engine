@@ -1848,7 +1848,7 @@ checksum = "9774ba4a74de5f7b1c1451ed6cd5285a32eddb5cccb8cc655a4e50009e06477f"
 
 [[package]]
 name = "sage-agents"
-version = "0.0.1"
+version = "0.1.0"
 dependencies = [
  "bevy_ecs",
  "rusqlite",
@@ -1863,14 +1863,14 @@ dependencies = [
 
 [[package]]
 name = "sage-build"
-version = "0.0.1"
+version = "0.1.0"
 dependencies = [
  "wit-component 0.259.0",
 ]
 
 [[package]]
 name = "sage-core"
-version = "0.0.1"
+version = "0.1.0"
 dependencies = [
  "bevy_ecs",
  "serde",
@@ -1880,7 +1880,7 @@ dependencies = [
 
 [[package]]
 name = "sage-host"
-version = "0.0.1"
+version = "0.1.0"
 dependencies = [
  "sage-build",
  "sage-core",
@@ -1893,7 +1893,7 @@ dependencies = [
 
 [[package]]
 name = "sage-schema"
-version = "0.0.1"
+version = "0.1.0"
 dependencies = [
  "base64 0.22.1",
  "semver",
@@ -1906,7 +1906,7 @@ dependencies = [
 
 [[package]]
 name = "sage-server"
-version = "0.0.1"
+version = "0.1.0"
 dependencies = [
  "argon2",
  "axum",
@@ -1932,7 +1932,7 @@ dependencies = [
 
 [[package]]
 name = "sage-store"
-version = "0.0.1"
+version = "0.1.0"
 dependencies = [
  "rusqlite",
  "sage-core",

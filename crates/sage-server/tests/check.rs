@@ -92,7 +92,7 @@ fn good_plugin_passes_every_check() {
         Some(&manifest(
             "fixture.mover",
             "plugin",
-            "^0.0.1",
+            "^0.1.0",
             &[ENTITIES, SPACE],
         )),
         Some("mover"),
@@ -115,7 +115,7 @@ fn good_plugin_passes_every_check() {
 #[test]
 fn content_fragment_skips_plugin_checks() {
     let (ok, report) = check(
-        Some(&manifest("someone.old-map", "place", "^0.0.1", &[])),
+        Some(&manifest("someone.old-map", "place", "^0.1.0", &[])),
         None,
     );
     assert!(ok, "{report}");
@@ -134,7 +134,7 @@ fn content_fragment_skips_plugin_checks() {
 #[test]
 fn undeclared_import_fails_capabilities() {
     let (ok, report) = check(
-        Some(&manifest("fixture.mover", "plugin", "^0.0.1", &[ENTITIES])),
+        Some(&manifest("fixture.mover", "plugin", "^0.1.0", &[ENTITIES])),
         Some("mover"),
     );
     assert!(!ok);
@@ -153,7 +153,7 @@ fn unserved_and_unused_capabilities_fail() {
         Some(&manifest(
             "fixture.spinner",
             "plugin",
-            "^0.0.1",
+            "^0.1.0",
             &["sage:core/clock@0.1.0", ENTITIES],
         )),
         Some("spinner"),
@@ -173,7 +173,7 @@ fn unserved_and_unused_capabilities_fail() {
 #[test]
 fn name_mismatch_and_runaway_plugin_fail_boot() {
     let (ok, report) = check(
-        Some(&manifest("fixture.walker", "plugin", "^0.0.1", &[])),
+        Some(&manifest("fixture.walker", "plugin", "^0.1.0", &[])),
         Some("spinner"),
     );
     assert!(!ok);
@@ -237,7 +237,7 @@ fn plugin_without_wasm_fails_capabilities() {
         Some(&manifest(
             "fixture.mover",
             "plugin",
-            "^0.0.1",
+            "^0.1.0",
             &[ENTITIES, SPACE],
         )),
         None,
