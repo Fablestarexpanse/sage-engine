@@ -8,6 +8,7 @@ pub enum Command {
     Run(Box<RunOptions>),
     Inspect { world: PathBuf },
     Check { fragment: PathBuf },
+    Card { file: PathBuf },
 }
 
 #[derive(Debug, PartialEq)]
@@ -55,6 +56,13 @@ impl Args {
                 Command::Check {
                     fragment: fragment.into(),
                 }
+            }
+            Some("card") => {
+                let file = args.next().ok_or("card needs a PNG or JSON card file")?;
+                if let Some(extra) = args.next() {
+                    return Err(format!("unexpected argument `{extra}`"));
+                }
+                Command::Card { file: file.into() }
             }
             Some("run") => Command::Run(Box::new(parse_run(args)?)),
             Some(other) => return Err(format!("unknown command `{other}`")),

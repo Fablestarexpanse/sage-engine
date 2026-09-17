@@ -51,6 +51,23 @@ jobs:
       - run: pnpm --dir client typecheck
       - run: pnpm --dir client test
 
+  fuzz:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: crates/sage-schema/fuzz
+      - run: cargo install cargo-fuzz --locked
+      - name: Fuzz the card reader for 3 minutes
+        run: >
+          mkdir -p crates/sage-schema/fuzz/corpus &&
+          cargo fuzz run --fuzz-dir crates/sage-schema/fuzz read_card
+          crates/sage-schema/fuzz/corpus crates/sage-schema/fuzz/seeds --
+          -dict=crates/sage-schema/fuzz/card.dict -max_total_time=180
+          -timeout=5 -rss_limit_mb=2048 -max_len=65536
+
   invariants:
     runs-on: ubuntu-latest
     steps:

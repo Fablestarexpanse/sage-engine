@@ -7,7 +7,9 @@
 //! Validation never stops at the first problem: it reports every problem it can find, each with
 //! a path such as `requires[1].version`, in a stable order.
 
+pub mod card;
 mod manifest;
+pub mod png;
 mod rules;
 
 pub use manifest::{

@@ -39,6 +39,7 @@ fn mind(think_every: u64, rules: Vec<Rule>) -> Mind {
         rules,
         importance: Default::default(),
         reflect_threshold: None,
+        voice: Vec::new(),
     }
 }
 

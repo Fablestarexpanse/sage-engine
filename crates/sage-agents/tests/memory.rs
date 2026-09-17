@@ -84,6 +84,7 @@ fn seed(journal: &mut Journal<SqliteLog>) {
             ],
             importance: Default::default(),
             reflect_threshold: None,
+            voice: Vec::new(),
         };
         events.extend([
             set(id, &named(name)),

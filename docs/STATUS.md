@@ -1,4 +1,4 @@
-NEXT: M4 S2 is done (ADR 0022): the browser client is embedded in `sage` and served beside `/ws`. S3 is fragment packages (`.sagepkg`), content fragments, `sage install`, and Tavern Card v2/v3 PNG import with a fuzzed chunk parser. Then S4 (Foundry read path, release binaries, the 15-minute test). Still owed: runs against real models.
+NEXT: M4 S3a is done (ADR 0023): Tavern Card v1/v2/v3 import (`sage card`), a fuzzed PNG chunk reader, `sage.mind` v3 with voice examples. S3b is `.sagepkg` (tar+zstd) and `sage install` into `<world>.fragments/` with sha256 digest checks, plus a placement step that commits an imported agent and its seed memories as events, and SAGE card export (writes `chara` by default). Then S4 (Foundry read path, release binaries, the 15-minute test). Still owed: runs against real models, and checking the first CI fuzz run.
 
 # Status
 
@@ -8,16 +8,17 @@ NEXT: M4 S2 is done (ADR 0022): the browser client is embedded in `sage` and ser
 | M1 World model | **closed** 2026-09-16 (ADR 0005-0008; 24 h wall-clock run waived, fast-mode equivalent passed) |
 | M2 Plugin seal | **closed** 2026-09-16 (ADR 0009-0011; N-1 WIT adapter test deferred by owner ruling) |
 | M3 Agents | **closed** 2026-09-16 (ADR 0012-0020; Tavern Card import moved to M4) |
-| M4 Client + Foundry MVP | in progress: S1 done (WebSocket protocol, accounts; ADR 0021), S2 done (browser client; ADR 0022) |
+| M4 Client + Foundry MVP | in progress: S1 done (WebSocket protocol, accounts; ADR 0021), S2 done (browser client; ADR 0022), S3a done (character card import; ADR 0023) |
 | M5 Workshop + social | blocked on M4 |
 | M6 Marketplace | blocked on M5 |
 
 ## Gate tests not yet written (they arrive with the code they test)
 
 - A plugin built against WIT N-1 boots through an adapter (M2; deferred to the first real `sage:core` major bump, owner ruling)
-- The PNG chunk parser is fuzzed (whenever the parser exists)
 
 ## Gate tests passing
+
+- The PNG card chunk reader never panics or hangs: 20,000 fixed-seed mutations in `cargo test`, plus a coverage-guided cargo-fuzz run in CI (`crates/sage-schema/tests/cards.rs`, `crates/sage-schema/fuzz`)
 
 - Replay from genesis reproduces the live snapshot byte for byte (`crates/sage-store/tests/replay.rs`)
 - Restoring a snapshot then replaying the tail gives the same bytes
@@ -67,7 +68,7 @@ NEXT: M4 S2 is done (ADR 0022): the browser client is embedded in `sage` and ser
 ## Open questions for the owner (not blocking M1)
 
 1. ~~Fragment namespace~~: decided `creator.slug` (2026-09-16).
-2. Should agent cards write the Tavern v2 `chara` chunk by default, or only on an explicit Tavern export?
+2. ~~Tavern `chara` chunk~~: decided, written by default (2026-09-16).
 3. Merchant of record when the marketplace arrives: Lemon Squeezy, Paddle or Stripe Connect?
 4. Name of the setting-neutral demo world.
 5. Should world time pass while the server is down? Currently it doesn't: on restart the clock resumes from the last recorded tick (ADR 0006). The alternative is a catch-up step on boot.

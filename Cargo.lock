@@ -1831,6 +1831,7 @@ dependencies = [
  "bevy_ecs",
  "rusqlite",
  "sage-core",
+ "sage-schema",
  "sage-store",
  "serde",
  "serde_json",
@@ -1872,6 +1873,7 @@ dependencies = [
 name = "sage-schema"
 version = "0.0.1"
 dependencies = [
+ "base64 0.22.1",
  "semver",
  "serde",
  "serde-saphyr",

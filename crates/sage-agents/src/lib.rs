@@ -9,6 +9,7 @@
 //! Without a configured model, `@think` rules are skipped and `llm` agents stay idle, so every
 //! world still runs with no AI.
 
+pub mod card;
 pub mod embeddings;
 pub mod llm;
 mod memory;
@@ -28,13 +29,14 @@ use reflection::{DEFAULT_REFLECT_THRESHOLD, REFLECTION_BACKOFF, since_last_refle
 use scripted::Action;
 
 pub use memory::{MEMORY_LIMIT, Memories, Memory};
-pub use mind::{Mind, Rule, When};
+pub use mind::{MAX_VOICE, MAX_VOICE_CHARS, Mind, Rule, THINK, When};
 
 /// The core components plus `sage.mind`: the registry every SAGE world with agents uses.
 pub fn registry() -> ComponentRegistry {
     let mut registry = ComponentRegistry::with_core();
     registry.register::<Mind>();
     registry.register_upcaster::<Mind>(1, mind::mind_v1_to_v2);
+    registry.register_upcaster::<Mind>(2, mind::mind_v2_to_v3);
     registry
 }
 

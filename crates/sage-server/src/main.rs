@@ -2,11 +2,12 @@
 //!
 //! `sage run` drives a world stored in one SQLite file at a fixed tick rate. `sage inspect`
 //! reports on a world file and checks that its newest snapshot agrees with a full replay.
-//! `sage check` reports whether this engine can use a fragment.
-//! Network transport arrives at M4.
+//! `sage check` reports whether this engine can use a fragment. `sage card` reads a Tavern
+//! character card and shows the agent it becomes.
 
 mod accounts;
 mod args;
+mod card;
 mod check;
 mod net;
 mod players;
@@ -37,7 +38,8 @@ usage:
       --listen <addr>            accept players over WebSocket at ws://<addr>/ws, e.g. 127.0.0.1:4700
       --start-place <id>         where new characters start (default: the lowest-numbered place)
   sage inspect <world.db>
-  sage check <fragment-dir>       validate fragment.yaml and, for plugins, plugin.wasm";
+  sage check <fragment-dir>       validate fragment.yaml and, for plugins, plugin.wasm
+  sage card <card.png|card.json>  read a Tavern character card and show the agent it becomes";
 
 fn main() -> ExitCode {
     let args = match Args::parse(std::env::args().skip(1)) {
@@ -59,6 +61,7 @@ fn main() -> ExitCode {
         Command::Run(options) => run::run(&options),
         Command::Inspect { world } => run::inspect(&world),
         Command::Check { fragment } => check::run(&fragment),
+        Command::Card { file } => card::run(&file),
     };
     match result {
         Ok(()) => ExitCode::SUCCESS,

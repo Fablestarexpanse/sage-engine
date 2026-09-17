@@ -40,6 +40,10 @@ pub struct Mind {
     /// for model-driven minds. Since v2.
     #[serde(default)]
     pub reflect_threshold: Option<f64>,
+    /// Examples of how the agent talks, each a short exchange or line. LLM drivers show them
+    /// to the model; the scripted driver ignores them. Since v3.
+    #[serde(default)]
+    pub voice: Vec<String>,
 }
 
 /// `sage.mind` v1 had no `importance` or `reflect_threshold`; both default when absent.
@@ -49,6 +53,20 @@ pub(crate) fn mind_v1_to_v2(data: Value) -> Result<Value, String> {
     }
     Ok(data)
 }
+
+/// `sage.mind` v2 had no `voice`; it defaults to empty when absent.
+pub(crate) fn mind_v2_to_v3(data: Value) -> Result<Value, String> {
+    if !data.is_object() {
+        return Err("sage.mind v2 data is not an object".into());
+    }
+    Ok(data)
+}
+
+/// Most voice examples a mind may carry.
+pub const MAX_VOICE: usize = 8;
+
+/// Longest voice example, in characters.
+pub const MAX_VOICE_CHARS: usize = 1000;
 
 /// One scripted rule.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -82,7 +100,7 @@ pub struct When {
 
 impl sage_core::Component for Mind {
     const NAME: &'static str = "sage.mind";
-    const VERSION: u32 = 2;
+    const VERSION: u32 = 3;
 
     fn validate(&self) -> Result<(), String> {
         if !DRIVERS.contains(&self.driver.as_str()) {
@@ -97,6 +115,18 @@ impl sage_core::Component for Mind {
         }
         if self.persona.chars().count() > 4000 {
             return Err("persona is longer than 4000 characters".into());
+        }
+        if self.voice.len() > MAX_VOICE {
+            return Err(format!("at most {MAX_VOICE} voice examples"));
+        }
+        if let Some(i) = self
+            .voice
+            .iter()
+            .position(|v| v.chars().count() > MAX_VOICE_CHARS)
+        {
+            return Err(format!(
+                "voice[{i}] is longer than {MAX_VOICE_CHARS} characters"
+            ));
         }
         if self.rules.len() > 64 {
             return Err("at most 64 rules".into());

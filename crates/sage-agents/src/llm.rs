@@ -278,6 +278,9 @@ impl PromptParts {
         for goal in &mind.goals {
             system.push_str(&format!("Goal: {}\n", contain(goal)));
         }
+        for example in &mind.voice {
+            system.push_str(&format!("Voice example: {}\n", contain(example)));
+        }
         let mut query = String::new();
         if let Some(place) = place {
             system.push_str(&format!(

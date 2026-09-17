@@ -1,0 +1,24 @@
+# Coverage-guided fuzzing of the card reader (cargo-fuzz; needs a nightly toolchain).
+# Its own workspace so libfuzzer stays out of the engine build.
+[package]
+name = "sage-schema-fuzz"
+version = "0.0.1"
+edition = "2024"
+license = "Apache-2.0"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+sage-schema = { path = ".." }
+
+[[bin]]
+name = "read_card"
+path = "fuzz_targets/read_card.rs"
+test = false
+doc = false
+bench = false
+
+[workspace]

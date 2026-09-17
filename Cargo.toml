@@ -1,8 +1,13 @@
 [workspace]
 resolver = "3"
 members = ["crates/*"]
-# Built to wasm with their own workspaces, by sage-build.
-exclude = ["crates/sage-build/test-plugins", "crates/sage-schema/wasm", "plugins"]
+# Own workspaces: wasm builds (by sage-build) and the nightly-only fuzzer.
+exclude = [
+    "crates/sage-build/test-plugins",
+    "crates/sage-schema/fuzz",
+    "crates/sage-schema/wasm",
+    "plugins",
+]
 
 [workspace.package]
 version = "0.0.1"

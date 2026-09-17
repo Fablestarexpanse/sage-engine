@@ -34,6 +34,7 @@ fn mind() -> Mind {
         rules: vec![],
         importance: BTreeMap::new(),
         reflect_threshold: None,
+        voice: Vec::new(),
     }
 }
 
@@ -235,6 +236,7 @@ fn the_world_refuses_bad_v2_mind_fields_and_accepts_v1_minds() {
     bad_kind.importance.insert("said".into(), 5.0);
     let never = Mind {
         reflect_threshold: Some(0.0),
+        voice: Vec::new(),
         ..mind()
     };
     for bad in [too_heavy, bad_kind, never] {

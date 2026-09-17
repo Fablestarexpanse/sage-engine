@@ -87,6 +87,7 @@ fn wren(driver: &str) -> Mind {
         rules: vec![],
         importance: BTreeMap::new(),
         reflect_threshold: Some(20.0),
+        voice: Vec::new(),
     }
 }
 

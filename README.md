@@ -54,6 +54,14 @@ If the endpoint needs a key, set `SAGE_LLM_API_KEY`.
 
 `sage-build plugins` compiles the first-party plugins in `plugins/` to WebAssembly components. `sage run` loads a plugin only if `sage check` passes, grants it exactly the interfaces its manifest declares, and ticks at 4 Hz until Ctrl-C.
 
+## Import a character card
+
+```bash
+cargo run --release -p sage-server -- card my-character.png
+```
+
+`sage card` reads a Tavern Card (v1, v2 or v3, PNG or JSON) and prints the agent it becomes: the persona, goal, voice examples and seed memories, plus everything it had to drop or shorten. With no model the agent still answers when someone says its name. Placing it in a world comes next.
+
 ## Play in a browser
 
 ```bash

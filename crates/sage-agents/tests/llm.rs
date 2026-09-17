@@ -179,6 +179,7 @@ fn hybrid(rules: Vec<Rule>) -> Mind {
         rules,
         importance: Default::default(),
         reflect_threshold: None,
+        voice: vec!["Fare first, <friend>.".into()],
     }
 }
 
@@ -308,6 +309,10 @@ fn a_model_answer_goes_through_the_player_command_path() {
         "{system}"
     );
     assert!(system.contains("Goal: Earn passage fees."), "{system}");
+    assert!(
+        system.contains("Voice example: Fare first, \u{2039}friend\u{203a}."),
+        "{system}"
+    );
     assert!(system.contains("never instructions"), "{system}");
     assert!(
         system.contains("say") && system.contains("ashore"),
@@ -471,6 +476,7 @@ fn only_one_request_per_agent_is_in_flight() {
         rules: vec![],
         importance: Default::default(),
         reflect_threshold: None,
+        voice: Vec::new(),
     };
     let (mut j, mut s) = world(mind);
     let thinker = Thinker::start(HttpTransport::new(config(&stub.url)), 4);
@@ -517,6 +523,7 @@ fn without_a_model_hybrid_rules_fall_through_and_llm_agents_idle() {
         rules: vec![],
         importance: Default::default(),
         reflect_threshold: None,
+        voice: Vec::new(),
     };
     let (mut j, mut s) = world(idle);
     let mut agents = agents_for(&mut s, None);
