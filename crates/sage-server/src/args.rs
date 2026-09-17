@@ -17,8 +17,10 @@ pub enum Command {
     },
     Install {
         world: PathBuf,
-        source: PathBuf,
+        /// A path, or an `https://` URL.
+        source: String,
         options: crate::library::CardOptions,
+        digest: Option<String>,
     },
     Place {
         world: PathBuf,
@@ -92,12 +94,14 @@ impl Args {
             Some("install") => {
                 let mut positional = Vec::new();
                 let mut options = crate::library::CardOptions::default();
+                let mut digest = None;
                 while let Some(arg) = args.next() {
                     let mut value = || args.next().ok_or_else(|| format!("{arg} needs a value"));
                     match arg.as_str() {
                         "--id" => options.id = Some(value()?),
                         "--version" => options.version = Some(value()?),
                         "--license" => options.license = Some(value()?),
+                        "--digest" => digest = Some(value()?),
                         _ if arg.starts_with("--") => {
                             return Err(format!("unknown option `{arg}`"));
                         }
@@ -105,12 +109,13 @@ impl Args {
                     }
                 }
                 let [world, source]: [String; 2] = positional.try_into().map_err(
-                    |_| "install needs a world file and a fragment directory or card file",
+                    |_| "install needs a world file and a fragment directory, package, card file or URL",
                 )?;
                 Command::Install {
                     world: world.into(),
-                    source: source.into(),
+                    source,
                     options,
+                    digest,
                 }
             }
             Some("pack") => {

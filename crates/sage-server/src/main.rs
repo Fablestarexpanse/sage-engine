@@ -11,6 +11,7 @@ mod accounts;
 mod args;
 mod card;
 mod check;
+mod download;
 mod export;
 mod library;
 mod net;
@@ -48,8 +49,9 @@ usage:
   sage card <card.png|card.json>  read a Tavern character card and show the agent it becomes
   sage pack <fragment-dir> <out.sagepkg>
                                   check a fragment and write it as one .sagepkg file
-  sage install <world.db> <fragment-dir|package.sagepkg|card.png|card.json> [options]
+  sage install <world.db> <fragment-dir|package.sagepkg|card.png|card.json|https-url> [options]
                                   verify a fragment and add it to <world.db>.fragments/
+      --digest <sha256:...>      refuse unless the content has exactly this digest
       --id <creator.slug>        card files: fragment id (default local.<name>)
       --version <semver>         card files: version (default the card's, else 0.1.0)
       --license <spdx>           card files: license (default LicenseRef-Unspecified)
@@ -83,7 +85,8 @@ fn main() -> ExitCode {
             world,
             source,
             options,
-        } => library::run(&world, &source, &options),
+            digest,
+        } => library::run(&world, &source, &options, digest.as_deref()),
         Command::Place {
             world,
             fragment,

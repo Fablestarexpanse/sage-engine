@@ -29,6 +29,7 @@ axum = { version = "0.8", features = ["ws"] }
 futures-util = "0.3"
 rusqlite.workspace = true
 tar = "0.4.46"
+ureq = "3.4"
 tempfile.workspace = true
 zstd = "0.13.3"
 tokio = { version = "1.53", features = ["rt-multi-thread", "net", "sync", "macros", "time"] }

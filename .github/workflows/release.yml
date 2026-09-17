@@ -1,0 +1,150 @@
+name: release
+
+# A `v*` tag builds every platform, smoke-tests each binary, and publishes a GitHub Release
+# with SHA256SUMS. Running the workflow by hand builds and tests the same archives without
+# publishing anything.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: build ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            exe: sage.exe
+          - target: x86_64-unknown-linux-gnu
+            # The oldest supported runner, so the binary runs on older glibc.
+            os: ubuntu-22.04
+            exe: sage
+          - target: aarch64-apple-darwin
+            os: macos-14
+            exe: sage
+          - target: x86_64-apple-darwin
+            os: macos-14
+            exe: sage
+            cross: true
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Name this build
+        run: |
+          version=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -1)
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            tag="${GITHUB_REF#refs/tags/v}"
+            if [[ "$tag" != "$version" ]]; then
+              echo "tag v$tag does not match the workspace version $version" >&2
+              exit 1
+            fi
+            name="sage-v$version-${{ matrix.target }}"
+          else
+            name="sage-v$version-dev-${GITHUB_SHA::7}-${{ matrix.target }}"
+          fi
+          echo "NAME=$name" >> "$GITHUB_ENV"
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.97"
+          targets: ${{ matrix.target }}, wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.3.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: client/pnpm-lock.yaml
+      - name: Build the browser client
+        run: |
+          pnpm --dir client install --frozen-lockfile
+          pnpm --dir client build
+
+      - name: Build sage
+        run: cargo build --release --locked -p sage-server --target ${{ matrix.target }}
+      - name: Build the first-party plugins
+        run: cargo run --release --locked -p sage-build -- plugins
+
+      - name: Smoke test
+        if: ${{ !matrix.cross }}
+        run: |
+          sage="target/${{ matrix.target }}/release/${{ matrix.exe }}"
+          "$sage" --version
+          out=$("$sage" run smoke.db --seed worlds/demo-agents/seed.json --hz 0 --until-tick 200 \
+            --plugin target/plugins/sage.dialogue)
+          echo "$out"
+          grep -q "stop tick=200 .*refused=0" <<< "$out"
+          out=$("$sage" run smoke.db --hz 20 --until-tick 210 --listen 127.0.0.1:0)
+          echo "$out"
+          grep -q "client=embedded" <<< "$out"
+          "$sage" inspect smoke.db | grep -q '"snapshot_matches_replay":true'
+
+      - name: Package
+        run: |
+          dir="dist/$NAME"
+          mkdir -p "$dir/worlds/demo" "$dir/worlds/demo-agents" "$dir/plugins"
+          cp "target/${{ matrix.target }}/release/${{ matrix.exe }}" "$dir/"
+          cp README.md LICENSE NOTICE docs/QUICKSTART.md "$dir/"
+          cp worlds/demo/seed.json "$dir/worlds/demo/"
+          cp worlds/demo-agents/seed.json "$dir/worlds/demo-agents/"
+          cp -r target/plugins/sage.wander target/plugins/sage.dialogue "$dir/plugins/"
+          cd dist
+          if [[ "${{ matrix.target }}" == *windows* ]]; then
+            7z a -tzip "$NAME.zip" "$NAME" > /dev/null
+          else
+            tar -czf "$NAME.tar.gz" "$NAME"
+          fi
+          ls -l
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.NAME }}
+          path: |
+            dist/*.zip
+            dist/*.tar.gz
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Checksums
+        run: |
+          cd dist
+          sha256sum *.zip *.tar.gz > SHA256SUMS
+          cat SHA256SUMS
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --verify-tag \
+            --title "SAGE $GITHUB_REF_NAME" \
+            --notes-file docs/QUICKSTART.md

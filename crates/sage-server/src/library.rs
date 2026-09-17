@@ -134,6 +134,8 @@ pub struct InstallReport {
     pub ok: bool,
     /// `installed` or `already-installed`, when ok.
     pub status: Option<&'static str>,
+    /// What was named on the command line: a path or a URL.
+    source: Option<String>,
     fragment: Option<String>,
     version: Option<String>,
     kind: Option<Kind>,
@@ -186,7 +188,16 @@ fn manifest_text(files: &Files) -> Result<String, String> {
 /// Reads and checks a fragment directory, a `.sagepkg` package, or a card file. `engine`
 /// also requires the manifest's engine range to accept this engine (install does; packing
 /// for another engine is allowed).
-pub fn verify(source: &Path, options: &CardOptions, engine: bool) -> Result<Verified, Vec<String>> {
+///
+/// With `downloaded`, the bytes are the source and `source` is only its file name, used to
+/// tell a package or card by extension and in messages.
+pub fn verify(
+    source: &Path,
+    downloaded: Option<Vec<u8>>,
+    options: &CardOptions,
+    engine: bool,
+) -> Result<Verified, Vec<String>> {
+    let local_dir = downloaded.is_none() && source.is_dir();
     let mut warnings = Vec::new();
     let only_cards = |what: &str| {
         if *options != CardOptions::default() {
@@ -197,13 +208,16 @@ pub fn verify(source: &Path, options: &CardOptions, engine: bool) -> Result<Veri
             Ok(())
         }
     };
-    let (mut files, mut text) = if source.is_dir() {
+    let (mut files, mut text) = if local_dir {
         only_cards("fragment directories")?;
         let files = Files::read_dir(source).map_err(|e| vec![e])?;
         let text = manifest_text(&files).map_err(|e| vec![format!("{}: {e}", source.display())])?;
         (files, text)
     } else {
-        let bytes = read_limited(source).map_err(|e| vec![e])?;
+        let bytes = match downloaded {
+            Some(bytes) => bytes,
+            None => read_limited(source).map_err(|e| vec![e])?,
+        };
         if is_package(source, &bytes) {
             only_cards("packages")?;
             let files = crate::package::unpack(&bytes)
@@ -255,7 +269,7 @@ pub fn verify(source: &Path, options: &CardOptions, engine: bool) -> Result<Veri
             let (_, card_warnings) = usable_agent(&manifest, &files)?;
             warnings.extend(card_warnings);
         }
-        Kind::Plugin => plugin_checks(source, &files)?,
+        Kind::Plugin => plugin_checks(local_dir.then_some(source), &files)?,
         other => {
             return Err(vec![format!(
                 "`{}` fragments cannot be installed yet",
@@ -296,11 +310,10 @@ fn read_limited(path: &Path) -> Result<Vec<u8>, String> {
     Ok(bytes)
 }
 
-/// Installs `source` (a fragment directory, a `.sagepkg` package, or a card file) into
-/// `world`'s library.
-pub fn install(world: &Path, source: &Path, options: &CardOptions) -> InstallReport {
+/// Installs what [`verify`] accepted, or reports why not.
+pub fn install_verified(world: &Path, verified: Result<Verified, Vec<String>>) -> InstallReport {
     let mut report = InstallReport::default();
-    let verified = match verify(source, options, true) {
+    let verified = match verified {
         Ok(verified) => verified,
         Err(problems) => {
             report.problems = problems;
@@ -451,13 +464,13 @@ fn usable_agent(
 
 /// Plugins are accepted only if `sage check` passes. A package is unpacked to a temporary
 /// directory first, so it is checked exactly as a directory would be.
-fn plugin_checks(source: &Path, files: &Files) -> Result<(), Vec<String>> {
+fn plugin_checks(dir: Option<&Path>, files: &Files) -> Result<(), Vec<String>> {
     if files.get("plugin.wasm").is_none() {
         return Err(vec!["a plugin fragment needs plugin.wasm".into()]);
     }
     let unpacked;
-    let dir = if source.is_dir() {
-        source
+    let dir = if let Some(dir) = dir {
+        dir
     } else {
         unpacked = tempfile::tempdir().map_err(|e| vec![e.to_string()])?;
         files.write_to(unpacked.path()).map_err(|e| vec![e])?;
@@ -704,8 +717,37 @@ impl Installed {
 }
 
 /// Runs `sage install` and prints the report.
-pub fn run(world: &Path, source: &Path, options: &CardOptions) -> Result<(), String> {
-    let report = install(world, source, options);
+pub fn run(
+    world: &Path,
+    source: &str,
+    options: &CardOptions,
+    digest: Option<&str>,
+) -> Result<(), String> {
+    let verified = if crate::download::is_url(source) {
+        crate::download::fetch(source)
+            .map_err(|e| vec![e])
+            .and_then(|(name, bytes)| verify(&name, Some(bytes), options, true))
+    } else {
+        verify(Path::new(source), None, options, true)
+    };
+    let verified = verified.and_then(|mut verified| {
+        match digest {
+            Some(expected) if expected != verified.digest => {
+                return Err(vec![format!(
+                    "the content is {}, not the expected {expected}",
+                    verified.digest
+                )]);
+            }
+            Some(_) => {}
+            None if crate::download::is_url(source) => verified
+                .warnings
+                .push("downloaded without --digest: nothing pinned what was fetched".into()),
+            None => {}
+        }
+        Ok(verified)
+    });
+    let mut report = install_verified(world, verified);
+    report.source = Some(source.to_owned());
     println!(
         "{}",
         serde_json::to_string(&report).expect("reports serialize")
@@ -713,7 +755,7 @@ pub fn run(world: &Path, source: &Path, options: &CardOptions) -> Result<(), Str
     if report.ok {
         Ok(())
     } else {
-        Err(format!("{} was not installed", source.display()))
+        Err(format!("{source} was not installed"))
     }
 }
 

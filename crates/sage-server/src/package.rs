@@ -116,7 +116,7 @@ fn check_path(path: &str) -> Result<(), String> {
 /// (except the engine range: a package may target another engine) and writes the package.
 pub fn run(source: &std::path::Path, out: &std::path::Path) -> Result<(), String> {
     let verified =
-        crate::library::verify(source, &Default::default(), false).map_err(|problems| {
+        crate::library::verify(source, None, &Default::default(), false).map_err(|problems| {
             format!(
                 "{} was not packed: {}",
                 source.display(),
